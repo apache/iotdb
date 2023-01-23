@@ -48,13 +48,13 @@ public class NodeUrlUtilsTest {
     final List<TConfigNodeLocation> configNodeLocations =
         Arrays.asList(
             new TConfigNodeLocation(
-                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)),
+                0, new TEndPoint("0.0.0.0", 10710), new TEndPoint("0.0.0.0", 10720)),
             new TConfigNodeLocation(
-                1, new TEndPoint("0.0.0.0", 22279), new TEndPoint("0.0.0.0", 22280)),
+                1, new TEndPoint("0.0.0.0", 10711), new TEndPoint("0.0.0.0", 10721)),
             new TConfigNodeLocation(
-                2, new TEndPoint("0.0.0.0", 22281), new TEndPoint("0.0.0.0", 22282)));
+                2, new TEndPoint("0.0.0.0", 10712), new TEndPoint("0.0.0.0", 10722)));
     final String configNodeUrls =
-        "0,0.0.0.0:22277,0.0.0.0:22278;1,0.0.0.0:22279,0.0.0.0:22280;2,0.0.0.0:22281,0.0.0.0:22282";
+        "0,0.0.0.0:10710,0.0.0.0:10720;1,0.0.0.0:10711,0.0.0.0:10721;2,0.0.0.0:10712,0.0.0.0:10722";
 
     Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));

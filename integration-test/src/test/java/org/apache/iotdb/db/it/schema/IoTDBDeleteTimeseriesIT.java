@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -44,8 +43,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
 
-  private long memtableSizeThreshold;
-
   private Statement statement;
   private Connection connection;
 
@@ -56,10 +53,9 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    memtableSizeThreshold = ConfigFactory.getConfig().getMemtableSizeThreshold();
-    ConfigFactory.getConfig().setMemtableSizeThreshold(2);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMemtableSizeThreshold(2);
 
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
@@ -69,8 +65,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    EnvFactory.getEnv().cleanClusterEnvironment();
     super.tearDown();
   }
 

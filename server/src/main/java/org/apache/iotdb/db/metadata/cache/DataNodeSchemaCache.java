@@ -86,7 +86,6 @@ public class DataNodeSchemaCache {
 
   public void takeWriteLock() {
     readWriteLock.writeLock().lock();
-    ;
   }
 
   public void releaseWriteLock() {
@@ -140,10 +139,6 @@ public class DataNodeSchemaCache {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
       putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
     }
-  }
-
-  public void put(String storageGroup, MeasurementPath measurementPath) {
-    putSingleMeasurementPath(storageGroup, measurementPath);
   }
 
   private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {

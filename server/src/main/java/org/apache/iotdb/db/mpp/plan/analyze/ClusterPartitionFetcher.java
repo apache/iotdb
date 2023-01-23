@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -39,8 +40,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -62,6 +63,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
+
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -70,10 +72,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private final PartitionCache partitionCache;
 
   private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      ConfigNodeClientManager.getInstance();
 
   private static final class ClusterPartitionFetcherHolder {
+
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
 
     private ClusterPartitionFetcherHolder() {}
@@ -115,7 +117,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.warn("Get Schema Partition error", e);
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
@@ -147,7 +149,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -164,7 +166,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               constructSchemaNodeManagementPartitionReq(patternTree, level));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaNodeManagementPartition():" + e.getMessage());
     }
@@ -188,7 +190,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               "An error occurred when executing getDataPartition():"
                   + dataPartitionTableResp.getStatus().getMessage());
         }
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDataPartition():" + e.getMessage());
       }
@@ -214,7 +216,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             "An error occurred when executing getDataPartition():"
                 + dataPartitionTableResp.getStatus().getMessage());
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -239,7 +241,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               "An error occurred when executing getOrCreateDataPartition():"
                   + dataPartitionTableResp.getStatus().getMessage());
         }
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
@@ -272,7 +274,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getMessage(),
                   dataPartitionTableResp.getStatus().getCode()));
         }
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
@@ -304,10 +306,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String devicePath = dataPartitionQueryParam.getDevicePath();
       if (deviceToStorageGroupMap.containsKey(devicePath)) {
         String storageGroup = deviceToStorageGroupMap.get(devicePath);
-        if (!result.containsKey(storageGroup)) {
-          result.put(storageGroup, new ArrayList<>());
-        }
-        result.get(storageGroup).add(dataPartitionQueryParam);
+        result.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(dataPartitionQueryParam);
       }
     }
     return result;

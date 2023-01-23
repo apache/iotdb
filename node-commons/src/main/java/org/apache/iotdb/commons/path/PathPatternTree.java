@@ -33,9 +33,9 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
@@ -45,7 +45,7 @@ public class PathPatternTree {
 
   public PathPatternTree() {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
-    this.pathPatternList = new ArrayList<>();
+    this.pathPatternList = new LinkedList<>();
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {
@@ -87,8 +87,7 @@ public class PathPatternTree {
     }
     if (!isExist) {
       // remove duplicate path in pathPatternList
-      pathPatternList.removeAll(
-          pathPatternList.stream().filter(pathPattern::include).collect(Collectors.toList()));
+      pathPatternList.removeIf(pathPattern::include);
       pathPatternList.add(pathPattern);
     }
   }
@@ -152,6 +151,10 @@ public class PathPatternTree {
         results.add(
             nodes.size() == 1 ? "" : convertNodesToString(nodes.subList(0, nodes.size() - 1)));
       } else {
+        // the device of root.sg.d.** is root.sg.d and root.sg.d.**
+        if (nodes.size() > 2) {
+          results.add(convertNodesToString(nodes.subList(0, nodes.size() - 1)));
+        }
         results.add(convertNodesToString(nodes));
       }
       if (curNode.isLeaf()) {

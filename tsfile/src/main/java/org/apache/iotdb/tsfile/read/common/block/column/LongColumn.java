@@ -26,7 +26,8 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
+import static io.airlift.slice.SizeOf.sizeOfLongArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class LongColumn implements Column {
@@ -65,7 +66,8 @@ public class LongColumn implements Column {
     }
     this.valueIsNull = valueIsNull;
 
-    retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values);
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfLongArray(positionCount) + sizeOfBooleanArray(positionCount);
   }
 
   @Override
@@ -156,5 +158,10 @@ public class LongColumn implements Column {
         valueIsNull[j] = isNullTmp;
       }
     }
+  }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }

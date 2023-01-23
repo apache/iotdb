@@ -25,13 +25,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -40,8 +40,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,8 +65,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
 
 public class SizeTieredCompactionRecoverTest {
   private ICompactionPerformer performer = new FastCompactionPerformer(false);
@@ -127,7 +125,6 @@ public class SizeTieredCompactionRecoverTest {
 
   @Before
   public void setUp() throws Exception {
-    LocalConfigNode.getInstance().init();
     CompactionTaskManager.getInstance().start();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
@@ -145,7 +142,6 @@ public class SizeTieredCompactionRecoverTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
     CompactionTaskManager.getInstance().stop();
     setDataDirs(originDataDirs);
-    LocalConfigNode.getInstance().clear();
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);
@@ -167,18 +163,6 @@ public class SizeTieredCompactionRecoverTest {
               TSEncoding.RLE,
               CompressionType.UNCOMPRESSED);
       deviceIds[i] = new PartialPath(fullPaths[i].substring(0, 27));
-    }
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
-    for (int i = 0; i < fullPaths.length; ++i) {
-      MeasurementSchema schema = schemas[i];
-      PartialPath deviceId = deviceIds[i];
-      LocalSchemaProcessor.getInstance()
-          .createTimeseries(
-              deviceId.concatNode(schema.getMeasurementId()),
-              schema.getType(),
-              schema.getEncodingType(),
-              schema.getCompressor(),
-              Collections.emptyMap());
     }
   }
 
@@ -249,7 +233,7 @@ public class SizeTieredCompactionRecoverTest {
     compactionLogger.close();
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -303,7 +287,7 @@ public class SizeTieredCompactionRecoverTest {
     compactionLogger.close();
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -362,7 +346,7 @@ public class SizeTieredCompactionRecoverTest {
     logger.close();
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -416,7 +400,7 @@ public class SizeTieredCompactionRecoverTest {
     compactionLogger.close();
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -478,7 +462,7 @@ public class SizeTieredCompactionRecoverTest {
       compactionLogger.close();
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -578,7 +562,7 @@ public class SizeTieredCompactionRecoverTest {
       compactionLogger.close();
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -675,7 +659,7 @@ public class SizeTieredCompactionRecoverTest {
       compactionLogger.close();
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -775,7 +759,7 @@ public class SizeTieredCompactionRecoverTest {
       compactionLogger.close();
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
-      performer.setSummary(new CompactionTaskSummary());
+      performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);

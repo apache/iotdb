@@ -444,10 +444,8 @@ public abstract class CacheManager implements ICacheManager {
       }
     }
 
-    if (isPinStatusChanged) {
-      if (!node.isStorageGroup()) {
-        doUnPin(node.getParent());
-      }
+    if (isPinStatusChanged && !node.isStorageGroup()) {
+      doUnPin(node.getParent());
     }
 
     return isPinStatusChanged;

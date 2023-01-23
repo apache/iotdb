@@ -47,7 +47,7 @@ public class IoTDBDeactivateTemplateIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
 
@@ -58,7 +58,7 @@ public class IoTDBDeactivateTemplateIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void prepareTemplate() throws SQLException {

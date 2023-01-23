@@ -108,7 +108,7 @@ public class CreateRegionGroupsProcedure
                             if (failedRegionReplicas.getDataNodeLocationsSize()
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
                               // A RegionGroup can provide service as long as there are more than
-                              // half of the RegionReplicas were created successfully
+                              // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
 
                               // Build recreate tasks

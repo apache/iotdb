@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
@@ -38,18 +38,18 @@ public class SchemaUtilsTest {
     measurementTypes.add(TSDataType.DOUBLE);
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MIN_TIME));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.MIN_TIME));
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.COUNT));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.COUNT));
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.DOUBLE),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.SUM));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.SUM));
     Assert.assertEquals(
         measurementTypes,
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.LAST_VALUE));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.LAST_VALUE));
     Assert.assertEquals(
         measurementTypes,
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MAX_VALUE));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.MAX_VALUE));
   }
 }

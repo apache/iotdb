@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -40,9 +41,9 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 
 public class BTreePageManager extends PageManager {
 
-  public BTreePageManager(FileChannel channel, int lastPageIndex, String logPath)
+  public BTreePageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
-    super(channel, lastPageIndex, logPath);
+    super(channel, pmtFile, lastPageIndex, logPath);
   }
 
   @Override
@@ -116,8 +117,8 @@ public class BTreePageManager extends PageManager {
     Queue<IMNode> children = cursorPage.getAsSegmentedPage().getChildren((short) 0);
     IMNode child;
     // TODO: inefficient to build B+Tree up-to-bottom, improve further
-    while (children.size() != 0 || nextAddr != -1L) {
-      if (children.size() == 0) {
+    while (!children.isEmpty() || nextAddr != -1L) {
+      if (children.isEmpty()) {
         cursorPage = getPageInstance(getPageIndex(nextAddr));
         nextAddr = cursorPage.getAsSegmentedPage().getNextSegAddress((short) 0);
         children = cursorPage.getAsSegmentedPage().getChildren((short) 0);
@@ -322,7 +323,7 @@ public class BTreePageManager extends PageManager {
           cascadePages.add(tarPage.getSubIndex());
         }
 
-        while (cascadePages.size() != 0) {
+        while (!cascadePages.isEmpty()) {
           if (dirtyPages.size() > SchemaFileConfig.PAGE_CACHE_SIZE) {
             flushDirtyPages();
           }
@@ -415,7 +416,7 @@ public class BTreePageManager extends PageManager {
 
       @Override
       public boolean hasNext() {
-        if (children.size() > 0) {
+        if (!children.isEmpty()) {
           return true;
         }
         if (nextSeg < 0) {
@@ -424,7 +425,7 @@ public class BTreePageManager extends PageManager {
 
         try {
           ISchemaPage nPage;
-          while (children.size() == 0 && nextSeg >= 0) {
+          while (children.isEmpty() && nextSeg >= 0) {
             nPage = getPageInstance(getPageIndex(nextSeg));
             children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
             nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
@@ -434,7 +435,7 @@ public class BTreePageManager extends PageManager {
           return false;
         }
 
-        return children.size() > 0;
+        return !children.isEmpty();
       }
 
       @Override

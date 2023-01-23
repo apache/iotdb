@@ -65,7 +65,7 @@ public class SchemaFile implements ISchemaFile {
   private String storageGroupName;
   private long dataTTL;
   private boolean isEntity;
-  private int templateHash;
+  private int sgNodeTemplateIdWithState;
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
@@ -77,6 +77,7 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
+  // todo refactor constructor for schema file in Jan.
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
@@ -92,8 +93,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pmtFile.exists() && override) {
-      logger.warn(
-          String.format("Schema File [%s] will be overwritten since already exists.", filePath));
+      logger.warn("Schema File [{}] will be overwritten since already exists.", filePath);
       Files.delete(Paths.get(pmtFile.toURI()));
       pmtFile.createNewFile();
     }
@@ -109,7 +109,7 @@ public class SchemaFile implements ISchemaFile {
     // will be overwritten if to init
     this.dataTTL = ttl;
     this.isEntity = isEntity;
-    this.templateHash = 0;
+    this.sgNodeTemplateIdWithState = -1;
     initFileHeader();
   }
 
@@ -177,11 +177,8 @@ public class SchemaFile implements ISchemaFile {
               new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     }
     resNode.setFullPath(storageGroupName);
-    if (templateHash != 0) {
-      //
-      // resNode.setSchemaTemplate(TemplateManager.getInstance().getTemplateFromHash(templateHash));
-      // todo record the templateId generated in configNode
-    }
+    resNode.setSchemaTemplateId(sgNodeTemplateIdWithState);
+    resNode.setUseTemplate(sgNodeTemplateIdWithState > -1);
     return resNode;
   }
 
@@ -189,10 +186,8 @@ public class SchemaFile implements ISchemaFile {
   public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    // todo record the templateId generated in configNode
-    //    this.templateHash =
-    //        sgNode.getSchemaTemplate() == null ? 0 : sgNode.getSchemaTemplate().hashCode();
-    updateHeader();
+    this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
+    updateHeaderBuffer();
     return true;
   }
 
@@ -226,6 +221,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    updateHeaderBuffer();
   }
 
   @Override
@@ -246,16 +242,18 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
     pageManager.close();
+    forceChannel();
     channel.close();
   }
 
   @Override
   public void sync() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
+    forceChannel();
   }
 
   @Override
@@ -314,7 +312,7 @@ public class SchemaFile implements ISchemaFile {
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
    *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
-   *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
+   *         <li>c. 1 int (4 bytes): hash code of template name {@link #sgNodeTemplateIdWithState}
    *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
    *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
@@ -330,17 +328,17 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
-      ReadWriteIOUtils.write(templateHash, headerContent);
+      ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
       ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, -1, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
-      templateHash = ReadWriteIOUtils.readInt(headerContent);
+      sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
       lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
 
       if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
@@ -348,22 +346,25 @@ public class SchemaFile implements ISchemaFile {
         throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
       }
 
-      pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
     }
   }
 
-  private void updateHeader() throws IOException {
+  private void updateHeaderBuffer() throws IOException {
     headerContent.clear();
 
     ReadWriteIOUtils.write(pageManager.getLastPageIndex(), headerContent);
     ReadWriteIOUtils.write(dataTTL, headerContent);
     ReadWriteIOUtils.write(isEntity, headerContent);
-    ReadWriteIOUtils.write(templateHash, headerContent);
+    ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
-    headerContent.clear();
+    headerContent.flip();
     channel.write(headerContent, 0);
+  }
+
+  private void forceChannel() throws IOException {
     channel.force(true);
   }
 

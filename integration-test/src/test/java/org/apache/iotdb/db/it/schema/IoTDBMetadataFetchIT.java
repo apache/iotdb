@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -89,13 +88,14 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
+
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
     super.tearDown();
   }
 
@@ -359,9 +359,6 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -501,9 +498,6 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -520,31 +514,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,0,",
-                    "root.ln.wf01.wt02,0,",
-                    "root.ln1.wf01.wt01,0,",
-                    "root.ln2.wf01.wt01,0,",
-                    "root.sg.d.status,1,",
-                    "root.sg1.d.status,0,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,1,",
-                    "root.sg1.d,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,0,",
-                    "root.sg1.d,0,")),
+            new HashSet<>(Arrays.asList("root.sg,1,", "root.sg1,1,")),
+            new HashSet<>(Collections.singletonList("root.sg.d.status,1,")),
+            new HashSet<>(Arrays.asList("root.sg.d,1,", "root.sg1.d,1,")),
+            Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

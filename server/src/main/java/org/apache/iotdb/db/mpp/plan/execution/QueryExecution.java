@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -33,11 +33,12 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.memory.MemorySourceHandle;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
@@ -69,7 +70,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -80,7 +80,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -122,6 +124,10 @@ public class QueryExecution implements IQueryExecution {
       internalServiceClientManager;
 
   private AtomicBoolean stopped;
+
+  private long totalExecutionTime;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public QueryExecution(
       Statement statement,
@@ -265,6 +271,7 @@ public class QueryExecution implements IQueryExecution {
       this.scheduler.start();
       return;
     }
+
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
         new ClusterScheduler(
@@ -291,8 +298,13 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
+    long startTime = System.nanoTime();
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
+
+    if (rawStatement.isQuery()) {
+      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+    }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
@@ -312,10 +324,8 @@ public class QueryExecution implements IQueryExecution {
   // Stop the workers for this query
   public void stop() {
     // only stop once
-    if (stopped.compareAndSet(false, true)) {
-      if (this.scheduler != null) {
-        this.scheduler.stop();
-      }
+    if (stopped.compareAndSet(false, true) && this.scheduler != null) {
+      this.scheduler.stop();
     }
   }
 
@@ -323,6 +333,14 @@ public class QueryExecution implements IQueryExecution {
   public void stopAndCleanup() {
     stop();
     releaseResource();
+  }
+
+  @Override
+  public void cancel() {
+    stateMachine.transitionToCanceled(
+        new KilledByOthersException(),
+        new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
+            .setMessage(KilledByOthersException.MESSAGE));
   }
 
   /** Release the resources that current QueryExecution hold. */
@@ -388,8 +406,14 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
 
-        ListenableFuture<?> blocked = resultHandle.isBlocked();
-        blocked.get();
+        long startTime = System.nanoTime();
+        try {
+          ListenableFuture<?> blocked = resultHandle.isBlocked();
+          blocked.get();
+        } finally {
+          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+        }
+
         if (!resultHandle.isFinished()) {
           // use the getSerializedTsBlock instead of receive to get ByteBuffer result
           T res = dataSupplier.get();
@@ -513,7 +537,7 @@ public class QueryExecution implements IQueryExecution {
         isSameNode(upstreamEndPoint)
             ? MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
-                .createLocalSourceHandle(
+                .createLocalSourceHandleForFragment(
                     context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                     context.getResultNodeContext().getVirtualResultNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
@@ -545,7 +569,10 @@ public class QueryExecution implements IQueryExecution {
               : TSStatusCode.EXECUTE_STATEMENT_ERROR;
     }
 
-    TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
+    TSStatus tsstatus =
+        RpcUtils.getStatus(
+            statusCode,
+            statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage());
 
     // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
     // not null. We should only return the failure status when QueryExecution is in Done state.
@@ -557,29 +584,35 @@ public class QueryExecution implements IQueryExecution {
     if (analysis.getStatement() instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList;
-      if (config.isClusterMode()) {
-        redirectNodeList = insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
-      } else {
-        redirectNodeList = Collections.emptyList();
-      }
+      List<TEndPoint> redirectNodeList =
+          insertStatement.collectRedirectInfo(analysis.getDataPartitionInfo());
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
         // multiple devices
         if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+          boolean needRedirect = false;
           List<TSStatus> subStatus = new ArrayList<>();
-          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           for (TEndPoint endPoint : redirectNodeList) {
-            subStatus.add(
-                StatusUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
-                    .setRedirectNode(endPoint));
+            // redirect writing only if the redirectEndPoint is not the current node
+            if (!config.getAddressAndPort().equals(endPoint)) {
+              subStatus.add(
+                  RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(endPoint));
+              needRedirect = true;
+            } else {
+              subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+            }
           }
-          tsstatus.setSubStatus(subStatus);
+          if (needRedirect) {
+            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+            tsstatus.setSubStatus(subStatus);
+          }
         }
       } else {
         // single device
-        if (config.isClusterMode()) {
-          tsstatus.setRedirectNode(redirectNodeList.get(0));
+        TEndPoint redirectEndPoint = redirectNodeList.get(0);
+        // redirect writing only if the redirectEndPoint is not the current node
+        if (!config.getAddressAndPort().equals(redirectEndPoint)) {
+          tsstatus.setRedirectNode(redirectEndPoint);
         }
       }
     }
@@ -611,8 +644,23 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
+  public void recordExecutionTime(long executionTime) {
+    totalExecutionTime += executionTime;
+  }
+
+  @Override
+  public long getTotalExecutionTime() {
+    return totalExecutionTime;
+  }
+
+  @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
+  }
+
+  @Override
+  public Statement getStatement() {
+    return analysis.getStatement();
   }
 
   public String toString() {

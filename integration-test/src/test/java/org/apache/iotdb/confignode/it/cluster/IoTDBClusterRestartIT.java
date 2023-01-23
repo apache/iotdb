@@ -30,12 +30,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.AbstractEnv;
-import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.env.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.EnvUtils;
+import org.apache.iotdb.it.env.cluster.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
+import org.apache.iotdb.it.env.cluster.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.MppCommonConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -72,48 +73,25 @@ public class IoTDBClusterRestartIT {
   private static final int testConfigNodeNum = 2;
   private static final int testDataNodeNum = 2;
   private static final int testReplicationFactor = 2;
-  private static final long testTimePartitionInterval = 604800000;
-  protected static String originalConfigNodeConsensusProtocolClass;
-  protected static String originalSchemaRegionConsensusProtocolClass;
-  protected static String originalDataRegionConsensusProtocolClass;
-  protected static int originSchemaReplicationFactor;
-  protected static int originalDataReplicationFactor;
-  protected static long originalTimePartitionInterval;
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ratisConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass);
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    originSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(ratisConsensusProtocolClass)
+        .setSchemaRegionConsensusProtocolClass(ratisConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(ratisConsensusProtocolClass)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor);
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -170,7 +148,12 @@ public class IoTDBClusterRestartIT {
     }
 
     for (int i = 0; i < testDataNodeNum; i++) {
-      dataNodeWrapperList.get(i).changeConfig(ConfigFactory.getConfig().getEngineProperties());
+      dataNodeWrapperList
+          .get(i)
+          .changeConfig(
+              (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+              (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+              null);
       EnvFactory.getEnv().startDataNode(i);
     }
 

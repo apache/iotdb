@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -50,6 +51,12 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HANDLE_GET_TSBLOCK_REMOTE;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.GET_DATA_BLOCK_NUM_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER;
 
 public class SourceHandle implements ISourceHandle {
 
@@ -100,6 +107,8 @@ public class SourceHandle implements ISourceHandle {
    */
   private boolean canGetTsBlockFromRemote = false;
 
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
   public SourceHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -129,7 +138,13 @@ public class SourceHandle implements ISourceHandle {
   public synchronized TsBlock receive() {
     ByteBuffer tsBlock = getSerializedTsBlock();
     if (tsBlock != null) {
-      return serde.deserialize(tsBlock);
+      long startTime = System.nanoTime();
+      try {
+        return serde.deserialize(tsBlock);
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+      }
     } else {
       return null;
     }
@@ -137,6 +152,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized ByteBuffer getSerializedTsBlock() {
+    long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       checkState();
 
@@ -169,6 +185,9 @@ public class SourceHandle implements ISourceHandle {
       }
       trySubmitGetDataBlocksTask();
       return tsBlock;
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SOURCE_HANDLE_GET_TSBLOCK_REMOTE, System.nanoTime() - startTime);
     }
   }
 
@@ -376,7 +395,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
   }
 
   @Override
@@ -439,13 +458,18 @@ public class SourceHandle implements ISourceHandle {
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
+
+          long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
-            List<ByteBuffer> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
+
+            int tsBlockNum = resp.getTsBlocks().size();
+            List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
-            logger.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlocks.size());
+            logger.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+            QUERY_METRICS.recordDataBlockNum(GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
@@ -485,6 +509,9 @@ public class SourceHandle implements ISourceHandle {
               fail(e);
               return;
             }
+          } finally {
+            QUERY_METRICS.recordDataExchangeCost(
+                GET_DATA_BLOCK_TASK_CALLER, System.nanoTime() - startTime);
           }
         }
       }
@@ -528,6 +555,7 @@ public class SourceHandle implements ISourceHandle {
                 remoteFragmentInstanceId, startSequenceId, endSequenceId);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
+          long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
@@ -552,6 +580,11 @@ public class SourceHandle implements ISourceHandle {
                 sourceHandleListener.onFailure(SourceHandle.this, e);
               }
             }
+          } finally {
+            QUERY_METRICS.recordDataExchangeCost(
+                ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
+            QUERY_METRICS.recordDataBlockNum(
+                ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER, endSequenceId - startSequenceId);
           }
         }
       }

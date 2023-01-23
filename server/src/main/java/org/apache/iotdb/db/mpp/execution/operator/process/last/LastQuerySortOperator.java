@@ -145,8 +145,8 @@ public class LastQuerySortOperator implements ProcessOperator {
                 && previousTsBlockIndex < previousTsBlock.getPositionCount()))
         && !tsBlockBuilder.isFull()) {
       if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
-        if (children.get(currentIndex).hasNext()) {
-          previousTsBlock = children.get(currentIndex).next();
+        if (children.get(currentIndex).hasNextWithTimer()) {
+          previousTsBlock = children.get(currentIndex).nextWithTimer();
           previousTsBlockIndex = 0;
           if (previousTsBlock == null) {
             return null;
@@ -186,7 +186,7 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override

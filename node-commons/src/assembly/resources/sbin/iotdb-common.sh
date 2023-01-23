@@ -171,10 +171,10 @@ checkDataNodePortUsages () {
   else
     echo "Warning: cannot find iotdb-datanode.properties, check the default configuration"
     dn_rpc_port=6667
-    dn_internal_port=9003
-    dn_mpp_data_exchange_port=8777
-    dn_schema_region_consensus_port=50010
-    dn_data_region_consensus_port=40010
+    dn_internal_port=10730
+    dn_mpp_data_exchange_port=10740
+    dn_schema_region_consensus_port=10750
+    dn_data_region_consensus_port=10760
   fi
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)
@@ -252,8 +252,8 @@ checkConfigNodePortUsages () {
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
   else
     echo "Cannot find iotdb-confignode.properties, check the default configuration"
-    cn_internal_port=22277
-    cn_consensus_port=22278
+    cn_internal_port=10710
+    cn_consensus_port=10720
   fi
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)

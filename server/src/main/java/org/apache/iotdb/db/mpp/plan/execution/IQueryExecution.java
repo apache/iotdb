@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.nio.ByteBuffer;
@@ -33,6 +34,8 @@ public interface IQueryExecution {
   void stop();
 
   void stopAndCleanup();
+
+  void cancel();
 
   ExecutionResult getStatus();
 
@@ -52,5 +55,11 @@ public interface IQueryExecution {
 
   long getStartExecutionTime();
 
+  void recordExecutionTime(long executionTime);
+
+  long getTotalExecutionTime();
+
   Optional<String> getExecuteSQL();
+
+  Statement getStatement();
 }

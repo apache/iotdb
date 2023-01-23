@@ -96,19 +96,19 @@ public class TsFileMetricManager {
     }
   }
 
-  public long getCompactionTempFileSize(boolean innerSpace, boolean seq) {
-    if (innerSpace) {
-      return seq ? innerSeqCompactionTempFileSize.get() : innerUnseqCompactionTempFileSize.get();
-    } else {
-      return crossCompactionTempFileSize.get();
-    }
+  public long getInnerCompactionTempFileSize(boolean seq) {
+    return seq ? innerSeqCompactionTempFileSize.get() : innerUnseqCompactionTempFileSize.get();
   }
 
-  public int getCompactionTempFileNum(boolean innerSpace, boolean seq) {
-    if (innerSpace) {
-      return seq ? innerSeqCompactionTempFileNum.get() : innerUnseqCompactionTempFileNum.get();
-    } else {
-      return crossCompactionTempFileNum.get();
-    }
+  public long getCrossCompactionTempFileSize() {
+    return crossCompactionTempFileSize.get();
+  }
+
+  public long getInnerCompactionTempFileNum(boolean seq) {
+    return seq ? innerSeqCompactionTempFileNum.get() : innerUnseqCompactionTempFileNum.get();
+  }
+
+  public long getCrossCompactionTempFileNum() {
+    return crossCompactionTempFileNum.get();
   }
 }

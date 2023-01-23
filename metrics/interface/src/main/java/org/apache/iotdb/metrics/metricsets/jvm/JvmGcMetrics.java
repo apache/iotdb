@@ -153,7 +153,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
               final long oldBefore = before.get(oldGenPoolName).getUsed();
               final long oldAfter = after.get(oldGenPoolName).getUsed();
               final long delta = oldAfter - oldBefore;
-              if (delta > 0L) {
+              if (delta > 0L && promotedBytes != null) {
                 promotedBytes.inc(delta);
               }
 
@@ -193,6 +193,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             try {
               notificationEmitter.removeNotificationListener(notificationListener);
             } catch (ListenerNotFoundException ignore) {
+              // do nothing
             }
           });
     }
@@ -246,6 +247,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             try {
               notificationEmitter.removeNotificationListener(notificationListener);
             } catch (ListenerNotFoundException ignore) {
+              // do nothing
             }
           });
     }

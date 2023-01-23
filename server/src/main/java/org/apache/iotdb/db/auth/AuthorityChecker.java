@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -229,6 +229,8 @@ public class AuthorityChecker {
       case SHOW_PATH_SET_SCHEMA_TEMPLATE:
       case SHOW_PATH_USING_SCHEMA_TEMPLATE:
         return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
+      case SHOW_CONTINUOUS_QUERIES:
+        return PrivilegeType.SHOW_CONTINUOUS_QUERIES.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

@@ -157,8 +157,8 @@ public class ConsensusManager {
                                               CONF.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
-                              .setRatisConsensus(
-                                  RatisConfig.Impl.newBuilder()
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           CONF.getConfigNodeRatisRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -167,6 +167,12 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
+                                      .setCoreClientNumForEachNode(
+                                          CONF.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
                                       .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
                                       .build())
                               .build())
@@ -344,7 +350,7 @@ public class ConsensusManager {
   @TestOnly
   public void singleCopyMayWaitUntilLeaderReady() {
     long startTime = System.currentTimeMillis();
-    long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+    long maxWaitTime = 1000L * 60; // milliseconds, which is 60s
     try {
       while (!consensusImpl.isLeader(consensusGroupId)) {
         TimeUnit.MILLISECONDS.sleep(100);

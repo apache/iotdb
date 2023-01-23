@@ -49,7 +49,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
@@ -59,7 +59,7 @@ public class IoTDBCreateAlignedTimeseriesIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -91,10 +91,10 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.1.1. Cluster
 | Metric      | Tags                                            | Type      | Description                                         |
-|-------------|-------------------------------------------------| --------- | --------------------------------------------------- |
+| ----------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
-| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable                     |
+| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable           |
 
 #### 4.1.2. IoTDB process
 | Metric            | Tags           | Type      | Description                                            |
@@ -128,7 +128,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.2. Node
 | Metric   | Tags                                       | Type      | Description                                                   |
-|----------|--------------------------------------------|-----------|---------------------------------------------------------------|
+| -------- | ------------------------------------------ | --------- | ------------------------------------------------------------- |
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
@@ -167,25 +167,27 @@ Core-level metrics are enabled by default during system operation. The addition 
 | cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
 
 #### 4.2.5. Interface
-| Metric                | Tags                               | Type      | Description                                                    |
-| --------------------- | ---------------------------------- | --------- | -------------------------------------------------------------- |
-| operation             | name = "{{name}}"                  | Histogram | The time consumed of operations in client                      |
-| entry                 | name="{{interface}}"               | Timer     | The time consumed of thrift operations                         |
-| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | The number of thrift internal connections in ConfigNode        |
-| thrift_connections    | name="Internal"                    | AutoGauge | The number of thrift internal connections in DataNode          |
-| thrift_connections    | name="MPPDataExchange"             | AutoGauge | The number of thrift internal connections in MPP               |
-| thrift_connections    | name="RPC"                         | AutoGauge | The number of thrift connections of Client                     |
-| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | The number of thrift active internal connections in ConfigNode |
-| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | The number of thrift active internal connections in DataNode   |
-| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | The number of thrift active internal connections in MPP        |
-| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
+| Metric                | Tags                                                 | Type      | Description                                                    |
+| --------------------- | ---------------------------------------------------- | --------- | -------------------------------------------------------------- |
+| statement_execution   | interface="{{interface}}", type="{{statement_type}}" | Timer     | The time consumed of operations in client                      |
+| entry                 | name="{{interface}}"                                 | Timer     | The time consumed of thrift operations                         |
+| thrift_connections    | name="ConfigNodeRPC"                                 | AutoGauge | The number of thrift internal connections in ConfigNode        |
+| thrift_connections    | name="Internal"                                      | AutoGauge | The number of thrift internal connections in DataNode          |
+| thrift_connections    | name="MPPDataExchange"                               | AutoGauge | The number of thrift internal connections in MPP               |
+| thrift_connections    | name="RPC"                                           | AutoGauge | The number of thrift connections of Client                     |
+| thrift_active_threads | name="ConfigNodeRPC-Service"                         | AutoGauge | The number of thrift active internal connections in ConfigNode |
+| thrift_active_threads | name="DataNodeInternalRPC-Service"                   | AutoGauge | The number of thrift active internal connections in DataNode   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"                    | AutoGauge | The number of thrift active internal connections in MPP        |
+| thrift_active_threads | name="ClientRPC-Service"                             | AutoGauge | The number of thrift active connections of client              |
 
 #### 4.2.6. Memory
-| Metric | Tags                          | Type      | Description                                                        |
-| ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
-| mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
-| mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| Metric | Tags                                 | Type      | Description                                                        |
+| ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
+| mem    | name="database_{{name}}"             | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
+| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
+| mem    | name="IoTConsensus"                  | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| mem    | name="schema_region_total_usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
+| mem    | name="schema_region_total_remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
 #### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
@@ -194,7 +196,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | queue     | name="compaction_cross", status="running/waiting" | Gauge     | The number of cross compatcion tasks  |
 | cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | The time consumed of compaction tasks |
 | queue     | name="flush",status="running/waiting"             | AutoGauge | The number of flush tasks             |
-| queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | The number of Sub_RawQuery            |
 
 #### 4.2.8. Compaction
 | Metric                | Tags                                                | Type    | Description                            |
@@ -207,20 +208,21 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.9. File
 
-| Metric     | Tags         | Type      | Description                                                  |
-| ---------- | ------------ | --------- |--------------------------------------------------------------|
-| file_size  | name="wal"   | AutoGauge | The size of WAL file, Unit: byte                             |
-| file_size  | name="seq"   | AutoGauge | The size of sequence TsFile, Unit: byte                      |
-| file_size  | name="unseq" | AutoGauge | The size of unsequence TsFile, Unit: byte                    |
-| file_count | name="wal"   | AutoGauge | The count of WAL file                                        |
-| file_count | name="seq"   | AutoGauge | The count of sequence TsFile                                 |
-| file_count | name="unseq" | AutoGauge | The count of unsequence TsFile                               |
-| file_count| name="inner-seq-temp-num" | AutoGauge | The count of inner sequence space compaction temporal file   |
-| file_count | name="inner-unseq-temp-num"|AutoGauge| The count of inner unsequence space compaction temporal file |
-| file_count|name="cross-temp-num"|AutoGauge| The count of cross space compaction temporal file            |
-| file_size|name="inner-seq-temp-size" | AutoGauge| The size of inner sequence space compaction temporal file    |
-| file_size|name="inner-unseq-temp-size"|AutoGauge| The size of inner unsequence space compaction temporal file  |
-|file_size|name="cross-temp-size"|AutoGauge|The size of cross space compaction temoporal file|
+| Metric     | Tags                      | Type      | Description                                                                 |
+| ---------- |---------------------------| --------- |-----------------------------------------------------------------------------|
+| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
+| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                                     |
+| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                                   |
+| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file                   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file                 |
+| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                           |
+| file_count | name="wal"                | AutoGauge | The count of WAL file                                                       |
+| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                                |
+| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                              |
+| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file                  |
+| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file                |
+| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                           |
+| file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
 
 #### 4.2.10. IoTDB Process
 
@@ -277,6 +279,75 @@ Core-level metrics are enabled by default during system operation. The addition 
 | Metric                  | Tags                                          | Type      | Description                      |
 | ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
+
+#### 4.2.17. Query Planning
+| Metric          | Tags                         | Type  | Description                                         |
+|-----------------|------------------------------|-------|-----------------------------------------------------|
+| query_plan_cost | stage="sql_parser"           | Timer | The SQL parsing time-consuming                      |
+| query_plan_cost | stage="analyzer"             | Timer | The query statement analysis time-consuming         |
+| query_plan_cost | stage="logical_planner"      | Timer | The query logical plan planning time-consuming      |
+| query_plan_cost | stage="distribution_planner" | Timer | The query distribution plan planning time-consuming |
+| query_plan_cost | stage="partition_fetcher"    | Timer | The partition information fetching time-consuming   |
+| query_plan_cost | stage="schema_fetcher"       | Timer | The schema information fetching time-consuming      |
+
+#### 4.2.18. Plan Dispatcher
+| Metric     | Tags                      | Type  | Description                                                  |
+|------------|---------------------------|-------|--------------------------------------------------------------|
+| dispatcher | stage="wait_for_dispatch" | Timer | The distribution plan dispatcher time-consuming              |
+| dispatcher | stage="dispatch_read"     | Timer | The distribution plan dispatcher time-consuming (only query) |
+
+#### 4.2.19. Query Resource
+| Metric         | Tags                     | Type | Description                                |
+|----------------|--------------------------|------|--------------------------------------------|
+| query_resource | type="sequence_tsfile"   | Rate | The access frequency of sequence tsfiles   |
+| query_resource | type="unsequence_tsfile" | Rate | The access frequency of unsequence tsfiles |
+| query_resource | type="flushing_memtable" | Rate | The access frequency of flushing memtables |
+| query_resource | type="working_memtable"  | Rate | The access frequency of working memtables  |
+
+#### 4.2.20. Data Exchange
+| Metric              | Tags                                                                   | Type      | Description                                                     |
+|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------------------------------------|
+| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | The time-consuming that source handles receive TsBlock          |
+| data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | The time-consuming that source handles deserialize TsBlock      |
+| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | The time-consuming that sink handles send TsBlock               |
+| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | The RPC time-consuming that sink handles send TsBlock           |
+| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | The RPC time-consuming that source handles receive TsBlock      |
+| data_exchange_cost  | operation="on_acknowledge_data_block_event_task", type="server/caller" | Timer     | The RPC time-consuming that source handles ack received TsBlock |
+| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | The number of sent TsBlocks by sink handles                     |
+| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
+| data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
+
+#### 4.2.21. Query Task Schedule
+| Metric           | Tags                           | Type      | Description                                      |
+|------------------|--------------------------------|-----------|--------------------------------------------------|
+| driver_scheduler | name="ready_queued_time"       | Timer     | The queuing time of ready queue                  |
+| driver_scheduler | name="block_queued_time"       | Timer     | The queuing time of blocking queue               |
+| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
+| driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
+
+#### 4.2.22. Query Execution
+| Metric                   | Tags                                                                                | Type    | Description                                                                             |
+|--------------------------|-------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------|
+| query_execution          | stage="local_execution_planner"                                                     | Timer   | The time-consuming of operator tree construction                                        |
+| query_execution          | stage="query_resource_init"                                                         | Timer   | The time-consuming of query resource initialization                                     |
+| query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | The time-consuming of query resource memory query and construction                      |
+| query_execution          | stage="driver_internal_process"                                                     | Timer   | The time-consuming of driver execution                                                  |
+| query_execution          | stage="wait_for_result"                                                             | Timer   | The time-consuming of getting query result from result handle                           |
+| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | The operator execution time                                                             |
+| operator_execution_count | name="{{operator_name}}"                                                            | Counter | The number of operator calls (counted by the number of next method calls)               |
+| aggregation              | from="raw_data"                                                                     | Timer   | The time-consuming of performing an aggregation calculation from a batch of raw data    |
+| aggregation              | from="statistics"                                                                   | Timer   | The time-consuming of updating an aggregated value with statistics                      |
+| series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | The time-consuming of loading TimeseriesMetadata                                        |
+| series_scan_cost         | stage="read_timeseries_metadata", type="", from="cache/file"                        | Timer   | The time-consuming of reading TimeseriesMetadata of a tsfile                            |
+| series_scan_cost         | stage="timeseries_metadata_modification", type="aligned/non_aligned", from="null"   | Timer   | The time-consuming of filtering TimeseriesMetadata by mods                              |
+| series_scan_cost         | stage="load_chunk_metadata_list", type="aligned/non_aligned", from="mem/disk"       | Timer   | The time-consuming of loading ChunkMetadata list                                        |
+| series_scan_cost         | stage="chunk_metadata_modification", type="aligned/non_aligned", from="mem/disk"    | Timer   | The time-consuming of filtering ChunkMetadata by mods                                   |
+| series_scan_cost         | stage="chunk_metadata_filter", type="aligned/non_aligned", from="mem/disk"          | Timer   | The time-consuming of filtering ChunkMetadata by query filter                           |
+| series_scan_cost         | stage="construct_chunk_reader", type="aligned/non_aligned", from="mem/disk"         | Timer   | The time-consuming of constructing ChunkReader                                          |
+| series_scan_cost         | stage="read_chunk", type="", from="cache/file"                                      | Timer   | The time-consuming of reading Chunk                                                     |
+| series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | The time-consuming of initializing ChunkReader (constructing PageReader)                |
+| series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | The time-consuming of constructing Tsblock from PageReader                              |
+| series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | The time-consuming of constructing Tsblock from MergeReader (handling overlapping data) |
 
 ### 4.3. Normal level Metrics
 
@@ -400,8 +471,9 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 ##### 5.2.4.1. How to get Apache IoTDB Dashboard
 
-1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example
-   folder.
+1. You can obtain the json files of Dashboards by GitHub:
+   1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
+   2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">Apache IoTDB DataNode Dashboard</a>
 2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search
    for `Apache IoTDB Dashboard` and use
 
@@ -413,8 +485,8 @@ data source for Apache IoTDB Dashboard.
 
 - `Overview`: system overview
     - `Registered Node`: The number of registered ConfigNode/DataNode
-    - `DataNode`: The status of the cluster DataNode, including Online and Unknown.
-    - `ConfigNode`: The status of the cluster ConfigNode, including Online and Unknown.
+    - `DataNode`(Only visible in the leader of ConfigNode): The status of the cluster DataNode, including Online and Unknown.
+    - `ConfigNode`(Only visible in the leader of ConfigNode): The status of the cluster ConfigNode, including Online and Unknown.
     - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
 - `Region`: Region overview
     - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of
@@ -462,6 +534,37 @@ data source for Apache IoTDB Dashboard.
     - `Cache Hit Rate`: cache hit rate
     - `Thrift Connection`: the number of Thrift connections established
     - `Thrift Active Thread`: The number of active Thrift connections established
+- `Query Engine`: query engine
+     - `The time consumed of query plan stages(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of the query plan stages time consumption
+     - `The time consumed of plan dispatch stages(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of query plan dispatch stages time consumption
+     - `The time consumed of query execution stages(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the query execution stages time consumption
+     - `The time consumed of operator execution stages(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of operator exection time consumption
+     - `The time consumed of query aggregation(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of query aggregation time consumption
+     - `The time consumed of query scan(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query file/memory time consumption
+     - `The usage of query resource(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of the number of accesses to different resources
+     - `The time consumed of query data exchange(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query data exchange time consumption
+     - `The count of data exchange(avg)`: the average number of query data exchange
+     - `The count of data exchange`: the distribution of the number of query data exchange (minimum, lower quartile, median, upper quartile, maximum)
+     - `The number of query queue`: the size of different query queues
+     - `The time consumed of query schedule time(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query task scheduling time
+- `Query Interface`: Query files/time-consuming specific time-consuming conditions
+     - `The time consumed of load timesereis metadata(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent loading timeseries metadata from different sources
+     - `The time consumed of read timeseries metadata(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of time query spent reading time seriesmetadata from different sources value
+     - `The time consumed of timeseries metadata modification(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to modify different types of timeseries metadata
+     - `The time consumed of load chunk metadata list(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent loading different types of chunk metadata
+     - `The time consumed of chunk metadata modification(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to modify different types of chunk metadata
+     - `The time consumed of chunk metadata filter(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent to filter different types of chunk metadata
+     - `The time consumed of construct chunk reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent on constructing different types of chunk readers
+     - `The time consumed of read chunk(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to read different types of Chunk
+     - `The time consumed of init chunk reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to initialize different types of chunk readers
+     - `The time consumed of build tsblock from page reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to construct TsBlock from Page Reader
+     - `The time consumed of build tsblock from merge reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to construct TsBlock from Merge Reader
+- `Query Data Exchange`: Query the specific time-consuming situation of data transmission
+     - `The time consumed of source handle get tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to obtain TsBlock from different sources
+     - `The time consumed of source handle deserialize tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of the time query consumed to deserialize TsBlock from different sources value
+     - `The time consumed of sink handle send tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent sending TsBlock to different places
+     - `The time consumed of on acknowledge data block event task(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of time query consumed to acknowlege data block event from different places
+     - `The time consumed of get data block event task(avg\50%\75%\100%)`: query the average\median\upper quartile\maximum value of time query consumed to get data block from different places
 - `Engine`:
     - `Task Number`: the number of tasks in different states in the system
     - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system
@@ -512,12 +615,12 @@ data source for Apache IoTDB Dashboard.
 #### 5.3.1. IoTDB mapping relationship of metrics
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__system.metric.`ip:port` as an example by default
 
-| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
-| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. Obtain metrics

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -50,6 +51,9 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SinkHandle implements ISinkHandle {
@@ -98,6 +102,8 @@ public class SinkHandle implements ISinkHandle {
   /** max bytes this SourceHandle can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public SinkHandle(
       TEndPoint remoteEndpoint,
@@ -155,35 +161,41 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void send(TsBlock tsBlock) {
-    Validate.notNull(tsBlock, "tsBlocks is null");
-    checkState();
-    if (!blocked.isDone()) {
-      throw new IllegalStateException("Sink handle is blocked.");
-    }
-    if (noMoreTsBlocks) {
-      return;
-    }
-    long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
-    int startSequenceId;
-    startSequenceId = nextSequenceId;
-    blocked =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(
-                localFragmentInstanceId.getQueryId(),
-                localFragmentInstanceId.getInstanceId(),
-                localPlanNodeId,
-                retainedSizeInBytes,
-                maxBytesCanReserve)
-            .left;
-    bufferRetainedSizeInBytes += retainedSizeInBytes;
+    long startTime = System.nanoTime();
+    try {
+      Validate.notNull(tsBlock, "tsBlocks is null");
+      checkState();
+      if (!blocked.isDone()) {
+        throw new IllegalStateException("Sink handle is blocked.");
+      }
+      if (noMoreTsBlocks) {
+        return;
+      }
+      long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
+      int startSequenceId;
+      startSequenceId = nextSequenceId;
+      blocked =
+          localMemoryManager
+              .getQueryPool()
+              .reserve(
+                  localFragmentInstanceId.getQueryId(),
+                  localFragmentInstanceId.getInstanceId(),
+                  localPlanNodeId,
+                  retainedSizeInBytes,
+                  maxBytesCanReserve)
+              .left;
+      bufferRetainedSizeInBytes += retainedSizeInBytes;
 
-    sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
-    nextSequenceId += 1;
-    currentTsBlockSize = retainedSizeInBytes;
+      sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+      nextSequenceId += 1;
+      currentTsBlockSize = retainedSizeInBytes;
 
-    // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
-    submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
+      // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
+      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -339,7 +351,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
   }
 
   @Override
@@ -398,11 +410,12 @@ public class SinkHandle implements ISinkHandle {
                 blockSizes);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
+          long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
             logger.warn("Failed to send new data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               sinkHandleListener.onFailure(SinkHandle.this, e);
@@ -413,6 +426,10 @@ public class SinkHandle implements ISinkHandle {
               Thread.currentThread().interrupt();
               sinkHandleListener.onFailure(SinkHandle.this, e);
             }
+          } finally {
+            QUERY_METRICS.recordDataExchangeCost(
+                SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
+            QUERY_METRICS.recordDataBlockNum(SEND_NEW_DATA_BLOCK_NUM_CALLER, blockSizes.size());
           }
         }
       }
@@ -442,7 +459,7 @@ public class SinkHandle implements ISinkHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
             logger.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               logger.warn("Failed to send end of data block event after all retry", e);

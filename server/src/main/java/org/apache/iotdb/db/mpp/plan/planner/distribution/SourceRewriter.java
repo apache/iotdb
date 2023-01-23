@@ -61,6 +61,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -79,7 +82,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   public SourceRewriter(Analysis analysis) {
     this.analysis = analysis;
@@ -107,7 +110,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitSingleDeviceView(
       SingleDeviceViewNode node, DistributionPlanContext context) {
 
-    if (isAggregationQuery()) {
+    // Same process logic as visitDeviceView
+    if (analysis.isDeviceViewSpecialProcess()) {
       List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
       if (rewroteChildren.size() != 1) {
         throw new IllegalStateException("SingleDeviceViewNode have only one child");
@@ -149,10 +153,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         node.getDevices().size() == node.getChildren().size(),
         "size of devices and its children in DeviceViewNode should be same");
 
-    // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
-    // special logic.
-    if (isAggregationQuery()) {
-      return processDeviceViewWithAggregation(node, context);
+    // If the DeviceView is mixed with Function that need to merge data from different Data Region,
+    // it should be processed by a special logic.
+    // Now the Functions are : all Aggregation Functions and DIFF
+    if (analysis.isDeviceViewSpecialProcess()) {
+      return processSpecialDeviceView(node, context);
     }
 
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
@@ -201,7 +206,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return Collections.singletonList(mergeSortNode);
   }
 
-  private List<PlanNode> processDeviceViewWithAggregation(
+  private List<PlanNode> processSpecialDeviceView(
       DeviceViewNode node, DistributionPlanContext context) {
     DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
     for (int i = 0; i < node.getDevices().size(); i++) {
@@ -525,10 +530,45 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     PlanNode root = processRawMultiChildNode(node, context);
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
+      // add sort op for each if we add LastQueryMergeNode as root
+      if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
+        OrderByParameter orderByParameter =
+            new OrderByParameter(
+                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
+        addSortForEachLastQueryNode(root, orderByParameter);
+      }
       root.getChildren().forEach(newRoot::addChild);
       return Collections.singletonList(newRoot);
     } else {
       return Collections.singletonList(root);
+    }
+  }
+
+  private void addSortForEachLastQueryNode(PlanNode root, OrderByParameter orderByParameter) {
+    if (root instanceof LastQueryNode
+        && (root.getChildren().get(0) instanceof LastQueryScanNode
+            || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
+      LastQueryNode lastQueryNode = (LastQueryNode) root;
+      lastQueryNode.setMergeOrderParameter(orderByParameter);
+      // sort children node
+      lastQueryNode.setChildren(
+          lastQueryNode.getChildren().stream()
+              .sorted(
+                  Comparator.comparing(
+                      child -> {
+                        String fullPath = "";
+                        if (child instanceof LastQueryScanNode) {
+                          fullPath = ((LastQueryScanNode) child).getSeriesPath().getFullPath();
+                        } else if (child instanceof AlignedLastQueryScanNode) {
+                          fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
+                        }
+                        return fullPath;
+                      }))
+              .collect(Collectors.toList()));
+    } else {
+      for (PlanNode child : root.getChildren()) {
+        addSortForEachLastQueryNode(child, orderByParameter);
+      }
     }
   }
 
@@ -928,7 +968,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             }
           }
         }
-        if (descriptorExpressions.size() == 0) {
+        if (descriptorExpressions.isEmpty()) {
           continue;
         }
         CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();

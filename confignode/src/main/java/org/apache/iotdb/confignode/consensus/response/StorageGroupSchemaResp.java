@@ -33,7 +33,9 @@ public class StorageGroupSchemaResp implements DataSet {
   // Map<StorageGroupName, TStorageGroupSchema>
   private Map<String, TStorageGroupSchema> schemaMap;
 
-  public StorageGroupSchemaResp() {}
+  public StorageGroupSchemaResp() {
+    // empty constructor
+  }
 
   public TSStatus getStatus() {
     return status;

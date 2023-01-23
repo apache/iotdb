@@ -216,6 +216,11 @@ OR, |, ||
 | DERIVATIVE              | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率，数量上等同于 DIFFERENCE /  TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
 | NON_NEGATIVE_DERIVATIVE | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率的绝对值，数量上等同于 NON_NEGATIVE_DIFFERENCE /  TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
 
+
+| 函数名  | 输入序列类型                         | 参数                                                                                                                     | 输出序列类型 | 功能描述                                           |
+|------|--------------------------------|------------------------------------------------------------------------------------------------------------------------|--------|------------------------------------------------|
+| DIFF | INT32 / INT64 / FLOAT / DOUBLE | `ignoreNull`：可选，默认为true；为true时，前一个数据点值为null时，忽略该数据点继续向前找到第一个出现的不为null的值；为false时，如果前一个数据点为null，则不忽略，使用null进行相减，结果也为null | DOUBLE | 统计序列中某数据点的值与前一数据点的值的差。第一个数据点没有对应的结果输出，输出值为null |
+
 详细说明及示例见文档 [趋势计算函数](./Variation-Trend.md)。
 
 ### 采样函数
@@ -234,6 +239,6 @@ OR, |, ||
 
 **该函数库中的函数不是内置函数，使用前要先加载到系统中。** 操作流程如下：
 1. 下载包含全部依赖的 jar 包和注册脚本 [【点击下载】](https://archive.apache.org/dist/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-library-udf-bin.zip) ；
-2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下；
+2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下 (若您使用的是集群，请将jar包复制到所有DataNode的该目录下)；
 3. 启动 IoTDB；
 4. 将注册脚本复制到 IoTDB 的程序目录下（与`sbin`目录同级的根目录下），修改脚本中的参数（如果需要）并运行注册脚本以注册 UDF。

@@ -43,13 +43,16 @@ public class MicrometerJmxReporter implements JmxReporter {
           Metrics.globalRegistry.getRegistries().stream()
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
-      if (meterRegistrySet.size() == 0) {
-        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
+      if (meterRegistrySet.size() != 0) {
+        LOGGER.warn("Micrometer JmxReporter already start!");
+        return false;
       }
+      Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
     } catch (Exception e) {
-      LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
+      LOGGER.warn("Micrometer JmxReporter failed to start, because ", e);
       return false;
     }
+    LOGGER.info("Micrometer JmxReporter start!");
     return true;
   }
 
@@ -68,9 +71,10 @@ public class MicrometerJmxReporter implements JmxReporter {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to stop Micrometer JmxReporter, because {}", e.getMessage());
+      LOGGER.warn("Micrometer JmxReporter failed to stop, because ", e);
       return false;
     }
+    LOGGER.info("Micrometer JmxReporter stop!");
     return true;
   }
 

@@ -30,7 +30,7 @@
 3. 关闭交换内存。
 4. 首次启动ConfigNode节点时，确保已清空ConfigNode节点的data/confignode目录；首次启动DataNode节点时，确保已清空DataNode节点的data/datanode目录。
 5. 如果整个集群处在可信环境下，可以关闭机器上的防火墙选项。
-6. 在集群默认配置中，ConfigNode 会占用端口 22277 和 22278，DataNode 会占用端口 6667、8777、9003、40010 和 50010，
+6. 在集群默认配置中，ConfigNode 会占用端口 10710 和 10720，DataNode 会占用端口 6667、10730、10740、10750 和 10760，
 请确保这些端口未被占用，或者手动修改配置文件中的端口配置。
 
 # 3. 安装包获取
@@ -111,6 +111,7 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项**                                    | **说明**                                 | **默认**                                          |
 |--------------------------------------------|----------------------------------------|-------------------------------------------------|
+| cluster\_name                              | 节点希望加入的集群的名称                           | defaultCluster                                  |
 | config\_node\_consensus\_protocol\_class   | ConfigNode 使用的共识协议                     | org.apache.iotdb.consensus.ratis.RatisConsensus |
 | schema\_replication\_factor                | 元数据副本数，DataNode 数量不应少于此数目              | 1                                               |
 | schema\_region\_consensus\_protocol\_class | 元数据副本组的共识协议                            | org.apache.iotdb.consensus.ratis.RatisConsensus |
@@ -126,9 +127,9 @@ mvn clean package -pl distribution -am -DskipTests
 | **配置项**                        | **说明**                               | **默认**          | **用法**                                                                                                                                               |
 |--------------------------------|--------------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | cn\_internal\_address          | ConfigNode 在集群内部通讯使用的地址              | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                                                                                   |
-| cn\_internal\_port             | ConfigNode 在集群内部通讯使用的端口              | 22277           | 设置为任意未占用端口                                                                                                                                           |
-| cn\_consensus\_port            | ConfigNode 副本组共识协议通信使用的端口            | 22278           | 设置为任意未占用端口                                                                                                                                           |
-| cn\_target\_config\_node\_list | 节点注册加入集群时连接的 ConfigNode 的地址。注：只能配置一个 | 127.0.0.1:22277 | 对于 Seed-ConfigNode，设置为自己的 cn\_internal\_address:cn\_internal\_port；对于其它 ConfigNode，设置为另一个正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port |
+| cn\_internal\_port             | ConfigNode 在集群内部通讯使用的端口              | 10710           | 设置为任意未占用端口                                                                                                                                           |
+| cn\_consensus\_port            | ConfigNode 副本组共识协议通信使用的端口            | 10720           | 设置为任意未占用端口                                                                                                                                           |
+| cn\_target\_config\_node\_list | 节点注册加入集群时连接的 ConfigNode 的地址。注：只能配置一个 | 127.0.0.1:10710 | 对于 Seed-ConfigNode，设置为自己的 cn\_internal\_address:cn\_internal\_port；对于其它 ConfigNode，设置为另一个正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port |
 
 **注意：上述配置项在节点启动后即不可更改，且务必保证所有端口均未被占用，否则节点无法启动。**
 
@@ -141,11 +142,11 @@ mvn clean package -pl distribution -am -DskipTests
 | dn\_rpc\_address                    | 客户端 RPC 服务的地址             | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
 | dn\_rpc\_port                       | 客户端 RPC 服务的端口             | 6667            | 设置为任意未占用端口                                                                        |
 | dn\_internal\_address               | DataNode 在集群内部接收控制流使用的地址  | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
-| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 9003            | 设置为任意未占用端口                                                                        |
-| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 8777            | 设置为任意未占用端口                                                                        |
-| dn\_data\_region\_consensus\_port   | DataNode 的数据副本间共识协议通信的端口  | 50010           | 设置为任意未占用端口                                                                        |
-| dn\_schema\_region\_consensus\_port | DataNode 的元数据副本间共识协议通信的端口 | 40010           | 设置为任意未占用端口                                                                        |
-| dn\_target\_config\_node\_list      | 集群中正在运行的 ConfigNode 地址    | 127.0.0.1:22277 | 设置为任意正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port，可设置多个，用逗号（","）隔开 |
+| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 10730           | 设置为任意未占用端口                                                                        |
+| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 10740           | 设置为任意未占用端口                                                                        |
+| dn\_data\_region\_consensus\_port   | DataNode 的数据副本间共识协议通信的端口  | 10750           | 设置为任意未占用端口                                                                        |
+| dn\_schema\_region\_consensus\_port | DataNode 的元数据副本间共识协议通信的端口 | 10760           | 设置为任意未占用端口                                                                        |
+| dn\_target\_config\_node\_list      | 集群中正在运行的 ConfigNode 地址    | 127.0.0.1:10710 | 设置为任意正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port，可设置多个，用逗号（","）隔开 |
 
 **注意：上述配置项在节点启动后即不可更改，且务必保证所有端口均未被占用，否则节点无法启动。**
 
@@ -167,7 +168,20 @@ mvn clean package -pl distribution -am -DskipTests
 **集群第一个启动的节点必须是 ConfigNode，第一个启动的 ConfigNode 必须遵循本小节教程。**
 
 第一个启动的 ConfigNode 是 Seed-ConfigNode，标志着新集群的创建。
-在启动 Seed-ConfigNode 前，请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查如下参数：
+在启动 Seed-ConfigNode 前，请打开通用配置文件 ./conf/iotdb-common.properties，并检查如下参数：
+
+| **配置项**                                    | **检查**        |
+|--------------------------------------------|---------------|
+| cluster\_name                              | 已设置为期望的集群名称   |
+| config\_node\_consensus\_protocol\_class   | 已设置为期望的共识协议   |
+| schema\_replication\_factor                | 已设置为期望的元数据副本数 |
+| schema\_region\_consensus\_protocol\_class | 已设置为期望的共识协议   |
+| data\_replication\_factor                  | 已设置为期望的数据副本数  |
+| data\_region\_consensus\_protocol\_class   | 已设置为期望的共识协议   |
+
+**注意：** 请根据[部署推荐](https://iotdb.apache.org/zh/UserGuide/Master/Cluster/Deployment-Recommendation.html)配置合适的通用参数，这些参数在首次配置后即不可修改。
+
+接着请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查如下参数：
 
 | **配置项**                        | **检查**                                                   |
 |--------------------------------|----------------------------------------------------------|
@@ -198,9 +212,19 @@ ConfigNode 的其它配置参数可参考
 
 可向集群添加更多 ConfigNode，以保证 ConfigNode 的高可用。常用的配置为额外增加两个 ConfigNode，使集群共有三个 ConfigNode。
 
-新增的 ConfigNode 需要保证 ./conf/iotdb-common.properites 中的所有配置参数与种子 ConfigNode 完全一致，否则可能启动失败或产生运行时错误。
+新增的 ConfigNode 需要保证 ./conf/iotdb-common.properites 中的所有配置参数与 Seed-ConfigNode 完全一致，否则可能启动失败或产生运行时错误。
+因此，请着重检查通用配置文件中的以下参数：
 
-在增加一个新的 ConfigNode 之前，请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查以下参数：
+| **配置项**                                    | **检查**                 |
+|--------------------------------------------|------------------------|
+| cluster\_name                              | 与 Seed-ConfigNode 保持一致 |
+| config\_node\_consensus\_protocol\_class   | 与 Seed-ConfigNode 保持一致 |
+| schema\_replication\_factor                | 与 Seed-ConfigNode 保持一致 |
+| schema\_region\_consensus\_protocol\_class | 与 Seed-ConfigNode 保持一致 |
+| data\_replication\_factor                  | 与 Seed-ConfigNode 保持一致 |
+| data\_region\_consensus\_protocol\_class   | 与 Seed-ConfigNode 保持一致 |
+
+接着请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查以下参数：
 
 | **配置项**                        | **检查**                                                       |
 |--------------------------------|--------------------------------------------------------------|
@@ -230,7 +254,13 @@ ConfigNode 的其它配置参数可参考
 **确保集群已有正在运行的 ConfigNode 后，才能开始增加 DataNode。**
 
 可以向集群中添加任意个 DataNode。
-在添加新的 DataNode 前，请打开它的配置文件 ./conf/iotdb-datanode.properties 并检查以下参数：
+在添加新的 DataNode 前，请先打开通用配置文件 ./conf/iotdb-common.properties 并检查以下参数：
+
+| **配置项**                                    | **检查**                 |
+|--------------------------------------------|------------------------|
+| cluster\_name                              | 与 Seed-ConfigNode 保持一致 |
+
+接着打开它的配置文件 ./conf/iotdb-datanode.properties 并检查以下参数：
 
 | **配置项**                             | **检查**                                                    |
 |-------------------------------------|-----------------------------------------------------------|
@@ -279,23 +309,23 @@ DataNode 的其它配置参数可参考
 ## 6.3 验证集群
 
 以在6台服务器上启动的3C3D（3个ConfigNode 和 3个DataNode）集群为例，
-这里假设3个ConfigNode的IP地址依次为192.168.1.10、192.168.1.11、192.168.1.12，且3个ConfigNode启动时均使用了默认的端口22277与22278；
-3个DataNode的IP地址依次为192.168.1.20、192.168.1.21、192.168.1.22，且3个DataNode启动时均使用了默认的端口9003、6667、40010、50010与8777。
+这里假设3个ConfigNode的IP地址依次为192.168.1.10、192.168.1.11、192.168.1.12，且3个ConfigNode启动时均使用了默认的端口10710与10720；
+3个DataNode的IP地址依次为192.168.1.20、192.168.1.21、192.168.1.22，且3个DataNode启动时均使用了默认的端口6667、10730、10740、10750与10760。
 
 当按照6.1步骤成功启动集群后，在 Cli 执行 `show cluster details`，看到的结果应当如下：
 
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|   192.168.1.10|       22277|              22278|            |       |                 |                   |       |
-|     2|ConfigNode|Running|   192.168.1.11|       22277|              22278|            |       |                 |                   |       |
-|     3|ConfigNode|Running|   192.168.1.12|       22277|              22278|            |       |                 |                   |       |
-|     1|  DataNode|Running|   192.168.1.20|        9003|                   |192.168.1.20|   6667|            40010|              50010|   8777|
-|     4|  DataNode|Running|   192.168.1.21|        9003|                   |192.168.1.21|   6667|            40010|              50010|   8777|
-|     5|  DataNode|Running|   192.168.1.22|        9003|                   |192.168.1.22|   6667|            40010|              50010|   8777|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|   192.168.1.10|       10710|              10720|            |       |       |                   |                 |
+|     2|ConfigNode|Running|   192.168.1.11|       10710|              10720|            |       |       |                   |                 |
+|     3|ConfigNode|Running|   192.168.1.12|       10710|              10720|            |       |       |                   |                 |
+|     1|  DataNode|Running|   192.168.1.20|       10730|                   |192.168.1.20|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|   192.168.1.21|       10730|                   |192.168.1.21|   6667|  10740|              10750|            10760|
+|     5|  DataNode|Running|   192.168.1.22|       10730|                   |192.168.1.22|   6667|  10740|              10750|            10760|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -401,4 +431,4 @@ kill -9 <pid>
 
 # 7. 常见问题
 
-请参考 [常见问题](https://iotdb.apache.org/zh/UserGuide/Master/FAQ/Frequently-asked-questions.html)
+请参考 [分布式部署FAQ](https://iotdb.apache.org/zh/UserGuide/Master/FAQ/FAQ-for-cluster-setup.html)

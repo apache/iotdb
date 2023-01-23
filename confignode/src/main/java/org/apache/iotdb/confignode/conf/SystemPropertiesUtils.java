@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+
 public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
@@ -68,6 +71,11 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
+    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
+      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+    }
+
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
@@ -258,11 +266,12 @@ public class SystemPropertiesUtils {
    */
   public static String loadClusterNameWhenRestarted() throws IOException {
     Properties systemProperties = getSystemProperties();
-    String clusterName = systemProperties.getProperty("cluster_name", null);
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
     if (clusterName == null) {
-      throw new IOException(
-          "The parameter cluster_name doesn't exist in data/confignode/system/confignode-system.properties. "
-              + "Please delete data dir data/confignode and restart again");
+      LOGGER.warn(
+          "Lack cluster_name field in data/confignode/system/confignode-system.properties, set it as defaultCluster");
+      systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
+      return systemProperties.getProperty(CLUSTER_NAME, null);
     }
     return clusterName;
   }
@@ -295,7 +304,13 @@ public class SystemPropertiesUtils {
   public static boolean isSeedConfigNode() {
     try {
       Properties systemProperties = getSystemProperties();
-      return Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      boolean isSeedConfigNode =
+          Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      if (isSeedConfigNode) {
+        return true;
+      } else {
+        return ConfigNodeDescriptor.getInstance().isSeedConfigNode();
+      }
     } catch (IOException ignore) {
       return false;
     }

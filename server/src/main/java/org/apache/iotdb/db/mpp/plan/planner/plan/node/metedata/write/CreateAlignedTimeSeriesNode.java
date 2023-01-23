@@ -426,6 +426,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
     }
   }
 
+  @Override
   public int hashCode() {
     return Objects.hash(
         this.getPlanNodeId(),

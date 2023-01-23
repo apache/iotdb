@@ -633,7 +633,7 @@ public class WALNode implements IWALNode {
       }
 
       // update iterator
-      if (insertNodes.size() != 0) {
+      if (!insertNodes.isEmpty()) {
         itr = insertNodes.iterator();
         return true;
       }

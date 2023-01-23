@@ -137,6 +137,10 @@ public class Analysis {
 
   private Set<Expression> deviceViewOutputExpressions;
 
+  // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
+  // you can see SourceRewriter#visitDeviceView to get more information
+  private boolean deviceViewSpecialProcess;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,6 +166,9 @@ public class Analysis {
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
+
+  // indicate whether the Nodes produce source data are VirtualSourceNodes
+  private boolean isVirtualSource = false;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
@@ -479,6 +486,14 @@ public class Analysis {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
   }
 
+  public boolean isDeviceViewSpecialProcess() {
+    return deviceViewSpecialProcess;
+  }
+
+  public void setDeviceViewSpecialProcess(boolean deviceViewSpecialProcess) {
+    this.deviceViewSpecialProcess = deviceViewSpecialProcess;
+  }
+
   public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
     return deviceViewIntoPathDescriptor;
   }
@@ -521,5 +536,13 @@ public class Analysis {
 
   public void setRunningDataNodeLocations(List<TDataNodeLocation> runningDataNodeLocations) {
     this.runningDataNodeLocations = runningDataNodeLocations;
+  }
+
+  public boolean isVirtualSource() {
+    return isVirtualSource;
+  }
+
+  public void setVirtualSource(boolean virtualSource) {
+    isVirtualSource = virtualSource;
   }
 }

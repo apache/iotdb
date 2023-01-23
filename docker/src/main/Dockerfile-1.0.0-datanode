@@ -16,19 +16,17 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
 FROM openjdk:11-jre-slim
-ARG version=1.0.1-SNAPSHOT
+ARG version=1.0.0
 ARG target=apache-iotdb-${version}-datanode-bin
 
 RUN apt update \
   && apt install lsof dos2unix procps unzip dumb-init wget inetutils-ping -y \
-#  && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
 
-COPY tmp/${target}.zip /
+COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
   && mv apache-iotdb-${version}-server-bin iotdb

@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -66,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -81,6 +84,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
@@ -170,6 +174,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTTL(ShowTTLStatement showTTLStatement, C context) {
     return visitStatement(showTTLStatement, context);
+  }
+
+  public R visitShowVariables(ShowVariablesStatement showVariablesStatement, C context) {
+    return visitStatement(showVariablesStatement, context);
   }
 
   public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {
@@ -319,6 +327,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(setSystemStatusStatement, context);
   }
 
+  public R visitKillQuery(KillQueryStatement killQueryStatement, C context) {
+    return visitStatement(killQueryStatement, context);
+  }
+
   public R visitShowQueries(ShowQueriesStatement showQueriesStatement, C context) {
     return visitStatement(showQueriesStatement, context);
   }
@@ -454,5 +466,15 @@ public abstract class StatementVisitor<R, C> {
   public R visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, C context) {
     return visitStatement(dropSchemaTemplateStatement, context);
+  }
+
+  public R visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement, C context) {
+    return visitStatement(internalBatchActivateTemplateStatement, context);
+  }
+
+  public R visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement, C context) {
+    return visitStatement(internalCreateMultiTimeSeriesStatement, context);
   }
 }

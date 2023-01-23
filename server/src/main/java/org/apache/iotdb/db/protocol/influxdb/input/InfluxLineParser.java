@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.input;
 
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CharStream;
