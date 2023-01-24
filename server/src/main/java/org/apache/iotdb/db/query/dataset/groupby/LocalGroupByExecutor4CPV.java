@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -58,6 +50,15 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0),
  * max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength). Requirements: (1) Don't change the
@@ -82,7 +83,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   private TSDataType tsDataType;
 
-//  private PriorityMergeReader mergeReader;
+  //  private PriorityMergeReader mergeReader;
 
   public LocalGroupByExecutor4CPV(
       PartialPath path,
@@ -95,7 +96,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       throws StorageEngineException, QueryProcessException {
 
     this.tsDataType = dataType;
-//    this.mergeReader = new PriorityMergeReader();
+    //    this.mergeReader = new PriorityMergeReader();
 
     // get all data sources
     QueryDataSource queryDataSource =
@@ -200,9 +201,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   /**
    * @param curStartTime closed
-   * @param curEndTime   open
-   * @param startTime    closed
-   * @param endTime      open
+   * @param curEndTime open
+   * @param startTime closed
+   * @param endTime open
    */
   @Override
   public List<AggregateResult> calcResult(
@@ -227,9 +228,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     return results;
   }
 
-  /**
-   * 对BatchData应用deletes操作，获得更新的BatchData和statistics赋值到chunkSuit4CPV中
-   */
+  /** 对BatchData应用deletes操作，获得更新的BatchData和statistics赋值到chunkSuit4CPV中 */
   private void updateBatchData(ChunkSuit4CPV chunkSuit4CPV, TSDataType dataType) {
     if (chunkSuit4CPV.getBatchData() != null) {
       BatchData batchData1 = BatchDataFactory.createBatchData(dataType, true, false);
@@ -326,8 +325,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               return new MergeReaderPriority(
-                  o2.getChunkMetadata().getVersion(),
-                  o2.getChunkMetadata().getOffsetOfChunkHeader())
+                      o2.getChunkMetadata().getVersion(),
+                      o2.getChunkMetadata().getOffsetOfChunkHeader())
                   .compareTo(
                       new MergeReaderPriority(
                           o1.getChunkMetadata().getVersion(),
@@ -414,7 +413,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 .get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
                 // minValue[bottomTimestamp], maxValue[topTimestamp]
                 .updateResultUsingValues(
-                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
             // TODO check updateResult
             return; // 计算结束
           } else { // 是被overlap，则partial scan所有这些overlap的块
@@ -458,7 +457,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
                   // minValue[bottomTimestamp], maxValue[topTimestamp]
                   .updateResultUsingValues(
-                      new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                      new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
               // TODO check updateResult
               return; // 计算结束
             } else { // 找到这样的点，于是标记candidate point所在块为lazy
@@ -524,8 +523,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               return new MergeReaderPriority(
-                  o2.getChunkMetadata().getVersion(),
-                  o2.getChunkMetadata().getOffsetOfChunkHeader())
+                      o2.getChunkMetadata().getVersion(),
+                      o2.getChunkMetadata().getOffsetOfChunkHeader())
                   .compareTo(
                       new MergeReaderPriority(
                           o1.getChunkMetadata().getVersion(),
@@ -612,7 +611,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 .get(5) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
                 // minValue[bottomTimestamp], maxValue[topTimestamp]
                 .updateResultUsingValues(
-                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
             // TODO check updateResult
             return; // 计算结束
           } else { // 是被overlap，则partial scan所有这些overlap的块
@@ -656,7 +655,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .get(5) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
                   // minValue[bottomTimestamp], maxValue[topTimestamp]
                   .updateResultUsingValues(
-                      new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                      new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
               // TODO check updateResult
               return; // 计算结束
             } else { // 找到这样的点，于是标记candidate point所在块为lazy
@@ -704,8 +703,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 return res;
               } else {
                 return new MergeReaderPriority(
-                    o2.getChunkMetadata().getVersion(),
-                    o2.getChunkMetadata().getOffsetOfChunkHeader())
+                        o2.getChunkMetadata().getVersion(),
+                        o2.getChunkMetadata().getOffsetOfChunkHeader())
                     .compareTo(
                         new MergeReaderPriority(
                             o1.getChunkMetadata().getVersion(),
@@ -770,11 +769,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           results
               .get(0)
               .updateResultUsingValues(
-                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
           results
               .get(2)
               .updateResultUsingValues(
-                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
           return;
         }
       }
@@ -801,8 +800,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 return res;
               } else {
                 return new MergeReaderPriority(
-                    o2.getChunkMetadata().getVersion(),
-                    o2.getChunkMetadata().getOffsetOfChunkHeader())
+                        o2.getChunkMetadata().getVersion(),
+                        o2.getChunkMetadata().getOffsetOfChunkHeader())
                     .compareTo(
                         new MergeReaderPriority(
                             o1.getChunkMetadata().getVersion(),
@@ -867,11 +866,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           results
               .get(1)
               .updateResultUsingValues(
-                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
           results
               .get(3)
               .updateResultUsingValues(
-                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
+                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
           return;
         }
       }

@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.util.NoSuchElementException;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
-/**
- * Util for computing median, MAD, percentile
- */
+import java.util.NoSuchElementException;
+
+/** Util for computing median, MAD, percentile */
 public class TimeExactOrderStatistics {
 
   private LongArrayList longArrayList;
