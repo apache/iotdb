@@ -175,9 +175,9 @@ public class FileLoaderUtils {
         MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
         chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
       } else {
-        Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+        Chunk chunk = chunkLoader.loadChunk(chunkMetaData); // loads chunk data from disk to memory
         chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
-        chunkReader = new ChunkReader(chunk, timeFilter);
+        chunkReader = new ChunkReader(chunk, timeFilter); // decompress page data, split time&value buffers
         chunkReader.hasNextSatisfiedPage();
       }
       long duration = System.nanoTime() - start;

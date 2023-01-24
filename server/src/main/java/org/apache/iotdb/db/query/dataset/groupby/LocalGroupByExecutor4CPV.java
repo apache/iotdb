@@ -148,6 +148,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
     if (splitChunkList.get(curIdx) != null) {
       currentChunkList.addAll(splitChunkList.get(curIdx));
+      // TODO when to free splitChunkList memory
     }
 
     // iterate futureChunkList
@@ -176,6 +177,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // load this chunk, split it on deletes and all w intervals.
         // add to currentChunkList and futureChunkList.
         itr.remove();
+        // B: loads chunk data from disk to memory
+        // C: decompress page data, split time&value buffers
         List<IPageReader> pageReaderList =
             FileLoaderUtils.loadPageReaderList(chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
         for (IPageReader pageReader : pageReaderList) {
