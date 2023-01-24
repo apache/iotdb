@@ -18,27 +18,26 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.Objects;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
  * writing processing, the processor records the statistics information. Statistics includes
- * maximum, minimum and null value count up to version 0.0.1.<br>
- * Each data type extends this Statistic as super class.<br>
+ * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
+ * Statistic as super class.<br>
  * <br>
  * For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime
  * and endTime can be used.</br>
@@ -51,13 +50,19 @@ public abstract class Statistics<T> {
    */
   protected boolean isEmpty = true;
 
-  /** number of time-value points */
+  /**
+   * number of time-value points
+   */
   private int count = 0;
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
 
-  /** @author Yuyuan Kang */
+  private StepRegress stepRegress = new StepRegress();
+
+  /**
+   * @author Yuyuan Kang
+   */
   final String OPERATION_NOT_SUPPORT_FORMAT = "%s statistics does not support operation: %s";
 
   /**
@@ -119,34 +124,59 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
+    // TODO serialize stepRegress
+    byteLen += serializeStepRegress(outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
     return byteLen;
   }
 
+  int serializeStepRegress(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+    stepRegress.learn(); // TODO ensure excuted once and only once
+    byteLen += ReadWriteIOUtils.write(stepRegress.getSlope(), outputStream); // K
+    DoubleArrayList segmentKeys = stepRegress.getSegmentKeys();
+    // t1 is startTime, tm is endTime, so no need serialize t1 and tm
+    byteLen += ReadWriteIOUtils.write(segmentKeys.size(), outputStream); // m
+    for (int i = 1; i < segmentKeys.size() - 1; i++) { // t2,t3,...,tm-1
+      byteLen += ReadWriteIOUtils.write(segmentKeys.get(i), outputStream);
+    }
+    return byteLen;
+  }
+
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
-  /** read data from the inputStream. */
+  /**
+   * read data from the inputStream.
+   */
   public abstract void deserialize(InputStream inputStream) throws IOException;
 
   public abstract void deserialize(ByteBuffer byteBuffer);
 
   //  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract MinMaxInfo<T> getMinInfo();
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract MinMaxInfo<T> getMaxInfo();
 
   public abstract T getMinValue();
 
   public abstract T getMaxValue();
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract long getBottomTimestamp();
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract long getTopTimestamp();
 
   public abstract T getFirstValue();
@@ -193,6 +223,9 @@ public abstract class Statistics<T> {
       // must be sure no overlap between two statistics
       this.count += stats.count;
       mergeStatisticsValue(stats);
+      // TODO M4-LSM assumes that there is always only one page in a chunk
+      // TODO M4-LSM if there are more than one chunk in a time series, then access each chunkMetadata anyway
+      this.stepRegress = stats.stepRegress;
       isEmpty = false;
     } else {
       String thisClass = this.getClass().toString();
@@ -212,9 +245,12 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value);
+    updateStepRegress(time);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long time, int value) {
     if (time < this.startTime) {
       startTime = time;
@@ -224,9 +260,12 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value, time);
+    updateStepRegress(time);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long time, long value) {
     if (time < this.startTime) {
       startTime = time;
@@ -236,9 +275,12 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value, time);
+    updateStepRegress(time);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long time, float value) {
     if (time < this.startTime) {
       startTime = time;
@@ -248,9 +290,12 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value, time);
+    updateStepRegress(time);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long time, double value) {
     if (time < this.startTime) {
       startTime = time;
@@ -260,6 +305,7 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value, time);
+    updateStepRegress(time);
   }
 
   public void update(long time, Binary value) {
@@ -271,6 +317,7 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value);
+    updateStepRegress(time);
   }
 
   public void update(long[] time, boolean[] values, int batchSize) {
@@ -282,9 +329,12 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long[] time, int[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -294,9 +344,12 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, time, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long[] time, long[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -306,9 +359,12 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, time, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long[] time, float[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -318,9 +374,12 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, time, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void update(long[] time, double[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -330,6 +389,7 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, time, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
   public void update(long[] time, Binary[] values, int batchSize) {
@@ -341,6 +401,7 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, batchSize);
+    updateStepRegress(time, batchSize);
   }
 
   protected abstract void mergeStatisticsValue(Statistics stats);
@@ -353,32 +414,54 @@ public abstract class Statistics<T> {
     isEmpty = empty;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract void updateMinInfo(T val, long timestamp);
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public abstract void updateMaxInfo(T val, long timestamp);
 
   void updateStats(boolean value) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  void updateStepRegress(long timestamp) {
+    stepRegress.insert(timestamp);
+  }
+
+  void updateStepRegress(long[] timestamps, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStepRegress(timestamps[i]);
+    }
+  }
+
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(int value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(long value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(float value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(double value, long timestamp) {
     throw new UnsupportedOperationException();
   }
@@ -391,22 +474,30 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(int[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(long[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(float[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   void updateStats(double[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
@@ -416,10 +507,10 @@ public abstract class Statistics<T> {
   }
 
   /**
-   * @author Yuyuan Kang This method with two parameters is only used by {@code unsequence} which
-   *     updates/inserts/deletes timestamp.
    * @param min min timestamp
    * @param max max timestamp
+   * @author Yuyuan Kang This method with two parameters is only used by {@code unsequence} which
+   * updates/inserts/deletes timestamp.
    */
   public void updateStats(long min, long bottomTimestamp, long max, long topTimestamp) {
     throw new UnsupportedOperationException();
@@ -441,9 +532,22 @@ public abstract class Statistics<T> {
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
+    statistics.deserializeStepRegress(buffer); // TODO
     statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;
+  }
+
+  void deserializeStepRegress(ByteBuffer byteBuffer) {
+    this.stepRegress.setSlope(ReadWriteIOUtils.readDouble(byteBuffer)); //K
+    int m = ReadWriteIOUtils.readInt(byteBuffer); // m
+    DoubleArrayList segmentKeys = new DoubleArrayList();
+    segmentKeys.add(this.startTime); // t1
+    for (int i = 0; i < m - 2; i++) { // t2,t3,...,tm-1
+      segmentKeys.add(ReadWriteIOUtils.readDouble(byteBuffer));
+    }
+    segmentKeys.add(this.endTime);
+    this.stepRegress.setSegmentKeys(segmentKeys);
   }
 
   public long getStartTime() {
