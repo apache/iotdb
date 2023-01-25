@@ -910,9 +910,10 @@ public class AdjustReorderingEncodeDeltaTest {
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
+
     int count_raw = 0;
     int count_reorder = 0;
-//    System.out.println(block_num);
+
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
@@ -921,9 +922,14 @@ public class AdjustReorderingEncodeDeltaTest {
         ts_block.add(data.get(j+i*block_size));
         ts_block_reorder.add(data.get(j+i*block_size));
       }
-//      System.out.println(ts_block);
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
+      ArrayList<Integer> result2 = new ArrayList<>();
+//      splitTimeStamp3(ts_block,td,result2);
+
+//      ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
+//      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -932,116 +938,67 @@ public class AdjustReorderingEncodeDeltaTest {
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length,i_star_ready);
-//      System.out.println(raw_length);
+
 
       // value-order
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size, reorder_length,i_star_ready_reorder);
-//      System.out.println(reorder_length);
+
 
       if(raw_length.get(0)<=reorder_length.get(0)){
         quickSort(ts_block,0,0,block_size-1);
-//        System.out.println(ts_block);
-        int i_star;
-        int j_star;
-        count_raw ++;
-        i_star = getIStar(ts_block,block_size, 0);
-        j_star = getJStar(ts_block,i_star,block_size,raw_length,0);
-        int adjust_count = 0;
-        while(j_star!=-1){
-          if(adjust_count < block_size/2){
-            adjust_count ++;
-          }else {
-            break;
-          }
-          ArrayList<Integer> tmp_tv = ts_block.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block.get(u).get(0));
-              tmp_tv_cur.add(ts_block.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block.get(u).get(0));
-              tmp_tv_cur.add(ts_block.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
-            }
-          }
-          ts_block.set(j_star,tmp_tv);
-          if(i_star == getIStar(ts_block,block_size,raw_length)) break;
-          i_star =getIStar(ts_block,block_size,raw_length);
-          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-          System.out.println(i_star);
-          System.out.println(j_star);
-          System.out.println("adjust_time");
-        }
-
-        ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
-                i_star_ready_reorder);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length);
-        encoded_result.addAll(cur_encoded_result);
         count_raw ++;
       }
       else{
-        // adjust to reduce max_bit_width_r
-//        System.out.println(ts_block);
-//        quickSort(ts_block,1,0,block_size-1);
-        int i_star;
-        int j_star;
-        ArrayList<Integer> j_star_list =new ArrayList<>();
-        count_reorder ++;
-        i_star =getIStar(ts_block_reorder,block_size, 1);
-        j_star =getJStar(ts_block_reorder,i_star,block_size,raw_length,0);
-        int adjust_count = 0;
-        while(j_star != -1){
-          if(adjust_count < block_size/2){
-            adjust_count ++;
-          }else {
-            break;
-          }
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block_reorder.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block_reorder.set(u-1,tmp_tv_cur);
-            }
-          }
-
-          ts_block_reorder.set(j_star,tmp_tv);
-          if(i_star == getIStar(ts_block_reorder,block_size,raw_length)){
-
-            break;
-          }
-          i_star =getIStar(ts_block_reorder,block_size,raw_length);
-          j_star =getJStar(ts_block_reorder,i_star,block_size,raw_length,0);
-          System.out.println(i_star);
-          System.out.println(j_star);
-          System.out.println("adjust_value");
-        }
-
-        ts_block_delta_reorder = getEncodeBitsDelta( ts_block_reorder,  block_size,reorder_length,
-                i_star_ready_reorder);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length);
-        encoded_result.addAll(cur_encoded_result);
+        raw_length = reorder_length;
+        quickSort(ts_block,1,0,block_size-1);
         count_reorder ++;
       }
+
+      int i_star;
+      int j_star;
+      i_star =getIStar(ts_block,block_size,0);
+      j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+      int adjust_count = 0;
+      while(j_star!=-1){
+        if(adjust_count < block_size/2){
+          adjust_count ++;
+        }else {
+          break;
+        }
+        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
+
+        if(j_star<i_star){
+          for(int u=i_star-1;u>=j_star;u--){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u+1,tmp_tv_cur);
+          }
+        }else{
+          for(int u=i_star+1;u<=j_star;u++){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u-1,tmp_tv_cur);
+          }
+        }
+
+        ts_block.set(j_star,tmp_tv);
+        i_star =getIStar(ts_block,block_size,raw_length);
+        if(i_star == j_star) break;
+
+        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+      }
+
+      ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
+              i_star_ready_reorder);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length);
+      encoded_result.addAll(cur_encoded_result);
+
     }
-//    System.out.println(count_raw);
-//    System.out.println(count_reorder);
     return encoded_result;
   }
 
