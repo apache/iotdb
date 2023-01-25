@@ -164,15 +164,15 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // C: decompress page data, split time&value buffers
         List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
             chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-        if (pageReaderList.size() > 1) {
-          throw new IOException("Against the assumption that there is only one page in a chunk!");
-        }
-        for (IPageReader pageReader : pageReaderList) {
-          // assume only one page in a chunk
-          // assume all data on disk, no data in memory
-          ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
-              currentChunkList, splitChunkList, chunkMetadata);
-        }
+//        if (pageReaderList.size() > 1) {
+//          throw new IOException("Against the assumption that there is only one page in a chunk!");
+//        }
+//        for (IPageReader pageReader : pageReaderList) {
+        // assume only one page in a chunk
+        // assume all data on disk, no data in memory
+        ((PageReader) pageReaderList.get(0)).split4CPV(startTime, endTime, interval, curStartTime,
+            currentChunkList, splitChunkList, chunkMetadata);
+//        }
       }
     }
   }
@@ -307,20 +307,32 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // 如果set里所有点所在的chunk都是lazy
         // load，则对所有块进行load，应用deleteIntervals，并把BP删掉（因为不管是被删除删掉还是被更新删掉都是删掉这个点）
         if (nonLazyLoad.size() == 0) {
-          // TODO chunk data read operation (c): get all data points
           for (ChunkSuit4CPV chunkSuit4CPV : candidateSet) {
-            if (chunkSuit4CPV.getBatchData() == null) {
-              currentChunkList.remove(chunkSuit4CPV); // TODO check this
+            // TODO 注意delete intervals的传递
+            if (chunkSuit4CPV.getPageReader() == null) {
               List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
                   chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-              for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
-                ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
-                    currentChunkList, // add back into currentChunkList with loaded data
-                    null, chunkSuit4CPV.getChunkMetadata());
-              }
-            } else { // 已经load过，比如一开始被M4 interval分开，现在因为update而candidate失效
-              updateBatchData(chunkSuit4CPV, tsDataType);
+              chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
+            } else {
+              // TODO 注意delete intervals的传递：主要是被重写点作为点删除传递
+              chunkSuit4CPV.getPageReader()
+                  .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
+            // TODO chunk data read operation (c): get all data points
+            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
+
+//            if (chunkSuit4CPV.getBatchData() == null) {
+//              currentChunkList.remove(chunkSuit4CPV); // TODO check this
+//              List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
+//                  chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
+//              for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
+//                ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
+//                    currentChunkList, // add back into currentChunkList with loaded data
+//                    null, chunkSuit4CPV.getChunkMetadata());
+//              }
+//            } else { // 已经load过，比如一开始被M4 interval分开，现在因为update而candidate失效
+//              updateBatchData(chunkSuit4CPV, tsDataType);
+//            }
           }
           break; // 退出循环2，进入循环1
         }
@@ -329,14 +341,15 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         MergeReaderPriority candidateVersion = new MergeReaderPriority(
             candidate.getChunkMetadata().getVersion(),
             candidate.getChunkMetadata().getOffsetOfChunkHeader());
-        long candidateTimestamp = candidate.getChunkMetadata().getStatistics()
-            .getBottomTimestamp(); // TODO check
-        Object candidateValue = candidate.getChunkMetadata().getStatistics()
-            .getMinValue(); // TODO check
+        long candidateTimestamp = candidate.getStatistics().getBottomTimestamp(); // TODO check
+        Object candidateValue = candidate.getStatistics().getMinValue(); // TODO check
 
         // verify if this candidate point is deleted
         boolean isDeletedItself = false;
-        if (candidate.getChunkMetadata().getDeleteIntervalList() != null) {
+        // TODO add M4 interval virtual delete since BP/TP is not updated in getCurrentChunkListFromFutureChunkList
+        if (candidateTimestamp < curStartTime || candidateTimestamp >= curStartTime + interval) {
+          isDeletedItself = true;
+        } else if (candidate.getChunkMetadata().getDeleteIntervalList() != null) {
           for (TimeRange timeRange : candidate.getChunkMetadata().getDeleteIntervalList()) {
             if (timeRange.contains(candidateTimestamp)) {
               isDeletedItself = true;
@@ -352,7 +365,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           continue; // 回到循环2
 
         } else { // 否被删除
-
+          boolean isUpdate = false;
           // 找出所有更高版本的overlap它的块
           List<ChunkSuit4CPV> overlaps = new ArrayList<>();
           for (ChunkSuit4CPV chunkSuit4CPV : currentChunkList) {
@@ -362,79 +375,90 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             if (version.compareTo(candidateVersion) <= 0) { // including bottomChunkMetadata
               continue;
             }
-            if (candidateTimestamp < chunkMetadata.getStartTime()
-                || candidateTimestamp > chunkMetadata.getEndTime()) {
+            if (candidateTimestamp < chunkSuit4CPV.getStatistics().getStartTime()
+                || candidateTimestamp > chunkSuit4CPV.getStatistics().getEndTime()) {
               continue;
+            }
+            if (candidateTimestamp == chunkSuit4CPV.getStatistics().getStartTime()
+                || candidateTimestamp == chunkSuit4CPV.getStatistics().getEndTime()) {
+              isUpdate = true;
+              // this case does not need to execute chunk data read operation (a),
+              // because definitely overwrite
+              break;
             }
             overlaps.add(chunkSuit4CPV);
           }
 
-          if (overlaps.size() == 0) { // 否被overlap，则当前candidate point就是计算结果，结束
+          if (!isUpdate && overlaps.size() == 0) { // 否被overlap，则当前candidate point就是计算结果，结束
             results.get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
                 // minValue[bottomTimestamp], maxValue[topTimestamp]
                 .updateResultUsingValues(new long[]{candidateTimestamp}, 1,
                     new Object[]{candidateValue});
             // TODO check updateResult
             return; // 计算结束
-          } else { // 是被overlap，则partial scan所有这些overlap的块
-            // TODO chunk data read operation (a): check existence of data point at a timestamp
-            boolean isUpdate = false;
+          } else if (!isUpdate) { // 是被overlap，则partial scan所有这些overlap的块
             for (ChunkSuit4CPV chunkSuit4CPV : overlaps) {
               // scan这个chunk的数据
-              if (chunkSuit4CPV.getBatchData() == null) {
+              // TODO chunk data read operation (a): check existence of data point at a timestamp
+              if (chunkSuit4CPV.getPageReader() == null) {
                 List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
                     chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-                List<ChunkSuit4CPV> tmpCurrentChunkList = new ArrayList<>();
-                for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
-                  isUpdate = ((PageReader) pageReader).partialScan(
-                      candidateTimestamp); // TODO check
-                }
-              } else {
-                // 对已经加载的batchData进行partial scan，直到点的时间戳大于或等于candidateTimestamp
-                BatchDataIterator batchDataIterator = chunkSuit4CPV.getBatchData()
-                    .getBatchDataIterator();
-                while (batchDataIterator.hasNextTimeValuePair()) {
-                  long timestamp = batchDataIterator.nextTimeValuePair().getTimestamp();
-                  if (timestamp > candidateTimestamp) {
-                    break;
-                  }
-                  if (timestamp == candidateTimestamp) {
-                    isUpdate = true;
-                    break;
-                  }
-                }
-                chunkSuit4CPV.getBatchData()
-                    .resetBatchData(); // This step is necessary, because this BatchData may be
-                // accessed multiple times!
+                chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
               }
+              isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
+//              if (chunkSuit4CPV.getPageReader() == null) {
+//                List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
+//                    chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
+//                for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
+//                  isUpdate = ((PageReader) pageReader).partialScan(
+//                      candidateTimestamp); // TODO check
+//                }
+//              } else {
+//                // 对已经加载的batchData进行partial scan，直到点的时间戳大于或等于candidateTimestamp
+//                BatchDataIterator batchDataIterator = chunkSuit4CPV.getBatchData()
+//                    .getBatchDataIterator();
+//                while (batchDataIterator.hasNextTimeValuePair()) {
+//                  long timestamp = batchDataIterator.nextTimeValuePair().getTimestamp();
+//                  if (timestamp > candidateTimestamp) {
+//                    break;
+//                  }
+//                  if (timestamp == candidateTimestamp) {
+//                    isUpdate = true;
+//                    break;
+//                  }
+//                }
+//                chunkSuit4CPV.getBatchData()
+//                    .resetBatchData(); // This step is necessary, because this BatchData may be
+//                // accessed multiple times!
+//              }
               if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
                 break;
               }
             }
-            if (!isUpdate) { // partial scan了所有overlap的块都没有找到这样的点，则当前candidate point就是计算结果，结束
-              results.get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-                  // minValue[bottomTimestamp], maxValue[topTimestamp]
-                  .updateResultUsingValues(new long[]{candidateTimestamp}, 1,
-                      new Object[]{candidateValue});
-              // TODO check updateResult
-              return; // 计算结束
-            } else { // 找到这样的点，于是标记candidate point所在块为lazy
-              // load，并对其chunkMetadata的deleteInterval里加上对该点时间的删除，然后进入循环2
-              if (candidate.getChunkMetadata().getDeleteIntervalList() == null) {
-                List<TimeRange> tmp = new ArrayList<>();
-                tmp.add(new TimeRange(candidateTimestamp, candidateTimestamp));
-                candidate.getChunkMetadata().setDeleteIntervalList(tmp);
-              } else {
-                candidate.getChunkMetadata().getDeleteIntervalList()
-                    .add(new TimeRange(candidateTimestamp, candidateTimestamp)); // TODO check
-              }
-              // 删除那里不需要再加了，而这里更新就需要手动加一下删除操作
-              nonLazyLoad.remove(candidate);
-              // TODO check this can really remove the element
-              // TODO check whether nonLazyLoad remove affects candidateSet
-              // TODO check nonLazyLoad sorted by version number from high to low
-              continue; // 回到循环2
+          }
+          if (!isUpdate) { // partial scan了所有overlap的块都没有找到这样的点，则当前candidate point就是计算结果，结束
+            results.get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
+                // minValue[bottomTimestamp], maxValue[topTimestamp]
+                .updateResultUsingValues(new long[]{candidateTimestamp}, 1,
+                    new Object[]{candidateValue});
+            // TODO check updateResult
+            return; // 计算结束
+          } else { // 找到这样的点，于是标记candidate point所在块为lazy
+            // load，并对其chunkMetadata的deleteInterval里加上对该点时间的删除，然后进入循环2
+            if (candidate.getChunkMetadata().getDeleteIntervalList() == null) {
+              List<TimeRange> tmp = new ArrayList<>();
+              tmp.add(new TimeRange(candidateTimestamp, candidateTimestamp));
+              candidate.getChunkMetadata().setDeleteIntervalList(tmp);
+            } else {
+              candidate.getChunkMetadata().getDeleteIntervalList()
+                  .add(new TimeRange(candidateTimestamp, candidateTimestamp)); // TODO check
             }
+            // 删除那里不需要再加了，而这里更新就需要手动加一下删除操作
+            nonLazyLoad.remove(candidate);
+            // TODO check this can really remove the element
+            // TODO check whether nonLazyLoad remove affects candidateSet
+            // TODO check nonLazyLoad sorted by version number from high to low
+            continue; // 回到循环2
           }
         }
       }

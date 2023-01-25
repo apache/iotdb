@@ -159,6 +159,10 @@ public abstract class Statistics<T> {
 
   public abstract T getMinValue();
 
+  public abstract void setMinInfo(MinMaxInfo minInfo);
+
+  public abstract void setMaxInfo(MinMaxInfo maxInfo);
+
   public abstract T getMaxValue();
 
   /** @author Yuyuan Kang */
@@ -408,22 +412,22 @@ public abstract class Statistics<T> {
   }
 
   /** @author Yuyuan Kang */
-  void updateStats(int value, long timestamp) {
+  public void updateStats(int value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
   /** @author Yuyuan Kang */
-  void updateStats(long value, long timestamp) {
+  public void updateStats(long value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
   /** @author Yuyuan Kang */
-  void updateStats(float value, long timestamp) {
+  public void updateStats(float value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
   /** @author Yuyuan Kang */
-  void updateStats(double value, long timestamp) {
+  public void updateStats(double value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 

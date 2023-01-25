@@ -161,13 +161,23 @@ public class IntegerStatistics extends Statistics<Integer> {
    * @author Yuyuan Kang
    */
   @Override
-  void updateStats(int value, long timestamp) {
+  public void updateStats(int value, long timestamp) {
     if (isEmpty) {
       initializeStats(value, timestamp, value, timestamp, value, value, value);
       isEmpty = false;
     } else {
       updateStats(value, timestamp, value, timestamp, value, value);
     }
+  }
+
+  @Override
+  public void setMinInfo(MinMaxInfo minInfo) {
+    this.minInfo = minInfo;
+  }
+
+  @Override
+  public void setMaxInfo(MinMaxInfo maxInfo) {
+    this.maxInfo = maxInfo;
   }
 
   /**

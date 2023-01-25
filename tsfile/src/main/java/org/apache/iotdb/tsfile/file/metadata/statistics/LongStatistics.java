@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LongStatistics extends Statistics<Long> {
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private MinMaxInfo<Long> minInfo;
 
   private MinMaxInfo<Long> maxInfo;
@@ -45,13 +46,17 @@ public class LongStatistics extends Statistics<Long> {
     return TSDataType.INT64;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public LongStatistics() {
     this.minInfo = new MinMaxInfo<>(Long.MAX_VALUE, -1);
     this.maxInfo = new MinMaxInfo<>(Long.MIN_VALUE, -1);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public int getStatsSize() {
     int len = 0;
@@ -65,7 +70,9 @@ public class LongStatistics extends Statistics<Long> {
     return len;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void initializeStats(
       MinMaxInfo<Long> minInfo, MinMaxInfo<Long> maxInfo, long firstValue, long last, double sum) {
     this.minInfo = new MinMaxInfo<>(minInfo);
@@ -75,7 +82,9 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue += sum;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void initializeStats(
       long min,
       long bottomTimestamp,
@@ -91,7 +100,9 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue += sum;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private void updateStats(
       long minValue,
       long bottomTimestamp,
@@ -105,7 +116,19 @@ public class LongStatistics extends Statistics<Long> {
     this.lastValue = lastValue;
   }
 
-  /** @author Yuyuan Kang */
+  @Override
+  public void setMinInfo(MinMaxInfo minInfo) {
+    this.minInfo = minInfo;
+  }
+
+  @Override
+  public void setMaxInfo(MinMaxInfo maxInfo) {
+    this.maxInfo = maxInfo;
+  }
+
+  /**
+   * @author Yuyuan Kang
+   */
   private void updateStats(
       MinMaxInfo<Long> minInfo,
       MinMaxInfo<Long> maxInfo,
@@ -134,37 +157,49 @@ public class LongStatistics extends Statistics<Long> {
   //    maxValue = BytesUtils.bytesToLong(maxBytes);
   //  }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public MinMaxInfo<Long> getMinInfo() {
     return minInfo;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public MinMaxInfo<Long> getMaxInfo() {
     return maxInfo;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public Long getMinValue() {
     return this.minInfo.val;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public Long getMaxValue() {
     return this.maxInfo.val;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public long getBottomTimestamp() {
     return this.minInfo.timestamp;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public long getTopTimestamp() {
     return this.maxInfo.timestamp;
@@ -206,9 +241,11 @@ public class LongStatistics extends Statistics<Long> {
     throw new StatisticsClassException("Long statistics does not support: long sum");
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
-  void updateStats(long value, long timestamp) {
+  public void updateStats(long value, long timestamp) {
     if (isEmpty) {
       initializeStats(value, timestamp, value, timestamp, value, value, value);
       isEmpty = false;
@@ -217,7 +254,9 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   void updateStats(long[] values, long[] timestamps, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
@@ -225,7 +264,9 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void updateStats(long minValue, long bottomTimestamp, long maxValue, long topTimestamp) {
     updateMinInfo(minValue, bottomTimestamp);
@@ -237,7 +278,9 @@ public class LongStatistics extends Statistics<Long> {
     return LONG_STATISTICS_FIXED_RAM_SIZE;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     LongStatistics longStats = (LongStatistics) stats;
@@ -261,7 +304,9 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void updateMinInfo(Long val, long timestamp) {
     if (val < this.minInfo.val) {
@@ -269,7 +314,9 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void updateMaxInfo(Long val, long timestamp) {
     if (val > this.maxInfo.val) {
@@ -277,7 +324,9 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
@@ -289,7 +338,9 @@ public class LongStatistics extends Statistics<Long> {
     return byteLen;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void deserialize(InputStream inputStream) throws IOException {
     this.minInfo = ReadWriteIOUtils.readMinMaxInfo(inputStream, minMaxDataType);
@@ -299,7 +350,9 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     this.minInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
@@ -309,7 +362,9 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public String toString() {
     return super.toString()

@@ -47,6 +47,16 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
+  public void setMinInfo(MinMaxInfo minInfo) {
+    this.minInfo = minInfo;
+  }
+
+  @Override
+  public void setMaxInfo(MinMaxInfo maxInfo) {
+    this.maxInfo = maxInfo;
+  }
+
+  @Override
   public TSDataType getType() {
     return TSDataType.DOUBLE;
   }
@@ -155,7 +165,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   /** @author Yuyuan Kang */
   @Override
-  void updateStats(double value, long timestamp) {
+  public void updateStats(double value, long timestamp) {
     if (this.isEmpty) {
       initializeStats(value, timestamp, value, timestamp, value, value, value);
       isEmpty = false;

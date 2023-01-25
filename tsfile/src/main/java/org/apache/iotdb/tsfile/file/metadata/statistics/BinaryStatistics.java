@@ -46,6 +46,14 @@ public class BinaryStatistics extends Statistics<Binary> {
     return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
   }
 
+  @Override
+  public void setMinInfo(MinMaxInfo minInfo) {
+  }
+
+  @Override
+  public void setMaxInfo(MinMaxInfo maxInfo) {
+  }
+
   /**
    * initialize Statistics.
    *

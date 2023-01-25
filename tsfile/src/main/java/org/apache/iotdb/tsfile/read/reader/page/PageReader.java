@@ -28,7 +28,9 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
@@ -123,25 +125,29 @@ public class PageReader implements IPageReader {
       long rightEndExcluded = curStartTime + (n + 1) * interval;
       ChunkSuit4CPV chunkSuit4CPV = new ChunkSuit4CPV(chunkMetadata, this, true);
       // TODO update FP,LP with the help of stepRegress index. BP/TP not update here.
-      MinMaxInfo FP = null; // new FP
-      MinMaxInfo LP = null; // new LP
+//      MinMaxInfo FP = null; // new FP
+//      MinMaxInfo LP = null; // new LP
+      int FP_pos = -1;
+      int LP_pos = -1;
       if (leftEndIncluded > chunkSuit4CPV.statistics.getStartTime()) {
-        FP = chunkSuit4CPV.findTheClosetPointEqualOrAfter(leftEndIncluded);
-        chunkSuit4CPV.updateFP(FP);
+//        FP = chunkSuit4CPV.findTheClosetPointEqualOrAfter(leftEndIncluded);
+//        chunkSuit4CPV.updateFP(FP);
+        FP_pos = chunkSuit4CPV.updateFPwithTheClosetPointEqualOrAfter(leftEndIncluded);
       }
       if (rightEndExcluded <= chunkSuit4CPV.statistics.getEndTime()) {
         // -1 is because right end is excluded end
-        LP = chunkSuit4CPV.findTheClosetPointEqualOrBefore(rightEndExcluded - 1);
-        chunkSuit4CPV.updateLP(LP);
+        LP_pos = chunkSuit4CPV.updateLPwithTheClosetPointEqualOrBefore(rightEndExcluded - 1);
+//        chunkSuit4CPV.updateLP(LP);
       }
-      if (FP != null && LP != null && FP.timestamp > LP.timestamp) {
+      if (FP_pos != -1 && LP_pos != -1 && FP_pos > LP_pos) {
         // the chunk has no point in this span, do nothing
         continue;
       } else { // add this chunkSuit4CPV into currentChunkList or splitChunkList
         if (n == 0) {
           currentChunkList.add(chunkSuit4CPV);
         } else {
-          int idx = (int) Math.floor((FP.timestamp - startTime) * 1.0 / interval); // global index
+          int idx = (int) Math.floor((chunkSuit4CPV.statistics.getStartTime() - startTime) * 1.0
+              / interval); // global index TODO debug this
           splitChunkList.computeIfAbsent(idx, k -> new ArrayList<>());
           splitChunkList.get(idx).add(chunkSuit4CPV);
         }
@@ -276,6 +282,60 @@ public class PageReader implements IPageReader {
 //        }
 //      }
 //    }
+
+  public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) throws IOException {
+    Statistics statistics = null;
+    switch (dataType) {
+      case INT64:
+        statistics = new LongStatistics();
+        break;
+      case FLOAT:
+        statistics = new FloatStatistics();
+        break;
+      case DOUBLE:
+        statistics = new DoubleStatistics();
+        break;
+      default:
+        break;
+    }
+    // [startPos,endPos] definitely for curStartTime interval, thanks to split4CPV
+    for (int pos = chunkSuit4CPV.startPos; pos <= chunkSuit4CPV.endPos; pos++) {
+      long timestamp = timeBuffer.getLong(pos * 8);
+      switch (dataType) {
+        case INT64:
+          long aLong = valueBuffer.getLong(timeBufferLength + pos * 8);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+            // update statistics of chunkMetadata1
+            statistics.updateStats(aLong, timestamp); //TODO DEBUG
+            // ATTENTION: do not use update() interface which will also update StepRegress!
+            // only updateStats, actually only need to update BP and TP
+          }
+          break;
+        case FLOAT:
+          float aFloat = valueBuffer.getFloat(timeBufferLength + pos * 8);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+            // update statistics of chunkMetadata1
+            statistics.updateStats(aFloat, timestamp);
+            // ATTENTION: do not use update() interface which will also update StepRegress!
+            // only updateStats, actually only need to update BP and TP
+          }
+          break;
+        case DOUBLE:
+          double aDouble = valueBuffer.getDouble(timeBufferLength + pos * 8);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+            // update statistics of chunkMetadata1
+            statistics.updateStats(aDouble, timestamp);
+            // ATTENTION: do not use update() interface which will also update StepRegress!
+            // only updateStats, actually only need to update BP and TP
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
+    chunkSuit4CPV.statistics.setMinInfo(statistics.getMinInfo());
+    chunkSuit4CPV.statistics.setMaxInfo(statistics.getMaxInfo());
+  }
 
   /**
    * chunk里点时间戳从小到大递增， 所以遍历直到点的时间戳大于或等于candidateTimestamp即可结束

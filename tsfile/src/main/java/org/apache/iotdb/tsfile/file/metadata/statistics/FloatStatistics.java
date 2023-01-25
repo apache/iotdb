@@ -48,6 +48,16 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public void setMinInfo(MinMaxInfo minInfo) {
+    this.minInfo = minInfo;
+  }
+
+  @Override
+  public void setMaxInfo(MinMaxInfo maxInfo) {
+    this.maxInfo = maxInfo;
+  }
+
+  @Override
   public TSDataType getType() {
     return TSDataType.FLOAT;
   }
@@ -157,7 +167,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   /** @author Yuyuan Kang */
   @Override
-  void updateStats(float value, long timestamp) {
+  public void updateStats(float value, long timestamp) {
     if (this.isEmpty) {
       initializeStats(value, timestamp, value, timestamp, value, value, value);
       isEmpty = false;
