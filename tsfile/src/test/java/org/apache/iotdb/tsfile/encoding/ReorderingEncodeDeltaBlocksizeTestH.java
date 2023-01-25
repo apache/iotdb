@@ -988,18 +988,7 @@ public class ReorderingEncodeDeltaBlocksizeTestH {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
             ratio += ratioTmp;
             s = System.nanoTime();
-
-//          data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
-//
-//          for(int j=0;j<256;j++){
-//            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-//              System.out.println("Wrong!");
-//            }
-//            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-//              System.out.println("Wrong!");
-//            }
-//          }
-
+            data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += (e-s);
           }
