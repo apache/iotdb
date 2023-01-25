@@ -1107,6 +1107,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestH {
           InputStream inputStream = Files.newInputStream(f.toPath());
           CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
           ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+          ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
           // add a column to "data"
           loader.readHeaders();
@@ -1132,7 +1133,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestH {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-//          ReorderingRegressionDecoder(buffer);
+            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += (e - s);
           }
