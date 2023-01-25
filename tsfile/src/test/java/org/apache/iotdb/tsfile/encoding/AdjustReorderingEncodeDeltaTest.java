@@ -366,7 +366,7 @@ public class AdjustReorderingEncodeDeltaTest {
 
     } // alpha == n
     else if(alpha == block_size-1){
-      for(int j = 1;j<block_size;j++){
+      for(int j = 1;j<block_size-1;j++){
         ArrayList<Integer> b = adjustn(ts_block,alpha,j);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -956,24 +956,24 @@ public class AdjustReorderingEncodeDeltaTest {
           }else {
             break;
           }
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
+          ArrayList<Integer> tmp_tv = ts_block.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
               ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+              tmp_tv_cur.add(ts_block.get(u).get(0));
+              tmp_tv_cur.add(ts_block.get(u).get(1));
               ts_block.set(u+1,tmp_tv_cur);
             }
           }else{
             for(int u=i_star+1;u<=j_star;u++){
               ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+              tmp_tv_cur.add(ts_block.get(u).get(0));
+              tmp_tv_cur.add(ts_block.get(u).get(1));
               ts_block.set(u-1,tmp_tv_cur);
             }
           }
           ts_block.set(j_star,tmp_tv);
-//          if(i_star == getIStar(ts_block,block_size,raw_length)) break;
+          if(i_star == getIStar(ts_block,block_size,raw_length)) break;
           i_star =getIStar(ts_block,block_size,raw_length);
           j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
           System.out.println(i_star);
@@ -990,12 +990,13 @@ public class AdjustReorderingEncodeDeltaTest {
       else{
         // adjust to reduce max_bit_width_r
 //        System.out.println(ts_block);
+//        quickSort(ts_block,1,0,block_size-1);
         int i_star;
         int j_star;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size, 1);
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+        i_star =getIStar(ts_block_reorder,block_size, 1);
+        j_star =getJStar(ts_block_reorder,i_star,block_size,raw_length,0);
         int adjust_count = 0;
         while(j_star != -1){
           if(adjust_count < block_size/2){
@@ -1009,30 +1010,30 @@ public class AdjustReorderingEncodeDeltaTest {
               ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
               tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
               tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
+              ts_block_reorder.set(u+1,tmp_tv_cur);
             }
           }else{
             for(int u=i_star+1;u<=j_star;u++){
               ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
               tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
               tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
+              ts_block_reorder.set(u-1,tmp_tv_cur);
             }
           }
 
-          ts_block.set(j_star,tmp_tv);
-//          if(i_star == getIStar(ts_block,block_size,raw_length)){
-//
-//            break;
-//          }
-          i_star =getIStar(ts_block,block_size,raw_length);
-          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+          ts_block_reorder.set(j_star,tmp_tv);
+          if(i_star == getIStar(ts_block_reorder,block_size,raw_length)){
+
+            break;
+          }
+          i_star =getIStar(ts_block_reorder,block_size,raw_length);
+          j_star =getJStar(ts_block_reorder,i_star,block_size,raw_length,0);
           System.out.println(i_star);
           System.out.println(j_star);
           System.out.println("adjust_value");
         }
 
-        ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
+        ts_block_delta_reorder = getEncodeBitsDelta( ts_block_reorder,  block_size,reorder_length,
                 i_star_ready_reorder);
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length);
         encoded_result.addAll(cur_encoded_result);
