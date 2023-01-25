@@ -233,6 +233,22 @@ public class DoubleStatistics extends Statistics<Double> {
     throw new StatisticsClassException("Double statistics does not support: long sum");
   }
 
+  public void setFirstValue(double value) {
+    this.firstValue = value;
+  }
+
+  public void setLastValue(double value) {
+    this.lastValue = value;
+  }
+
+  public void setMinInfo(long timestamp, double value) {
+    this.minInfo.reset(value, timestamp);
+  }
+
+  public void setMaxInfo(long timestamp, double value) {
+    this.maxInfo.reset(value, timestamp);
+  }
+
   /** @author Yuyuan Kang */
   @Override
   protected void mergeStatisticsValue(Statistics stats) {

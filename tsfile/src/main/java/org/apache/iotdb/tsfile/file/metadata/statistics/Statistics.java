@@ -501,6 +501,7 @@ public abstract class Statistics<T> {
     }
     segmentKeys.add(this.endTime);
     this.stepRegress.setSegmentKeys(segmentKeys);
+    this.stepRegress.inferInterceptsFromSegmentKeys(); // don't forget this, execute once and only once when deserializing
   }
 
   public long getStartTime() {
@@ -511,7 +512,10 @@ public abstract class Statistics<T> {
     return endTime;
   }
 
-  public long getCount() {
+  public StepRegress getStepRegress(){
+    return stepRegress;
+  }
+  public int getCount() {
     return count;
   }
 

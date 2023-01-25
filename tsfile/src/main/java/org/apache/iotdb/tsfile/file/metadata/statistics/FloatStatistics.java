@@ -235,6 +235,22 @@ public class FloatStatistics extends Statistics<Float> {
     throw new StatisticsClassException("Float statistics does not support: long sum");
   }
 
+  public void setFirstValue(float value) {
+    this.firstValue = value;
+  }
+
+  public void setLastValue(float value) {
+    this.lastValue = value;
+  }
+
+  public void setMinInfo(long timestamp, float value) {
+    this.minInfo.reset(value, timestamp);
+  }
+
+  public void setMaxInfo(long timestamp, float value) {
+    this.maxInfo.reset(value, timestamp);
+  }
+
   /** @author Yuyuan Kang */
   @Override
   protected void mergeStatisticsValue(Statistics stats) {

@@ -19,30 +19,149 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class ChunkSuit4CPV {
 
-  private ChunkMetadata
-      chunkMetadata; // this.version = new MergeReaderPriority(chunkMetadata.getVersion(),
-  // chunkMetadata.getOffsetOfChunkHeader());
-  private BatchData batchData;
-  private List<Long> mergeVersionList = new ArrayList<>();
-  private List<Long> mergeOffsetList = new ArrayList<>();
+  private ChunkMetadata chunkMetadata; // fixed info, including version and stepRegress
+
+  public Statistics statistics; // includes FP/LP/BP/TP info, may be updated
+
+//  public long startTime; // statistics in chunkMetadata is not deepCopied, so store update here
+//
+//  public long endTime;
+
+//  public int firstValueInt;
+//  public long firstValueLong;
+//  public float firstValueFloat;
+//  public double firstValueDouble;
+//
+//  public int lastValueInt;
+//  public long lastValueLong;
+//  public float lastValueFloat;
+//  public double lastValueDouble;
+//
+//  public MinMaxInfo<Integer> minInfoInt;
+//  public MinMaxInfo<Long> minInfoLong;
+//  public MinMaxInfo<Float> minInfoFloat;
+//  public MinMaxInfo<Double> minInfoDouble;
+//
+//  public MinMaxInfo<Integer> maxInfoInt;
+//  public MinMaxInfo<Long> maxInfoLong;
+//  public MinMaxInfo<Float> maxInfoFloat;
+//  public MinMaxInfo<Double> maxInfoDouble;
+
+//  private BatchData batchData; // deprecated
+
+  private PageReader pageReader; // bears plain timeBuffer and valueBuffer
+
+  //  private List<Long> mergeVersionList = new ArrayList<>();
+//  private List<Long> mergeOffsetList = new ArrayList<>();
   private boolean isLazyLoad = false;
 
   public ChunkSuit4CPV(ChunkMetadata chunkMetadata) {
-    this.chunkMetadata = chunkMetadata;
-    this.batchData = null;
-    this.isLazyLoad = false;
+    this(chunkMetadata, false);
   }
 
-  public ChunkSuit4CPV(ChunkMetadata chunkMetadata, BatchData batchData) {
+  public ChunkSuit4CPV(ChunkMetadata chunkMetadata, boolean deepCopy) {
     this.chunkMetadata = chunkMetadata;
-    this.batchData = batchData;
+    // deep copy initialize
+    if (deepCopy) {
+      deepCopyInitialize(chunkMetadata.getStatistics(), chunkMetadata.getDataType());
+    } else {
+      statistics = chunkMetadata.getStatistics();
+    }
+  }
+
+//  public ChunkSuit4CPV(ChunkMetadata chunkMetadata, BatchData batchData) {
+//    this.chunkMetadata = chunkMetadata;
+//    this.batchData = batchData;
+//    // deep copy initialize
+//    deepCopyInitialize(chunkMetadata.getStatistics(), chunkMetadata.getDataType());
+//  }
+
+  public ChunkSuit4CPV(ChunkMetadata chunkMetadata, PageReader pageReader, boolean deepCopy) {
+    this.chunkMetadata = chunkMetadata;
+    this.pageReader = pageReader;
+    // deep copy initialize
+    if (deepCopy) {
+      deepCopyInitialize(chunkMetadata.getStatistics(), chunkMetadata.getDataType());
+    } else {
+      statistics = chunkMetadata.getStatistics();
+    }
+  }
+
+  public Statistics getStatistics() {
+    return statistics;
+  }
+
+  public void deepCopyInitialize(Statistics source, TSDataType type) {
+    // deep copy initialize
+    switch (type) {
+      case INT32:
+        statistics = new IntegerStatistics();
+        ((IntegerStatistics) statistics).initializeStats(
+            (int) source.getMinInfo().val,
+            source.getMinInfo().timestamp,
+            (int) source.getMaxInfo().val,
+            source.getMaxInfo().timestamp,
+            (int) source.getFirstValue(),
+            (int) source.getLastValue(),
+            source.getSumLongValue()
+        );
+        break;
+      case INT64:
+        statistics = new LongStatistics();
+        ((LongStatistics) statistics).initializeStats(
+            (long) source.getMinInfo().val,
+            source.getMinInfo().timestamp,
+            (long) source.getMaxInfo().val,
+            source.getMaxInfo().timestamp,
+            (long) source.getFirstValue(),
+            (long) source.getLastValue(),
+            source.getSumDoubleValue()
+        );
+        break;
+      case FLOAT:
+        statistics = new FloatStatistics();
+        ((FloatStatistics) statistics).initializeStats(
+            (float) source.getMinInfo().val,
+            source.getMinInfo().timestamp,
+            (float) source.getMaxInfo().val,
+            source.getMaxInfo().timestamp,
+            (float) source.getFirstValue(),
+            (float) source.getLastValue(),
+            source.getSumDoubleValue()
+        );
+        break;
+      case DOUBLE:
+        statistics = new DoubleStatistics();
+        ((DoubleStatistics) statistics).initializeStats(
+            (double) source.getMinInfo().val,
+            source.getMinInfo().timestamp,
+            (double) source.getMaxInfo().val,
+            source.getMaxInfo().timestamp,
+            (double) source.getFirstValue(),
+            (double) source.getLastValue(),
+            source.getSumDoubleValue()
+        );
+        break;
+      default:
+        break;
+    }
+    statistics.setStartTime(source.getStartTime());
+    statistics.setEndTime(source.getEndTime());
+    statistics.setCount(source.getCount());
   }
 
   public void setLazyLoad(boolean lazyLoad) {
@@ -57,33 +176,41 @@ public class ChunkSuit4CPV {
     return chunkMetadata;
   }
 
-  public BatchData getBatchData() {
-    return batchData;
+//  public BatchData getBatchData() {
+//    return batchData;
+//  }
+
+  public PageReader getPageReader() {
+    return pageReader;
   }
 
-  public void setBatchData(BatchData batchData) {
-    this.batchData = batchData;
+//  public void setBatchData(BatchData batchData) {
+//    this.batchData = batchData;
+//  }
+
+  public void setPageReader(PageReader pageReader) {
+    this.pageReader = pageReader;
   }
 
   public void setChunkMetadata(ChunkMetadata chunkMetadata) {
     this.chunkMetadata = chunkMetadata;
   }
 
-  public void addMergeVersionList(long version) {
-    this.mergeVersionList.add(version);
-  }
-
-  public void addMergeOffsetList(long offset) {
-    this.mergeOffsetList.add(offset);
-  }
-
-  public List<Long> getMergeVersionList() {
-    return mergeVersionList;
-  }
-
-  public List<Long> getMergeOffsetList() {
-    return mergeOffsetList;
-  }
+//  public void addMergeVersionList(long version) {
+//    this.mergeVersionList.add(version);
+//  }
+//
+//  public void addMergeOffsetList(long offset) {
+//    this.mergeOffsetList.add(offset);
+//  }
+//
+//  public List<Long> getMergeVersionList() {
+//    return mergeVersionList;
+//  }
+//
+//  public List<Long> getMergeOffsetList() {
+//    return mergeOffsetList;
+//  }
 
   public long getVersion() {
     return this.getChunkMetadata().getVersion();
@@ -92,4 +219,190 @@ public class ChunkSuit4CPV {
   public long getOffset() {
     return this.getChunkMetadata().getOffsetOfChunkHeader();
   }
+
+
+  /**
+   * Find the point with the closet timestamp equal to or larger than the given timestamp in the
+   * chunk.
+   *
+   * @param targetTimestamp must be within the chunk time range [startTime, endTime]
+   * @return the point with value and timestamp
+   */
+  public MinMaxInfo findTheClosetPointEqualOrAfter(long targetTimestamp) throws IOException {
+    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+    // infer position starts from 1, so minus 1 here
+    // TODO debug buffer.get(index)
+    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+
+    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger than the given timestamp
+    if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        estimatedPos++;
+      }
+    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        estimatedPos--;
+      }
+      if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        estimatedPos++;
+      } // else equal
+    } // else equal
+
+    // since we have constrained that targetTimestamp must be within the chunk time range [startTime, endTime],
+    // we can definitely find such a point with the closet timestamp equal to or larger than the
+    // given timestamp in the chunk.
+    switch (chunkMetadata.getDataType()) {
+      // iotdb的int类型的plain编码用的是自制的不支持random access
+//      case INT32:
+//        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+//            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case INT64:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case FLOAT:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case DOUBLE:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      default:
+        throw new IOException("Unsupported data type!");
+    }
+  }
+
+  /**
+   * Find the point with the closet timestamp equal to or smaller than the given timestamp in the
+   * chunk.
+   *
+   * @param targetTimestamp must be within the chunk time range [startTime, endTime]
+   * @return the point with value and timestamp
+   */
+  public MinMaxInfo findTheClosetPointEqualOrBefore(long targetTimestamp) throws IOException {
+    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+    // infer position starts from 1, so minus 1 here
+    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+
+    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller than the given timestamp
+    if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        estimatedPos--;
+      }
+    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        estimatedPos++;
+      }
+      if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        estimatedPos--;
+      } // else equal
+    } // else equal
+
+    // since we have constrained that targetTimestamp must be within the chunk time range [startTime, endTime],
+    // we can definitely find such a point with the closet timestamp equal to or smaller than the
+    // given timestamp in the chunk.
+    switch (chunkMetadata.getDataType()) {
+      // iotdb的int类型的plain编码用的是自制的不支持random access
+//      case INT32:
+//        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+//            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case INT64:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case FLOAT:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getFloat(pageReader.timeBufferLength + estimatedPos * 4),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      case DOUBLE:
+        return new MinMaxInfo(
+            pageReader.valueBuffer.getDouble(pageReader.timeBufferLength + estimatedPos * 8),
+            pageReader.timeBuffer.getLong(estimatedPos * 8));
+      default:
+        throw new IOException("Unsupported data type!");
+    }
+  }
+
+  /**
+   * Check if there exists the point at the target timestamp in the chunk.
+   *
+   * @param targetTimestamp must be within the chunk time range [startTime, endTime]
+   * @return true if exists; false not exist
+   */
+  public boolean checkIfExist(long targetTimestamp) throws IOException {
+    StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
+    // infer position starts from 1, so minus 1 here
+    // TODO debug buffer.get(index)
+    int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+
+    // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller than the given timestamp
+    if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        estimatedPos--;
+      }
+    } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+      while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
+        estimatedPos++;
+      }
+      if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
+        estimatedPos--;
+      } // else equal
+    } // else equal
+
+    // since we have constrained that targetTimestamp must be within the chunk time range [startTime, endTime],
+    // estimatedPos will not be out of range.
+    return pageReader.timeBuffer.get(estimatedPos) == targetTimestamp;
+  }
+
+  public void updateFP(MinMaxInfo point) {
+    long timestamp = point.timestamp;
+    Object val = point.val;
+    switch (chunkMetadata.getDataType()) {
+      case INT32:
+        statistics.setStartTime(timestamp);
+        ((IntegerStatistics) statistics).setFirstValue((int) val);
+        break;
+      case INT64:
+        statistics.setStartTime(timestamp);
+        ((LongStatistics) statistics).setFirstValue((long) val);
+        break;
+      case FLOAT:
+        statistics.setStartTime(timestamp);
+        ((FloatStatistics) statistics).setFirstValue((float) val);
+        break;
+      case DOUBLE:
+        statistics.setStartTime(timestamp);
+        ((DoubleStatistics) statistics).setFirstValue((double) val);
+        break;
+      default:
+        break;
+    }
+  }
+
+  public void updateLP(MinMaxInfo point) {
+    long timestamp = point.timestamp;
+    Object val = point.val;
+    switch (chunkMetadata.getDataType()) {
+      case INT32:
+        statistics.setEndTime(timestamp);
+        ((IntegerStatistics) statistics).setLastValue((int) val);
+        break;
+      case INT64:
+        statistics.setEndTime(timestamp);
+        ((LongStatistics) statistics).setLastValue((long) val);
+        break;
+      case FLOAT:
+        statistics.setEndTime(timestamp);
+        ((FloatStatistics) statistics).setLastValue((float) val);
+        break;
+      case DOUBLE:
+        statistics.setEndTime(timestamp);
+        ((DoubleStatistics) statistics).setLastValue((double) val);
+        break;
+      default:
+        break;
+    }
+  }
+
 }

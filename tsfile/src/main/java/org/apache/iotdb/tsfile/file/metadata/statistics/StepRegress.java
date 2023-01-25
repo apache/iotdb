@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import java.io.IOException;
+import java.util.Arrays;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 public class StepRegress {
 
@@ -90,7 +89,10 @@ public class StepRegress {
     this.segmentIntercepts.add(1 - slope * timestamps.get(0)); // b1
   }
 
-  /** learn the parameters of the step regression function for the loaded data. */
+  /**
+   * learn the parameters of the step regression function for the loaded data. Executed once and
+   * only once when serializing.
+   */
   public void learn() throws IOException {
     initForLearn();
 
@@ -125,9 +127,9 @@ public class StepRegress {
             long nextDelta = intervals.get(i + 1);
             if (isBigInterval(nextDelta)
                 && (nextPos + 1
-                    < slope * timestamps.get(i + 2)
-                        + segmentIntercepts.get(
-                            tiltLatestSegmentID))) { // when next interval is also level
+                < slope * timestamps.get(i + 2)
+                + segmentIntercepts.get(
+                tiltLatestSegmentID))) { // when next interval is also level
               isLevel = true; // then fix type from tilt to level, LTL=>LLL
             }
           }
@@ -356,11 +358,9 @@ public class StepRegress {
 
   /**
    * infer m-1 intercepts b1,b2,...,bm-1 given the slope and m segmentKeys t1,t2,...,tm (tm is not
-   * used)
+   * used) Executed once and only once when deserializing.
    */
-  public static DoubleArrayList inferInterceptsFromSegmentKeys(
-      double slope, DoubleArrayList segmentKeys) {
-    DoubleArrayList segmentIntercepts = new DoubleArrayList();
+  public void inferInterceptsFromSegmentKeys() {
     segmentIntercepts.add(1 - slope * segmentKeys.get(0)); // b1=1-K*t1
     for (int i = 1; i < segmentKeys.size() - 1; i++) { // b2,b3,...,bm-1
       if (i % 2 == 0) { // b2i+1=b2i-1-K*(t2i+1-t2i)
@@ -371,12 +371,12 @@ public class StepRegress {
         segmentIntercepts.add(slope * segmentKeys.get(i) + b);
       }
     }
-    return segmentIntercepts;
   }
 
   /**
-   * @param t input
-   * @return output the value of the step regression function f(t)
+   * @param t input timestamp
+   * @return output the value of the step regression function f(t), which is the estimated position
+   * in the chunk. Pay attention that f(t) starts from (startTime,1), ends at (endTime,count).
    */
   public double infer(double t) throws IOException {
     if (t < segmentKeys.get(0) || t > segmentKeys.getLast()) {

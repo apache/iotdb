@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
@@ -38,54 +40,50 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
   protected TSDataType dataType;
 
-  /** decoder for value column */
+  /**
+   * decoder for value column
+   */
   protected Decoder valueDecoder;
 
-  /** decoder for time column */
+  /**
+   * decoder for time column
+   */
   protected Decoder timeDecoder;
 
-  /** time column in memory */
-  protected ByteBuffer timeBuffer;
+  /**
+   * time column in memory
+   */
+  public ByteBuffer timeBuffer;
 
-  /** value column in memory */
-  protected ByteBuffer valueBuffer;
+  /**
+   * value column in memory
+   */
+  public ByteBuffer valueBuffer;
+
+  public int timeBufferLength;
 
   protected Filter filter;
 
-  /** A list of deleted intervals. */
+  /**
+   * A list of deleted intervals.
+   */
   private List<TimeRange> deleteIntervalList;
 
   private int deleteCursor = 0;
 
-  public PageReader(
-      ByteBuffer pageData,
-      TSDataType dataType,
-      Decoder valueDecoder,
-      Decoder timeDecoder,
-      Filter filter) {
+  public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
+      Decoder timeDecoder, Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  public PageReader(
-      PageHeader pageHeader,
-      ByteBuffer pageData,
-      TSDataType dataType,
-      Decoder valueDecoder,
-      Decoder timeDecoder,
-      Filter filter) {
+  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
+      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
@@ -100,7 +98,7 @@ public class PageReader implements IPageReader {
    * @param pageData uncompressed bytes size of time column, time column, value column
    */
   private void splitDataToTimeStampAndValue(ByteBuffer pageData) {
-    int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(pageData);
+    timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(pageData);
 
     timeBuffer = pageData.slice();
     timeBuffer.limit(timeBufferLength);
@@ -109,143 +107,175 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  public void split4CPV(
-      long startTime,
-      long endTime,
-      long interval,
-      long curStartTime,
-      List<ChunkSuit4CPV> currentChunkList,
-      Map<Integer, List<ChunkSuit4CPV>> splitChunkList,
+  /**
+   * the chunk partially overlaps in time with the current M4 interval Ii
+   */
+  public void split4CPV(long startTime, long endTime, long interval, long curStartTime,
+      List<ChunkSuit4CPV> currentChunkList, Map<Integer, List<ChunkSuit4CPV>> splitChunkList,
       ChunkMetadata chunkMetadata)
       throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime)
-    Map<Integer, BatchData> splitBatchDataMap = new HashMap<>();
-    Map<Integer, ChunkMetadata> splitChunkMetadataMap = new HashMap<>();
-    while (timeDecoder.hasNext(timeBuffer)) {
-      long timestamp = timeDecoder.readLong(timeBuffer);
-      // prepare corresponding batchData
-      if (timestamp < curStartTime) {
-        switch (dataType) {
-          case INT32:
-            valueDecoder.readInt(valueBuffer);
-            break;
-          case INT64:
-            valueDecoder.readLong(valueBuffer);
-            break;
-          case FLOAT:
-            valueDecoder.readFloat(valueBuffer);
-            break;
-          case DOUBLE:
-            valueDecoder.readDouble(valueBuffer);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
-        }
+//    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval); // global index
+    int numberOfSpans = (int) Math.floor(
+        (Math.min(chunkMetadata.getEndTime(), endTime - 1)  // endTime is excluded so -1
+            - curStartTime) * 1.0 / interval) + 1;
+    for (int n = 0; n < numberOfSpans; n++) {
+      long leftEndIncluded = curStartTime + n * interval;
+      long rightEndExcluded = curStartTime + (n + 1) * interval;
+      ChunkSuit4CPV chunkSuit4CPV = new ChunkSuit4CPV(chunkMetadata, this, true);
+      // TODO update FP,LP with the help of stepRegress index. BP/TP not update here.
+      MinMaxInfo FP = null; // new FP
+      MinMaxInfo LP = null; // new LP
+      if (leftEndIncluded > chunkSuit4CPV.statistics.getStartTime()) {
+        FP = chunkSuit4CPV.findTheClosetPointEqualOrAfter(leftEndIncluded);
+        chunkSuit4CPV.updateFP(FP);
+      }
+      if (rightEndExcluded <= chunkSuit4CPV.statistics.getEndTime()) {
+        // -1 is because right end is excluded end
+        LP = chunkSuit4CPV.findTheClosetPointEqualOrBefore(rightEndExcluded - 1);
+        chunkSuit4CPV.updateLP(LP);
+      }
+      if (FP != null && LP != null && FP.timestamp > LP.timestamp) {
+        // the chunk has no point in this span, do nothing
         continue;
-      }
-      if (timestamp >= endTime) {
-        break;
-      }
-      int idx = (int) Math.floor((timestamp - startTime) * 1.0 / interval);
-      if (!splitBatchDataMap.containsKey(idx)) {
-        // create batchData
-        BatchData batch1 = BatchDataFactory.createBatchData(dataType, true, false);
-        splitBatchDataMap.put(idx, batch1);
-        Statistics statistics = null;
-        switch (dataType) {
-          case INT32:
-            statistics = new IntegerStatistics();
-            break;
-          case INT64:
-            statistics = new LongStatistics();
-            break;
-          case FLOAT:
-            statistics = new FloatStatistics();
-            break;
-          case DOUBLE:
-            statistics = new DoubleStatistics();
-            break;
-          default:
-            break;
-        }
-        // create chunkMetaData
-        ChunkMetadata chunkMetadata1 =
-            new ChunkMetadata(
-                chunkMetadata.getMeasurementUid(),
-                chunkMetadata.getDataType(),
-                chunkMetadata.getOffsetOfChunkHeader(),
-                statistics);
-        chunkMetadata1.setVersion(chunkMetadata.getVersion()); // don't miss this
-
-        //        // important, used later for candidate point verification
-        //        // (1) candidate point itself whether is in the deleted interval
-        //        // (2) candidate point whether is overlapped by a chunk with a larger version
-        // number and
-        //        // the chunk does not have a deleted interval overlapping this candidate point
-        //        chunkMetadata1.setDeleteIntervalList(chunkMetadata.getDeleteIntervalList());
-        //        // not use current Ii to modify deletedIntervalList any more
-
-        splitChunkMetadataMap.put(idx, chunkMetadata1);
-      }
-      BatchData batchData1 = splitBatchDataMap.get(idx);
-      ChunkMetadata chunkMetadata1 = splitChunkMetadataMap.get(idx);
-      switch (dataType) {
-        case INT32:
-          int anInt = valueDecoder.readInt(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
-            // update batchData1
-            batchData1.putInt(timestamp, anInt);
-            // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, anInt);
-          }
-          break;
-        case INT64:
-          long aLong = valueDecoder.readLong(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
-            // update batchData1
-            batchData1.putLong(timestamp, aLong);
-            // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aLong);
-          }
-          break;
-        case FLOAT:
-          float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
-            // update batchData1
-            batchData1.putFloat(timestamp, aFloat);
-            // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aFloat);
-          }
-          break;
-        case DOUBLE:
-          double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
-            // update batchData1
-            batchData1.putDouble(timestamp, aDouble);
-            // update statistics of chunkMetadata1
-            chunkMetadata1.getStatistics().update(timestamp, aDouble);
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
-    }
-
-    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
-    for (Integer i : splitBatchDataMap.keySet()) {
-      if (!splitBatchDataMap.get(i).isEmpty()) {
-        if (i == curIdx) {
-          currentChunkList.add(
-              new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+      } else { // add this chunkSuit4CPV into currentChunkList or splitChunkList
+        if (n == 0) {
+          currentChunkList.add(chunkSuit4CPV);
         } else {
-          splitChunkList.computeIfAbsent(i, k -> new ArrayList<>());
-          splitChunkList
-              .get(i)
-              .add(
-                  new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+          int idx = (int) Math.floor((FP.timestamp - startTime) * 1.0 / interval); // global index
+          splitChunkList.computeIfAbsent(idx, k -> new ArrayList<>());
+          splitChunkList.get(idx).add(chunkSuit4CPV);
         }
       }
     }
   }
+
+//    Map<Integer, BatchData> splitBatchDataMap = new HashMap<>();
+//    Map<Integer, ChunkMetadata> splitChunkMetadataMap = new HashMap<>();
+//    while (timeDecoder.hasNext(timeBuffer)) {
+//      long timestamp = timeDecoder.readLong(timeBuffer);
+//      // prepare corresponding batchData
+//      if (timestamp < curStartTime) {
+//        switch (dataType) {
+//          case INT32:
+//            valueDecoder.readInt(valueBuffer);
+//            break;
+//          case INT64:
+//            valueDecoder.readLong(valueBuffer);
+//            break;
+//          case FLOAT:
+//            valueDecoder.readFloat(valueBuffer);
+//            break;
+//          case DOUBLE:
+//            valueDecoder.readDouble(valueBuffer);
+//            break;
+//          default:
+//            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+//        }
+//        continue;
+//      }
+//      if (timestamp >= endTime) {
+//        break;
+//      }
+//      int idx = (int) Math.floor((timestamp - startTime) * 1.0 / interval);
+//      if (!splitBatchDataMap.containsKey(idx)) {
+//        // create batchData
+//        BatchData batch1 = BatchDataFactory.createBatchData(dataType, true, false);
+//        splitBatchDataMap.put(idx, batch1);
+//        Statistics statistics = null;
+//        switch (dataType) {
+//          case INT32:
+//            statistics = new IntegerStatistics();
+//            break;
+//          case INT64:
+//            statistics = new LongStatistics();
+//            break;
+//          case FLOAT:
+//            statistics = new FloatStatistics();
+//            break;
+//          case DOUBLE:
+//            statistics = new DoubleStatistics();
+//            break;
+//          default:
+//            break;
+//        }
+//        // create chunkMetaData
+//        ChunkMetadata chunkMetadata1 =
+//            new ChunkMetadata(
+//                chunkMetadata.getMeasurementUid(),
+//                chunkMetadata.getDataType(),
+//                chunkMetadata.getOffsetOfChunkHeader(),
+//                statistics);
+//        chunkMetadata1.setVersion(chunkMetadata.getVersion()); // don't miss this
+//
+//        //        // important, used later for candidate point verification
+//        //        // (1) candidate point itself whether is in the deleted interval
+//        //        // (2) candidate point whether is overlapped by a chunk with a larger version
+//        // number and
+//        //        // the chunk does not have a deleted interval overlapping this candidate point
+//        //        chunkMetadata1.setDeleteIntervalList(chunkMetadata.getDeleteIntervalList());
+//        //        // not use current Ii to modify deletedIntervalList any more
+//
+//        splitChunkMetadataMap.put(idx, chunkMetadata1);
+//      }
+//      BatchData batchData1 = splitBatchDataMap.get(idx);
+//      ChunkMetadata chunkMetadata1 = splitChunkMetadataMap.get(idx);
+//      switch (dataType) {
+//        case INT32:
+//          int anInt = valueDecoder.readInt(valueBuffer);
+//          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
+//            // update batchData1
+//            batchData1.putInt(timestamp, anInt);
+//            // update statistics of chunkMetadata1
+//            chunkMetadata1.getStatistics().update(timestamp, anInt);
+//          }
+//          break;
+//        case INT64:
+//          long aLong = valueDecoder.readLong(valueBuffer);
+//          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+//            // update batchData1
+//            batchData1.putLong(timestamp, aLong);
+//            // update statistics of chunkMetadata1
+//            chunkMetadata1.getStatistics().update(timestamp, aLong);
+//          }
+//          break;
+//        case FLOAT:
+//          float aFloat = valueDecoder.readFloat(valueBuffer);
+//          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+//            // update batchData1
+//            batchData1.putFloat(timestamp, aFloat);
+//            // update statistics of chunkMetadata1
+//            chunkMetadata1.getStatistics().update(timestamp, aFloat);
+//          }
+//          break;
+//        case DOUBLE:
+//          double aDouble = valueDecoder.readDouble(valueBuffer);
+//          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+//            // update batchData1
+//            batchData1.putDouble(timestamp, aDouble);
+//            // update statistics of chunkMetadata1
+//            chunkMetadata1.getStatistics().update(timestamp, aDouble);
+//          }
+//          break;
+//        default:
+//          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+//      }
+//    }
+//
+//    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
+//    for (Integer i : splitBatchDataMap.keySet()) {
+//      if (!splitBatchDataMap.get(i).isEmpty()) {
+//        if (i == curIdx) {
+//          currentChunkList.add(
+//              new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+//        } else {
+//          splitChunkList.computeIfAbsent(i, k -> new ArrayList<>());
+//          splitChunkList
+//              .get(i)
+//              .add(
+//                  new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+//        }
+//      }
+//    }
 
   /**
    * chunk里点时间戳从小到大递增， 所以遍历直到点的时间戳大于或等于candidateTimestamp即可结束
@@ -265,7 +295,9 @@ public class PageReader implements IPageReader {
     return false;
   }
 
-  /** @return the returned BatchData may be empty, but never be null */
+  /**
+   * @return the returned BatchData may be empty, but never be null
+   */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

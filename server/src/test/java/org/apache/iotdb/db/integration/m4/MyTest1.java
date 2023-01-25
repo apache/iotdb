@@ -25,6 +25,10 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,7 +49,8 @@ public class MyTest1 {
   private static String[] creationSqls =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle.d0",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT64, ENCODING=PLAIN",
+          // iotdb的int类型的plain编码用的是自制的不支持random access，所以值类型用long
       };
 
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -79,7 +84,7 @@ public class MyTest1 {
   }
 
   @Test
-  public void test1() {
+  public void test1() throws Exception {
     prepareData1();
 
     String[] res =

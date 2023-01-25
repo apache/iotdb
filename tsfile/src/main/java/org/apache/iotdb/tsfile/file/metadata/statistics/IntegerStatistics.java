@@ -18,26 +18,31 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-/** Statistics for int type. */
+/**
+ * Statistics for int type.
+ */
 public class IntegerStatistics extends Statistics<Integer> {
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private MinMaxInfo<Integer> minInfo;
 
   private MinMaxInfo<Integer> maxInfo;
   private int firstValue;
   private int lastValue;
   private long sumValue;
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private final TSDataType minMaxDataType = TSDataType.MIN_MAX_INT32;
 
   static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
@@ -47,13 +52,17 @@ public class IntegerStatistics extends Statistics<Integer> {
     return TSDataType.INT32;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public IntegerStatistics() {
     minInfo = new MinMaxInfo<>(Integer.MAX_VALUE, -1);
     maxInfo = new MinMaxInfo<>(Integer.MIN_VALUE, -1);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public int getStatsSize() {
     int len = 0;
@@ -67,7 +76,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     return len;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void initializeStats(
       MinMaxInfo<Integer> minInfo,
       MinMaxInfo<Integer> maxInfo,
@@ -81,7 +92,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue += sum;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   public void initializeStats(
       int min,
       long bottomTimestamp,
@@ -97,7 +110,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue += sum;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private void updateStats(
       int minValue,
       long bottomTimestamp,
@@ -111,7 +126,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.lastValue = lastValue;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   private void updateStats(
       MinMaxInfo<Integer> minInfo,
       MinMaxInfo<Integer> maxInfo,
@@ -140,7 +157,9 @@ public class IntegerStatistics extends Statistics<Integer> {
   //    maxValue = BytesUtils.bytesToInt(maxBytes);
   //  }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   void updateStats(int value, long timestamp) {
     if (isEmpty) {
@@ -151,7 +170,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   void updateStats(int[] values, long[] timestamps, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
@@ -164,37 +185,49 @@ public class IntegerStatistics extends Statistics<Integer> {
     return INTEGER_STATISTICS_FIXED_RAM_SIZE;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public MinMaxInfo<Integer> getMinInfo() {
     return this.minInfo;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public MinMaxInfo<Integer> getMaxInfo() {
     return this.maxInfo;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public Integer getMinValue() {
     return this.minInfo.val;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public Integer getMaxValue() {
     return this.maxInfo.val;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public long getBottomTimestamp() {
     return this.minInfo.timestamp;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public long getTopTimestamp() {
     return this.maxInfo.timestamp;
@@ -203,6 +236,22 @@ public class IntegerStatistics extends Statistics<Integer> {
   @Override
   public Integer getFirstValue() {
     return firstValue;
+  }
+
+  public void setFirstValue(int value) {
+    this.firstValue = value;
+  }
+
+  public void setLastValue(int value) {
+    this.lastValue = value;
+  }
+
+  public void setMinInfo(long timestamp, int value) {
+    this.minInfo.reset(value, timestamp);
+  }
+
+  public void setMaxInfo(long timestamp, int value) {
+    this.maxInfo.reset(value, timestamp);
   }
 
   @Override
@@ -220,7 +269,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     return sumValue;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
@@ -244,7 +295,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void updateMinInfo(Integer val, long timestamp) {
     if (val < this.minInfo.val) {
@@ -252,7 +305,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void updateMaxInfo(Integer val, long timestamp) {
     if (val > this.maxInfo.val) {
@@ -260,7 +315,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
@@ -272,7 +329,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     return byteLen;
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void deserialize(InputStream inputStream) throws IOException {
     this.minInfo = ReadWriteIOUtils.readMinMaxInfo(inputStream, minMaxDataType);
@@ -282,7 +341,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     this.minInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
@@ -292,7 +353,9 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
-  /** @author Yuyuan Kang */
+  /**
+   * @author Yuyuan Kang
+   */
   @Override
   public String toString() {
     return super.toString()

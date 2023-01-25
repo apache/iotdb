@@ -175,6 +175,22 @@ public class LongStatistics extends Statistics<Long> {
     return firstValue;
   }
 
+  public void setFirstValue(long value) {
+    this.firstValue = value;
+  }
+
+  public void setLastValue(long value) {
+    this.lastValue = value;
+  }
+
+  public void setMinInfo(long timestamp, long value) {
+    this.minInfo.reset(value, timestamp);
+  }
+
+  public void setMaxInfo(long timestamp, long value) {
+    this.maxInfo.reset(value, timestamp);
+  }
+
   @Override
   public Long getLastValue() {
     return lastValue;
