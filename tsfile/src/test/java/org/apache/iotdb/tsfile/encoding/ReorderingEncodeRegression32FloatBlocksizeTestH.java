@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class ReorderingEncodeRRTestFloatSplitTime3H {
+public class ReorderingEncodeRegression32FloatBlocksizeTestH {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -53,12 +53,12 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
     return bytes;
   }
   public static byte[] double2Bytes(double dou){
-      long value = Double.doubleToRawLongBits(dou);
-      byte[] bytes= new byte[8];
-      for(int i=0;i<8;i++){
-        bytes[i] = (byte) ((value >>8*i)& 0xff);
-      }
-      return bytes;
+    long value = Double.doubleToRawLongBits(dou);
+    byte[] bytes= new byte[8];
+    for(int i=0;i<8;i++){
+      bytes[i] = (byte) ((value >>8*i)& 0xff);
+    }
+    return bytes;
   }
   public static byte[] bitPacking(ArrayList<Integer> numbers,int bit_width){
     int block_num = numbers.size()/8;
@@ -227,7 +227,7 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
 //  }
 
   public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
 
     int max_deviation = Integer.MIN_VALUE;
 
@@ -306,7 +306,7 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
   }
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                     ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
+                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -437,7 +437,7 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
-                                    ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
+                             ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
     int j_star_bit_width = 33;
     int j_star = 0;
     double theta0_r = theta.get(0);
@@ -491,8 +491,8 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
     double theta1_v = theta.get(3);
 
     for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
-        int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
+      int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
+      int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
       if(index == 1){
         if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
           i_star_bit_width = epsilon_r_j;
@@ -509,7 +509,7 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
+                                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -815,11 +815,11 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
 
       float theta0_r = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = byte2float2(encoded, decode_pos);
+      double theta1_r = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = byte2float2(encoded, decode_pos);
+      double theta0_v = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = byte2float2(encoded, decode_pos);
+      double theta1_v = byte2float2(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -856,11 +856,11 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < block_size-1; i++) {
-        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
 
@@ -998,79 +998,76 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
     return result_list;
   }
 
-
-
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\Metro-Traffic_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
 //    dataset_map_td.add(3600);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\Nifty-Stocks_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
 //    dataset_map_td.add(86400);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\USGS-Earthquakes_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
 //    dataset_map_td.add(50);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\Cyber-Vehicle_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
 //    dataset_map_td.add(10);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\TH-Climate_ratio.csv");
-//    dataset_map_td.add(4);
+//            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
+//    dataset_map_td.add(3);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\TY-Transport_ratio.csv");
-//    dataset_map_td.add(6);
+//            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
+//    dataset_map_td.add(5);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\TY-Fuel_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
 //    dataset_map_td.add(60);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\decoding_time_rr\\GW-Magnetic_ratio.csv");
+//            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
 
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\Metro-Traffic_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\Nifty-Stocks_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\TH-Climate_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\TY-Transport_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\TY-Fuel_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
+            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    //for(int file_i=0;file_i<1;file_i++){
     for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
@@ -1098,110 +1095,67 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
   //      "Uncompress Time",
               "Points",
               "Compressed Size",
+              "Block Size",
               "Compression Ratio"
       };
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
+      for(int block_size_exp=4;block_size_exp<11;block_size_exp++) {
+        int block_size = (int) Math.pow(2, block_size_exp);
+        for (File f : tempList) {
+          InputStream inputStream = Files.newInputStream(f.toPath());
+          CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+          ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+          ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
-      for (File f : tempList) {
-//        ArrayList<Integer> flag = new ArrayList<>();
-//        flag.add(0);
-//        flag.add(0);
-//        flag.add(0);
+          // add a column to "data"
+          loader.readHeaders();
+          data.clear();
+          while (loader.readRecord()) {
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add(Integer.valueOf(loader.getValues()[0]));
+            tmp.add(Integer.valueOf(loader.getValues()[1]));
+            data.add(tmp);
+          }
+          inputStream.close();
+          long encodeTime = 0;
+          long decodeTime = 0;
+          double ratio = 0;
+          double compressed_size = 0;
+          for (int i = 0; i < repeatTime; i++) {
+            long s = System.nanoTime();
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
+            long e = System.nanoTime();
+            encodeTime += (e - s);
+            compressed_size += buffer.size();
+            double ratioTmp =
+                    (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+            ratio += ratioTmp;
+            s = System.nanoTime();
+            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+            e = System.nanoTime();
+            decodeTime += (e - s);
+          }
 
-        InputStream inputStream = Files.newInputStream(f.toPath());
-        CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-        ArrayList<ArrayList<Integer>> data = new ArrayList<>();
-        ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
-        // add a column to "data"
-        loader.readHeaders();
-        data.clear();
-        while (loader.readRecord()) {
-          ArrayList<Integer> tmp = new ArrayList<>();
-          tmp.add(Integer.valueOf(loader.getValues()[0]));
-          tmp.add(Integer.valueOf(loader.getValues()[1]));
-          data.add(tmp);
+          ratio /= repeatTime;
+          compressed_size /= repeatTime;
+          encodeTime /= repeatTime;
+          decodeTime /= repeatTime;
+
+          String[] record = {
+                  f.toString(),
+                  "RR-32-FLOAT",
+                  String.valueOf(encodeTime),
+                  String.valueOf(decodeTime),
+                  String.valueOf(data.size()),
+                  String.valueOf(compressed_size),
+                  String.valueOf(block_size_exp),
+                  String.valueOf(ratio)
+          };
+          writer.writeRecord(record);
         }
-        inputStream.close();
-        long encodeTime = 0;
-        long decodeTime = 0;
-        double ratio = 0;
-        double compressed_size = 0;
-        for (int i = 0; i < repeatTime; i++) {
-          long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i));
-          //ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),flag);
-//          System.out.print(flag.get(0));
-//          System.out.print(" ");
-//          System.out.print(flag.get(1));
-//          System.out.print(" ");
-//          System.out.println(flag.get(2));
-          long e = System.nanoTime();
-          encodeTime += (e - s);
-          compressed_size += buffer.size();
-          double ratioTmp =
-                  (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
-          ratio += ratioTmp;
-          s = System.nanoTime();
-          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
-          e = System.nanoTime();
-          decodeTime += (e-s);
-
-//          for(int j=0;j<256;j++){
-//            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-//              System.out.println("Wrong Time!");
-//              System.out.print(j);
-//              System.out.print(" ");
-//              System.out.print(data.get(j).get(0));
-//              System.out.print(" ");
-//              System.out.println(data_decoded.get(j).get(0));
-//            }
-//            else{
-//              System.out.println("Correct Time!");
-//              System.out.print(j);
-//              System.out.print(" ");
-//              System.out.print(data.get(j).get(0));
-//              System.out.print(" ");
-//              System.out.println(data_decoded.get(j).get(0));
-//            }
-//            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-//              System.out.println("Wrong Value!");
-//              System.out.print(j);
-//              System.out.print(" ");
-//              System.out.print(data.get(j).get(1));
-//              System.out.print(" ");
-//              System.out.println(data_decoded.get(j).get(1));
-//            }
-//            else{
-//              System.out.println("Correct Value!");
-//              System.out.print(j);
-//              System.out.print(" ");
-//              System.out.print(data.get(j).get(1));
-//              System.out.print(" ");
-//              System.out.println(data_decoded.get(j).get(1));
-//            }
-//          }
-        }
-
-
-        ratio /= repeatTime;
-        compressed_size /= repeatTime;
-        encodeTime /= repeatTime;
-        decodeTime /= repeatTime;
-
-        String[] record = {
-                f.toString(),
-                "RR",
-                String.valueOf(encodeTime),
-                String.valueOf(decodeTime),
-                String.valueOf(data.size()),
-                String.valueOf(compressed_size),
-                String.valueOf(ratio)
-        };
-        System.out.println(ratio);
-        writer.writeRecord(record);
       }
       writer.close();
 
