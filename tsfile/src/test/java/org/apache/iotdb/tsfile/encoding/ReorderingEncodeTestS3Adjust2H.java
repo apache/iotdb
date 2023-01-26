@@ -441,9 +441,6 @@ public class ReorderingEncodeTestS3Adjust2H {
 
     raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
     raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
-//    ArrayList<Integer> test= new ArrayList<>();
-//    getEncodeBitsDelta( ts_block,  block_size, test);
-//    System.out.println(test);
     // alpha == 1
     if(alpha==0){
 //      System.out.println("alpha == 1");
@@ -497,12 +494,6 @@ public class ReorderingEncodeTestS3Adjust2H {
 //        System.out.println("j_star_list adjustn0");
       }
       else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
-//        System.out.println(raw_bit_width_timestamp);
-//        System.out.println(b.get(0));
-//        System.out.println(raw_bit_width_value);
-//        System.out.println(b.get(1));
-        System.out.println(alpha);
-
         j_star_list.add(0);
 //        System.out.println("j_star_list adjustn0 ==");
       }
@@ -561,14 +552,8 @@ public class ReorderingEncodeTestS3Adjust2H {
 
     if(j_star_list.size() == 0){
     }else {
-//      System.out.println("j_star_list.size() !=0");
-//      System.out.println(j_star_list);
       j_star = getIstarClose(alpha,j_star_list);
     }
-//    System.out.println(ts_block.get(81));
-//    System.out.println(ts_block.get(82));
-//    System.out.println(ts_block.get(83));
-//    System.out.println(ts_block.get(84));
     return j_star;
   }
 
