@@ -351,10 +351,6 @@ public class ReorderingEncodeTestS3Adjust2H {
       tmp.add(delta_r);
       tmp.add(delta_v);
       ts_block_delta.add(tmp);
-//      if(j==179){
-//        System.out.println(ts_block.get(j).get(0));
-//        System.out.println(ts_block.get(j-1).get(0));
-//      }
       if(delta_r <timestamp_delta_min){
         timestamp_delta_min = delta_r;
       }
@@ -384,10 +380,6 @@ public class ReorderingEncodeTestS3Adjust2H {
     }
     int max_bit_width_interval = getBitWith(max_timestamp);
     int max_bit_width_value = getBitWith(max_value);
-    //System.out.println(max_timestamp);
-    //System.out.println(max_bit_width_interval);
-//    System.out.println(max_value);
-//    System.out.println(max_bit_width_value);
 
     // calculate error
     int  length = (max_bit_width_interval+max_bit_width_value)*(block_size-1);
@@ -399,10 +391,6 @@ public class ReorderingEncodeTestS3Adjust2H {
     result.add(timestamp_delta_min);
     result.add(value_delta_min);
 
-//    i_star.add(max_timestamp_i);
-//    i_star.add(max_value_i);
-
-//    System.out.println(ts_block_delta);
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
@@ -988,15 +976,6 @@ public class ReorderingEncodeTestS3Adjust2H {
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length,
                                             ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
-//    // encode block size (Integer)
-//    byte[] block_size_byte = int2Bytes(ts_block.size());
-//    for (byte b : block_size_byte) encoded_result.add(b);
-
-//    // encode r0 and d0 of a block (Integer)
-//    byte[] r0_byte = int2Bytes(raw_length.get(6));
-//    for (byte b : r0_byte) encoded_result.add(b);
-//    byte[] d0_byte = int2Bytes(raw_length.get(7));
-//    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode min_delta_interval and min_delta_value
     byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
@@ -1032,7 +1011,6 @@ public class ReorderingEncodeTestS3Adjust2H {
 
     return encoded_result;
   }
-  //public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td, ArrayList<Integer> flag){
   public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
     block_size ++;
     int length_all = data.size();
@@ -1095,19 +1073,11 @@ public class ReorderingEncodeTestS3Adjust2H {
 //        System.out.println("count_reorder");
       }
 
-
-//      System.out.println(raw_length.get(0));
-//      System.out.println(raw_length.get(1));
       j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-//      System.out.println(raw_length);
-
 //      System.out.println(i_star);
 //      System.out.println(j_star);
       int adjust_count = 0;
       while(j_star!=-1){
-//        ArrayList<Integer> test= new ArrayList<>();
-//        getEncodeBitsDelta( ts_block,  block_size, test,i_star_ready_reorder);
-//        System.out.println(test);
         if(adjust_count < block_size/2){
           adjust_count ++;
         }else {
