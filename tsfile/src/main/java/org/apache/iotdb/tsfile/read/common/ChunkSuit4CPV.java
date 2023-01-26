@@ -66,7 +66,7 @@ public class ChunkSuit4CPV {
   //  public MinMaxInfo<Float> maxInfoFloat;
   //  public MinMaxInfo<Double> maxInfoDouble;
 
-  private BatchData batchData; // deprecated
+  //  private BatchData batchData; // deprecated
 
   private PageReader pageReader; // bears plain timeBuffer and valueBuffer
   // pageReader does not refer to the same deleteInterval as those in chunkMetadata
@@ -187,17 +187,17 @@ public class ChunkSuit4CPV {
     return chunkMetadata;
   }
 
-  public BatchData getBatchData() {
-    return batchData;
-  }
+  //  public BatchData getBatchData() {
+  //    return batchData;
+  //  }
 
   public PageReader getPageReader() {
     return pageReader;
   }
 
-  public void setBatchData(BatchData batchData) {
-    this.batchData = batchData;
-  }
+  //  public void setBatchData(BatchData batchData) {
+  //    this.batchData = batchData;
+  //  }
 
   public void setPageReader(PageReader pageReader) {
     this.pageReader = pageReader;
