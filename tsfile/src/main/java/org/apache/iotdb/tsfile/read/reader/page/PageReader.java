@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -42,50 +37,55 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
   protected TSDataType dataType;
 
-  /**
-   * decoder for value column
-   */
+  /** decoder for value column */
   protected Decoder valueDecoder;
 
-  /**
-   * decoder for time column
-   */
+  /** decoder for time column */
   protected Decoder timeDecoder;
 
-  /**
-   * time column in memory
-   */
+  /** time column in memory */
   public ByteBuffer timeBuffer;
 
-  /**
-   * value column in memory
-   */
+  /** value column in memory */
   public ByteBuffer valueBuffer;
 
   public int timeBufferLength;
 
   protected Filter filter;
 
-  /**
-   * A list of deleted intervals.
-   */
+  /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
   private int deleteCursor = 0;
 
-  public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
-      Decoder timeDecoder, Filter filter) {
+  public PageReader(
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
-      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
+  public PageReader(
+      PageHeader pageHeader,
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
@@ -109,17 +109,26 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  /**
-   * the chunk partially overlaps in time with the current M4 interval Ii
-   */
-  public void split4CPV(long startTime, long endTime, long interval, long curStartTime,
-      List<ChunkSuit4CPV> currentChunkList, Map<Integer, List<ChunkSuit4CPV>> splitChunkList,
+  /** the chunk partially overlaps in time with the current M4 interval Ii */
+  public void split4CPV(
+      long startTime,
+      long endTime,
+      long interval,
+      long curStartTime,
+      List<ChunkSuit4CPV> currentChunkList,
+      Map<Integer, List<ChunkSuit4CPV>> splitChunkList,
       ChunkMetadata chunkMetadata)
       throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime)
-//    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval); // global index
-    int numberOfSpans = (int) Math.floor(
-        (Math.min(chunkMetadata.getEndTime(), endTime - 1)  // endTime is excluded so -1
-            - curStartTime) * 1.0 / interval) + 1;
+    //    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval); // global
+    // index
+    int numberOfSpans =
+        (int)
+                Math.floor(
+                    (Math.min(chunkMetadata.getEndTime(), endTime - 1) // endTime is excluded so -1
+                            - curStartTime)
+                        * 1.0
+                        / interval)
+            + 1;
     for (int n = 0; n < numberOfSpans; n++) {
       long leftEndIncluded = curStartTime + n * interval;
       long rightEndExcluded = curStartTime + (n + 1) * interval;
@@ -141,8 +150,12 @@ public class PageReader implements IPageReader {
         if (n == 0) {
           currentChunkList.add(chunkSuit4CPV);
         } else {
-          int idx = (int) Math.floor((chunkSuit4CPV.statistics.getStartTime() - startTime) * 1.0
-              / interval); // global index TODO debug this
+          int idx =
+              (int)
+                  Math.floor(
+                      (chunkSuit4CPV.statistics.getStartTime() - startTime)
+                          * 1.0
+                          / interval); // global index TODO debug this
           splitChunkList.computeIfAbsent(idx, k -> new ArrayList<>());
           splitChunkList.get(idx).add(chunkSuit4CPV);
         }
@@ -151,7 +164,7 @@ public class PageReader implements IPageReader {
   }
 
   public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) {
-    deleteCursor = 0;//TODO DEBUG
+    deleteCursor = 0; // TODO DEBUG
     Statistics statistics = null;
     switch (dataType) {
       case INT64:
@@ -175,7 +188,7 @@ public class PageReader implements IPageReader {
           long aLong = valueBuffer.getLong(timeBufferLength + pos * 8);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
             // update statistics of chunkMetadata1
-            statistics.updateStats(aLong, timestamp); //TODO DEBUG
+            statistics.updateStats(aLong, timestamp); // TODO DEBUG
             count++;
             // ATTENTION: do not use update() interface which will also update StepRegress!
             // only updateStats, actually only need to update BP and TP
@@ -231,9 +244,7 @@ public class PageReader implements IPageReader {
     return false;
   }
 
-  /**
-   * @return the returned BatchData may be empty, but never be null
-   */
+  /** @return the returned BatchData may be empty, but never be null */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

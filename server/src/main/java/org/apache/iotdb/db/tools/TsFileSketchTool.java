@@ -245,8 +245,7 @@ public class TsFileSketchTool {
   }
 
   private static Pair<String, String> checkArgs(String[] args) {
-    String filename =
-        "D:\\plain-plain-noindex.tsfile";
+    String filename = "D:\\plain-plain-noindex.tsfile";
     String outFile = "TsFile_sketch_view.txt";
     if (args.length == 1) {
       filename = args[0];

@@ -46,12 +46,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public void setMinInfo(MinMaxInfo minInfo) {
-  }
+  public void setMinInfo(MinMaxInfo minInfo) {}
 
   @Override
-  public void setMaxInfo(MinMaxInfo maxInfo) {
-  }
+  public void setMaxInfo(MinMaxInfo maxInfo) {}
   /**
    * initialize boolean Statistics.
    *

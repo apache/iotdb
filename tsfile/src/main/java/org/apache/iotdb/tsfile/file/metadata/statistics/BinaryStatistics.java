@@ -47,12 +47,10 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void setMinInfo(MinMaxInfo minInfo) {
-  }
+  public void setMinInfo(MinMaxInfo minInfo) {}
 
   @Override
-  public void setMaxInfo(MinMaxInfo maxInfo) {
-  }
+  public void setMaxInfo(MinMaxInfo maxInfo) {}
 
   /**
    * initialize Statistics.

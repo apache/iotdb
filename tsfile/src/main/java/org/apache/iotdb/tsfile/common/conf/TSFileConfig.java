@@ -86,7 +86,7 @@ public class TSFileConfig implements Serializable {
    * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
    */
-  private String timeEncoding = "PLAIN"; //"TS_2DIFF";
+  private String timeEncoding = "PLAIN"; // "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
    * TS_2DIFF, REGULAR, GORILLA and RLE(run-length encoding). For float, double data type, TsFile

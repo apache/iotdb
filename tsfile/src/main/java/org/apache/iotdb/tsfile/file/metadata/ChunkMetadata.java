@@ -19,10 +19,6 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -95,30 +91,31 @@ public class ChunkMetadata {
     this.statistics = statistics;
   }
 
-//  // deep copy
-//  public ChunkMetadata(ChunkMetadata chunkMetadata) {
-//    this.measurementUid = chunkMetadata.measurementUid;
-//    this.tsDataType = chunkMetadata.tsDataType;
-//    this.offsetOfChunkHeader = chunkMetadata.offsetOfChunkHeader;
-//    this.statistics = null; // this needs deep copy because we will modify it in different M4 spans
-//    switch (tsDataType) {
-//      case INT32:
-//        statistics = new IntegerStatistics();
-//        break;
-//      case INT64:
-//        statistics = new LongStatistics();
-//        break;
-//      case FLOAT:
-//        statistics = new FloatStatistics();
-//        break;
-//      case DOUBLE:
-//        statistics = new DoubleStatistics();
-//        break;
-//      default:
-//        break;
-//    }
-//    this.version = chunkMetadata.version;
-//  }
+  //  // deep copy
+  //  public ChunkMetadata(ChunkMetadata chunkMetadata) {
+  //    this.measurementUid = chunkMetadata.measurementUid;
+  //    this.tsDataType = chunkMetadata.tsDataType;
+  //    this.offsetOfChunkHeader = chunkMetadata.offsetOfChunkHeader;
+  //    this.statistics = null; // this needs deep copy because we will modify it in different M4
+  // spans
+  //    switch (tsDataType) {
+  //      case INT32:
+  //        statistics = new IntegerStatistics();
+  //        break;
+  //      case INT64:
+  //        statistics = new LongStatistics();
+  //        break;
+  //      case FLOAT:
+  //        statistics = new FloatStatistics();
+  //        break;
+  //      case DOUBLE:
+  //        statistics = new DoubleStatistics();
+  //        break;
+  //      default:
+  //        break;
+  //    }
+  //    this.version = chunkMetadata.version;
+  //  }
 
   @Override
   public String toString() {
