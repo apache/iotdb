@@ -1145,8 +1145,9 @@ public class ReorderingEncodeRRTestDoubleSplitTime3H {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-
           data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+          e = System.nanoTime();
+          decodeTime += (e-s);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
@@ -1182,9 +1183,6 @@ public class ReorderingEncodeRRTestDoubleSplitTime3H {
 //              System.out.println(data_decoded.get(j).get(1));
 //            }
 //          }
-
-          e = System.nanoTime();
-          decodeTime += (e-s);
         }
 
 
@@ -1202,7 +1200,7 @@ public class ReorderingEncodeRRTestDoubleSplitTime3H {
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
-        //System.out.println(ratio);
+        System.out.println(ratio);
         writer.writeRecord(record);
       }
       writer.close();

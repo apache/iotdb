@@ -995,8 +995,9 @@ public class ReorderingEncodeTestSplitTime3H {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-
           data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
+          e = System.nanoTime();
+          decodeTime += (e-s);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
@@ -1032,9 +1033,6 @@ public class ReorderingEncodeTestSplitTime3H {
 //              System.out.println(data_decoded.get(j).get(1));
 //            }
 //          }
-
-          e = System.nanoTime();
-          decodeTime += (e-s);
         }
 
 
@@ -1053,7 +1051,7 @@ public class ReorderingEncodeTestSplitTime3H {
                 String.valueOf(ratio)
         };
         writer.writeRecord(record);
-        //System.out.println(ratio);
+        System.out.println(ratio);
       }
       writer.close();
 
