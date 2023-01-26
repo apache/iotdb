@@ -959,9 +959,9 @@ public class ReorderingEncodeDeltaBlocksizeTestH {
     }
     int timestamp_delta_max_value = ts_block.get(timestamp_delta_max_index).get(0) - ts_block.get(timestamp_delta_max_index-1).get(0)
             -  timestamp_delta_min;
-    int value_delta_max_value = ts_block.get(value_delta_max_index).get(0) - ts_block.get(value_delta_max_index-1).get(0)
+    int value_delta_max_value = ts_block.get(value_delta_max_index).get(1) - ts_block.get(value_delta_max_index-1).get(1)
             -  value_delta_min;
-    if(timestamp_delta_max_value<=value_delta_max_value)
+    if(timestamp_delta_max_value>=value_delta_max_value)
       i_star = timestamp_delta_max_index;
     else
       i_star = value_delta_max_index;
