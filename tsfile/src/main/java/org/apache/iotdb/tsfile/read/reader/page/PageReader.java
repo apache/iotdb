@@ -284,6 +284,7 @@ public class PageReader implements IPageReader {
 //    }
 
   public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) throws IOException {
+    deleteCursor = 0;
     Statistics statistics = null;
     switch (dataType) {
       case INT64:

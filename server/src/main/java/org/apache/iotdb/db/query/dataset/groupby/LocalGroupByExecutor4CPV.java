@@ -450,8 +450,10 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               tmp.add(new TimeRange(candidateTimestamp, candidateTimestamp));
               candidate.getChunkMetadata().setDeleteIntervalList(tmp);
             } else {
-              candidate.getChunkMetadata().getDeleteIntervalList()
-                  .add(new TimeRange(candidateTimestamp, candidateTimestamp)); // TODO check
+//              candidate.getChunkMetadata().getDeleteIntervalList()
+//                  .add(new TimeRange(candidateTimestamp, candidateTimestamp)); // TODO check
+              candidate.getChunkMetadata()
+                  .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp);// TODO check
             }
             // 删除那里不需要再加了，而这里更新就需要手动加一下删除操作
             nonLazyLoad.remove(candidate);
