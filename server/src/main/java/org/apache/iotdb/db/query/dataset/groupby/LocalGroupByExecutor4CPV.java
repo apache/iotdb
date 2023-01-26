@@ -187,7 +187,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     }
 
     calculateFirstPoint(currentChunkList, startTime, endTime, interval, curStartTime);
-//    calculateLastPoint(currentChunkList, startTime, endTime, interval, curStartTime);
+    calculateLastPoint(currentChunkList, startTime, endTime, interval, curStartTime);
     calculateBottomPoint(currentChunkList, startTime, endTime, interval, curStartTime);
     calculateTopPoint(currentChunkList, startTime, endTime, interval, curStartTime);
 
@@ -631,14 +631,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       ChunkSuit4CPV susp_candidate = currentChunkList.get(0);
       if (susp_candidate.isLazyLoad()) { // 如果是lazy
         // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
-//        currentChunkList.remove(susp_candidate); // TODO check this
-//        List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
-//            susp_candidate.getChunkMetadata(), this.timeFilter);
-//        for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
-//          ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
-//              currentChunkList, null,
-//              susp_candidate.getChunkMetadata()); // 新增的ChunkSuit4CPV默认isLazyLoad=false
-//        }
         if (susp_candidate.getPageReader() == null) {
           List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
               susp_candidate.getChunkMetadata(), this.timeFilter);
@@ -646,8 +638,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
         // TODO update FP equal to or after statistics.getEndTime
         susp_candidate.updateFPwithTheClosetPointEqualOrAfter(
-            susp_candidate.getStatistics().getEndTime()); // TODO DEBUG
-
+            susp_candidate.getStatistics().getStartTime()); // TODO DEBUG
+        susp_candidate.setLazyLoad(false); // DO NOT FORGET THIS!!!
         continue; // 回到循环1
       } else { // 如果不是lazy load，则该疑似candidate就是真正的candidate。
         // 于是verification判断该点是否被更高优先级（更高优先级这一点在QueryUtils.modifyChunkMetaData(chunkMetadataList,
@@ -667,7 +659,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               deleteCursor++;
             } else if (deleteIntervalList.get(deleteCursor).contains(candidateTimestamp)) {
               isDeletedItself = true;
-//              deleteEndTime = Math.max(deleteEndTime, deleteIntervalList.get(deleteCursor).getMax());
               deleteEndTime = deleteIntervalList.get(deleteCursor).getMax();
               // deleteEndTime可能会大于当前的endTime，因为delete起点可以在整个chunk startTime之后
               break; // since delete intervals are already sorted and merged
@@ -675,16 +666,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               break; // since delete intervals are already sorted and merged
             }
           }
-//          for (TimeRange timeRange : susp_candidate.getChunkMetadata().getDeleteIntervalList()) {
-//            // make sure that delete intervals are already sorted and merged
-//            // TODO debug
-//            if (timeRange.contains(candidateTimestamp)) {
-//              isDeletedItself = true;
-//              deleteEndTime = Math.max(deleteEndTime, timeRange.getMax());
-//              // deleteEndTime不会超过chunkEndTime，因为否则的话这个chunk就会modifyChunkMetaData步骤里被处理掉整个删掉
-//              // TODO check
-//            }
-//          }
         }
         // 如果被删除，标记该点所在chunk为lazy load，并且在不load数据的情况下更新chunkStartTime，然后回到循环1
         if (isDeletedItself) {
@@ -714,14 +695,15 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   private void calculateLastPoint(List<ChunkSuit4CPV> currentChunkList, long startTime,
       long endTime, long interval, long curStartTime) throws IOException {
-    while (true) { // 循环1
+    while (currentChunkList.size() > 0) { // 循环1
       // 按照startTime和version排序，找出疑似LP candidate
       currentChunkList.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
             // aggregations
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
-              int res = ((Comparable) (o2.getChunkMetadata().getEndTime())).compareTo(
-                  o1.getChunkMetadata().getEndTime());
+              int res = ((Comparable) (o2.getStatistics().getEndTime())).compareTo(
+                  o1.getStatistics().getEndTime());
+              // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
               if (res != 0) {
                 return res;
               } else {
@@ -737,39 +719,71 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       ChunkSuit4CPV susp_candidate = currentChunkList.get(0);
       if (susp_candidate.isLazyLoad()) { // 如果是lazy
         // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
-        currentChunkList.remove(susp_candidate); // TODO check this
-        List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
-            susp_candidate.getChunkMetadata(), this.timeFilter);
-        for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
-          ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
-              currentChunkList, null,
-              susp_candidate.getChunkMetadata()); // 新增的ChunkSuit4CPV默认isLazyLoad=false
+//        currentChunkList.remove(susp_candidate); // TODO check this
+//        List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
+//            susp_candidate.getChunkMetadata(), this.timeFilter);
+//        for (IPageReader pageReader : pageReaderList) { // assume only one page in a chunk
+//          ((PageReader) pageReader).split4CPV(startTime, endTime, interval, curStartTime,
+//              currentChunkList, null,
+//              susp_candidate.getChunkMetadata()); // 新增的ChunkSuit4CPV默认isLazyLoad=false
+//        }
+        if (susp_candidate.getPageReader() == null) {
+          List<IPageReader> pageReaderList = FileLoaderUtils.loadPageReaderList(
+              susp_candidate.getChunkMetadata(), this.timeFilter);
+          susp_candidate.setPageReader((PageReader) pageReaderList.get(0));
         }
+        // TODO update FP equal to or after statistics.getEndTime
+        susp_candidate.updateLPwithTheClosetPointEqualOrBefore(
+            susp_candidate.getStatistics().getEndTime()); // TODO DEBUG
+        susp_candidate.setLazyLoad(false); // DO NOT FORGET THIS!!!
         continue; // 回到循环1
       } else { // 如果不是lazy load，则该疑似candidate就是真正的candidate。
         // 于是verification判断该点是否被更高优先级（更高优先级这一点在QueryUtils.modifyChunkMetaData(chunkMetadataList,
         // pathModifications)已做好）的deletes覆盖
-        long candidateTimestamp = susp_candidate.getChunkMetadata().getEndTime(); // TODO check
-        Object candidateValue = susp_candidate.getChunkMetadata().getStatistics()
-            .getLastValue(); // TODO check
+        // TODO NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
+        long candidateTimestamp = susp_candidate.getStatistics().getEndTime(); // TODO check
+        Object candidateValue = susp_candidate.getStatistics().getLastValue(); // TODO check
 
         boolean isDeletedItself = false;
         long deleteStartTime = Long.MAX_VALUE; // TODO check
-        if (susp_candidate.getChunkMetadata().getDeleteIntervalList() != null) {
-          for (TimeRange timeRange : susp_candidate.getChunkMetadata().getDeleteIntervalList()) {
-            if (timeRange.contains(candidateTimestamp)) {
+        List<TimeRange> deleteIntervalList = susp_candidate.getChunkMetadata()
+            .getDeleteIntervalList();
+//        if (susp_candidate.getChunkMetadata().getDeleteIntervalList() != null) {
+//          for (TimeRange timeRange : susp_candidate.getChunkMetadata().getDeleteIntervalList()) {
+//            if (timeRange.contains(candidateTimestamp)) {
+//              isDeletedItself = true;
+//              deleteStartTime = Math.min(deleteStartTime,
+//                  timeRange.getMin()); // deleteStartTime不会小于chunkStartTime，因为否则的话这个chunk就会modifyChunkMetaData步骤里被处理掉整个删掉
+//              // TODO check
+//            }
+//          }
+//        }
+        if (deleteIntervalList != null) {
+          int deleteCursor = 0;
+          while (deleteCursor < deleteIntervalList.size()) {
+            if (deleteIntervalList.get(deleteCursor).getMax() < candidateTimestamp) {
+              deleteCursor++;
+            } else if (deleteIntervalList.get(deleteCursor).contains(candidateTimestamp)) {
               isDeletedItself = true;
-              deleteStartTime = Math.min(deleteStartTime,
-                  timeRange.getMin()); // deleteStartTime不会小于chunkStartTime，因为否则的话这个chunk就会modifyChunkMetaData步骤里被处理掉整个删掉
-              // TODO check
+              deleteStartTime = deleteIntervalList.get(deleteCursor).getMin();
+              // deleteEndTime可能会大于当前的endTime，因为delete起点可以在整个chunk startTime之后
+              break; // since delete intervals are already sorted and merged
+            } else {
+              break; // since delete intervals are already sorted and merged
             }
           }
         }
         // 如果被删除，标记该点所在chunk为lazy load，并且在不load数据的情况下更新chunkEndTime，然后回到循环1
         if (isDeletedItself) {
-          susp_candidate.setLazyLoad(true);
-          susp_candidate.getChunkMetadata().getStatistics()
-              .setEndTime(deleteStartTime); // TODO check
+          if (deleteStartTime <= susp_candidate.getStatistics().getStartTime()) { // NOTE 这里计算的是LP
+            // TODO debug 整个区间内点删掉
+            currentChunkList.remove(susp_candidate);
+          } else {
+            susp_candidate.setLazyLoad(true);
+            susp_candidate.getChunkMetadata().getStatistics().setEndTime(deleteStartTime - 1);
+            // -1 is because delete is closed interval
+            // TODO check
+          }
           continue; // 回到循环1
         } else {
           // 否则，则就是计算结果，结束
