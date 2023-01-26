@@ -33,9 +33,9 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class ChunkSuit4CPV {
 
-  private ChunkMetadata chunkMetadata; // fixed info, including version and stepRegress
+  private ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
 
-  public Statistics statistics; // includes FP/LP/BP/TP info, may be updated
+  public Statistics statistics; // dynamically updated, includes FP/LP/BP/TP info
 
   // [startPos,endPos] definitely for curStartTime interval, thanks to split4CPV
   public int startPos = -1; // the first point position, starting from 0
@@ -68,6 +68,8 @@ public class ChunkSuit4CPV {
   private BatchData batchData; // deprecated
 
   private PageReader pageReader; // bears plain timeBuffer and valueBuffer
+  // pageReader does not refer to the same deleteInterval as those in chunkMetadata
+  // after chunkMetadata executes insertIntoSortedDeletions
 
   //  private List<Long> mergeVersionList = new ArrayList<>();
 //  private List<Long> mergeOffsetList = new ArrayList<>();
