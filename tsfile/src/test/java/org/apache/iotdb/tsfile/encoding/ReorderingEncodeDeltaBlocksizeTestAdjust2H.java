@@ -14,7 +14,7 @@ import java.util.Objects;
 import static java.lang.Math.abs;
 import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
 
-public class ReorderingEncodeDeltaBlocksizeTestH {
+public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
