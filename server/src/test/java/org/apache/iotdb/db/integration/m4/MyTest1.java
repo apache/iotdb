@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -60,6 +61,7 @@ public class MyTest1 {
 
   @Before
   public void setUp() throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     originalCompactionStrategy = config.getCompactionStrategy();
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 

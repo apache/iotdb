@@ -383,7 +383,7 @@ public class ChunkSuit4CPV {
     // since we have constrained that targetTimestamp must be within the chunk time range
     // [startTime, endTime],
     // estimatedPos will not be out of range.
-    return pageReader.timeBuffer.get(estimatedPos) == targetTimestamp;
+    return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
   }
 
   public void updateFP(MinMaxInfo point) {

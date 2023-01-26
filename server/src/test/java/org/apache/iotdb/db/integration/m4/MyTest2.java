@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +45,7 @@ public class MyTest2 {
   private static String[] creationSqls =
       new String[] {
         "SET STORAGE GROUP TO root.vehicle.d0",
-        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT64, ENCODING=PLAIN",
       };
 
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -61,6 +62,7 @@ public class MyTest2 {
 
   @Before
   public void setUp() throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 

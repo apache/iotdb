@@ -27,7 +27,7 @@ import java.util.Arrays;
 
 public class StepRegress {
 
-  private double slope;
+  private double slope = 0;
 
   // when learning parameters, we first determine segmentIntercepts and then determine segmentKeys;
   // when using functions, we read segmentKeys and then infer segmentIntercepts.
@@ -95,6 +95,11 @@ public class StepRegress {
    * only once when serializing.
    */
   public void learn() throws IOException {
+    if (intervals.size() == 0) { // only one point
+      this.segmentKeys.add(timestamps.get(0)); // t1
+      return;
+    }
+
     initForLearn();
 
     int tiltLatestSegmentID = 0;
@@ -380,6 +385,10 @@ public class StepRegress {
    *     in the chunk. Pay attention that f(t) starts from (startTime,1), ends at (endTime,count).
    */
   public double infer(double t) throws IOException {
+    if (segmentKeys.size() == 1) { // TODO DEBUG
+      return 1;
+    }
+
     if (t < segmentKeys.get(0) || t > segmentKeys.getLast()) {
       throw new IOException(
           String.format(

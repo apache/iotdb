@@ -129,6 +129,10 @@ public abstract class Statistics<T> {
     return byteLen;
   }
 
+  /**
+   * slope, m: the number of segment keys, m-2 segment keys in between when m>=2. The first and the
+   * last segment keys are not serialized here, because they are minTime and endTime respectively.
+   */
   int serializeStepRegress(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     stepRegress.learn(); // TODO ensure excuted once and only once
@@ -500,14 +504,17 @@ public abstract class Statistics<T> {
     int m = ReadWriteIOUtils.readInt(byteBuffer); // m
     DoubleArrayList segmentKeys = new DoubleArrayList();
     segmentKeys.add(this.startTime); // t1
-    for (int i = 0; i < m - 2; i++) { // t2,t3,...,tm-1
-      segmentKeys.add(ReadWriteIOUtils.readDouble(byteBuffer));
+    if (m > 1) { // TODO DEBUG
+      for (int i = 0; i < m - 2; i++) { // t2,t3,...,tm-1
+        segmentKeys.add(ReadWriteIOUtils.readDouble(byteBuffer));
+      }
+      segmentKeys.add(this.endTime);
     }
-    segmentKeys.add(this.endTime);
     this.stepRegress.setSegmentKeys(segmentKeys);
-    this.stepRegress
-        .inferInterceptsFromSegmentKeys(); // don't forget this, execute once and only once when
-    // deserializing
+    if (m > 1) {
+      // don't forget this, execute once and only once when
+      this.stepRegress.inferInterceptsFromSegmentKeys();
+    }
   }
 
   public long getStartTime() {
