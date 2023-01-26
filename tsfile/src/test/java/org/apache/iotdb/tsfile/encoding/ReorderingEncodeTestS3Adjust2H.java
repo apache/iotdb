@@ -1397,16 +1397,15 @@ public class ReorderingEncodeTestS3Adjust2H {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=0;file_i<1;file_i++){
+    //for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
-//      String Output =output_path_list.get(file_i);
-//      System.out.println(inputPath);
-
+      String Output =output_path_list.get(file_i);
 
 //          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
-          String Output = "E:\\thu\\Lab\\Group\\31编码论文\\test_ratio.csv";
+//          String Output = "E:\\thu\\Lab\\Group\\31编码论文\\test_ratio.csv";
+
       // speed
       int repeatTime = 1; // set repeat time
 
@@ -1472,8 +1471,9 @@ public class ReorderingEncodeTestS3Adjust2H {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-
-//          data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
+          data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
+          e = System.nanoTime();
+          decodeTime += (e-s);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
@@ -1509,9 +1509,7 @@ public class ReorderingEncodeTestS3Adjust2H {
 //              System.out.println(data_decoded.get(j).get(1));
 //            }
 //          }
-
-          e = System.nanoTime();
-          decodeTime += (e-s);
+          
         }
 
 
