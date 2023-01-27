@@ -311,7 +311,7 @@ public class IoTDBConfig {
   private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 100;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge

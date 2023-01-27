@@ -27,6 +27,10 @@ import java.util.Arrays;
 
 public class StepRegress {
 
+  // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
+  // causing learn() executed more than once!!
+  private boolean isLearned = false;
+
   private double slope = 0;
 
   // when learning parameters, we first determine segmentIntercepts and then determine segmentKeys;
@@ -91,10 +95,17 @@ public class StepRegress {
   }
 
   /**
-   * learn the parameters of the step regression function for the loaded data. Executed once and
-   * only once when serializing.
+   * learn the parameters (slope and segmentKeys) of the step regression function for the loaded
+   * data. Executed once and only once when serializing.
    */
   public void learn() throws IOException {
+    if (isLearned) {
+      // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
+      // causing learn() executed more than once!!
+      return;
+    }
+    isLearned = true;
+
     if (intervals.size() == 0) { // only one point
       this.segmentKeys.add(timestamps.get(0)); // t1
       return;
