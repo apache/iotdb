@@ -60,7 +60,6 @@ public class UDTFAR implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     int length = timeWindow.size();
     if (length <= this.p) {
-      collector.putString(1, "illegal input");
       return;
     }
 
@@ -95,7 +94,6 @@ public class UDTFAR implements UDTF {
       imputedTimeWindow.add(timeWindow.get(i));
       imputedValueWindow.add(valueWindow.get(i));
     }
-    System.out.println("length with imputation:" + imputedTimeWindow.size());
 
     int newLength = imputedTimeWindow.size();
 

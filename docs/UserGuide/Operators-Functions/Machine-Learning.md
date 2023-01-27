@@ -35,7 +35,7 @@ This function is used to learn the coefficients of the autoregressive models for
 
 - `p`: The order of the autoregressive model. Its default value is 1.
 
-**Output Series: ** Output a single series. The type is DOUBLE. The first line corresponds to the first order coefficient, and so on. 
+**Output Series:** Output a single series. The type is DOUBLE. The first line corresponds to the first order coefficient, and so on. 
 
 **Note:** 
 

@@ -206,7 +206,7 @@ public class DLearnIT {
     }
     sqlStr = "select ar(d2.s1, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result3 = resultSet.getDouble(2);
@@ -223,7 +223,7 @@ public class DLearnIT {
   public void testAR2() {
     String sqlStr = "select ar(d1.s2, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result1 = resultSet.getDouble(2);
@@ -236,7 +236,7 @@ public class DLearnIT {
     }
     sqlStr = "select ar(d2.s2, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result3 = resultSet.getDouble(2);
@@ -253,7 +253,7 @@ public class DLearnIT {
   public void testAR3() {
     String sqlStr = "select ar(d1.s3, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result1 = resultSet.getDouble(2);
@@ -266,7 +266,7 @@ public class DLearnIT {
     }
     sqlStr = "select ar(d2.s3, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result3 = resultSet.getDouble(2);
@@ -283,7 +283,7 @@ public class DLearnIT {
   public void testAR4() {
     String sqlStr = "select ar(d1.s4, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result1 = resultSet.getDouble(2);
@@ -296,7 +296,7 @@ public class DLearnIT {
     }
     sqlStr = "select ar(d2.s4, \"p\"=\"2\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
       double result3 = resultSet.getDouble(2);

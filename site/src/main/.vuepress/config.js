@@ -959,7 +959,8 @@ var config = {
 							['Operators-Functions/Frequency-Domain','Frequency Domain'],
 							['Operators-Functions/Data-Quality','Data Quality'],
 							['Operators-Functions/Data-Repairing','Data Repairing'],
-							['Operators-Functions/Series-Discovery','Series Discovery']
+							['Operators-Functions/Series-Discovery','Series Discovery'],
+							['Operators-Functions/Machine-Learning','Machine Learning']
 						]
 					},
 					{
@@ -1194,7 +1195,8 @@ var config = {
 							['Operators-Functions/Frequency-Domain','Frequency Domain'],
 							['Operators-Functions/Data-Quality','Data Quality'],
 							['Operators-Functions/Data-Repairing','Data Repairing'],
-							['Operators-Functions/Series-Discovery','Series Discovery']
+							['Operators-Functions/Series-Discovery','Series Discovery'],
+							['Operators-Functions/Machine-Learning','Machine Learning']
 						]
 					},
 					{
@@ -2159,7 +2161,8 @@ var config = {
 							['Operators-Functions/Frequency-Domain','频域分析'],
 							['Operators-Functions/Data-Quality','数据质量'],
 							['Operators-Functions/Data-Repairing','数据修复'],
-							['Operators-Functions/Series-Discovery','序列发现']
+							['Operators-Functions/Series-Discovery','序列发现'],
+							['Operators-Functions/Machine-Learning','机器学习']
 						]
 					},
 					{
@@ -2394,7 +2397,8 @@ var config = {
 							['Operators-Functions/Frequency-Domain','频域分析'],
 							['Operators-Functions/Data-Quality','数据质量'],
 							['Operators-Functions/Data-Repairing','数据修复'],
-							['Operators-Functions/Series-Discovery','序列发现']
+							['Operators-Functions/Series-Discovery','序列发现'],
+							['Operators-Functions/Machine-Learning','机器学习']
 						]
 					},
 					{
