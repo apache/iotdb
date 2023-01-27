@@ -1603,7 +1603,7 @@ public class ReorderingEncodeRegression64DoubleBlocksizeTestAdjust2H {
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
-
+      System.out.println(inputPath);
   //    String Output =
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
@@ -1663,7 +1663,7 @@ public class ReorderingEncodeRegression64DoubleBlocksizeTestAdjust2H {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+//            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += (e - s);
           }
