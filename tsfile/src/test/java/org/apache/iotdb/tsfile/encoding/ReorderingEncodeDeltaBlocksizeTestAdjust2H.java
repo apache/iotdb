@@ -1069,7 +1069,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
 //      System.out.println(j_star);
       int adjust_count = 0;
       while(j_star!=-1){
-        if(adjust_count < block_size/2){
+        if(adjust_count < block_size/2 && adjust_count < 30){
           adjust_count ++;
         }else {
           break;
@@ -1139,7 +1139,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
 
     if(remaining_length%8!=1){
       int supple_length = 9-(remaining_length - (remaining_length/8)*8);
-      System.out.println(supple_length);
+      //System.out.println(supple_length);
       for(int s = 0;s<supple_length;s++){
         ArrayList<Integer> tmp = new ArrayList<>();
         tmp.add(0);
@@ -1500,7 +1500,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
+            //data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += (e-s);
           }
@@ -1522,6 +1522,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
                   String.valueOf(ratio)
           };
           writer.writeRecord(record);
+          System.out.println(ratio);
         }
 
       }
