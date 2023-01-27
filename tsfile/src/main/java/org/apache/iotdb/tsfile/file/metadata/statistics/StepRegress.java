@@ -241,7 +241,10 @@ public class StepRegress {
               this.segmentIntercepts = new DoubleArrayList();
               this.segmentKeys.add(timestamps.get(0)); // t1
               this.segmentIntercepts.add(1 - slope * timestamps.get(0)); // b1
-            } else if (start < segmentIntercepts.size() - 3) {
+            } else if ((start < segmentIntercepts.size() - 3) || equals) {
+              // either the first tilt intercept which is not smaller than the last tilt intercept
+              // is not the second-to-last tilt intercept,
+              // or is the second-to-last tilt intercept but is equal to the last tilt intercept.
               if (!equals) {
                 // remove all segment information after start+1 id, i.e., remove from start+2~end
                 // note that the level after start tilt is kept since equals=false.
@@ -273,8 +276,10 @@ public class StepRegress {
                 // TODO debug the first status is level, b1
               }
             }
-            // otherwise start==segmentIntercepts.size()-3 means result is already ready, no
-            // disorder to handle
+            // otherwise start==segmentIntercepts.size()-3 && equal=false,
+            // means the first tilt intercept which is bigger than the last tilt intercept
+            // is the second-to-last tilt intercept,
+            // so in this case the result is already ready, no disorder to handle
           }
         }
       }
