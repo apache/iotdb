@@ -55,12 +55,12 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     return bytes;
   }
   public static byte[] double2Bytes(double dou){
-      long value = Double.doubleToRawLongBits(dou);
-      byte[] bytes= new byte[8];
-      for(int i=0;i<8;i++){
-        bytes[i] = (byte) ((value >>8*i)& 0xff);
-      }
-      return bytes;
+    long value = Double.doubleToRawLongBits(dou);
+    byte[] bytes= new byte[8];
+    for(int i=0;i<8;i++){
+      bytes[i] = (byte) ((value >>8*i)& 0xff);
+    }
+    return bytes;
   }
   public static byte[] bitPacking(ArrayList<Integer> numbers,int bit_width){
     int block_num = numbers.size()/8;
@@ -154,82 +154,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     }
   }
 
-//  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-//                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-//    int deviation_max = Integer.MIN_VALUE;
-//    int max_bit_width_deviation;
-//    int r0;
-//    int d0;
-//
-//    // split timestamp into intervals and deviations
-//
-//    //address other timestamps and values
-//    for(int j=block_size-1;j>0;j--) {
-//      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-//      ArrayList<Integer> tmp = ts_block.get(j);
-//      tmp.add(delta_interval);
-//      ts_block.set(j,tmp);
-//    }
-//
-//
-//    // address timestamp0
-//    r0 = ts_block.get(0).get(0) /td;
-//    d0 = ts_block.get(0).get(0) %td;
-//    if(d0 >= (td/2)){
-//      d0 -= td;
-//      r0 ++;
-//    }
-//    d0 = zigzag(d0);
-////    deviation_list.add(d0);
-//    if(d0 > deviation_max){
-//      deviation_max = d0;
-//    }
-//    ArrayList<Integer> tmp0 = ts_block.get(0);
-//    tmp0.add(0);
-////    System.out.println(tmp0);
-//    ts_block.set(0,tmp0);
-//
-//    for(int j=1;j<block_size;j++){
-//      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
-//      ArrayList<Integer> tmp;
-//      tmp = ts_block.get(j);
-//      tmp.set(2,interval);
-//      ts_block.set(j,tmp);
-//    }
-////    System.out.println(ts_block);
-//    quickSort2(ts_block,0,block_size-1);
-//
-//    for(int j=block_size-1;j>0;j--){
-//      int interval = ts_block.get(j).get(2);
-//      int value = ts_block.get(j).get(1);
-//
-//      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
-//      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
-//      deviation = zigzag(deviation);
-//      deviation_list.add(deviation);
-//      if(deviation > deviation_max){
-//        deviation_max = deviation;
-//      }
-//
-//      ArrayList<Integer> tmp = new ArrayList<>();
-//      tmp.add(interval);
-//      tmp.add(value);
-//      ts_block.set(j,tmp);
-//    }
-//    tmp0 = new ArrayList<>();
-//    tmp0.add(ts_block.get(0).get(2));
-//    tmp0.add(ts_block.get(0).get(1));
-//    ts_block.set(0,tmp0);
-//
-//
-//    max_bit_width_deviation = getBitWith(deviation_max);
-//    result.add(max_bit_width_deviation);
-//    result.add(r0);
-//    result.add(d0);
-//  }
-
   public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
 
     int max_deviation = Integer.MIN_VALUE;
 
@@ -311,7 +237,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
   }
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                     ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
+                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -365,10 +291,6 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       theta1_v = (float) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
 
-    //theta0_r = 0;
-    //theta1_r = 1;
-
-
     ArrayList<Integer> tmp0 = new ArrayList<>();
     tmp0.add(ts_block.get(0).get(0));
     tmp0.add(ts_block.get(0).get(1));
@@ -383,9 +305,11 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
+//        System.out.println(timestamp_delta_min);
       }
       if(epsilon_v<value_delta_min){
         value_delta_min = epsilon_v;
+//        System.out.println(value_delta_min);
       }
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
@@ -413,6 +337,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       tmp.add(epsilon_v);
       ts_block_delta.set(j,tmp);
     }
+
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
 
@@ -443,6 +368,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
                              ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int raw_timestamp_delta_max = Integer.MIN_VALUE;
     int raw_value_delta_max = Integer.MIN_VALUE;
     int raw_timestamp_delta_max_index = -1;
@@ -461,11 +388,17 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     if(alpha == -1){
       return j_star;
     }
-
+//    System.out.println(theta);
+//    System.out.println(ts_block);
     for(int i = 1;i<block_size;i++){
-      int delta_t_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float)ts_block.get(i-1).get(0));
-      int delta_v_i = (int) ((float) ts_block.get(i).get(1) - theta0_v - theta1_v * (float) ts_block.get(i-1).get(1));
-
+      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
+      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+      if(delta_t_i < timestamp_delta_min){
+        timestamp_delta_min = delta_t_i;
+      }
+      if(delta_v_i < value_delta_min){
+        value_delta_min = delta_v_i;
+      }
       if(delta_t_i > raw_timestamp_delta_max){
         raw_timestamp_delta_max = delta_t_i;
         raw_timestamp_delta_max_index = i;
@@ -475,9 +408,11 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         raw_value_delta_max_index = i;
       }
     }
-
-    raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max);
-    raw_bit_width_value = getBitWith(raw_value_delta_max);
+    raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+    raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
+//    System.out.println(raw_length);
+//    System.out.println(raw_bit_width_timestamp);
+//    System.out.println(raw_bit_width_value);
     // alpha == 1
     if(alpha==0){
 //      System.out.println("alpha == 1");
@@ -549,6 +484,9 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 //            System.out.println("j_star_list adjustAlphaToJ");
           }else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
             j_star_list.add(j);
+//            System.out.println(b.get(0));
+//            System.out.println(b.get(1));
+//            System.out.println("j_star_list adjustAlphaToJ ==");
           }
         }
       }
@@ -575,66 +513,25 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       }
       else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
 //        System.out.println("j_star_list adjustTon ==");
+
         j_star_list.add(block_size);
       }
     }
-
+//    System.out.println(j_star_list);
     if(j_star_list.size() == 0){
     }else {
       j_star = getIstarClose(alpha,j_star_list);
     }
     return j_star;
   }
-  //  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
-//                                    ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
-//    int j_star_bit_width = 33;
-//    int j_star = 0;
-//    double theta0_r = theta.get(0);
-//    double theta1_r = theta.get(1);
-//    double theta0_v = theta.get(2);
-//    double theta1_v = theta.get(3);
-//    if(i_star == block_size - 1 || i_star == 0)
-//      return 0;
-//    int epsilon_r_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(0) - theta0_r -
-//            theta1_r * (double) ts_block.get(i_star-1).get(0));
-//    int epsilon_v_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(1) - theta0_v -
-//            theta1_v * (double)ts_block.get(i_star-1).get(1));
-//
-//    if(epsilon_r_i_star_plus_1 > raw_length.get(1) || epsilon_v_i_star_plus_1 > raw_length.get(2))
-//      return 0;
-//
-//
-//    for(int j = 1;j<block_size;j++){
-//      if(j!=i_star){
-//        int epsilon_r_j = (int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(i_star).get(0));
-//        int epsilon_v_j = (int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(i_star).get(1));
-//        int epsilon_r_i_star = (int) ((double) ts_block.get(i_star).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0));
-//        int epsilon_v_i_star = (int) ((double) ts_block.get(i_star).get(1) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(1));
-//        if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
-//                epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
-//          return 0;
-//        int max_r = getBitWith(max3(epsilon_r_i_star_plus_1,epsilon_r_j,epsilon_r_i_star));
-//        int max_v = getBitWith(max3(epsilon_v_i_star_plus_1,epsilon_v_j,epsilon_v_i_star));
-//        if(index == 1){
-//          if(max_v<=raw_length.get(2) && max_r < j_star_bit_width && max_r < raw_length.get(1)){
-//            j_star_bit_width = max_r;
-//            j_star = j;
-//          }
-//        }else{
-//          if(max_v<raw_length.get(2) && max_v < j_star_bit_width && max_r <= raw_length.get(1)){
-//            j_star_bit_width = max_v;
-//            j_star = j;
-//          }
-//        }
-//      }
-//    }
-//    return j_star;
-//  }
+
   private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
     int block_size = ts_block.size();
     assert alpha != block_size-1;
     assert alpha != 0;
     ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -647,25 +544,32 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i = (int) ((float) ts_block.get(alpha+1).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha+1).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
+        value_delta_i = ts_block.get(alpha+1).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
       } else if (i == alpha){
-        timestamp_delta_i = (int) ((float) ts_block.get(0).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i =(int) ((float) ts_block.get(0).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
       }
       else{
-        timestamp_delta_i =(int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i = ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
   private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
@@ -673,7 +577,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     assert alpha != block_size-1;
     assert alpha != 0;
     ArrayList<Integer> b = new ArrayList<>();
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -686,26 +591,33 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i = (int) ((float)  ts_block.get(alpha+1).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i =  (int) ((float) ts_block.get(alpha+1).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha+1).get(0) - (int) ( theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
       } else if (i == alpha){
-        timestamp_delta_i =(int) ((float) ts_block.get(alpha).get(0) - theta0_t - theta1_t * (float) ts_block.get(block_size-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha).get(1) -theta0_v - theta1_v * (float) ts_block.get(block_size-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size-1).get(1));
       }
       else{
-        timestamp_delta_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i =(int) ((float)  ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+        value_delta_i = ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
 
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -717,7 +629,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     assert j != 0;
     assert j != block_size;
     ArrayList<Integer> b = new ArrayList<>();
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -730,27 +643,34 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       int timestamp_delta_i;
       int value_delta_i;
       if(i==j){
-        timestamp_delta_i = (int) ((float) ts_block.get(j).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = (int) ((float) ts_block.get(j).get(1) -theta0_v - theta1_v * (float)  ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float)  ts_block.get(alpha).get(1));
       } else if (i == alpha){
-        timestamp_delta_i = (int) ((float) ts_block.get(alpha).get(0) - theta0_t - theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha).get(1) -theta0_v - theta1_v * (float)  ts_block.get(j-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float)  ts_block.get(j-1).get(1));
       } else if (i == alpha+1) {
-        timestamp_delta_i = (int) ((float) ts_block.get(alpha+1).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha+1).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
       } else {
-        timestamp_delta_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float) ts_block.get(i-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i-1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i-1).get(0));
+        value_delta_i = ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -760,7 +680,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     ArrayList<Integer> b = new ArrayList<>();
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     float theta0_t = theta.get(0);
     float theta1_t = theta.get(1);
     float theta0_v = theta.get(2);
@@ -769,29 +690,40 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     for(int i=1;i<block_size-1;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = (int) ((float)  ts_block.get(i).get(0) - theta0_t - theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i = (int) ((float)  ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+      value_delta_i =   ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
       }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i = (int) ((float)  ts_block.get(0).get(0) - theta0_t - theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i = (int) ((float) ts_block.get(0).get(1) -theta0_v - theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =   ts_block.get(0).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
+    value_delta_i =  ts_block.get(0).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
     }
-
+    if(timestamp_delta_i<timestamp_delta_min){
+      timestamp_delta_min = timestamp_delta_i;
+    }
     if(value_delta_i > value_delta_max){
       value_delta_max = value_delta_i;
     }
-
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    if(value_delta_i <value_delta_min){
+      value_delta_min = value_delta_i;
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -801,7 +733,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     assert alpha == block_size-1;
     assert j != 0;
     ArrayList<Integer> b = new ArrayList<>();
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -814,29 +747,42 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       } else {
-        timestamp_delta_i = (int) ((float) ts_block.get(j).get(0) - theta0_t - theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = (int) ((float) ts_block.get(j).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
+        }
+        if(timestamp_delta_i<timestamp_delta_min){
+          timestamp_delta_min = timestamp_delta_i;
         }
         if(value_delta_i > value_delta_max){
           value_delta_max = value_delta_i;
         }
-        timestamp_delta_i = (int) ((float) ts_block.get(alpha).get(0) - theta0_t - theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha).get(1) -theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+        if(value_delta_i <value_delta_min){
+          value_delta_min = value_delta_i;
+        }
+        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -860,7 +806,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
   private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
     int block_size = ts_block.size();
     ArrayList<Integer> b = new ArrayList<>();
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -872,27 +819,39 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     for(int i=2;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i = (int) ((float) ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+      value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
       }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i = (int) ((float) ts_block.get(0).get(0) - theta0_t - theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i = (int) ((float) ts_block.get(0).get(1) -theta0_v - theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
+    value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
+    }
+    if(timestamp_delta_i<timestamp_delta_min){
+      timestamp_delta_min = timestamp_delta_i;
     }
     if(value_delta_i > value_delta_max){
       value_delta_max = value_delta_i;
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    if(value_delta_i <value_delta_min){
+      value_delta_min = value_delta_i;
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -903,7 +862,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     assert j != block_size;
 
     ArrayList<Integer> b = new ArrayList<>();
-
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
@@ -916,29 +876,42 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i = (int) ((float) ts_block.get(i).get(0) - theta0_t - theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(i).get(1) -theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
       } else {
-        timestamp_delta_i =  (int) ((float) ts_block.get(j).get(0) - theta0_t - theta1_t * (float)  ts_block.get(alpha).get(0));
-        value_delta_i =  (int) ((float) ts_block.get(j).get(1) -theta0_v - theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =   ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
+        }
+        if(timestamp_delta_i<timestamp_delta_min){
+          timestamp_delta_min = timestamp_delta_i;
         }
         if(value_delta_i > value_delta_max){
           value_delta_max = value_delta_i;
         }
-        timestamp_delta_i = (int) ((float) ts_block.get(alpha).get(0) - theta0_t - theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i = (int) ((float) ts_block.get(alpha).get(1) -theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+        if(value_delta_i <value_delta_min){
+          value_delta_min = value_delta_i;
+        }
+        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
       if(value_delta_i > value_delta_max){
         value_delta_max = value_delta_i;
       }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
     }
-    b.add(getBitWith(timestamp_delta_max));
-    b.add(getBitWith(value_delta_max));
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
 
@@ -958,7 +931,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
     if(index==0){
       for(int j = 1;j<block_size;j++){
-        int epsilon_v_j =(int)( (float) ts_block.get(j).get(1) - theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+        int epsilon_v_j =ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
         if(epsilon_v_j > value_delta_max){
           value_delta_max = epsilon_v_j;
           value_delta_max_index =j;
@@ -969,7 +942,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       i_star = value_delta_max_index;
     } else if (index==1) {
       for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = (int)( (float) ts_block.get(j).get(0) - theta0_t - theta1_t * (float) ts_block.get(j-1).get(0));
+        int epsilon_r_j = ts_block.get(j).get(0) -  (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
         if(epsilon_r_j > timestamp_delta_max){
           timestamp_delta_max = epsilon_r_j;
           timestamp_delta_max_index = j;
@@ -982,6 +955,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                              ArrayList<Integer> raw_length, ArrayList<Float> theta){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
     int timestamp_delta_max_index = -1;
@@ -996,18 +971,25 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     int i_star = 0;
 
     for(int j = 1;j<block_size;j++){
-      int epsilon_r_j = (int)( (float) ts_block.get(j).get(0) - theta0_t - theta1_t * (float) ts_block.get(j-1).get(0));
-      int epsilon_v_j = (int)( (float) ts_block.get(j).get(1) - theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+      int epsilon_r_j =  ts_block.get(j).get(0) - (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+      int epsilon_v_j =  ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
 
-      if(epsilon_r_j > timestamp_delta_max){
+      if(epsilon_r_j>timestamp_delta_max){
         timestamp_delta_max = epsilon_r_j;
-        timestamp_delta_max_index = j;
+      }
+      if(epsilon_r_j<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r_j;
       }
       if(epsilon_v_j > value_delta_max){
         value_delta_max = epsilon_v_j;
-        value_delta_max_index =j;
       }
+      if(epsilon_v_j <value_delta_min){
+        value_delta_min = epsilon_v_j;
+      }
+
     }
+    timestamp_delta_max -= timestamp_delta_min;
+    value_delta_max -= value_delta_min;
     if(value_delta_max<=timestamp_delta_max)
       i_star = timestamp_delta_max_index;
     else
@@ -1015,35 +997,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     return i_star;
   }
 
-//  public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-//                             ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
-//    int i_star_bit_width = 33;
-//    int i_star = 0;
-//    double theta0_r = theta.get(0);
-//    double theta1_r = theta.get(1);
-//    double theta0_v = theta.get(2);
-//    double theta1_v = theta.get(3);
-//
-//    for(int j = 1;j<block_size;j++){
-//        int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
-//        int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
-//      if(index == 1){
-//        if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
-//          i_star_bit_width = epsilon_r_j;
-//          i_star = j;
-//        }
-//      }else{
-//        if(epsilon_v_j<raw_length.get(2) && epsilon_v_j < i_star_bit_width && epsilon_r_j <= raw_length.get(1)){
-//          i_star_bit_width = epsilon_v_j;
-//          i_star = j;
-//        }
-//      }
-//    }
-//    return i_star;
-//  }
-
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
+                                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -1089,8 +1044,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
-    System.out.println(raw_length.get(1));
-    System.out.println(raw_length.get(2));
+//    System.out.println(raw_length.get(1));
+//    System.out.println(raw_length.get(2));
     // encode deviation
     //byte[] max_bit_width_deviation_byte = int2Bytes(result2.get(1));
     //for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
@@ -1136,7 +1091,6 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
 
-
       // value-order
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
@@ -1154,6 +1108,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         count_raw ++;
         i_star =getIStar(ts_block,block_size,0,theta);
 //        System.out.println("count_raw");
+//        System.out.println(theta);
+//        System.out.println(ts_block);
       }
       else{
         raw_length = reorder_length;
@@ -1162,42 +1118,51 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         count_reorder ++;
         i_star =getIStar(ts_block,block_size,1,theta);
 //        System.out.println("count_reorder");
+//        System.out.println(theta_reorder);
+//        System.out.println(ts_block);
       }
+//      System.out.println("--------------------------------------------------------------");
       j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//      System.out.println(raw_length);
+//      System.out.println(i_star);
+//      System.out.println(j_star);
+
       int adjust_count = 0;
-//      while(j_star!=-1 && i_star !=-1){
-//        if(adjust_count < block_size/2 && adjust_count < 50){
-//          adjust_count ++;
-//        }else {
-//          break;
-//        }
-//        ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-//        if(j_star<i_star){
-//          for(int u=i_star-1;u>=j_star;u--){
-//            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-//            tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-//            tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-//            ts_block.set(u+1,tmp_tv_cur);
-//          }
-//        }else{
-//          for(int u=i_star+1;u<j_star;u++){
-//            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-//            tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-//            tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-//            ts_block.set(u-1,tmp_tv_cur);
-//          }
-//          j_star --;
-//        }
-//        ts_block.set(j_star,tmp_tv);
-//
-//        getEncodeBitsRegression( ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
-//
-//        i_star =getIStar(ts_block,block_size,raw_length,theta);
-//        if(i_star == j_star) break;
-//        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-////        System.out.println(j_star);
-//        //flag.set(2,flag.get(2)+1);
-//      }
+      while(j_star!=-1 && i_star !=-1){
+        if(adjust_count < block_size/2 && adjust_count < 50){
+          adjust_count ++;
+        }else {
+          break;
+        }
+        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
+        if(j_star<i_star){
+          for(int u=i_star-1;u>=j_star;u--){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u+1,tmp_tv_cur);
+          }
+        }else{
+          for(int u=i_star+1;u<j_star;u++){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u-1,tmp_tv_cur);
+          }
+          j_star --;
+        }
+        ts_block.set(j_star,tmp_tv);
+
+        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+//        System.out.println(raw_length);
+//        System.out.println("--------------------------------------------------------------");
+        i_star =getIStar(ts_block,block_size,raw_length,theta);
+        if(i_star == j_star) break;
+        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//        System.out.println(i_star);
+//        System.out.println(j_star);
+        //flag.set(2,flag.get(2)+1);
+      }
 
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
@@ -1602,11 +1567,11 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       String[] head = {
               "Input Direction",
               "Encoding Algorithm",
-  //      "Compress Algorithm",
+              //      "Compress Algorithm",
               "Encoding Time",
               "Decoding Time",
-  //      "Compress Time",
-  //      "Uncompress Time",
+              //      "Compress Time",
+              //      "Uncompress Time",
               "Points",
               "Compressed Size",
               "Compression Ratio"
@@ -1651,7 +1616,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+//          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
           e = System.nanoTime();
           decodeTime += (e-s);
 
