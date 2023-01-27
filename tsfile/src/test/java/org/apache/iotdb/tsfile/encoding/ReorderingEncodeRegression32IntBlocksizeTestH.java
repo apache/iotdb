@@ -1129,8 +1129,9 @@ public class ReorderingEncodeRegression32IntBlocksizeTestH {
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
-            double ratioTmp =
-                    (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+            int datasize_real = (int) (data.size()/block_size) * block_size;
+            //double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
+            double ratioTmp = (double) buffer.size() / (double) (datasize_real * Integer.BYTES*2);
             ratio += ratioTmp;
             s = System.nanoTime();
             data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));

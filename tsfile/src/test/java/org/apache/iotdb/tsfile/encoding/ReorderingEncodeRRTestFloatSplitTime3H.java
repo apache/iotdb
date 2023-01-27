@@ -1129,9 +1129,10 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
+        int block_size = 512;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i));
+          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
           //ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),flag);
 //          System.out.print(flag.get(0));
 //          System.out.print(" ");
@@ -1141,8 +1142,9 @@ public class ReorderingEncodeRRTestFloatSplitTime3H {
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
-          double ratioTmp =
-                  (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
+          int datasize_real = (int) (data.size()/block_size) * block_size;
+          //double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
+          double ratioTmp = (double) buffer.size() / (double) (datasize_real * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
           data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
