@@ -28,6 +28,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,7 +61,7 @@ public class UDTFAR implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     int length = timeWindow.size();
     if (length <= this.p) {
-      return;
+      throw new IOException("illegal input");
     }
 
     int count = 0;
