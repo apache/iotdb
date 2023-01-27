@@ -281,7 +281,7 @@ public class StepRegress {
     }
     segmentKeys.add(timestamps.getLast()); // tm
 
-    checkOrder(segmentIntercepts);
+    checkOrder();
   }
 
   /**
@@ -289,19 +289,25 @@ public class StepRegress {
    * even id should be monotonically decreasing, and intercepts with odd id should be monotonically
    * increasing.
    */
-  private void checkOrder(DoubleArrayList segmentIntercepts) throws IOException {
+  private void checkOrder() throws IOException {
     double tiltIntercept = Double.MAX_VALUE;
     double levelIntercept = Double.MIN_VALUE;
     for (int i = 0; i < segmentIntercepts.size(); i++) {
       double intercept = segmentIntercepts.get(i);
       if (i % 2 == 0) {
         if (intercept >= tiltIntercept) {
-          throw new IOException(String.format("disorder of tilt intercepts!: i=%s", i));
+          throw new IOException(
+              String.format(
+                  "disorder of tilt intercepts!: i=%s. Timestamps: %s, SegmentKeys: %s, SegmentIntercepts: %s",
+                  i, timestamps, segmentKeys, segmentIntercepts));
         }
         tiltIntercept = intercept;
       } else {
         if (intercept <= levelIntercept) {
-          throw new IOException(String.format("disorder of level intercepts!: i=%s", i));
+          throw new IOException(
+              String.format(
+                  "disorder of level intercepts!: i=%s. Timestamps: %s, SegmentKeys: %s, SegmentIntercepts: %s",
+                  i, timestamps, segmentKeys, segmentIntercepts));
         }
         levelIntercept = intercept;
       }
