@@ -1114,50 +1114,54 @@ public class ReorderingEncodeTestS3Adjust2H {
       encoded_result.addAll(cur_encoded_result);
     }
 
-    ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-    ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+
     int remaining_length = length_all - block_num*block_size;
-    for(int j=block_num*block_size;j<length_all;j++){
-      ts_block.add(data.get(j));
-      ts_block_reorder.add(data.get(j));
-    }
-    ArrayList<Integer> result2 = new ArrayList<>();
-    splitTimeStamp3(ts_block,td,result2);
-
-    // time-order
-    quickSort(ts_block,0,0,remaining_length-1);
-    ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-    ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  remaining_length, raw_length);
-
-
-    // value-order
-    quickSort(ts_block,1,0,remaining_length-1);
-    ArrayList<Integer> reorder_length = new ArrayList<>();
-    ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta(ts_block,  remaining_length, reorder_length);
-
-    if(raw_length.get(0)<=reorder_length.get(0)){
-      quickSort(ts_block,0,0,remaining_length-1);
-    }
-    else{
-      raw_length = reorder_length;
-      quickSort(ts_block,1,0,remaining_length-1);
-    }
-    ts_block_delta = getEncodeBitsDelta(ts_block, remaining_length, raw_length);
-
-    if(remaining_length%8!=1){
-      int supple_length = 9-(remaining_length - (remaining_length/8)*8);
-      //System.out.println(supple_length);
-      for(int s = 0;s<supple_length;s++){
-        ArrayList<Integer> tmp = new ArrayList<>();
-        tmp.add(0);
-        tmp.add(0);
-        ts_block_delta.add(tmp);
+    if(remaining_length!=0){
+      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+      for(int j=block_num*block_size;j<length_all;j++){
+        ts_block.add(data.get(j));
+        ts_block_reorder.add(data.get(j));
       }
+      ArrayList<Integer> result2 = new ArrayList<>();
+      splitTimeStamp3(ts_block,td,result2);
+
+      // time-order
+      quickSort(ts_block,0,0,remaining_length-1);
+      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  remaining_length, raw_length);
+
+
+      // value-order
+      quickSort(ts_block,1,0,remaining_length-1);
+      ArrayList<Integer> reorder_length = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta(ts_block,  remaining_length, reorder_length);
+
+      if(raw_length.get(0)<=reorder_length.get(0)){
+        quickSort(ts_block,0,0,remaining_length-1);
+      }
+      else{
+        raw_length = reorder_length;
+        quickSort(ts_block,1,0,remaining_length-1);
+      }
+      ts_block_delta = getEncodeBitsDelta(ts_block, remaining_length, raw_length);
+
+      if(remaining_length%8!=1){
+        int supple_length = 9-(remaining_length - (remaining_length/8)*8);
+        //System.out.println(supple_length);
+        for(int s = 0;s<supple_length;s++){
+          ArrayList<Integer> tmp = new ArrayList<>();
+          tmp.add(0);
+          tmp.add(0);
+          ts_block_delta.add(tmp);
+        }
+      }
+      byte[] remaining_length_bytes = int2Bytes(remaining_length);
+      for(byte b:remaining_length_bytes)   encoded_result.add(b);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
+      encoded_result.addAll(cur_encoded_result);
     }
-    byte[] remaining_length_bytes = int2Bytes(remaining_length);
-    for(byte b:remaining_length_bytes)   encoded_result.add(b);
-    ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
-    encoded_result.addAll(cur_encoded_result);
+
     return encoded_result;
   }
 
