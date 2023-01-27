@@ -1168,8 +1168,63 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
     }
-//    System.out.println(count_raw);
-//    System.out.println(count_reorder);
+
+    int remaining_length = length_all - block_num*block_size;
+    if(remaining_length!=0){
+      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+
+      for(int j=block_num*block_size;j<length_all;j++){
+        ts_block.add(data.get(j));
+        ts_block_reorder.add(data.get(j));
+      }
+      ArrayList<Integer> result2 = new ArrayList<>();
+      splitTimeStamp3(ts_block,td,result2);
+
+      quickSort(ts_block,0,0,remaining_length-1);
+
+
+      // time-order
+      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+      ArrayList<Integer> i_star_ready = new ArrayList<>();
+      ArrayList<Float> theta = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
+              i_star_ready,theta);
+
+      // value-order
+      quickSort(ts_block,1,0,remaining_length-1);
+      ArrayList<Integer> reorder_length = new ArrayList<>();
+      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+      ArrayList<Float> theta_reorder = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
+              i_star_ready_reorder,theta_reorder);
+
+      if(raw_length.get(0)<=reorder_length.get(0)){
+        quickSort(ts_block,0,0,remaining_length-1);
+        count_raw ++;
+      }
+      else{
+        raw_length = reorder_length;
+        theta = theta_reorder;
+        quickSort(ts_block,1,0,remaining_length-1);
+        count_reorder ++;
+      }
+      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,theta);
+      if(remaining_length%8!=1){
+        int supple_length = 9-(remaining_length - (remaining_length/8)*8);
+        //System.out.println(supple_length);
+        for(int s = 0;s<supple_length;s++){
+          ArrayList<Integer> tmp = new ArrayList<>();
+          tmp.add(0);
+          tmp.add(0);
+          ts_block_delta.add(tmp);
+        }
+      }
+      byte[] remaining_length_bytes = int2Bytes(remaining_length);
+      for(byte b:remaining_length_bytes)   encoded_result.add(b);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+      encoded_result.addAll(cur_encoded_result);
+    }
     return encoded_result;
   }
 
