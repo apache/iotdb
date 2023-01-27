@@ -1465,7 +1465,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<11;block_size_exp++){
+      for(int block_size_exp=4;block_size_exp<13;block_size_exp++){
 //        System.out.println(block_size_exp);
         int block_size = (int) Math.pow(2,block_size_exp);
         for (File f : tempList) {
