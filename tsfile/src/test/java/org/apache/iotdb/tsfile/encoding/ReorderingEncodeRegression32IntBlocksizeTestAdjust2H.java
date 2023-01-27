@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
 
+import static java.lang.Math.abs;
+
 public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
 
   static int DeviationOutlierThreshold = 8;
@@ -373,8 +375,8 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     for(int j=1;j<block_size;j++) {
 //      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
 //      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
-      int epsilon_r = ts_block.get(j).get(0) - (int) ( theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = ts_block.get(j).get(1) - (int) ( theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - ( theta0_r + theta1_r * ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - ( theta0_v + theta1_v * ts_block.get(j-1).get(1));
 
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
@@ -420,11 +422,14 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     result.add(max_bit_width_interval);
     result.add(max_bit_width_value);
 
+    result.add(timestamp_delta_min);
+    result.add(value_delta_min);
+
 //    result.add(timestamp_delta_min);
 //    result.add(value_delta_min);
 
-    theta0_r += timestamp_delta_min;
-    theta0_v += value_delta_min;
+//    theta0_r += timestamp_delta_min;
+//    theta0_v += value_delta_min;
     theta.add(theta0_r);
     theta.add(theta1_r);
     theta.add(theta0_v);
@@ -436,77 +441,713 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
 
     return ts_block_delta;
   }
-  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
+  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
                              ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
-    int j_star_bit_width = 33;
-    int j_star = 0;
-    double theta0_r = theta.get(0);
-    double theta1_r = theta.get(1);
-    double theta0_v = theta.get(2);
-    double theta1_v = theta.get(3);
-    if(i_star == block_size - 1 || i_star == 0)
-      return 0;
-    int epsilon_r_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(0) - theta0_r -
-            theta1_r * (double) ts_block.get(i_star-1).get(0));
-    int epsilon_v_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(1) - theta0_v -
-            theta1_v * (double)ts_block.get(i_star-1).get(1));
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int raw_timestamp_delta_max = Integer.MIN_VALUE;
+    int raw_value_delta_max = Integer.MIN_VALUE;
+    int raw_timestamp_delta_max_index = -1;
+    int raw_value_delta_max_index = -1;
+    int raw_bit_width_timestamp = 0;
+    int raw_bit_width_value = 0;
 
-    if(epsilon_r_i_star_plus_1 > raw_length.get(1) || epsilon_v_i_star_plus_1 > raw_length.get(2))
-      return 0;
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
 
+    ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
+    int j_star = -1;
 
-    for(int j = 1;j<block_size;j++){
-      if(j!=i_star){
-        int epsilon_r_j = (int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(i_star).get(0));
-        int epsilon_v_j = (int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(i_star).get(1));
-        int epsilon_r_i_star = (int) ((double) ts_block.get(i_star).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0));
-        int epsilon_v_i_star = (int) ((double) ts_block.get(i_star).get(1) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(1));
-        if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
-                epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
-          return 0;
-        int max_r = getBitWith(max3(epsilon_r_i_star_plus_1,epsilon_r_j,epsilon_r_i_star));
-        int max_v = getBitWith(max3(epsilon_v_i_star_plus_1,epsilon_v_j,epsilon_v_i_star));
-        if(index == 1){
-          if(max_v<=raw_length.get(2) && max_r < j_star_bit_width && max_r < raw_length.get(1)){
-            j_star_bit_width = max_r;
-            j_star = j;
-          }
-        }else{
-          if(max_v<raw_length.get(2) && max_v < j_star_bit_width && max_r <= raw_length.get(1)){
-            j_star_bit_width = max_v;
-            j_star = j;
+    if(alpha == -1){
+      return j_star;
+    }
+//    System.out.println(theta);
+//    System.out.println(ts_block);
+    for(int i = 1;i<block_size;i++){
+      int delta_t_i =  ts_block.get(i).get(0) - ( theta0_t + theta1_t * ts_block.get(i-1).get(0));
+      int delta_v_i =  ts_block.get(i).get(1) - ( theta0_v + theta1_v * ts_block.get(i-1).get(1));
+      if(delta_t_i < timestamp_delta_min){
+        timestamp_delta_min = delta_t_i;
+      }
+      if(delta_v_i < value_delta_min){
+        value_delta_min = delta_v_i;
+      }
+      if(delta_t_i > raw_timestamp_delta_max){
+        raw_timestamp_delta_max = delta_t_i;
+        raw_timestamp_delta_max_index = i;
+      }
+      if(delta_v_i > raw_value_delta_max){
+        raw_value_delta_max = delta_v_i;
+        raw_value_delta_max_index = i;
+      }
+    }
+    raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+    raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
+//    System.out.println(raw_length);
+//    System.out.println(raw_bit_width_timestamp);
+//    System.out.println(raw_bit_width_value);
+    // alpha == 1
+    if(alpha==0){
+//      System.out.println("alpha == 1");
+      for(int j = 2;j<block_size;j++){
+        ArrayList<Integer> b = adjust0(ts_block,alpha,j,theta);
+        if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+          raw_bit_width_timestamp = b.get(0);
+          raw_bit_width_value = b.get(1);
+          j_star_list.clear();
+          j_star_list.add(j);
+//          System.out.println("j_star_list adjust0");
+        }
+        else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+          j_star_list.add(j);
+        }
+      }
+      ArrayList<Integer> b = adjust0n1(ts_block,theta);
+      if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+        raw_bit_width_timestamp = b.get(0);
+        raw_bit_width_value = b.get(1);
+        j_star_list.clear();
+        j_star_list.add(block_size);
+//        System.out.println("j_star_list adjust0n1");
+      }
+      else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+        j_star_list.add(block_size);
+      }
+
+    } // alpha == n
+    else if(alpha == block_size-1){
+//      System.out.println("alpha == n");
+      for(int j = 1;j<block_size-1;j++){
+        ArrayList<Integer> b = adjustn(ts_block,alpha,j,theta);
+        if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+          raw_bit_width_timestamp = b.get(0);
+          raw_bit_width_value = b.get(1);
+          j_star_list.clear();
+          j_star_list.add(j);
+//          System.out.println("j_star_list adjustn");
+        }
+        else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+          j_star_list.add(j);
+        }
+      }
+      ArrayList<Integer> b = adjustn0(ts_block,theta);
+      if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value)){
+        raw_bit_width_timestamp = b.get(0);
+        raw_bit_width_value = b.get(1);
+        j_star_list.clear();
+        j_star_list.add(0);
+//        System.out.println("j_star_list adjustn0");
+      }
+      else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+        j_star_list.add(0);
+//        System.out.println("j_star_list adjustn0 ==");
+      }
+    } // alpha != 1 and alpha != n
+    else {
+//      System.out.println("alpha == else");
+      for(int j = 1;j<block_size;j++){
+        if(alpha != j && (alpha+1) !=j){
+          ArrayList<Integer> b = adjustAlphaToJ(ts_block,alpha,j,theta);
+          if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+
+            raw_bit_width_timestamp = b.get(0);
+            raw_bit_width_value = b.get(1);
+            j_star_list.clear();
+            j_star_list.add(j);
+//            System.out.println("j_star_list adjustAlphaToJ");
+          }else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+            j_star_list.add(j);
+//            System.out.println(b.get(0));
+//            System.out.println(b.get(1));
+//            System.out.println("j_star_list adjustAlphaToJ ==");
           }
         }
       }
+      ArrayList<Integer> b = adjustTo0(ts_block,alpha,theta);
+      if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+        raw_bit_width_timestamp = b.get(0);
+        raw_bit_width_value = b.get(1);
+        j_star_list.clear();
+        j_star_list.add(0);
+//        System.out.println("j_star_list adjustTo0");
+      }
+      else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+//        System.out.println("j_star_list adjustTo0 ==");
+        j_star_list.add(0);
+
+      }
+      b = adjustTon(ts_block,alpha,theta);
+      if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
+        raw_bit_width_timestamp = b.get(0);
+        raw_bit_width_value = b.get(1);
+        j_star_list.clear();
+        j_star_list.add(block_size);
+//        System.out.println("j_star_list adjustTon");
+      }
+      else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
+//        System.out.println("j_star_list adjustTon ==");
+
+        j_star_list.add(block_size);
+      }
+    }
+//    System.out.println(j_star_list);
+    if(j_star_list.size() == 0){
+    }else {
+      j_star = getIstarClose(alpha,j_star_list);
     }
     return j_star;
   }
-  public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
-    int i_star_bit_width = 33;
-    int i_star = 0;
-    double theta0_r = theta.get(0);
-    double theta1_r = theta.get(1);
-    double theta0_v = theta.get(2);
-    double theta1_v = theta.get(3);
 
-    for(int j = 1;j<block_size;j++){
-      int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
-      int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
-      if(index == 1){
-        if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
-          i_star_bit_width = epsilon_r_j;
-          i_star = j;
+  private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    assert alpha != block_size-1;
+    assert alpha != 0;
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=1;i<block_size;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      if( i == (alpha+1)){
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (theta0_t + theta1_t * ts_block.get(alpha-1).get(0));
+        value_delta_i = ts_block.get(alpha+1).get(1) - (theta0_v - theta1_v * ts_block.get(alpha-1).get(1));
+      } else if (i == alpha){
+        timestamp_delta_i =  ts_block.get(0).get(0) - (theta0_t + theta1_t * ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(0).get(1) - (theta0_v + theta1_v * ts_block.get(alpha).get(1));
+      }
+      else{
+        timestamp_delta_i = ts_block.get(i).get(0) - (theta0_t + theta1_t * ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) - (theta0_v - theta1_v * ts_block.get(i - 1).get(1));
+      }
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+  private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    assert alpha != block_size-1;
+    assert alpha != 0;
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=1;i<block_size;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      if( i == (alpha+1)){
+        timestamp_delta_i = ts_block.get(alpha+1).get(0) - ( theta0_t + theta1_t * ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) - (theta0_v + theta1_v * ts_block.get(alpha-1).get(1));
+      }
+      else if (i == alpha){
+        timestamp_delta_i = ts_block.get(alpha).get(0) - (theta0_t + theta1_t * ts_block.get(block_size-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (theta0_v + theta1_v * ts_block.get(block_size-1).get(1));
+      }
+      else{
+        timestamp_delta_i =  ts_block.get(i).get(0) - (theta0_t + theta1_t * ts_block.get(i - 1).get(0));
+        value_delta_i = ts_block.get(i).get(1) - (theta0_v + theta1_v * ts_block.get(i - 1).get(1));
+      }
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+  private static ArrayList<Integer> adjustAlphaToJ(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Integer> theta) {
+
+    int block_size = ts_block.size();
+    assert alpha != block_size-1;
+    assert alpha != 0;
+    assert j != 0;
+    assert j != block_size;
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=1;i<block_size;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      if(i==j){
+        timestamp_delta_i =  ts_block.get(j).get(0) - (theta0_t + theta1_t * ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(j).get(1) - (theta0_v + theta1_v * ts_block.get(alpha).get(1));
+      }
+      else if (i == alpha){
+        timestamp_delta_i =  ts_block.get(alpha).get(0) - (theta0_t + theta1_t * ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (theta0_v + theta1_v * ts_block.get(j-1).get(1));
+      }
+      else if (i == alpha+1) {
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (theta0_t + theta1_t * ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) - (theta0_v + theta1_v * ts_block.get(alpha-1).get(1));
+      }
+      else {
+        timestamp_delta_i =  ts_block.get(i).get(0) - (theta0_t + theta1_t * ts_block.get(i-1).get(0));
+        value_delta_i = ts_block.get(i).get(1) - (theta0_v + theta1_v * ts_block.get(i-1).get(1));
+      }
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+  // adjust n to 0
+  private static ArrayList<Integer> adjustn0(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=1;i<block_size-1;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      timestamp_delta_i = ts_block.get(i).get(0) -   (theta0_t + theta1_t *  ts_block.get(i - 1).get(0));
+      value_delta_i =   ts_block.get(i).get(1) - (theta0_v + theta1_v *  ts_block.get(i - 1).get(1));
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    int timestamp_delta_i;
+    int value_delta_i;
+    timestamp_delta_i =   ts_block.get(0).get(0) - (theta0_t + theta1_t * ts_block.get(block_size - 1).get(0));
+    value_delta_i =  ts_block.get(0).get(1) - (theta0_v + theta1_v *  ts_block.get(block_size - 1).get(1));
+    if(timestamp_delta_i>timestamp_delta_max){
+      timestamp_delta_max = timestamp_delta_i;
+    }
+    if(timestamp_delta_i<timestamp_delta_min){
+      timestamp_delta_min = timestamp_delta_i;
+    }
+    if(value_delta_i > value_delta_max){
+      value_delta_max = value_delta_i;
+    }
+    if(value_delta_i <value_delta_min){
+      value_delta_min = value_delta_i;
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+  // adjust n to no 0
+  private static ArrayList<Integer> adjustn(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    assert alpha == block_size-1;
+    assert j != 0;
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=1;i<block_size-1;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      if(i!=j){
+        timestamp_delta_i =  ts_block.get(i).get(0) - (theta0_t + theta1_t *  ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) - (theta0_v + theta1_v * ts_block.get(i - 1).get(1));
+      }
+      else {
+        timestamp_delta_i =  ts_block.get(j).get(0) -  (theta0_t + theta1_t * ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) - (theta0_v + theta1_v * ts_block.get(alpha).get(1));
+        if(timestamp_delta_i>timestamp_delta_max){
+          timestamp_delta_max = timestamp_delta_i;
         }
-      }else{
-        if(epsilon_v_j<raw_length.get(2) && epsilon_v_j < i_star_bit_width && epsilon_r_j <= raw_length.get(1)){
-          i_star_bit_width = epsilon_v_j;
-          i_star = j;
+        if(timestamp_delta_i<timestamp_delta_min){
+          timestamp_delta_min = timestamp_delta_i;
         }
+        if(value_delta_i > value_delta_max){
+          value_delta_max = value_delta_i;
+        }
+        if(value_delta_i <value_delta_min){
+          value_delta_min = value_delta_i;
+        }
+        timestamp_delta_i = ts_block.get(alpha).get(0) -  (theta0_t + theta1_t *  ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (theta0_v + theta1_v *  ts_block.get(j-1).get(1));
+      }
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+  private static int getIstarClose(int alpha, ArrayList<Integer> j_star_list) {
+    int min_i = 0;
+    int min_dis = Integer.MAX_VALUE;
+    for (int i:j_star_list) {
+      if(abs(alpha-i)<min_dis){
+        min_i = i;
+        min_dis = abs(alpha - i);
       }
     }
+    if(min_dis==0){
+      System.out.println("get IstarClose error");
+      return 0;
+    }
+    return min_i;
+  }
+
+  // adjust 0 to n
+  private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=2;i<block_size;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      timestamp_delta_i = ts_block.get(i).get(0) -  (theta0_t + theta1_t *  ts_block.get(i - 1).get(0));
+      value_delta_i =  ts_block.get(i).get(1) - (theta0_v + theta1_v * ts_block.get(i - 1).get(1));
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+    }
+    int timestamp_delta_i;
+    int value_delta_i;
+    timestamp_delta_i =  ts_block.get(0).get(0) -  (theta0_t + theta1_t * ts_block.get(block_size - 1).get(0));
+    value_delta_i = ts_block.get(0).get(1) -  (theta0_v + theta1_v *  ts_block.get(block_size - 1).get(1));
+    if(timestamp_delta_i>timestamp_delta_max){
+      timestamp_delta_max = timestamp_delta_i;
+    }
+    if(timestamp_delta_i<timestamp_delta_min){
+      timestamp_delta_min = timestamp_delta_i;
+    }
+    if(value_delta_i > value_delta_max){
+      value_delta_max = value_delta_i;
+    }
+    if(value_delta_i <value_delta_min){
+      value_delta_min = value_delta_i;
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+  // adjust 0 to no n
+  private static ArrayList<Integer> adjust0(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Integer> theta) {
+    int block_size = ts_block.size();
+    assert alpha == 0;
+    assert j != block_size;
+
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    for(int i=2;i<block_size;i++){
+      int timestamp_delta_i;
+      int value_delta_i;
+      if(i!=j){
+        timestamp_delta_i =  ts_block.get(i).get(0) - (theta0_t + theta1_t *   ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) - (theta0_v + theta1_v *  ts_block.get(i - 1).get(1));
+      } else {
+        timestamp_delta_i =   ts_block.get(j).get(0) - (theta0_t + theta1_t *  ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) -  (theta0_v + theta1_v * ts_block.get(alpha).get(1));
+        if(timestamp_delta_i>timestamp_delta_max){
+          timestamp_delta_max = timestamp_delta_i;
+        }
+        if(timestamp_delta_i<timestamp_delta_min){
+          timestamp_delta_min = timestamp_delta_i;
+        }
+        if(value_delta_i > value_delta_max){
+          value_delta_max = value_delta_i;
+        }
+        if(value_delta_i <value_delta_min){
+          value_delta_min = value_delta_i;
+        }
+        timestamp_delta_i =  ts_block.get(alpha).get(0) -  (theta0_t + theta1_t * ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (theta0_v + theta1_v * ts_block.get(j-1).get(1));
+      }
+      if(timestamp_delta_i>timestamp_delta_max){
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if(timestamp_delta_i<timestamp_delta_min){
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if(value_delta_i > value_delta_max){
+        value_delta_max = value_delta_i;
+      }
+      if(value_delta_i <value_delta_min){
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    b.add(getBitWith(timestamp_delta_max-timestamp_delta_min));
+    b.add(getBitWith(value_delta_max-value_delta_min));
+    return b;
+  }
+
+//  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
+//                             ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
+//    int j_star_bit_width = 33;
+//    int j_star = 0;
+//    double theta0_r = theta.get(0);
+//    double theta1_r = theta.get(1);
+//    double theta0_v = theta.get(2);
+//    double theta1_v = theta.get(3);
+//    if(i_star == block_size - 1 || i_star == 0)
+//      return 0;
+//    int epsilon_r_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(0) - theta0_r -
+//            theta1_r * (double) ts_block.get(i_star-1).get(0));
+//    int epsilon_v_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(1) - theta0_v -
+//            theta1_v * (double)ts_block.get(i_star-1).get(1));
+//
+//    if(epsilon_r_i_star_plus_1 > raw_length.get(1) || epsilon_v_i_star_plus_1 > raw_length.get(2))
+//      return 0;
+//
+//
+//    for(int j = 1;j<block_size;j++){
+//      if(j!=i_star){
+//        int epsilon_r_j = (int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(i_star).get(0));
+//        int epsilon_v_j = (int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(i_star).get(1));
+//        int epsilon_r_i_star = (int) ((double) ts_block.get(i_star).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0));
+//        int epsilon_v_i_star = (int) ((double) ts_block.get(i_star).get(1) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(1));
+//        if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
+//                epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
+//          return 0;
+//        int max_r = getBitWith(max3(epsilon_r_i_star_plus_1,epsilon_r_j,epsilon_r_i_star));
+//        int max_v = getBitWith(max3(epsilon_v_i_star_plus_1,epsilon_v_j,epsilon_v_i_star));
+//        if(index == 1){
+//          if(max_v<=raw_length.get(2) && max_r < j_star_bit_width && max_r < raw_length.get(1)){
+//            j_star_bit_width = max_r;
+//            j_star = j;
+//          }
+//        }else{
+//          if(max_v<raw_length.get(2) && max_v < j_star_bit_width && max_r <= raw_length.get(1)){
+//            j_star_bit_width = max_v;
+//            j_star = j;
+//          }
+//        }
+//      }
+//    }
+//    return j_star;
+//  }
+  public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
+                           int index,ArrayList<Integer> theta){
+  int timestamp_delta_max = Integer.MIN_VALUE;
+  int value_delta_max = Integer.MIN_VALUE;
+  int timestamp_delta_max_index = -1;
+  int value_delta_max_index = -1;
+
+  int i_star = 0;
+
+  int theta0_t = theta.get(0);
+  int theta1_t = theta.get(1);
+  int theta0_v = theta.get(2);
+  int theta1_v = theta.get(3);
+
+  if(index==0){
+    for(int j = 1;j<block_size;j++){
+      int epsilon_v_j =ts_block.get(j).get(1) - ( theta0_v + theta1_v * ts_block.get(j-1).get(1));
+      if(epsilon_v_j > value_delta_max){
+        value_delta_max = epsilon_v_j;
+        value_delta_max_index =j;
+
+      }
+    }
+//      System.out.println(value_delta_max_index);
+    i_star = value_delta_max_index;
+  } else if (index==1) {
+    for(int j = 1;j<block_size;j++){
+      int epsilon_r_j = ts_block.get(j).get(0) -  ( theta0_t + theta1_t * ts_block.get(j-1).get(0));
+      if(epsilon_r_j > timestamp_delta_max){
+        timestamp_delta_max = epsilon_r_j;
+        timestamp_delta_max_index = j;
+      }
+    }
+    i_star = timestamp_delta_max_index;
+  }
+
+  return i_star;
+}
+  public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
+                             ArrayList<Integer> raw_length, ArrayList<Integer> theta){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    int timestamp_delta_max_index = -1;
+    int value_delta_max_index = -1;
+
+    int theta0_t = theta.get(0);
+    int theta1_t = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
+
+    int i_star_bit_width = 33;
+    int i_star = 0;
+
+    for(int j = 1;j<block_size;j++){
+      int epsilon_r_j =  ts_block.get(j).get(0) - ( theta0_t + theta1_t * ts_block.get(j-1).get(0));
+      int epsilon_v_j =  ts_block.get(j).get(1) - ( theta0_v + theta1_v *  ts_block.get(j-1).get(1));
+
+      if(epsilon_r_j>timestamp_delta_max){
+        timestamp_delta_max = epsilon_r_j;
+      }
+      if(epsilon_r_j<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r_j;
+      }
+      if(epsilon_v_j > value_delta_max){
+        value_delta_max = epsilon_v_j;
+      }
+      if(epsilon_v_j <value_delta_min){
+        value_delta_min = epsilon_v_j;
+      }
+
+    }
+    timestamp_delta_max -= timestamp_delta_min;
+    value_delta_max -= value_delta_min;
+    if(value_delta_max<=timestamp_delta_max)
+      i_star = timestamp_delta_max_index;
+    else
+      i_star = value_delta_max_index;
     return i_star;
   }
+
+//  public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
+//                             ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
+//    int i_star_bit_width = 33;
+//    int i_star = 0;
+//    double theta0_r = theta.get(0);
+//    double theta1_r = theta.get(1);
+//    double theta0_v = theta.get(2);
+//    double theta1_v = theta.get(3);
+//
+//    for(int j = 1;j<block_size;j++){
+//      int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
+//      int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
+//      if(index == 1){
+//        if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
+//          i_star_bit_width = epsilon_r_j;
+//          i_star = j;
+//        }
+//      }else{
+//        if(epsilon_v_j<raw_length.get(2) && epsilon_v_j < i_star_bit_width && epsilon_r_j <= raw_length.get(1)){
+//          i_star_bit_width = epsilon_v_j;
+//          i_star = j;
+//        }
+//      }
+//    }
+//    return i_star;
+//  }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
                                              ArrayList<Integer> raw_length,ArrayList<Integer> theta,ArrayList<Integer> result2){
@@ -534,11 +1175,11 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
 //    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] theta0_r_byte = int2Bytes(theta.get(0));
+    byte[] theta0_r_byte = int2Bytes(theta.get(0)+raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
     byte[] theta1_r_byte = int2Bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = int2Bytes(theta.get(2));
+    byte[] theta0_v_byte = int2Bytes(theta.get(2)+raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
     byte[] theta1_v_byte = int2Bytes(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
@@ -587,13 +1228,11 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
         ts_block_reorder.add(data.get(j+i*block_size));
       }
 
-      //ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result2 = new ArrayList<>();
       splitTimeStamp3(ts_block,td,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 
-      //ts_block order by interval
 
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -602,7 +1241,6 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
 
-
       // value-order
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
@@ -610,91 +1248,266 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
       ArrayList<Integer> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
+//      System.out.println(raw_length);
+//      System.out.println(reorder_length);
 
+      int i_star;
+      int j_star;
       if(raw_length.get(0)<=reorder_length.get(0)){
-        //flag.set(0,flag.get(0)+1);
         quickSort(ts_block,0,0,block_size-1);
-//        System.out.println(ts_block);
-        int i_star = i_star_ready.get(1);
-        int j_star = 0;
         count_raw ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-
-        while(j_star!=0){
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
-            }
-          }
-          ts_block.set(j_star,tmp_tv);
-          i_star =getIStar(ts_block,block_size,raw_length,0,theta);
-          j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-          System.out.println("adjust");
-          //flag.set(2,flag.get(2)+1);
-        }
-
-        ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
-                i_star_ready_reorder,theta);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
-        encoded_result.addAll(cur_encoded_result);
-
+        i_star =getIStar(ts_block,block_size,0,theta);
+//        System.out.println("count_raw");
+//        System.out.println(theta);
+//        System.out.println(ts_block);
       }
       else{
-        //flag.set(1,flag.get(1)+1);
-        // adjust to reduce max_bit_width_r
-//        System.out.println(ts_block);
-        int i_star = i_star_ready_reorder.get(0);
-        int j_star = 0;
-        ArrayList<Integer> j_star_list =new ArrayList<>();
+        raw_length = reorder_length;
+        theta = theta_reorder;
+        quickSort(ts_block,1,0,block_size-1);
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-        while(j_star != 0){
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
-            }
-          }
-          System.out.println("adjust");
-          //flag.set(2,flag.get(2)+1);
-          ts_block.set(j_star,tmp_tv);
-          i_star =getIStar(ts_block,block_size,reorder_length,0,theta);
-          j_star =getJStar(ts_block,i_star,block_size,reorder_length,0,theta);
-        }
-
-        ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
-                i_star_ready_reorder,theta_reorder);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder, result2);
-        encoded_result.addAll(cur_encoded_result);
+        i_star =getIStar(ts_block,block_size,1,theta);
+//        System.out.println("count_reorder");
+//        System.out.println(theta_reorder);
+//        System.out.println(ts_block);
       }
+//      System.out.println("--------------------------------------------------------------");
+      j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//      System.out.println(raw_length);
+//      System.out.println(i_star);
+//      System.out.println(j_star);
+
+      int adjust_count = 0;
+      while(j_star!=-1 && i_star !=-1){
+        if(adjust_count < block_size/2 && adjust_count < 50){
+          adjust_count ++;
+        }else {
+          break;
+        }
+        ArrayList<Integer> tmp_tv = ts_block.get(i_star);
+        if(j_star<i_star){
+          for(int u=i_star-1;u>=j_star;u--){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u+1,tmp_tv_cur);
+          }
+        }else{
+          for(int u=i_star+1;u<j_star;u++){
+            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+            tmp_tv_cur.add(ts_block.get(u).get(0));
+            tmp_tv_cur.add(ts_block.get(u).get(1));
+            ts_block.set(u-1,tmp_tv_cur);
+          }
+          j_star --;
+        }
+        ts_block.set(j_star,tmp_tv);
+
+        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+//        System.out.println(raw_length);
+//        System.out.println("--------------------------------------------------------------");
+        i_star =getIStar(ts_block,block_size,raw_length,theta);
+        if(i_star == j_star) break;
+        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//        System.out.println(i_star);
+//        System.out.println(j_star);
+        //flag.set(2,flag.get(2)+1);
+      }
+
+      ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+      encoded_result.addAll(cur_encoded_result);
     }
-//    System.out.println(count_raw);
-//    System.out.println(count_reorder);
+
+    int remaining_length = length_all - block_num*block_size;
+//    System.out.println(remaining_length);
+    if(remaining_length!=0 && remaining_length!=1){
+      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+
+      for(int j=block_num*block_size;j<length_all;j++){
+        ts_block.add(data.get(j));
+        ts_block_reorder.add(data.get(j));
+      }
+      ArrayList<Integer> result2 = new ArrayList<>();
+      splitTimeStamp3(ts_block,td,result2);
+
+      quickSort(ts_block,0,0,remaining_length-1);
+
+
+      // time-order
+      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+      ArrayList<Integer> i_star_ready = new ArrayList<>();
+      ArrayList<Integer> theta = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
+              i_star_ready,theta);
+
+      // value-order
+      quickSort(ts_block,1,0,remaining_length-1);
+      ArrayList<Integer> reorder_length = new ArrayList<>();
+      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+      ArrayList<Integer> theta_reorder = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
+              i_star_ready_reorder,theta_reorder);
+
+      if(raw_length.get(0)<=reorder_length.get(0)){
+        quickSort(ts_block,0,0,remaining_length-1);
+        count_raw ++;
+      }
+      else{
+        raw_length = reorder_length;
+        theta = theta_reorder;
+        quickSort(ts_block,1,0,remaining_length-1);
+        count_reorder ++;
+      }
+      ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,theta);
+      if(remaining_length%8!=1){
+        int supple_length = 9-(remaining_length - (remaining_length/8)*8);
+        //System.out.println(supple_length);
+        for(int s = 0;s<supple_length;s++){
+          ArrayList<Integer> tmp = new ArrayList<>();
+          tmp.add(0);
+          tmp.add(0);
+          ts_block_delta.add(tmp);
+        }
+      }
+      byte[] remaining_length_bytes = int2Bytes(remaining_length);
+      for(byte b:remaining_length_bytes)   encoded_result.add(b);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+      encoded_result.addAll(cur_encoded_result);
+    }
     return encoded_result;
   }
+
+
+//  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
+//    block_size ++;
+//    int length_all = data.size();
+//    int block_num = length_all/block_size;
+//    ArrayList<Byte> encoded_result=new ArrayList<Byte>();
+//    // encode block size (Integer)
+//    byte[] block_size_byte = int2Bytes(block_size);
+//    for (byte b : block_size_byte) encoded_result.add(b);
+//
+//    int count_raw = 0;
+//    int count_reorder = 0;
+////    for(int i=0;i<1;i++){
+//    for(int i=0;i<block_num;i++){
+//      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+//      for(int j=0;j<block_size;j++){
+//        ts_block.add(data.get(j+i*block_size));
+//        ts_block_reorder.add(data.get(j+i*block_size));
+//      }
+//
+//      //ArrayList<Integer> deviation_list = new ArrayList<>();
+//      ArrayList<Integer> result2 = new ArrayList<>();
+//      splitTimeStamp3(ts_block,td,result2);
+//
+//      quickSort(ts_block,0,0,block_size-1);
+//
+//      //ts_block order by interval
+//
+//      // time-order
+//      ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+//      ArrayList<Integer> i_star_ready = new ArrayList<>();
+//      ArrayList<Integer> theta = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
+//              i_star_ready,theta);
+//
+//
+//      // value-order
+//      quickSort(ts_block,1,0,block_size-1);
+//      ArrayList<Integer> reorder_length = new ArrayList<>();
+//      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+//      ArrayList<Integer> theta_reorder = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
+//              i_star_ready_reorder,theta_reorder);
+//
+//      if(raw_length.get(0)<=reorder_length.get(0)){
+//        //flag.set(0,flag.get(0)+1);
+//        quickSort(ts_block,0,0,block_size-1);
+////        System.out.println(ts_block);
+//        int i_star = i_star_ready.get(1);
+//        int j_star = 0;
+//        count_raw ++;
+////        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//
+//        while(j_star!=0){
+//          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
+//          if(j_star<i_star){
+//            for(int u=i_star-1;u>=j_star;u--){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u+1,tmp_tv_cur);
+//            }
+//          }else{
+//            for(int u=i_star+1;u<=j_star;u++){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u-1,tmp_tv_cur);
+//            }
+//          }
+//          ts_block.set(j_star,tmp_tv);
+//          i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//          j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//          System.out.println("adjust");
+//          //flag.set(2,flag.get(2)+1);
+//        }
+//
+//        ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
+//                i_star_ready_reorder,theta);
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
+//        encoded_result.addAll(cur_encoded_result);
+//
+//      }
+//      else{
+//        //flag.set(1,flag.get(1)+1);
+//        // adjust to reduce max_bit_width_r
+////        System.out.println(ts_block);
+//        int i_star = i_star_ready_reorder.get(0);
+//        int j_star = 0;
+//        ArrayList<Integer> j_star_list =new ArrayList<>();
+//        count_reorder ++;
+//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//        j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//        while(j_star != 0){
+//          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
+//          if(j_star<i_star){
+//            for(int u=i_star-1;u>=j_star;u--){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u+1,tmp_tv_cur);
+//            }
+//          }else{
+//            for(int u=i_star+1;u<=j_star;u++){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u-1,tmp_tv_cur);
+//            }
+//          }
+//          System.out.println("adjust");
+//          //flag.set(2,flag.get(2)+1);
+//          ts_block.set(j_star,tmp_tv);
+//          i_star =getIStar(ts_block,block_size,reorder_length,0,theta);
+//          j_star =getJStar(ts_block,i_star,block_size,reorder_length,0,theta);
+//        }
+//
+//        ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
+//                i_star_ready_reorder,theta_reorder);
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder, result2);
+//        encoded_result.addAll(cur_encoded_result);
+//      }
+//    }
+////    System.out.println(count_raw);
+////    System.out.println(count_reorder);
+//    return encoded_result;
+//  }
 
   public static void quickSort22(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
     if(low>=high)
@@ -1002,77 +1815,77 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
-//    dataset_map_td.add(3600);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
-//    dataset_map_td.add(86400);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
-//    dataset_map_td.add(50);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
-//    dataset_map_td.add(10);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
-//    dataset_map_td.add(3);
-//    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
-//    dataset_map_td.add(5);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
-//    dataset_map_td.add(60);
-//    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-//    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
-//    dataset_map_td.add(100);
-
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
+
+//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
+//    dataset_map_td.add(3600);
+//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
+//    dataset_map_td.add(86400);
+//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
+//    dataset_map_td.add(50);
+//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
+//    dataset_map_td.add(10);
+//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
+//    dataset_map_td.add(3);
+//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
+//    dataset_map_td.add(5);
+//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
+//    dataset_map_td.add(60);
+//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+//            "\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
+//    dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
-
+//System.out.println(inputPath);
 
   //    String Output =
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
@@ -1101,7 +1914,8 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<13;block_size_exp++) {
+      for(int block_size_exp=4;block_size_exp<9;block_size_exp++) {
+
         int block_size = (int) Math.pow(2, block_size_exp);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
@@ -1133,7 +1947,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+//            data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += (e - s);
           }
