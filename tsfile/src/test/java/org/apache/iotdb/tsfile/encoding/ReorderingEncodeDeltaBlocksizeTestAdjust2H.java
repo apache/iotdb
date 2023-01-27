@@ -303,6 +303,9 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
         }
       }
     }
+    if(td_common == 0){
+      td_common = 1;
+    }
 
     td = td_common;
 
@@ -1140,7 +1143,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
 
       if(remaining_length%8!=1){
         int supple_length = 9-(remaining_length - (remaining_length/8)*8);
-        System.out.println(supple_length);
+        //System.out.println(supple_length);
         for(int s = 0;s<supple_length;s++){
           ArrayList<Integer> tmp = new ArrayList<>();
           tmp.add(0);
@@ -1470,6 +1473,7 @@ public class ReorderingEncodeDeltaBlocksizeTestAdjust2H {
       for(int block_size_exp=4;block_size_exp<13;block_size_exp++){
 //        System.out.println(block_size_exp);
         int block_size = (int) Math.pow(2,block_size_exp);
+        //System.out.println(block_size);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
 //        System.out.println(f.toPath());

@@ -1076,7 +1076,7 @@ public class ReorderingEncodeTestS3Adjust2H {
 //      System.out.println(j_star);
       int adjust_count = 0;
       while(j_star!=-1){
-        if(adjust_count < block_size/2){
+        if(adjust_count < block_size/2 && adjust_count < 30){
           adjust_count ++;
         }else {
           break;
