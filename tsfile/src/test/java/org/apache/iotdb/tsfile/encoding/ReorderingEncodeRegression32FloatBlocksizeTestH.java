@@ -815,11 +815,11 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestH {
 
       float theta0_r = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      double theta1_r = byte2float2(encoded, decode_pos);
+      float theta1_r = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      double theta0_v = byte2float2(encoded, decode_pos);
+      float theta0_v = byte2float2(encoded, decode_pos);
       decode_pos += 4;
-      double theta1_v = byte2float2(encoded, decode_pos);
+      float theta1_v = byte2float2(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -856,11 +856,11 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestH {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < block_size-1; i++) {
-        int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
 
@@ -1101,7 +1101,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestH {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<11;block_size_exp++) {
+      for(int block_size_exp=4;block_size_exp<13;block_size_exp++) {
         int block_size = (int) Math.pow(2, block_size_exp);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
