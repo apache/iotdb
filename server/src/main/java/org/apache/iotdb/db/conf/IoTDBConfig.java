@@ -266,10 +266,10 @@ public class IoTDBConfig {
   private String indexRootFolder = "data" + File.separator + "index";
 
   /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long unSeqTsFileSize = 1L;
+  private long unSeqTsFileSize = 1073741824;
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long seqTsFileSize = 1L;
+  private long seqTsFileSize = 1073741824;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
@@ -328,7 +328,7 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** LEVEL_COMPACTION, NO_COMPACTION */
-  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.NO_COMPACTION;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
@@ -431,7 +431,7 @@ public class IoTDBConfig {
   /** Is performance tracing enable. */
   private boolean enablePerformanceTracing = false;
 
-  private boolean enableCPV = false;
+  private boolean enableCPV = true;
 
   /** The display of stat performance interval in ms. */
   private long performanceStatDisplayInterval = 60000;

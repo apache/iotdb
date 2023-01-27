@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Metadata of one chunk. */
-public class ChunkMetadata {
+public class ChunkMetadata implements Comparable<ChunkMetadata> {
 
   private String measurementUid;
 
@@ -116,6 +116,11 @@ public class ChunkMetadata {
   //    }
   //    this.version = chunkMetadata.version;
   //  }
+
+  @Override
+  public int compareTo(ChunkMetadata chunkMetadata) {
+    return Long.compare(statistics.getStartTime(), chunkMetadata.getStartTime());
+  }
 
   @Override
   public String toString() {

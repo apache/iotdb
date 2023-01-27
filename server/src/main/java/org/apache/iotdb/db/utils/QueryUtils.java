@@ -54,18 +54,24 @@ public class QueryUtils {
     List<Deletion> deletions =
         modifications.stream().map(e -> (Deletion) e).sorted().collect(Collectors.toList());
 
+    // sort chunkMetadatas by startTime
+    List<ChunkMetadata> sortedChunkMetadata =
+        chunkMetaData.stream().map(e -> (ChunkMetadata) e).sorted().collect(Collectors.toList());
+
+    // TODO add startPos for chunk to iterate deletes to speed up
+    int deleteStartIdx = 0;
     // 对于每个chunkMetadata，先过滤掉时间范围上不重叠的删除操作，然后再根据版本高低判断是否应用mod
-    for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      ChunkMetadata metaData = chunkMetaData.get(metaIndex);
-      long startTime = metaData.getStartTime();
-      long endTime = metaData.getEndTime();
-      for (Deletion deletion : deletions) {
-        long deleteStartTime = deletion.getStartTime();
-        long deleteEndTime = deletion.getEndTime();
-        if (deleteStartTime > endTime) {
+    for (int metaIndex = 0; metaIndex < sortedChunkMetadata.size(); metaIndex++) {
+      ChunkMetadata metaData = sortedChunkMetadata.get(metaIndex);
+      //      for (Deletion deletion : deletions) {
+      for (int j = deleteStartIdx; j < deletions.size(); j++) {
+        // TODO use deleteStartIdx to avoid iterate from the first delete
+        Deletion deletion = deletions.get(j);
+        if (deletion.getStartTime() > metaData.getEndTime()) {
           break;
         }
-        if (startTime > deleteEndTime) {
+        if (metaData.getStartTime() > deletion.getEndTime()) {
+          deleteStartIdx = j + 1; // TODO update startPos for chunk to iterate deletes to speed up
           continue;
         }
         // then deals with deletes that overlap in time with the chunk
