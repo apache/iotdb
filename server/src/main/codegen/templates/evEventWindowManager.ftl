@@ -16,19 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+<@pp.dropOutputFile />
+
+<#list allDataTypes.types as dataType>
+    <#list compareTypes.types as compareType>
+
+        <#if compareType.compareType == "variation">
+            <#if dataType.dataType == "boolean">
+                <#continue>
+            </#if>
+            <#if dataType.dataType == "Binary">
+                <#continue>
+            </#if>
+        </#if>
+
+        <#assign className = "${compareType.compareType?cap_first}Event${dataType.dataType?cap_first}WindowManager">
+        <#assign windowName = "${compareType.compareType?cap_first}Event${dataType.dataType?cap_first}Window">
+        <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/window/${className}.java" />
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+<#if dataType.dataType == "Binary">
+import org.apache.iotdb.tsfile.utils.Binary;
+</#if>
 
-public class VariationEventIntWindowManager extends EventIntWindowManager {
+/*
+* This class is generated using freemarker and the ${.template_name} template.
+*/
+public class ${className} extends Event${dataType.dataType?cap_first}WindowManager {
 
-  public VariationEventIntWindowManager(
+  public ${className}(
       EventWindowParameter eventWindowParameter, boolean ascending) {
     super(eventWindowParameter, ascending);
-    eventWindow = new VariationEventIntWindow(eventWindowParameter);
+    eventWindow = new ${windowName}(eventWindowParameter);
   }
 
   @Override
@@ -44,11 +67,19 @@ public class VariationEventIntWindowManager extends EventIntWindowManager {
     Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
-    int previousEventValue = ((VariationEventIntWindow) eventWindow).getPreviousEventValue();
+    ${dataType.dataType} previousEventValue = ((${windowName}) eventWindow).getPreviousEventValue();
     for (; i < size; i++) {
+      <#if compareType.compareType == "equal">
+          <#if dataType.dataType == "Binary">
+      if (!controlColumn.isNull(i) && !controlColumn.get${dataType.dataType?cap_first}(i).equals(previousEventValue)) {
+          <#else>
+      if (!controlColumn.isNull(i) && controlColumn.get${dataType.dataType?cap_first}(i) != previousEventValue) {
+          </#if>
+      <#else>
       if (!controlColumn.isNull(i)
-          && Math.abs(controlColumn.getInt(i) - previousEventValue)
+          && Math.abs(controlColumn.get${dataType.dataType?cap_first}(i) - previousEventValue)
               > eventWindowParameter.getDelta()) {
+      </#if>
         break;
       }
       // judge whether we need update endTime
@@ -64,3 +95,6 @@ public class VariationEventIntWindowManager extends EventIntWindowManager {
     return inputTsBlock.subTsBlock(i);
   }
 }
+
+    </#list>
+</#list>
