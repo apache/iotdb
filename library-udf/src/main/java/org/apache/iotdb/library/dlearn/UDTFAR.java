@@ -29,7 +29,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
