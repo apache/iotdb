@@ -815,7 +815,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             currentChunkList.remove(susp_candidate);
           } else {
             susp_candidate.setLazyLoad(true);
-            susp_candidate.getChunkMetadata().getStatistics().setEndTime(deleteStartTime - 1);
+            // TODO NOTE here get statistics from ChunkSuit4CPV, not from
+            // ChunkSuit4CPV.ChunkMetadata
+            susp_candidate.getStatistics().setEndTime(deleteStartTime - 1);
             // -1 is because delete is closed interval
             // TODO check
           }
