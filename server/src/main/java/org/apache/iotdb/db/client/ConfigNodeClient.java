@@ -27,10 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -118,8 +116,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -141,7 +137,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final int RETRY_INTERVAL_MS = 1000;
 
-  private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
+  private final long connectionTimeout;
 
   private IConfigNodeRPCService.Iface client;
 
@@ -163,23 +159,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   TProtocolFactory protocolFactory;
 
-  public ConfigNodeClient() throws TException {
-    // Read config nodes from configuration
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
-    protocolFactory =
-        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
-            ? new TCompactProtocol.Factory()
-            : new TBinaryProtocol.Factory();
-
-    init();
-  }
-
   public ConfigNodeClient(
+      List<TEndPoint> configNodes,
       TProtocolFactory protocolFactory,
       long connectionTimeout,
       ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager)
       throws TException {
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    this.configNodes = configNodes;
     this.protocolFactory = protocolFactory;
     this.connectionTimeout = connectionTimeout;
     this.clientManager = clientManager;
@@ -274,11 +260,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void close() {
-    if (clientManager != null) {
-      clientManager.returnClient(configNodeRegionId, this);
-    } else {
-      invalidate();
-    }
+    clientManager.returnClient(configNodeRegionId, this);
   }
 
   @Override
@@ -1859,7 +1841,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
               ConfigNodeClient.class.getConstructor(
-                  TProtocolFactory.class, long.class, clientManager.getClass()),
+                  List.class, TProtocolFactory.class, long.class, clientManager.getClass()),
+              ConfigNodeInfo.getInstance().getLatestConfigNodes(),
               thriftClientProperty.getProtocolFactory(),
               thriftClientProperty.getConnectionTimeoutMs(),
               clientManager));
@@ -1868,7 +1851,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     @Override
     public boolean validateObject(
         ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+      return Optional.ofNullable(pooledObject.getObject().getTransport())
+          .map(TTransport::isOpen)
+          .orElse(false);
     }
   }
 }
