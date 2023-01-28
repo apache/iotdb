@@ -1101,12 +1101,14 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
 
       if(epsilon_r_j>timestamp_delta_max){
         timestamp_delta_max = epsilon_r_j;
+        timestamp_delta_max_index = j;
       }
       if(epsilon_r_j<timestamp_delta_min){
         timestamp_delta_min = epsilon_r_j;
       }
       if(epsilon_v_j > value_delta_max){
         value_delta_max = epsilon_v_j;
+        value_delta_max_index = j;
       }
       if(epsilon_v_j <value_delta_min){
         value_delta_min = epsilon_v_j;
