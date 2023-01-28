@@ -976,12 +976,15 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
       if(epsilon_r_j>timestamp_delta_max){
         timestamp_delta_max = epsilon_r_j;
+        timestamp_delta_max_index = j;
       }
       if(epsilon_r_j<timestamp_delta_min){
         timestamp_delta_min = epsilon_r_j;
+
       }
       if(epsilon_v_j > value_delta_max){
         value_delta_max = epsilon_v_j;
+        value_delta_max_index = j;
       }
       if(epsilon_v_j <value_delta_min){
         value_delta_min = epsilon_v_j;
@@ -1069,8 +1072,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
     int count_raw = 0;
     int count_reorder = 0;
-//    for(int i=0;i<1;i++){
-    for(int i=0;i<block_num;i++){
+    for(int i=0;i<1;i++){
+//    for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1161,9 +1164,11 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
 //        System.out.println(i_star);
 //        System.out.println(j_star);
+//        System.out.println(i_star);
+//        System.out.println(j_star);
         //flag.set(2,flag.get(2)+1);
       }
-
+//      System.out.println(adjust_count);
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
