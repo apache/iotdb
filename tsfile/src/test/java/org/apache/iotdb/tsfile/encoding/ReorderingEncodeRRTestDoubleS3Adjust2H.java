@@ -210,6 +210,9 @@ public class ReorderingEncodeRRTestDoubleS3Adjust2H {
         }
       }
     }
+    if(td_common==0){
+      td_common = 1;
+    }
 
     td = td_common;
 
@@ -1129,7 +1132,7 @@ public class ReorderingEncodeRRTestDoubleS3Adjust2H {
 
       int adjust_count = 0;
       while(j_star!=-1 && i_star !=-1){
-        if(adjust_count < block_size/2 && adjust_count < 50){
+        if(adjust_count < block_size/2 && adjust_count <= 30){
           adjust_count ++;
         }else {
           break;
@@ -1664,7 +1667,7 @@ public class ReorderingEncodeRRTestDoubleS3Adjust2H {
 
         String[] record = {
                 f.toString(),
-                "RR",
+                "REGER",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),

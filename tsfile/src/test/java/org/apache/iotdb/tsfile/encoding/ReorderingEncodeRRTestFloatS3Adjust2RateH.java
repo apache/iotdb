@@ -210,6 +210,9 @@ public class ReorderingEncodeRRTestFloatS3Adjust2RateH {
         }
       }
     }
+    if(td_common==0){
+      td_common = 1;
+    }
 
     td = td_common;
 
@@ -1132,7 +1135,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2RateH {
       int adjust_count = 0;
       int learning = 0;
       while(j_star!=-1 && i_star !=-1){
-        if(adjust_count < block_size/2 && adjust_count < 50){
+        if(adjust_count < block_size/2 && adjust_count <= 30){
           adjust_count ++;
         }else {
           break;
@@ -1668,7 +1671,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2RateH {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),10);
+          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),1);
 
           long e = System.nanoTime();
           encodeTime += (e - s);
@@ -1725,7 +1728,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2RateH {
 
         String[] record = {
                 f.toString(),
-                "RR",
+                "REGER",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),
