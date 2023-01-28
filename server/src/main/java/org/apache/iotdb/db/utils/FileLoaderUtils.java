@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,11 +87,11 @@ public class FileLoaderUtils {
   }
 
   /**
-   * @author Yuyuan Kang
    * @param resource TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
+   * @author Yuyuan Kang
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
@@ -184,6 +185,51 @@ public class FileLoaderUtils {
       long duration = System.nanoTime() - start;
       IOMonitor.incDataIOTime(duration);
       return chunkReader.loadPageReaderList();
+    } catch (IOException e) {
+      logger.error(
+          "Something wrong happened while reading chunk from " + chunkMetaData.getFilePath());
+      throw e;
+    }
+  }
+
+  /**
+   * load all page readers in one chunk that satisfying the timeFilter
+   *
+   * @param chunkMetaData the corresponding chunk metadata
+   * @param timeFilter it should be a TimeFilter instead of a ValueFilter
+   */
+  public static PageReader loadPageReaderList4CPV(ChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    long start = System.nanoTime();
+    if (chunkMetaData == null) {
+      throw new IOException("Can't init null chunkMeta");
+    }
+    try {
+      IChunkReader chunkReader;
+      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+      if (chunkLoader instanceof MemChunkLoader) {
+        MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+        chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
+      } else {
+        Chunk chunk = chunkLoader.loadChunk(chunkMetaData); // loads chunk data from disk to memory
+        chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+        chunkReader =
+            new ChunkReader(chunk, timeFilter); // decompress page data, split time&value buffers
+        chunkReader.hasNextSatisfiedPage();
+      }
+      long duration = System.nanoTime() - start;
+      IOMonitor.incDataIOTime(duration);
+      List<IPageReader> pageReaderList = chunkReader.loadPageReaderList();
+      if (pageReaderList.size() > 1) {
+        // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+        //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
+        //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
+        //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+        // DIRECTLY),
+        //  WHICH WILL INTRODUCE BUGS!
+        throw new IOException("Wrong: more than one page in a chunk!");
+      }
+      return (PageReader) pageReaderList.get(0);
     } catch (IOException e) {
       logger.error(
           "Something wrong happened while reading chunk from " + chunkMetaData.getFilePath());

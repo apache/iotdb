@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
@@ -30,6 +29,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+
+import java.io.IOException;
 
 public class ChunkSuit4CPV {
 
@@ -271,10 +272,10 @@ public class ChunkSuit4CPV {
     long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
     statistics.setStartTime(timestamp);
     switch (chunkMetadata.getDataType()) {
-      // iotdb的int类型的plain编码用的是自制的不支持random access
-      //      case INT32:
-      //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-      //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        // iotdb的int类型的plain编码用的是自制的不支持random access
+        //      case INT32:
+        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
       case INT64:
         long longVal =
             pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
@@ -332,10 +333,10 @@ public class ChunkSuit4CPV {
     long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
     statistics.setEndTime(timestamp);
     switch (chunkMetadata.getDataType()) {
-      // iotdb的int类型的plain编码用的是自制的不支持random access
-      //      case INT32:
-      //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-      //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+        // iotdb的int类型的plain编码用的是自制的不支持random access
+        //      case INT32:
+        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
       case INT64:
         long longVal =
             pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);

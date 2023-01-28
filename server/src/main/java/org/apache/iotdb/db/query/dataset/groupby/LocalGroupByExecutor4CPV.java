@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -169,30 +168,23 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         itr.remove();
         // B: loads chunk data from disk to memory
         // C: decompress page data, split time&value buffers
-        List<IPageReader> pageReaderList =
-            FileLoaderUtils.loadPageReaderList(chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-        //        if (pageReaderList.size() > 1) {
-        //          throw new IOException("Against the assumption that there is only one page in a
-        // chunk!");
-        //        }
-        //        for (IPageReader pageReader : pageReaderList) {
-        // assume only one page in a chunk
-        // assume all data on disk, no data in memory
+        PageReader pageReader =
+            FileLoaderUtils.loadPageReaderList4CPV(
+                chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
         // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
         //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
         //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-        //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+        //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+        // DIRECTLY),
         //  WHICH WILL INTRODUCE BUGS!
-        ((PageReader) pageReaderList.get(0))
-            .split4CPV(
-                startTime,
-                endTime,
-                interval,
-                curStartTime,
-                currentChunkList,
-                splitChunkList,
-                chunkMetadata);
-        //        }
+        pageReader.split4CPV(
+            startTime,
+            endTime,
+            interval,
+            curStartTime,
+            currentChunkList,
+            splitChunkList,
+            chunkMetadata);
       }
     }
   }
@@ -280,15 +272,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           for (ChunkSuit4CPV chunkSuit4CPV : candidateSet) {
             // TODO 注意delete intervals的传递
             if (chunkSuit4CPV.getPageReader() == null) {
-              List<IPageReader> pageReaderList =
-                  FileLoaderUtils.loadPageReaderList(
+              PageReader pageReader =
+                  FileLoaderUtils.loadPageReaderList4CPV(
                       chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
               // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-              //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+              //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+              // DIRECTLY),
               //  WHICH WILL INTRODUCE BUGS!
-              chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
+              chunkSuit4CPV.setPageReader(pageReader);
             } else {
               // TODO 注意delete intervals的传递：主要是被重写点作为点删除传递
               // pageReader does not refer to the same deleteInterval as those in chunkMetadata
@@ -321,8 +314,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // getCurrentChunkListFromFutureChunkList
         if (candidateTimestamp < curStartTime || candidateTimestamp >= curStartTime + interval) {
           isDeletedItself = true;
-        }
-        else {
+        } else {
           isDeletedItself =
               PageReader.isDeleted(
                   candidateTimestamp, candidate.getChunkMetadata().getDeleteIntervalList());
@@ -373,15 +365,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               // scan这个chunk的数据
               // TODO chunk data read operation (a): check existence of data point at a timestamp
               if (chunkSuit4CPV.getPageReader() == null) {
-                List<IPageReader> pageReaderList =
-                    FileLoaderUtils.loadPageReaderList(
+                PageReader pageReader =
+                    FileLoaderUtils.loadPageReaderList4CPV(
                         chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
                 // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-                //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+                //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
+                // ASSIGN DIRECTLY),
                 //  WHICH WILL INTRODUCE BUGS!
-                chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
+                chunkSuit4CPV.setPageReader(pageReader);
               }
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
               if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
@@ -480,15 +473,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           for (ChunkSuit4CPV chunkSuit4CPV : candidateSet) {
             // TODO 注意delete intervals的传递
             if (chunkSuit4CPV.getPageReader() == null) {
-              List<IPageReader> pageReaderList =
-                  FileLoaderUtils.loadPageReaderList(
+              PageReader pageReader =
+                  FileLoaderUtils.loadPageReaderList4CPV(
                       chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
               // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-              //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+              //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+              // DIRECTLY),
               //  WHICH WILL INTRODUCE BUGS!
-              chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
+              chunkSuit4CPV.setPageReader(pageReader);
             } else {
               // TODO 注意delete intervals的传递：主要是被重写点作为点删除传递
               // pageReader does not refer to the same deleteInterval as those in chunkMetadata
@@ -577,15 +571,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               // scan这个chunk的数据
               // TODO chunk data read operation (a): check existence of data point at a timestamp
               if (chunkSuit4CPV.getPageReader() == null) {
-                List<IPageReader> pageReaderList =
-                    FileLoaderUtils.loadPageReaderList(
+                PageReader pageReader =
+                    FileLoaderUtils.loadPageReaderList4CPV(
                         chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
                 // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-                //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+                //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
+                // ASSIGN DIRECTLY),
                 //  WHICH WILL INTRODUCE BUGS!
-                chunkSuit4CPV.setPageReader((PageReader) pageReaderList.get(0));
+                chunkSuit4CPV.setPageReader(pageReader);
               }
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
               if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
@@ -663,15 +658,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       if (susp_candidate.isLazyLoad()) { // 如果是lazy
         // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
         if (susp_candidate.getPageReader() == null) {
-          List<IPageReader> pageReaderList =
-              FileLoaderUtils.loadPageReaderList(
+          PageReader pageReader =
+              FileLoaderUtils.loadPageReaderList4CPV(
                   susp_candidate.getChunkMetadata(), this.timeFilter);
           // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+          // DIRECTLY),
           //  WHICH WILL INTRODUCE BUGS!
-          susp_candidate.setPageReader((PageReader) pageReaderList.get(0));
+          susp_candidate.setPageReader(pageReader);
         }
         // TODO update FP equal to or after statistics.getEndTime
         susp_candidate.updateFPwithTheClosetPointEqualOrAfter(
@@ -770,15 +766,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       if (susp_candidate.isLazyLoad()) { // 如果是lazy
         // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
         if (susp_candidate.getPageReader() == null) {
-          List<IPageReader> pageReaderList =
-              FileLoaderUtils.loadPageReaderList(
+          PageReader pageReader =
+              FileLoaderUtils.loadPageReaderList4CPV(
                   susp_candidate.getChunkMetadata(), this.timeFilter);
           // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
+          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
+          // DIRECTLY),
           //  WHICH WILL INTRODUCE BUGS!
-          susp_candidate.setPageReader((PageReader) pageReaderList.get(0));
+          susp_candidate.setPageReader(pageReader);
         }
         // TODO update FP equal to or after statistics.getEndTime
         susp_candidate.updateLPwithTheClosetPointEqualOrBefore(
