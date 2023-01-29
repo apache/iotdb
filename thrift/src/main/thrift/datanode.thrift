@@ -211,6 +211,11 @@ struct TInvalidatePermissionCacheReq {
   2: required string roleName
 }
 
+struct TSetRegionStatusReq {
+  1: required common.TConsensusGroupId regionId
+  2: required string status
+}
+
 struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
@@ -220,9 +225,10 @@ struct THeartbeatReq {
 struct THeartbeatResp {
   1: required i64 heartbeatTimestamp
   2: required string status
-  3: optional string statusReason
-  4: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  5: optional TLoadSample loadSample
+  3: required map<common.TConsensusGroupId, string> regionStatusMap
+  4: optional string statusReason
+  5: optional map<common.TConsensusGroupId, bool> judgedLeaders
+  6: optional TLoadSample loadSample
 }
 
 struct TLoadSample {
@@ -526,6 +532,10 @@ service IDataNodeRPCService {
   */
   common.TSStatus stopDataNode()
 
+  /**
+    * Config node will set a region's status to Data node.
+    */
+  common.TSStatus setRegionStatus(TSetRegionStatusReq req)
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
   *

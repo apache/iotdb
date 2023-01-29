@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -28,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -173,6 +175,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSetRegionStatusReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -201,6 +204,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.stream.Collectors;
@@ -946,6 +950,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus setRegionStatus(TSetRegionStatusReq req) {
+    try {
+      if (req.getRegionId().getType() == TConsensusGroupType.DataRegion) {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getDataRegionStatusMap()
+            .put(new DataRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
+      } else {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionStatusMap()
+            .put(
+                new SchemaRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.SET_REGION_STATUS_ERROR.getStatusCode());
+    }
+  }
+
+  @Override
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
 
@@ -981,8 +1006,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setLoadSample(loadSample);
     }
 
+    CommonConfig conf = CommonDescriptor.getInstance().getConfig();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
+    resp.setStatus(conf.getNodeStatus().getStatus());
+
+    Map<TConsensusGroupId, String> regionStatusMap = new ConcurrentHashMap<>();
+    Map<DataRegionId, RegionStatus> dataRegionStatusMap = conf.getDataRegionStatusMap();
+    Map<SchemaRegionId, RegionStatus> schemaRegionStatusMap = conf.getSchemaRegionStatusMap();
+    dataRegionStatusMap.forEach(
+        (id, status) -> regionStatusMap.put(id.convertToTConsensusGroupId(), status.getStatus()));
+    schemaRegionStatusMap.forEach(
+        (id, status) -> regionStatusMap.put(id.convertToTConsensusGroupId(), status.getStatus()));
+    resp.setRegionStatusMap(regionStatusMap);
+
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
       resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
     }

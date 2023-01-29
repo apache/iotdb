@@ -20,6 +20,9 @@ package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
@@ -27,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -34,6 +39,8 @@ public class CommonConfig {
   public static final String CONFIG_NAME = "iotdb-common.properties";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
+  private final Map<SchemaRegionId, RegionStatus> schemaRegionStatusMap = new ConcurrentHashMap<>();
+  private final Map<DataRegionId, RegionStatus> dataRegionStatusMap = new ConcurrentHashMap<>();
   // Open ID Secret
   private String openIdProviderUrl = "";
 
@@ -318,13 +325,16 @@ public class CommonConfig {
   public void setNodeStatusToShutdown() {
     logger.info("System will reject write operations when shutting down.");
     this.status = NodeStatus.ReadOnly;
+    schemaRegionStatusMap.replaceAll((i, v) -> RegionStatus.ReadOnly);
+    dataRegionStatusMap.replaceAll((i, v) -> RegionStatus.ReadOnly);
   }
 
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
-
+    schemaRegionStatusMap.replaceAll((i, v) -> RegionStatus.parse(newStatus.getStatus()));
+    dataRegionStatusMap.replaceAll((i, v) -> RegionStatus.parse(newStatus.getStatus()));
     switch (newStatus) {
       case ReadOnly:
         logger.error(
@@ -346,5 +356,13 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
+  }
+
+  public Map<SchemaRegionId, RegionStatus> getSchemaRegionStatusMap() {
+    return schemaRegionStatusMap;
+  }
+
+  public Map<DataRegionId, RegionStatus> getDataRegionStatusMap() {
+    return dataRegionStatusMap;
   }
 }

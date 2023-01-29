@@ -24,17 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
 import java.util.Objects;
 
-// we abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine
+// We abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine
 public abstract class ConsensusGroupId {
 
   protected int id;
 
-  // return specific id
+  // Return specific id
   public int getId() {
     return id;
   }
 
-  // return specific type
+  // Return specific type
   public abstract TConsensusGroupType getType();
 
   public TConsensusGroupId convertToTConsensusGroupId() {

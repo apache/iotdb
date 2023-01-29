@@ -87,6 +87,7 @@ public class RegionMigrateProcedure
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
+          handler.setRegionStatus(consensusGroupId, originalDataNode);
           setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
           break;
         case CREATE_NEW_REGION_PEER:

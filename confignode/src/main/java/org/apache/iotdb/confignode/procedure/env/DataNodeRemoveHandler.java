@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSetRegionStatusReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -155,6 +157,39 @@ public class DataNodeRemoveHandler {
     return newNode.get();
   }
 
+  public TSStatus setRegionStatus(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
+    TSetRegionStatusReq req = new TSetRegionStatusReq(regionId, RegionStatus.Removing.getStatus());
+
+    TSStatus status =
+        configManager.getNodeManager().getNodeStatusByNodeId(originalDataNode.getDataNodeId())
+                == NodeStatus.Unknown
+            ? SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    req,
+                    DataNodeRequestType.SET_REGION_STATUS,
+                    1)
+            : SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    req,
+                    DataNodeRequestType.SET_REGION_STATUS);
+
+    LOGGER.info(
+        "{}, Send action setRegionStatus finished, regionId: {}, targetDataNodeId: {}",
+        REGION_MIGRATE_PROCESS,
+        regionId,
+        getIdWithRpcEndpoint(originalDataNode));
+    if (isFailed(status)) {
+      LOGGER.error(
+          "{}, Send action setRegionStatus error, regionId: {}, targetDataNodeId: {}, result: {}",
+          REGION_MIGRATE_PROCESS,
+          regionId,
+          getIdWithRpcEndpoint(originalDataNode),
+          status);
+    }
+    return status;
+  }
   /**
    * Create a new RegionReplica and build the ConsensusGroup on the destined DataNode
    *

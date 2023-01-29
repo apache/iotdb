@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -122,6 +124,10 @@ public class DataNodeRegionManager {
           SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionStatusMap()
+            .put(schemaRegionId, RegionStatus.Running);
       } else {
         tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
@@ -158,6 +164,10 @@ public class DataNodeRegionManager {
           DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getDataRegionStatusMap()
+            .put(dataRegionId, RegionStatus.Running);
       } else {
         tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
@@ -172,25 +182,33 @@ public class DataNodeRegionManager {
 
   public TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("start to create new region {}", regionId);
+    LOGGER.info("Start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
         DataRegionId dataRegionId = (DataRegionId) regionId;
         storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
         dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getDataRegionStatusMap()
+            .put(dataRegionId, RegionStatus.Running);
       } else {
         SchemaRegionId schemaRegionId = (SchemaRegionId) regionId;
         schemaEngine.createSchemaRegion(new PartialPath(storageGroup), schemaRegionId);
         schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionStatusMap()
+            .put(schemaRegionId, RegionStatus.Running);
       }
     } catch (Exception e) {
-      LOGGER.error("create new region {} error", regionId, e);
+      LOGGER.error("Create new region {} error", regionId, e);
       status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
+      status.setMessage("Create new region " + regionId + "error,  exception:" + e.getMessage());
       return status;
     }
-    status.setMessage("create new region " + regionId + " succeed");
-    LOGGER.info("succeed to create new region {}", regionId);
+    status.setMessage("Create new region " + regionId + " succeed");
+    LOGGER.info("Succeed to create new region {}", regionId);
     return status;
   }
 

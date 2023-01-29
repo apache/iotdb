@@ -72,8 +72,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                       new RegionHeartbeatSample(
                           heartbeatResp.getHeartbeatTimestamp(),
                           receiveTime,
-                          // Region will inherit DataNode's status
-                          RegionStatus.parse(heartbeatResp.getStatus())));
+                          // Each region will be updated by its own status
+                          RegionStatus.parse(
+                              heartbeatResp.getRegionStatusMap().get(regionGroupId))));
 
               if (isLeader) {
                 routeBalancer.cacheLeaderSample(

@@ -172,25 +172,25 @@ public class DataRegion implements IDataRegionForQuery {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
 
-  /** indicating the file to be loaded overlap with some files. */
+  /** Indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
-   * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
+   * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
    * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
-  /** condition to safely delete data region */
+  /** Condition to safely delete data region */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
-  /** data region has been deleted or not */
+  /** Data region has been deleted or not */
   private volatile boolean deleted = false;
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
-   * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
+   * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
   /** time partition id in the database -> tsFileProcessor for this time partition */
@@ -198,48 +198,49 @@ public class DataRegion implements IDataRegionForQuery {
   /** time partition id in the database -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
-  // upgrading sequence TsFile resource list
-  private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
+  // Upgrading sequence TsFile resource list
+  private final List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
   /** sequence tsfile processors which are closing */
-  private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor =
+  private final CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
-  // upgrading unsequence TsFile resource list
-  private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
+  // Upgrading unsequence TsFile resource list
+  private final List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
-  /** unsequence tsfile processors which are closing */
-  private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
+  /** Unsequence tsfile processors which are closing */
+  private final CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
 
-  private AtomicInteger upgradeFileCount = new AtomicInteger();
+  private final AtomicInteger upgradeFileCount = new AtomicInteger();
 
-  private AtomicBoolean isSettling = new AtomicBoolean();
+  private final AtomicBoolean isSettling = new AtomicBoolean();
 
-  /** data region id */
-  private String dataRegionId;
-  /** database name */
-  private String databaseName;
-  /** database system directory */
+  /** Data region id */
+  private final String dataRegionId;
+  /** Database name */
+  private final String databaseName;
+  /** Database system directory */
   private File storageGroupSysDir;
-  /** manage seqFileList and unSeqFileList */
-  private TsFileManager tsFileManager;
+  /** Manage seqFileList and unSeqFileList */
+  private final TsFileManager tsFileManager;
 
-  /** manage tsFileResource degrade */
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+  /** Manage tsFileResource degrade */
+  private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   /**
-   * time partition id -> version controller which assigns a version for each MemTable and
+   * Time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
    * updates can be re-determined. Will be empty if there are not MemTables in memory.
    */
-  private HashMap<Long, VersionController> timePartitionIdVersionControllerMap = new HashMap<>();
+  private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
+      new HashMap<>();
   /**
-   * when the data in a database is older than dataTTL, it is considered invalid and will be
+   * When the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
-  /** file system factory (local or hdfs) */
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-  /** file flush policy */
+  /** File system factory (local or hdfs) */
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  /** File flush policy */
   private TsFileFlushPolicy fileFlushPolicy;
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
@@ -248,19 +249,19 @@ public class DataRegion implements IDataRegionForQuery {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
-  /** database info for mem control */
-  private DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
-  /** whether it's ready from recovery */
+  /** Database info for mem control */
+  private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+  /** Whether it's ready from recovery */
   private boolean isReady = false;
-  /** close file listeners */
+  /** Close file listeners */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
-  /** flush listeners */
+  /** Flush listeners */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
+   * Record the insertWriteLock in SG is being hold by which method, it will be empty string if on
    * one holds the insertWriteLock
    */
   private String insertWriteLockHolder = "";
@@ -274,7 +275,7 @@ public class DataRegion implements IDataRegionForQuery {
   private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   /**
-   * constrcut a database processor
+   * Construct a database processor
    *
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1

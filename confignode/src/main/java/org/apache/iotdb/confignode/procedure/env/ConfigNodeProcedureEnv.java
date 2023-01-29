@@ -81,6 +81,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -88,10 +89,10 @@ public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
-  /** add or remove node lock */
+  /** Add or remove node lock */
   private final LockQueue nodeLock = new LockQueue();
 
-  /** pipe operation lock */
+  /** Pipe operation lock */
   private final LockQueue pipeLock = new LockQueue();
 
   private final ReentrantLock schedulerLock = new ReentrantLock();
@@ -387,7 +388,9 @@ public class ConfigNodeProcedureEnv {
     long currentTime = System.currentTimeMillis();
     NodeHeartbeatSample removingSample =
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Removing.getStatus()).setStatusReason(null),
+            new THeartbeatResp(
+                    currentTime, NodeStatus.Removing.getStatus(), new ConcurrentHashMap<>())
+                .setStatusReason(null),
             currentTime);
     getNodeManager()
         .getNodeCacheMap()

@@ -35,6 +35,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSetRegionStatusReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -125,6 +126,8 @@ public class SyncDataNodeClientPool {
         return client.killQueryInstance((String) req);
       case UPDATE_TEMPLATE:
         return client.updateTemplate((TUpdateTemplateReq) req);
+      case SET_REGION_STATUS:
+        return client.setRegionStatus((TSetRegionStatusReq) req);
       case CREATE_NEW_REGION_PEER:
         return client.createNewRegionPeer((TCreatePeerReq) req);
       case ADD_REGION_PEER:
