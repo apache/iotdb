@@ -1653,7 +1653,7 @@ public class ReorderingEncodeRegression64DoubleLearningRateTestAdjust2H {
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
       // speed
-      int repeatTime = 10; // set repeat time
+      int repeatTime = 5; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();

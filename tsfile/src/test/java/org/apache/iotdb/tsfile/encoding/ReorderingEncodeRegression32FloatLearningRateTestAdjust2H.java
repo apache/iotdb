@@ -1136,7 +1136,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
       int adjust_count = 0;
       int learning = 0;
       while(j_star!=-1 && i_star !=-1){
-        if(adjust_count < block_size/2 && adjust_count <= 64){
+        if(adjust_count < block_size/2 && adjust_count <= 30){
           adjust_count ++;
         }else {
           break;
@@ -1652,7 +1652,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
   //    String Output =
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
-      int repeatTime = 10; // set repeat time
+      int repeatTime = 5; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
@@ -1675,7 +1675,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int learning_rate_exp=0;learning_rate_exp<7;learning_rate_exp++) {
+      for(int learning_rate_exp=0;learning_rate_exp<5;learning_rate_exp++) {
         int learning_rate = (int) Math.pow(2, learning_rate_exp);
         System.out.println(learning_rate);
         for (File f : tempList) {
@@ -1708,7 +1708,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
 
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 1024,dataset_map_td.get(file_i),learning_rate);
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),learning_rate);
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
