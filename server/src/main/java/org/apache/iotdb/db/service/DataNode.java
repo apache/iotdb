@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -51,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -98,6 +100,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 
 public class DataNode implements DataNodeMBean {
+
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -229,10 +232,11 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_RETRY;
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
-      } catch (TException e) {
+      } catch (TException | ClientManagerException e) {
         // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot pull system configurations from ConfigNode-leader, because: {}",
@@ -341,10 +345,11 @@ public class DataNode implements DataNodeMBean {
     req.setClusterName(config.getClusterName());
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
-      } catch (TException e) {
+      } catch (TException | ClientManagerException e) {
         // Read ConfigNodes from system.properties and retry
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
         ConfigNodeInfo.getInstance().loadConfigNodeList();
@@ -398,10 +403,11 @@ public class DataNode implements DataNodeMBean {
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
-      } catch (TException e) {
+      } catch (TException | ClientManagerException e) {
         // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
@@ -643,7 +649,8 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void getJarOfUDFs(List<UDFInformation> udfInformationList) throws StartupException {
-    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
@@ -655,7 +662,7 @@ public class DataNode implements DataNodeMBean {
         UDFExecutableManager.getInstance()
             .saveToInstallDir(jarList.get(i), udfInformationList.get(i).getJarName());
       }
-    } catch (IOException | TException e) {
+    } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
     }
   }
@@ -752,7 +759,8 @@ public class DataNode implements DataNodeMBean {
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
       throws StartupException {
-    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       List<String> jarNameList =
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)
@@ -766,7 +774,7 @@ public class DataNode implements DataNodeMBean {
         TriggerExecutableManager.getInstance()
             .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
-    } catch (IOException | TException e) {
+    } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
     }
   }
