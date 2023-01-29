@@ -1290,6 +1290,10 @@ public class ReorderingEncodeRegression32IntLearningRateTestAdjust2H {
         }else {
           break;
         }
+
+        ArrayList<ArrayList<Integer>> old_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+
         ArrayList<Integer> tmp_tv = ts_block.get(i_star);
         if(j_star<i_star){
           for(int u=i_star-1;u>=j_star;u--){
@@ -1313,6 +1317,11 @@ public class ReorderingEncodeRegression32IntLearningRateTestAdjust2H {
           getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
         }
         learning += 1;
+
+        if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
+          ts_block = old_ts_block;
+          break;
+        }
 
 //        System.out.println(raw_length);
 //        System.out.println("--------------------------------------------------------------");
@@ -1860,35 +1869,35 @@ public class ReorderingEncodeRegression32IntLearningRateTestAdjust2H {
 
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
+            "\\vary_parameter_learning\\rr_int_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -1901,7 +1910,7 @@ public class ReorderingEncodeRegression32IntLearningRateTestAdjust2H {
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
       // speed
-      int repeatTime = 1; // set repeat time
+      int repeatTime = 10; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();

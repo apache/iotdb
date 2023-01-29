@@ -1289,6 +1289,10 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
         }else {
           break;
         }
+
+        ArrayList<ArrayList<Integer>> old_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+
         ArrayList<Integer> tmp_tv = ts_block.get(i_star);
         if(j_star<i_star){
           for(int u=i_star-1;u>=j_star;u--){
@@ -1309,6 +1313,12 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
         ts_block.set(j_star,tmp_tv);
 
         getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+
+        if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
+          ts_block = old_ts_block;
+          break;
+        }
+
 //        System.out.println(raw_length);
 //        System.out.println("--------------------------------------------------------------");
         i_star =getIStar(ts_block,block_size,raw_length,theta);
