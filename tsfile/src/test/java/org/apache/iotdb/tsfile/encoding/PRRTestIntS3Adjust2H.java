@@ -1082,10 +1082,10 @@ public class PRRTestIntS3Adjust2H {
     byte[] theta0_v_byte = int2Bytes(coefficient.get(1)+raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
 
-    for(int i=2;i<coefficient.size();i++){
-      byte[] theta_byte = int2Bytes(coefficient.get(i));
-      for (byte b : theta_byte) encoded_result.add(b);
-    }
+//    for(int i=2;i<coefficient.size();i++){
+//      byte[] theta_byte = int2Bytes(coefficient.get(i));
+//      for (byte b : theta_byte) encoded_result.add(b);
+//    }
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
@@ -1728,7 +1728,7 @@ public class PRRTestIntS3Adjust2H {
 
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 1024, dataset_map_td.get(file_i), p);
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256, dataset_map_td.get(file_i), p);
 
             long e = System.nanoTime();
             encodeTime += (e - s);
