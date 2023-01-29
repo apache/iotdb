@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
+public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -1061,7 +1061,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return encoded_result;
   }
   //public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td, ArrayList<Integer> flag){
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td,int rate){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -1131,6 +1131,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //      System.out.println(j_star);
 
       int adjust_count = 0;
+      int learning = 0;
       while(j_star!=-1 && i_star !=-1){
         if(adjust_count < block_size/2 && adjust_count <= 30){
           adjust_count ++;
@@ -1160,7 +1161,10 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         }
         ts_block.set(j_star,tmp_tv);
 
-        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+        if(learning % rate == 0) {
+          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+        }
+        learning += 1;
 
         if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
           ts_block = old_ts_block;
@@ -1582,35 +1586,35 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
+            "\\vary_parameter_learning\\rr_float_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -1622,8 +1626,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   //    String Output =
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
-      // speed
-      int repeatTime = 1; // set repeat time
+      int repeatTime = 15; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
@@ -1646,9 +1649,9 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<12;block_size_exp++) {
-        int block_size = (int) Math.pow(2, block_size_exp);
-        System.out.println(block_size);
+      for(int learning_rate_exp=0;learning_rate_exp<5;learning_rate_exp++) {
+        int learning_rate = (int) Math.pow(2, learning_rate_exp);
+        System.out.println(learning_rate);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
           CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1672,7 +1675,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
 //            System.out.println(dataset_map_td.get(file_i));
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),learning_rate);
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
@@ -1698,7 +1701,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
                   String.valueOf(decodeTime),
                   String.valueOf(data.size()),
                   String.valueOf(compressed_size),
-                  String.valueOf(block_size_exp),
+                  String.valueOf(learning_rate_exp),
                   String.valueOf(ratio)
           };
           writer.writeRecord(record);

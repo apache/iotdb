@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static java.lang.Math.abs;
 
-public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
+public class ReorderingEncodeRegression64DoubleLearningRateTestAdjust2H {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -154,6 +154,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     }
   }
 
+
   public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
                                      ArrayList<Integer> deviation_list,ArrayList<Integer> result){
 
@@ -236,9 +237,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     result.add(td_common);
   }
 
-
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
+                                                                      ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Double> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -278,18 +278,18 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     }
 
     int m_reg = block_size -1;
-    float theta0_r = 0.0F;
-    float theta1_r = 1.0F;
+    double theta0_r = 0.0;
+    double theta1_r = 1.0;
     if(m_reg*sum_squ_X_r != sum_X_r*sum_X_r ){
-      theta0_r = (float) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
-      theta1_r = (float) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+      theta0_r = (double) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+      theta1_r = (double) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
     }
 
-    float theta0_v = 0.0F;
-    float theta1_v = 1.0F;
+    double theta0_v = 0.0F;
+    double theta1_v = 1.0F;
     if(m_reg*sum_squ_X_v != sum_X_v*sum_X_v ){
-      theta0_v = (float) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
-      theta1_v = (float) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+      theta0_v = (double) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+      theta1_v = (double) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
 
     ArrayList<Integer> tmp0 = new ArrayList<>();
@@ -368,7 +368,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
-                             ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
+                             ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int raw_timestamp_delta_max = Integer.MIN_VALUE;
@@ -378,10 +378,10 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int raw_bit_width_timestamp = 0;
     int raw_bit_width_value = 0;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
     int j_star = -1;
@@ -392,8 +392,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //    System.out.println(theta);
 //    System.out.println(ts_block);
     for(int i = 1;i<block_size;i++){
-      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
-      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (double)ts_block.get(i-1).get(0));
+      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (double) ts_block.get(i-1).get(1));
       if(delta_t_i < timestamp_delta_min){
         timestamp_delta_min = delta_t_i;
       }
@@ -526,7 +526,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return j_star;
   }
 
-  private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     assert alpha != block_size-1;
     assert alpha != 0;
@@ -536,24 +536,24 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i = ts_block.get(alpha+1).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(alpha-1).get(0));
+        value_delta_i = ts_block.get(alpha+1).get(1) - (int) (theta0_v - theta1_v * (double) ts_block.get(alpha-1).get(1));
       } else if (i == alpha){
-        timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(alpha).get(1));
       }
       else{
-        timestamp_delta_i = ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) - (int) (theta0_v - theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i = ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) - (int) (theta0_v - theta1_v * (double) ts_block.get(i - 1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -573,7 +573,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     b.add(getBitWith(value_delta_max-value_delta_min));
     return b;
   }
-  private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustTon(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     assert alpha != block_size-1;
     assert alpha != 0;
@@ -583,24 +583,24 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if( i == (alpha+1)){
-        timestamp_delta_i = ts_block.get(alpha+1).get(0) - (int) ( theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i =  ts_block.get(alpha+1).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha+1).get(0) - (int) ( theta0_t + theta1_t * (double) ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(alpha-1).get(1));
       } else if (i == alpha){
-        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(block_size-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(block_size-1).get(1));
       }
       else{
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-        value_delta_i = ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(i - 1).get(0));
+        value_delta_i = ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(i - 1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -622,7 +622,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return b;
   }
 
-  private static ArrayList<Integer> adjustAlphaToJ(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustAlphaToJ(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Double> theta) {
 
     int block_size = ts_block.size();
     assert alpha != block_size-1;
@@ -635,26 +635,26 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=1;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i==j){
-        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i = ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float)  ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(alpha).get(0));
+        value_delta_i = ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (double)  ts_block.get(alpha).get(1));
       } else if (i == alpha){
-        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (float)  ts_block.get(j-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) - (int) (theta0_v + theta1_v * (double)  ts_block.get(j-1).get(1));
       } else if (i == alpha+1) {
-        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(alpha-1).get(0));
-        value_delta_i =  ts_block.get(alpha+1).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha+1).get(0) -(int) (theta0_t + theta1_t * (double) ts_block.get(alpha-1).get(0));
+        value_delta_i =  ts_block.get(alpha+1).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(alpha-1).get(1));
       } else {
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i-1).get(0));
-        value_delta_i = ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(i-1).get(0));
+        value_delta_i = ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(i-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -676,23 +676,23 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   // adjust n to 0
-  private static ArrayList<Integer> adjustn0(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustn0(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     ArrayList<Integer> b = new ArrayList<>();
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=1;i<block_size-1;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i =   ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (double) ts_block.get(i - 1).get(0));
+      value_delta_i =   ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(i - 1).get(1));
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
@@ -709,8 +709,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i =   ts_block.get(0).get(0) -(int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i =  ts_block.get(0).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =   ts_block.get(0).get(0) -(int) (theta0_t + theta1_t * (double) ts_block.get(block_size - 1).get(0));
+    value_delta_i =  ts_block.get(0).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(block_size - 1).get(1));
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
     }
@@ -729,7 +729,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   // adjust n to no 0
-  private static ArrayList<Integer> adjustn(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjustn(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     assert alpha == block_size-1;
     assert j != 0;
@@ -739,20 +739,20 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=1;i<block_size-1;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (double)  ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(i - 1).get(1));
       } else {
-        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-        value_delta_i =  ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =  ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(alpha).get(1));
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
         }
@@ -765,8 +765,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         if(value_delta_i <value_delta_min){
           value_delta_min = value_delta_i;
         }
-        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        timestamp_delta_i = ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(j-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -804,7 +804,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   // adjust 0 to n
-  private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjust0n1(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     ArrayList<Integer> b = new ArrayList<>();
     int timestamp_delta_min = Integer.MAX_VALUE;
@@ -812,16 +812,16 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=2;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
-      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-      value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+      timestamp_delta_i = ts_block.get(i).get(0) -  (int) (theta0_t + theta1_t * (double) ts_block.get(i - 1).get(0));
+      value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(i - 1).get(1));
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
       }
@@ -837,8 +837,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     }
     int timestamp_delta_i;
     int value_delta_i;
-    timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
-    value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
+    timestamp_delta_i =  ts_block.get(0).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(block_size - 1).get(0));
+    value_delta_i = ts_block.get(0).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(block_size - 1).get(1));
     if(timestamp_delta_i>timestamp_delta_max){
       timestamp_delta_max = timestamp_delta_i;
     }
@@ -857,7 +857,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   // adjust 0 to no n
-  private static ArrayList<Integer> adjust0(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+  private static ArrayList<Integer> adjust0(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Double> theta) {
     int block_size = ts_block.size();
     assert alpha == 0;
     assert j != block_size;
@@ -868,20 +868,20 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     for(int i=2;i<block_size;i++){
       int timestamp_delta_i;
       int value_delta_i;
       if(i!=j){
-        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(i - 1).get(0));
-        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+        timestamp_delta_i =  ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (double)  ts_block.get(i - 1).get(0));
+        value_delta_i =  ts_block.get(i).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(i - 1).get(1));
       } else {
-        timestamp_delta_i =   ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (float)  ts_block.get(alpha).get(0));
-        value_delta_i =  ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        timestamp_delta_i =   ts_block.get(j).get(0) - (int) (theta0_t + theta1_t * (double)  ts_block.get(alpha).get(0));
+        value_delta_i =  ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(alpha).get(1));
         if(timestamp_delta_i>timestamp_delta_max){
           timestamp_delta_max = timestamp_delta_i;
         }
@@ -894,8 +894,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         if(value_delta_i <value_delta_min){
           value_delta_min = value_delta_i;
         }
-        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        timestamp_delta_i =  ts_block.get(alpha).get(0) - (int) (theta0_t + theta1_t * (double) ts_block.get(j-1).get(0));
+        value_delta_i =  ts_block.get(alpha).get(1) -(int) (theta0_v + theta1_v * (double) ts_block.get(j-1).get(1));
       }
       if(timestamp_delta_i>timestamp_delta_max){
         timestamp_delta_max = timestamp_delta_i;
@@ -917,7 +917,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             int index,ArrayList<Float> theta){
+                             int index,ArrayList<Double> theta){
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
     int timestamp_delta_max_index = -1;
@@ -925,14 +925,14 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 
     int i_star = 0;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     if(index==0){
       for(int j = 1;j<block_size;j++){
-        int epsilon_v_j =ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+        int epsilon_v_j =ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (double) ts_block.get(j-1).get(1));
         if(epsilon_v_j > value_delta_max){
           value_delta_max = epsilon_v_j;
           value_delta_max_index =j;
@@ -943,7 +943,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       i_star = value_delta_max_index;
     } else if (index==1) {
       for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = ts_block.get(j).get(0) -  (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
+        int epsilon_r_j = ts_block.get(j).get(0) -  (int)( theta0_t + theta1_t * (double) ts_block.get(j-1).get(0));
         if(epsilon_r_j > timestamp_delta_max){
           timestamp_delta_max = epsilon_r_j;
           timestamp_delta_max_index = j;
@@ -955,7 +955,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return i_star;
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             ArrayList<Integer> raw_length, ArrayList<Float> theta){
+                             ArrayList<Integer> raw_length, ArrayList<Double> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_max = Integer.MIN_VALUE;
@@ -963,17 +963,17 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int timestamp_delta_max_index = -1;
     int value_delta_max_index = -1;
 
-    float theta0_t = theta.get(0);
-    float theta1_t = theta.get(1);
-    float theta0_v = theta.get(2);
-    float theta1_v = theta.get(3);
+    double theta0_t = theta.get(0);
+    double theta1_t = theta.get(1);
+    double theta0_v = theta.get(2);
+    double theta1_v = theta.get(3);
 
     int i_star_bit_width = 33;
     int i_star = 0;
 
     for(int j = 1;j<block_size;j++){
-      int epsilon_r_j =  ts_block.get(j).get(0) - (int)( theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
-      int epsilon_v_j =  ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+      int epsilon_r_j =  ts_block.get(j).get(0) - (int)( theta0_t + theta1_t * (double) ts_block.get(j-1).get(0));
+      int epsilon_v_j =  ts_block.get(j).get(1) - (int)( theta0_v + theta1_v * (double) ts_block.get(j-1).get(1));
 
       if(epsilon_r_j>timestamp_delta_max){
         timestamp_delta_max = epsilon_r_j;
@@ -1001,7 +1001,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
+                                             ArrayList<Integer> raw_length,ArrayList<Double> theta,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -1026,13 +1026,13 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] theta0_r_byte = float2byte2(theta.get(0)+raw_length.get(3));
+    byte[] theta0_r_byte = double2Bytes(theta.get(0)+raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = float2byte2(theta.get(1));
+    byte[] theta1_r_byte = double2Bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = float2byte2(theta.get(2)+raw_length.get(4));
+    byte[] theta0_v_byte = double2Bytes(theta.get(2)+raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = float2byte2(theta.get(3));
+    byte[] theta1_v_byte = double2Bytes(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
 
     // encode interval
@@ -1061,7 +1061,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     return encoded_result;
   }
   //public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td, ArrayList<Integer> flag){
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td,int rate){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -1090,7 +1090,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Float> theta = new ArrayList<>();
+      ArrayList<Double> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
 
@@ -1098,7 +1098,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Float> theta_reorder = new ArrayList<>();
+      ArrayList<Double> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
 //      System.out.println(raw_length);
@@ -1131,6 +1131,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //      System.out.println(j_star);
 
       int adjust_count = 0;
+      int learning = 0;
       while(j_star!=-1 && i_star !=-1){
         if(adjust_count < block_size/2 && adjust_count <= 30){
           adjust_count ++;
@@ -1160,7 +1161,10 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         }
         ts_block.set(j_star,tmp_tv);
 
-        getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
+        if(learning % rate == 0) {
+          getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+        }
+        learning += 1;
 
         if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
           ts_block = old_ts_block;
@@ -1200,7 +1204,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Float> theta = new ArrayList<>();
+      ArrayList<Double> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  remaining_length, raw_length,
               i_star_ready,theta);
 
@@ -1208,7 +1212,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       quickSort(ts_block,1,0,remaining_length-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Float> theta_reorder = new ArrayList<>();
+      ArrayList<Double> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  remaining_length, reorder_length,
               i_star_ready_reorder,theta_reorder);
 
@@ -1358,14 +1362,14 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = byte2float2(encoded, decode_pos);
-      decode_pos += 4;
-      float theta1_r = byte2float2(encoded, decode_pos);
-      decode_pos += 4;
-      float theta0_v = byte2float2(encoded, decode_pos);
-      decode_pos += 4;
-      float theta1_v = byte2float2(encoded, decode_pos);
-      decode_pos += 4;
+      double theta0_r = bytes2Double(encoded, decode_pos, 8);
+      decode_pos += 8;
+      double theta1_r = bytes2Double(encoded, decode_pos, 8);
+      decode_pos += 8;
+      double theta0_v = bytes2Double(encoded, decode_pos, 8);
+      decode_pos += 8;
+      double theta1_v = bytes2Double(encoded, decode_pos, 8);
+      decode_pos += 8;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
@@ -1401,11 +1405,11 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < block_size-1; i++) {
-        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
 
@@ -1549,68 +1553,68 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
 //    dataset_map_td.add(3600);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
 //    dataset_map_td.add(86400);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
 //    dataset_map_td.add(50);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
 //    dataset_map_td.add(10);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
 //    dataset_map_td.add(3);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
 //    dataset_map_td.add(5);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
 //    dataset_map_td.add(60);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
+//            "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
 
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
+            "\\vary_parameter_learning\\rr_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -1623,7 +1627,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
       // speed
-      int repeatTime = 1; // set repeat time
+      int repeatTime = 10; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
@@ -1646,9 +1650,9 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<12;block_size_exp++) {
-        int block_size = (int) Math.pow(2, block_size_exp);
-        System.out.println(block_size);
+      for(int learning_rate_exp=0;learning_rate_exp<5;learning_rate_exp++) {
+        int learning_rate = (int) Math.pow(2, learning_rate_exp);
+        System.out.println(learning_rate);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
           CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1671,8 +1675,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
           double compressed_size = 0;
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-//            System.out.println(dataset_map_td.get(file_i));
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i),learning_rate);
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
@@ -1693,12 +1696,12 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 
           String[] record = {
                   f.toString(),
-                  "REGER-32-FLOAT",
+                  "REGER-64-DOUBLE",
                   String.valueOf(encodeTime),
                   String.valueOf(decodeTime),
                   String.valueOf(data.size()),
                   String.valueOf(compressed_size),
-                  String.valueOf(block_size_exp),
+                  String.valueOf(learning_rate_exp),
                   String.valueOf(ratio)
           };
           writer.writeRecord(record);
