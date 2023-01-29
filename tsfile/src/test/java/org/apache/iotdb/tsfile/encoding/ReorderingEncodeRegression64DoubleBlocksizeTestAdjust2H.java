@@ -1063,9 +1063,12 @@ public class ReorderingEncodeRegression64DoubleBlocksizeTestAdjust2H {
   //public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td, ArrayList<Integer> flag){
   public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
     block_size ++;
-    int length_all = data.size();
-    int block_num = length_all/block_size;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
+    int length_all = data.size();
+    byte[] length_all_bytes = int2Bytes(length_all);
+    for(byte b : length_all_bytes) encoded_result.add(b);
+    int block_num = length_all/block_size;
+
     // encode block size (Integer)
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
@@ -1183,6 +1186,12 @@ public class ReorderingEncodeRegression64DoubleBlocksizeTestAdjust2H {
     }
 
     int remaining_length = length_all - block_num*block_size;
+    if(remaining_length==1){
+      byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
+      for(byte b : timestamp_end_bytes) encoded_result.add(b);
+      byte[] value_end_bytes = int2Bytes(data.get(data.size()-1).get(1));
+      for(byte b : value_end_bytes) encoded_result.add(b);
+    }
     if(remaining_length!=0 && remaining_length!=1){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -1233,8 +1242,8 @@ public class ReorderingEncodeRegression64DoubleBlocksizeTestAdjust2H {
           ts_block_delta.add(tmp);
         }
       }
-      byte[] remaining_length_bytes = int2Bytes(remaining_length);
-      for(byte b:remaining_length_bytes)   encoded_result.add(b);
+//      byte[] remaining_length_bytes = int2Bytes(remaining_length);
+//      for(byte b:remaining_length_bytes)   encoded_result.add(b);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
     }
