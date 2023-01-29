@@ -1347,13 +1347,18 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
   public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded,int td){
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
+    int length_all = bytes2Integer(encoded, decode_pos, 4);
+    decode_pos += 4;
     int block_size = bytes2Integer(encoded, decode_pos, 4);
     decode_pos += 4;
 
-    while(decode_pos < encoded.size()) {
+    int block_num = length_all / block_size;
+    int remain_length = length_all - block_num * block_size;
+
+    //while(decode_pos < encoded.size()) {
+    for(int k = 0; k < block_num; k++){
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
-      //ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
@@ -1381,26 +1386,8 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
-      //int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
-      //decode_pos += 4;
-      //deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
-      //decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
-
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-
-//      for (int i = 0; i < block_size-1; i++) {
-//        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-//        ts_block_tmp.add(interval_list.get(i));
-//        ts_block_tmp.add(value_list.get(i));
-//        ts_block.add(ts_block_tmp);
-//      }
-
-//      ArrayList<Integer> tmp_data = new ArrayList<>();
-//      int timestamp = r0 * td + d0;
-//      tmp_data.add(timestamp);
-//      tmp_data.add(value0);
-//      data.add(tmp_data);
 
       int ti_pre = time0;
       int vi_pre = value0;
@@ -1412,11 +1399,6 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
-
-        //ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-        //ts_block_tmp.add(time_list.get(i));
-        //ts_block_tmp.add(value_list.get(i));
-        //ts_block.add(ts_block_tmp);
       }
 
       ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
@@ -1434,90 +1416,84 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
       quickSort(ts_block, 0, 0, block_size-1);
       data.addAll(ts_block);
-
-//      int ri_pre = interval0;
-//      int vi_pre = value0;
-//      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-//      ts_block_tmp0.add(interval0);
-//      ts_block_tmp0.add(value0);
-//      ts_block.add(ts_block_tmp0);
-//      for (int i = 0; i < block_size-1; i++) {
-//        int ri = (int) (theta1_r * ri_pre + theta0_r + interval_list.get(i));
-//        interval_list.set(i,ri);
-//        ri_pre = ri;
-//
-//        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
-//        value_list.set(i,vi);
-//        vi_pre = vi;
-//
-//        int dev; //zigzag
-//        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-//          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-//        } else {
-//          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-//        }
-//        deviation_list.set(block_size-1 - i - 1,dev);
-//
-//        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-//        ts_block_tmp.add(interval_list.get(i));
-//        ts_block_tmp.add(value_list.get(i));
-//        ts_block.add(ts_block_tmp);
-//      }
-
-//      for(int i=0;i<block_size-1;i++){
-//        for(int j=0;j<block_size-1 -i -1;j++){
-//          if(interval_list.get(j)>interval_list.get(j+1)){
-//            int tmp_1 = interval_list.get(j);
-//            interval_list.set(j,interval_list.get(j+1));
-//            interval_list.set(j,tmp_1);
-//            int tmp_2 = value_list.get(j);
-//            value_list.set(j,value_list.get(j+1));
-//            value_list.set(j,tmp_2);
-//          }
-//        }
-//      }
-
-      //quickSort(ts_block, 0, 0, block_size-2);
-      //quickSort22(ts_block, 0, block_size-1);
-
-//      for (int i = 0; i < block_size; i++) {
-//        ArrayList<Integer> tmp_datai = new ArrayList<>();
-//        tmp_datai.add(ts_block.get(i).get(0));
-//        tmp_datai.add(ts_block.get(i).get(1));
-//        ts_block.set(i,tmp_datai);
-//      }
-
-//      for (int i = 0; i < block_size; i++) {
-//        ArrayList<Integer> tmp_datai = new ArrayList<>();
-//        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i-1) + r0 * td);
-//        tmp_datai.add(value_list.get(i));
-//        data.add(tmp_datai);
-//      }
-
-//      for (int i = 0; i < block_size-1; i++) {
-//        //int vi = vi_pre + value_list.get(i);
-//        int vi = vi_pre + ts_block.get(i).get(1);
-//        vi_pre = vi;
-//
-//        int ri = r0 * td + ts_block.get(i).get(0) * td;
-//
-//        int dev; //zigzag
-//        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-//          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-//        } else {
-//          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-//        }
-//        int di = di_pre + dev;
-//        di_pre = di;
-//
-//        int timestampi = ri + (di + d0);
-//
-//        ArrayList<Integer> tmp_datai = new ArrayList<>();
-//        tmp_datai.add(timestampi);
-//        tmp_datai.add(vi);
-//        data.add(tmp_datai);
-//      }
     }
+
+    if(remain_length == 1){
+      int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      int value_end = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      ArrayList<Integer> ts_block_end = new ArrayList<>();
+      ts_block_end.add(timestamp_end);
+      ts_block_end.add(value_end);
+      data.add(ts_block_end);
+    }
+    if(remain_length != 0 && remain_length != 1){
+      ArrayList<Integer> time_list = new ArrayList<>();
+      ArrayList<Integer> value_list = new ArrayList<>();
+
+      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+
+      int time0 = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      int value0 = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+
+      float theta0_r = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      float theta1_r = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      float theta0_v = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      float theta1_v = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+
+      int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,remain_length);
+      decode_pos += max_bit_width_time * (remain_length - 1) / 8;
+
+      int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,remain_length);
+      decode_pos += max_bit_width_value * (remain_length - 1) / 8;
+
+      int td_common = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+
+      int ti_pre = time0;
+      int vi_pre = value0;
+      for (int i = 0; i < remain_length-1; i++) {
+        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        time_list.set(i,ti);
+        ti_pre = ti;
+
+        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        value_list.set(i,vi);
+        vi_pre = vi;
+      }
+
+      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+      ts_block_tmp0.add(time0);
+      ts_block_tmp0.add(value0);
+      ts_block.add(ts_block_tmp0);
+      for (int i=0;i<remain_length-1;i++){
+        int ti = (time_list.get(i) - time0) * td_common  + time0;
+        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+        ts_block_tmp.add(ti);
+        ts_block_tmp.add(value_list.get(i));
+        ts_block.add(ts_block_tmp);
+      }
+
+      quickSort(ts_block, 0, 0, remain_length-1);
+      //data.addAll(ts_block);
+
+      int zero_number = 8 - remain_length % 8;
+      for(int i = zero_number; i < remain_length; i++){
+        data.add(ts_block.get(i));
+      }
+    }
+
     return data;
   }
 
