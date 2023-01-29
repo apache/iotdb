@@ -18,7 +18,7 @@
 # under the License.
 #
 
-sed -i "s/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g" `grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="**/Master/**/*.md"`
-sed -i "s/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g" `grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="**/V1*/**/*.md"`
-sed -i "s/?raw=true//g" `grep "?raw=true" -rl --include="**/Master/**/*.md"`
-sed -i "s/?raw=true//g" `grep "?raw=true" -rl --include="**/V1*/**/*.md"`
+sed -i "s/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g" $(grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="**/Master/**/*.md")
+sed -i "s/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g" $(grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="**/V1*/**/*.md")
+sed -i "s/?raw=true//g" $(grep "?raw=true" -rl --include="**/Master/**/*.md")
+sed -i "s/?raw=true//g" $(grep "?raw=true" -rl --include="**/V1*/**/*.md")
