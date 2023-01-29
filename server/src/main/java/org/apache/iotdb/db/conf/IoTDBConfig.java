@@ -1114,6 +1114,14 @@ public class IoTDBConfig {
     this.timePartitionInterval = timePartitionInterval;
   }
 
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
+  }
+
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }

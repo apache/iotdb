@@ -185,9 +185,10 @@ public class CommonDescriptor {
                     "disk_space_warning_threshold",
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
-    CONF.setQuotaEnable(
+
+    config.setQuotaEnable(
         Boolean.parseBoolean(
-            properties.getProperty("quota_enable", String.valueOf(CONF.isQuotaEnable()))));
+            properties.getProperty("quota_enable", String.valueOf(config.isQuotaEnable()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
