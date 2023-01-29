@@ -1227,16 +1227,25 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         count_reorder ++;
       }
       ts_block_delta = getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,theta);
-      if(remaining_length%8!=1){
-        int supple_length = 9-(remaining_length - (remaining_length/8)*8);
-        //System.out.println(supple_length);
-        for(int s = 0;s<supple_length;s++){
-          ArrayList<Integer> tmp = new ArrayList<>();
-          tmp.add(0);
-          tmp.add(0);
-          ts_block_delta.add(tmp);
-        }
+      //if(remaining_length % 8 != 1){
+        //int supple_length = 9-(remaining_length - (remaining_length/8)*8);
+      int supple_length;
+      if(remaining_length % 8 == 0){
+        supple_length = 1;
       }
+      else if (remaining_length % 8 == 1){
+        supple_length = 0;
+      }
+      else{
+        supple_length = 9 - remaining_length % 8;
+      }
+      for(int s = 0;s<supple_length;s++){
+        ArrayList<Integer> tmp = new ArrayList<>();
+        tmp.add(0);
+        tmp.add(0);
+        ts_block_delta.add(tmp);
+      }
+
 //      byte[] remaining_length_bytes = int2Bytes(remaining_length);
 //      for(byte b:remaining_length_bytes)   encoded_result.add(b);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
@@ -1354,6 +1363,16 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
     int block_num = length_all / block_size;
     int remain_length = length_all - block_num * block_size;
+    int zero_number;
+    if(remain_length % 8 == 0){
+      zero_number = 1;
+    }
+    else if (remain_length % 8 == 1){
+      zero_number = 0;
+    }
+    else{
+      zero_number = 9 - remain_length % 8;
+    }
 
     //while(decode_pos < encoded.size()) {
     for(int k = 0; k < block_num; k++){
@@ -1450,20 +1469,20 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,remain_length);
-      decode_pos += max_bit_width_time * (remain_length - 1) / 8;
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,remain_length+zero_number);
+      decode_pos += max_bit_width_time * (remain_length+zero_number - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,remain_length);
-      decode_pos += max_bit_width_value * (remain_length - 1) / 8;
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,remain_length+zero_number);
+      decode_pos += max_bit_width_value * (remain_length+zero_number - 1) / 8;
 
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
       int ti_pre = time0;
       int vi_pre = value0;
-      for (int i = 0; i < remain_length-1; i++) {
+      for (int i = 0; i < remain_length+zero_number-1; i++) {
         int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
@@ -1477,7 +1496,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
       ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
-      for (int i=0;i<remain_length-1;i++){
+      for (int i=0;i<remain_length+zero_number-1;i++){
         int ti = (time_list.get(i) - time0) * td_common  + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
@@ -1485,11 +1504,10 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
         ts_block.add(ts_block_tmp);
       }
 
-      quickSort(ts_block, 0, 0, remain_length-1);
+      quickSort(ts_block, 0, 0, remain_length+zero_number-1);
       //data.addAll(ts_block);
 
-      int zero_number = 8 - remain_length % 8;
-      for(int i = zero_number; i < remain_length; i++){
+      for(int i = zero_number; i < remain_length+zero_number; i++){
         data.add(ts_block.get(i));
       }
     }
@@ -1663,7 +1681,7 @@ public class ReorderingEncodeRRTestFloatS3Adjust2H {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-//          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
           e = System.nanoTime();
           decodeTime += (e-s);
 
