@@ -17,8 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-grep "?raw=true" -rl --include="*/target/vue-source/**/Master/**/*.md"
-sed -i 's/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g' `grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="*/target/vue-source/**/Master/**/*.md"`
-sed -i 's/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g' `grep "github.com\/apache\/iotdb-bin-resources\/blob\/main\/" -rl --include="*/target/vue-source/**/V1*/**/*.md"`
-sed -i 's/?raw=true//g' `grep "?raw=true" -rl --include="*/target/vue-source/**/Master/**/*.md"`
-sed -i 's/?raw=true//g' `grep "?raw=true" -rl --include="*/target/vue-source/**/V1*/**/*.md"`
+find ./target/vue-source/src -name "*.md" -path "**/Master/**" -print0 | xargs sed -i.bak 's/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g'
+find ./target/vue-source/src -name "*.md" -path "**/Master/**" -print0 | xargs sed -i.bak 's/?raw=true//g'
+find ./target/vue-source/src -name "*.md" -path "**/V1*/**" -print0 | xargs sed -i.bak 's/github.com\/apache\/iotdb-bin-resources\/blob\/main\//gitbox.apache.org\/repos\/asf?p=iotdb-bin-resources.git;a=blob_plain;f=/g'
+find ./target/vue-source/src -name "*.md" -path "**/V1*/**" -print0 | xargs sed -i.bak 's/?raw=true//g'
