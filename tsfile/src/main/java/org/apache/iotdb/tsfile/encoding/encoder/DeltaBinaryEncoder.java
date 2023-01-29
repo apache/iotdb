@@ -104,7 +104,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     }
 
     writeWidth = calculateBitWidthsForDeltaBlockBuffer();
-    System.out.println(writeWidth);
+//    System.out.println(writeWidth);
     writeHeaderToBytes();
     writeDataWithMinWidth();
 

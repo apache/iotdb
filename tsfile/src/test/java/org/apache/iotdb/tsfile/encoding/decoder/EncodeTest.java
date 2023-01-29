@@ -62,7 +62,7 @@ public class EncodeTest {
 //      String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio_ts_2diff.csv";
 
     // speed
-    int repeatTime = 1; // set repeat time
+    int repeatTime = 10; // set repeat time
     String dataTypeName = "int"; // set dataType
     //    if (args.length >= 2) inputPath = args[1];
     //    if (args.length >= 3) Output = args[2];
@@ -225,6 +225,7 @@ public class EncodeTest {
                     String.valueOf(compressed_size),
                     String.valueOf(ratio)
                   };
+                  System.out.println(ratio);
                   writer.writeRecord(record);
                 }
               }
