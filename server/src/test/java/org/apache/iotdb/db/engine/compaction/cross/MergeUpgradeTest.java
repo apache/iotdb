@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -33,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -85,7 +85,7 @@ public class MergeUpgradeTest {
     tsFileManager.addAll(unseqResources, true);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, tsFileManager);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     assertEquals(0, selected.size());
   }
