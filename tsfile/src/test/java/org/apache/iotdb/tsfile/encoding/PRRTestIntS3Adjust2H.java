@@ -1795,7 +1795,7 @@ public class PRRTestIntS3Adjust2H {
           };
           System.out.println(ratio);
           writer.writeRecord(record);
-          break;
+//          break;
         }
         }
         writer.close();
