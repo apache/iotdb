@@ -70,7 +70,7 @@ public class ReadPointCompactionPerformer
   private List<TsFileResource> unseqFiles = Collections.emptyList();
 
   private static final int subTaskNum =
-      IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum();
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   private CompactionTaskSummary summary;
 

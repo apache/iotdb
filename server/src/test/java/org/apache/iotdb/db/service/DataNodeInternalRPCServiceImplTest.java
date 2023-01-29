@@ -66,7 +66,7 @@ import java.util.List;
 import java.util.Map;
 
 public class DataNodeInternalRPCServiceImplTest {
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static final int dataNodeId = 0;
 
@@ -99,7 +99,7 @@ public class DataNodeInternalRPCServiceImplTest {
     SchemaRegionConsensusImpl.getInstance()
         .deletePeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()));
-    FileUtils.deleteFully(new File(conf.getDnConsensusDir()));
+    FileUtils.deleteFully(new File(conf.getConsensusDir()));
   }
 
   @AfterClass
@@ -324,15 +324,14 @@ public class DataNodeInternalRPCServiceImplTest {
     List<TDataNodeLocation> dataNodeList = new ArrayList<>();
     dataNodeList.add(
         new TDataNodeLocation()
-            .setClientRpcEndPoint(new TEndPoint(conf.getDnRpcAddress(), conf.getDnRpcPort()))
-            .setInternalEndPoint(
-                new TEndPoint(conf.getDnInternalAddress(), conf.getDnInternalPort()))
+            .setClientRpcEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
+            .setInternalEndPoint(new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()))
             .setMPPDataExchangeEndPoint(
-                new TEndPoint(conf.getDnInternalAddress(), conf.getDnMppDataExchangePort()))
+                new TEndPoint(conf.getInternalAddress(), conf.getMppDataExchangePort()))
             .setDataRegionConsensusEndPoint(
-                new TEndPoint(conf.getDnInternalAddress(), conf.getDnDataRegionConsensusPort()))
+                new TEndPoint(conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
             .setSchemaRegionConsensusEndPoint(
-                new TEndPoint(conf.getDnInternalAddress(), conf.getDnSchemaRegionConsensusPort())));
+                new TEndPoint(conf.getInternalAddress(), conf.getSchemaRegionConsensusPort())));
 
     // construct fragmentInstance
     return new TRegionReplicaSet(

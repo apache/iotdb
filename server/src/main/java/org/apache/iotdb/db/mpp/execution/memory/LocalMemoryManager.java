@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.memory;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 /**
  * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
@@ -33,8 +33,8 @@ public class LocalMemoryManager {
     queryPool =
         new MemoryPool(
             "query",
-            CommonDescriptor.getInstance().getConf().getAllocateMemoryForDataExchange(),
-            CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance());
+            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange(),
+            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
   }
 
   public MemoryPool getQueryPool() {

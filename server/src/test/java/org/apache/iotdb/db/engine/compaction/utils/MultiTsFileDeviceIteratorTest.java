@@ -45,7 +45,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
   }
 
   @After

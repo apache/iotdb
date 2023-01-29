@@ -211,7 +211,7 @@ public class LocalFileUserManagerTest {
     // list users
     List<String> usernames = manager.listAllUsers();
     usernames.sort(null);
-    assertEquals(CommonDescriptor.getInstance().getConf().getAdminName(), usernames.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), usernames.get(0));
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }

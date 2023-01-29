@@ -17,9 +17,9 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -55,7 +55,7 @@ import java.util.List;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -73,7 +73,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
 
-    switch (CommonDescriptor.getInstance().getConf().getTimestampPrecision()) {
+    switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
         timePrecision = 1000000;
         break;

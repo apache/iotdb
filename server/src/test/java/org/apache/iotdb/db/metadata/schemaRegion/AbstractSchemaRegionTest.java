@@ -40,7 +40,7 @@ import java.util.List;
 @RunWith(Parameterized.class)
 public abstract class AbstractSchemaRegionTest {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private SchemaRegionTestParams rawConfig;
 
@@ -83,7 +83,7 @@ public abstract class AbstractSchemaRegionTest {
   }
 
   protected void cleanEnv() throws IOException {
-    FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConf().getSchemaDir()));
+    FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
   }
 
   protected void simulateRestart() {

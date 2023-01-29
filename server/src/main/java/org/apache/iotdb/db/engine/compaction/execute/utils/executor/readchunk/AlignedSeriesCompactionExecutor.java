@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
@@ -62,19 +63,21 @@ public class AlignedSeriesCompactionExecutor {
   private final AlignedChunkWriterImpl chunkWriter;
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
+  private final CompactionTaskSummary summary;
   private final RateLimiter rateLimiter =
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   private final long chunkSizeThreshold =
-      IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private final long chunkPointNumThreshold =
-      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   public AlignedSeriesCompactionExecutor(
       String device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter writer)
+      TsFileIOWriter writer,
+      CompactionTaskSummary summary)
       throws IOException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -82,6 +85,7 @@ public class AlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     schemaList = collectSchemaFromAlignedChunkMetadataList(readerAndChunkMetadataList);
     chunkWriter = new AlignedChunkWriterImpl(schemaList);
+    this.summary = summary;
   }
 
   /**
@@ -137,9 +141,13 @@ public class AlignedSeriesCompactionExecutor {
       TsFileAlignedSeriesReaderIterator readerIterator =
           new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadataList, schemaList);
       while (readerIterator.hasNext()) {
-        Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-        CompactionMetricsRecorder.recordReadInfo(chunkReaderAndChunkSize.right);
-        compactOneAlignedChunk(chunkReaderAndChunkSize.left);
+        TsFileAlignedSeriesReaderIterator.NextAlignedChunkInfo nextAlignedChunkInfo =
+            readerIterator.nextReader();
+        summary.increaseProcessChunkNum(nextAlignedChunkInfo.getNotNullChunkNum());
+        summary.increaseProcessPointNum(nextAlignedChunkInfo.getTotalPointNum());
+        CompactionMetricsRecorder.recordReadInfo(nextAlignedChunkInfo.getTotalSize());
+        compactOneAlignedChunk(
+            nextAlignedChunkInfo.getReader(), nextAlignedChunkInfo.getNotNullChunkNum());
       }
     }
 
@@ -160,8 +168,10 @@ public class AlignedSeriesCompactionExecutor {
         .addCompactionTempFileSize(true, true, writer.getPos() - originTempFileSize);
   }
 
-  private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {
+  private void compactOneAlignedChunk(AlignedChunkReader chunkReader, int notNullChunkNum)
+      throws IOException {
     while (chunkReader.hasNextSatisfiedPage()) {
+      // including value chunk and time chunk, thus we should plus one
       IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchDataIterator.hasNext()) {
         TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();

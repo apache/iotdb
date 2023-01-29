@@ -22,6 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class GetVersion {
   public static void main(String[] args) {
-    System.out.println(IoTDBDescriptor.getInstance().getConf().getIoTDBVersion());
+    System.out.println(IoTDBDescriptor.getInstance().getConfig().getIoTDBVersion());
   }
 }

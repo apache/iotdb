@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -75,9 +74,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataRegionTest {
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(DataRegionTest.class);
 
   private String storageGroup = "root.vehicle.d0";
@@ -370,8 +367,8 @@ public class DataRegionTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
-    boolean defaultValue = COMMON_CONFIG.isEnableDiscardOutOfOrderData();
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(true);
+    boolean defaultValue = config.isEnableDiscardOutOfOrderData();
+    config.setEnableDiscardOutOfOrderData(true);
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -409,16 +406,16 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(defaultValue);
+    config.setEnableDiscardOutOfOrderData(defaultValue);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = COMMON_CONFIG.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = IOTDB_CONFIG.getDnTimePartitionInterval();
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(true);
-    IOTDB_CONFIG.setDnTimePartitionInterval(100000);
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getTimePartitionInterval();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -496,17 +493,17 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    IOTDB_CONFIG.setDnTimePartitionInterval(defaultTimePartition);
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = COMMON_CONFIG.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = IOTDB_CONFIG.getDnTimePartitionInterval();
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(true);
-    IOTDB_CONFIG.setDnTimePartitionInterval(1200000);
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getTimePartitionInterval();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -584,17 +581,17 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    IOTDB_CONFIG.setDnTimePartitionInterval(defaultTimePartition);
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
-    boolean defaultEnableDiscard = COMMON_CONFIG.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = IOTDB_CONFIG.getDnTimePartitionInterval();
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(true);
-    IOTDB_CONFIG.setDnTimePartitionInterval(1000000);
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getTimePartitionInterval();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -672,16 +669,16 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
 
-    COMMON_CONFIG.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    IOTDB_CONFIG.setDnTimePartitionInterval(defaultTimePartition);
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testSmallReportProportionInsertRow()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
           DataRegionException {
-    double defaultValue = COMMON_CONFIG.getWriteMemoryVariationReportProportion();
-    COMMON_CONFIG.setWriteMemoryVariationReportProportion(0);
+    double defaultValue = config.getWriteMemoryVariationReportProportion();
+    config.setWriteMemoryVariationReportProportion(0);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");
 
     for (int j = 21; j <= 30; j++) {
@@ -712,21 +709,21 @@ public class DataRegionTest {
     }
 
     dataRegion1.syncDeleteDataFiles();
-    COMMON_CONFIG.setWriteMemoryVariationReportProportion(defaultValue);
+    config.setWriteMemoryVariationReportProportion(defaultValue);
   }
 
   @Test
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     int originCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConf().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(9);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(9);
     boolean originEnableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(true);
-    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(true);
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -776,20 +773,20 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setMaxInnerCompactionCandidateFileNum(originCandidateFileNum);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
   @Ignore
   @Test
   public void testDeleteStorageGroupWhenCompacting() throws Exception {
-    IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
     try {
       for (int j = 0; j < 10; j++) {
         TSRecord record = new TSRecord(j, deviceId);
@@ -839,7 +836,7 @@ public class DataRegionTest {
                   + targetTsFileResource.getTsFile().getName()
                   + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
       Assert.assertFalse(logFile.exists());
-      Assert.assertFalse(CommonDescriptor.getInstance().getConf().isReadOnly());
+      Assert.assertFalse(CommonDescriptor.getInstance().getConfig().isReadOnly());
       Assert.assertTrue(dataRegion.getTsFileManager().isAllowCompaction());
     } finally {
       new CompactionConfigRestorer().restoreCompactionConfig();
@@ -856,10 +853,10 @@ public class DataRegionTest {
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // change config & reboot timed service
-    boolean prevEnableTimedFlushSeqMemtable = COMMON_CONFIG.isEnableTimedFlushSeqMemtable();
-    long preFLushInterval = COMMON_CONFIG.getSeqMemtableFlushInterval();
-    COMMON_CONFIG.setEnableTimedFlushSeqMemtable(true);
-    COMMON_CONFIG.setSeqMemtableFlushInterval(5);
+    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
+    long preFLushInterval = config.getSeqMemtableFlushInterval();
+    config.setEnableTimedFlushSeqMemtable(true);
+    config.setSeqMemtableFlushInterval(5);
     StorageEngine.getInstance().rebootTimedService();
 
     Thread.sleep(500);
@@ -889,8 +886,8 @@ public class DataRegionTest {
 
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    COMMON_CONFIG.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
-    COMMON_CONFIG.setSeqMemtableFlushInterval(preFLushInterval);
+    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
+    config.setSeqMemtableFlushInterval(preFLushInterval);
   }
 
   @Test
@@ -911,10 +908,10 @@ public class DataRegionTest {
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // change config & reboot timed service
-    boolean prevEnableTimedFlushUnseqMemtable = COMMON_CONFIG.isEnableTimedFlushUnseqMemtable();
-    long preFLushInterval = COMMON_CONFIG.getUnseqMemtableFlushInterval();
-    COMMON_CONFIG.setEnableTimedFlushUnseqMemtable(true);
-    COMMON_CONFIG.setUnseqMemtableFlushInterval(5);
+    boolean prevEnableTimedFlushUnseqMemtable = config.isEnableTimedFlushUnseqMemtable();
+    long preFLushInterval = config.getUnseqMemtableFlushInterval();
+    config.setEnableTimedFlushUnseqMemtable(true);
+    config.setUnseqMemtableFlushInterval(5);
     StorageEngine.getInstance().rebootTimedService();
 
     Thread.sleep(500);
@@ -944,8 +941,8 @@ public class DataRegionTest {
 
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    COMMON_CONFIG.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
-    COMMON_CONFIG.setUnseqMemtableFlushInterval(preFLushInterval);
+    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
+    config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
   /**

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -1265,6 +1266,38 @@ public class ExpressionAnalyzer {
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static boolean isDeviceViewNeedSpecialProcess(Expression expression) {
+    if (expression instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) expression;
+      return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression());
+    } else if (expression instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) expression;
+      return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression())
+          || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      return isDeviceViewNeedSpecialProcess(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (((FunctionExpression) expression).isBuiltInScalarFunction()
+          && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              ((FunctionExpression) expression).getFunctionName().toLowerCase())) {
+        return true;
+      }
+      for (Expression child : expression.getExpressions()) {
+        if (isDeviceViewNeedSpecialProcess(child)) {
+          return true;
+        }
+      }
+      return false;
+    } else if (expression instanceof LeafOperand) {
+      return false;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 }

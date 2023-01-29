@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -179,7 +178,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -1060,6 +1059,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       deviceViewInputIndexesMap.put(deviceName, indexes);
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
+    analysis.setDeviceViewSpecialProcess(
+        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement));
+  }
+
+  private boolean analyzeDeviceViewSpecialProcess(
+      Set<Expression> deviceViewOutputExpressions, QueryStatement queryStatement) {
+    if (queryStatement.isAggregationQuery()
+        || queryStatement.hasWhere()
+            && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
+                queryStatement.getWhereCondition().getPredicate())) {
+      return true;
+    }
+    for (Expression expression : deviceViewOutputExpressions) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void analyzeOutput(
@@ -1150,8 +1167,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (res.left.isEmpty() && !res.right.left) {
         return new DataPartition(
             Collections.emptyMap(),
-            CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
+            CONFIG.getSeriesPartitionExecutorClass(),
+            CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       for (String devicePath : deviceSet) {
@@ -1873,7 +1890,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
 
-      if (CommonDescriptor.getInstance().getConf().isEnableAutoCreateSchema()
+      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || statement.isVerifySchema()) {
         // construct schema
         for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
@@ -1976,7 +1993,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 "",
                 partitionFetcher,
                 schemaFetcher,
-                CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       logger.warn(

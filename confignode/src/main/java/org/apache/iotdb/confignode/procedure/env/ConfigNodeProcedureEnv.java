@@ -28,7 +28,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -36,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
@@ -549,10 +549,7 @@ public class ConfigNodeProcedureEnv {
     // Select leader greedily for iot consensus protocol
     if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
         && ConsensusFactory.IOT_CONSENSUS.equals(
-            CommonDescriptor.getInstance()
-                .getConf()
-                .getDataRegionConsensusProtocolClass()
-                .getProtocol())) {
+            ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
       List<Integer> availableDataNodes = new ArrayList<>();
       for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
         if (RegionStatus.isNormalStatus(statusEntry.getValue())) {

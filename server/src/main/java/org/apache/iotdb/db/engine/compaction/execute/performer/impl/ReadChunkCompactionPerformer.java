@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.performer.impl;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -71,8 +70,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
-                * CommonDescriptor.getInstance().getConf().getChunkMetadataSizeProportion());
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
@@ -135,7 +134,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer);
+            device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     writer.endChunkGroup();
   }
@@ -179,7 +178,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              p, readerAndChunkMetadataList, writer, targetResource, summary);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();

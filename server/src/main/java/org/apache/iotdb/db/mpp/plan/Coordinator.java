@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -61,13 +59,11 @@ public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
-
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
@@ -146,7 +142,7 @@ public class Coordinator {
               queryContext,
               partitionFetcher,
               schemaFetcher,
-              timeOut > 0 ? timeOut : COMMON_CONFIG.getQueryTimeoutThreshold(),
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
               startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -183,13 +179,13 @@ public class Coordinator {
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
-        IOTDB_CONFIG.isClusterMode() ? COMMON_CONFIG.getCoordinatorReadExecutorSize() : 1;
+        CONFIG.isClusterMode() ? CONFIG.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize = COMMON_CONFIG.getCoordinatorWriteExecutorSize();
+    int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }
@@ -213,7 +209,7 @@ public class Coordinator {
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
-          if (costTime >= COMMON_CONFIG.getSlowQueryThreshold()) {
+          if (costTime >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
                 costTime,

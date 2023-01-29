@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -114,11 +114,11 @@ public class InnerSeqCompactionWithFastPerformerTest {
   public void testDeserializePage() throws MetadataException, IOException, WriteProcessException {
 
     long chunkSizeLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(10240000);
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240000);
     long chunkPointNumLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(200000);
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(200000);
     try {
       for (int toMergeFileNum : toMergeFileNums) {
         for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -229,7 +229,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
               ICompactionPerformer performer = new FastCompactionPerformer(false);
               performer.setSourceFiles(sourceResources);
               performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
-              performer.setSummary(new CompactionTaskSummary());
+              performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
@@ -343,10 +343,10 @@ public class InnerSeqCompactionWithFastPerformerTest {
       throw new RuntimeException(e);
     } finally {
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(chunkSizeLowerBoundInCompaction);
     }
   }
@@ -462,7 +462,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
             ICompactionPerformer performer = new FastCompactionPerformer(false);
             performer.setSourceFiles(toMergeResources);
             performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
-            performer.setSummary(new CompactionTaskSummary());
+            performer.setSummary(new FastCompactionTaskSummary());
             performer.perform();
             CompactionUtils.moveTargetFile(
                 Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
@@ -625,15 +625,16 @@ public class InnerSeqCompactionWithFastPerformerTest {
   @Test
   public void testAppendChunk() throws Exception {
     long prevChunkPointNumLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(10);
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(10);
     long prevChunkSizeLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(10000);
-    long prevTargetChunkPointNum = IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(10000);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10000);
+    long prevTargetChunkPointNum =
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10000);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
 
     try {
       for (int toMergeFileNum : toMergeFileNums) {
@@ -743,7 +744,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
               ICompactionPerformer performer = new FastCompactionPerformer(false);
               performer.setSourceFiles(toMergeResources);
               performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
-              performer.setSummary(new CompactionTaskSummary());
+              performer.setSummary(new FastCompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
@@ -979,13 +980,13 @@ public class InnerSeqCompactionWithFastPerformerTest {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(prevChunkSizeLowerBoundInCompaction);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(prevChunkPointNumLowerBoundInCompaction);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(prevTargetChunkPointNum);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(prevTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(prevTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(prevTargetChunkSize);
     }
   }
 

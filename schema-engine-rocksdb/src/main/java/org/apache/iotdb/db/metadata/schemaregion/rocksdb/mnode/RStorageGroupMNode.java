@@ -50,7 +50,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
     super(fullPath, readWriteHandler);
     Object ttl = RSchemaUtils.parseNodeValue(value, RMNodeValueType.TTL);
     if (ttl == null) {
-      ttl = CommonDescriptor.getInstance().getConf().getDefaultTtlInMs();
+      ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
     }
     this.dataTTL = (long) ttl;
   }

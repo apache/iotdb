@@ -32,7 +32,7 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class DataNodeClientPoolFactory {
 
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   private DataNodeClientPoolFactory() {}
 
@@ -46,12 +46,12 @@ public class DataNodeClientPoolFactory {
           new ConfigNodeClient.Factory(
               manager,
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isDnRpcThriftCompressionEnable())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setCoreClientNumForEachNode(conf.getDnCoreClientCountForEachNodeInClientManager())
-              .setMaxClientNumForEachNode(conf.getDnMaxClientCountForEachNodeInClientManager())
+              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
               .build()
               .getConfig());
     }
@@ -67,16 +67,16 @@ public class DataNodeClientPoolFactory {
           new ConfigNodeClient.Factory(
               manager,
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS() * 10)
-                  .setRpcThriftCompressionEnabled(conf.isDnRpcThriftCompressionEnable())
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(
-                      conf.getDnSelectorThreadCountOfClientManager() / 10 > 0
-                          ? conf.getDnSelectorThreadCountOfClientManager() / 10
+                      conf.getSelectorNumOfClientManager() / 10 > 0
+                          ? conf.getSelectorNumOfClientManager() / 10
                           : 1)
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setCoreClientNumForEachNode(conf.getDnCoreClientCountForEachNodeInClientManager())
-              .setMaxClientNumForEachNode(conf.getDnMaxClientCountForEachNodeInClientManager())
+              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
               .build()
               .getConfig());
     }

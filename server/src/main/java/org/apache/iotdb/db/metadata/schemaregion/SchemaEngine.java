@@ -22,8 +22,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -60,8 +58,7 @@ public class SchemaEngine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
@@ -123,19 +120,18 @@ public class SchemaEngine {
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 
     if (!(config.isClusterMode()
-            && COMMON_CONFIG
+            && config
                 .getSchemaRegionConsensusProtocolClass()
-                .getProtocol()
                 .equals(ConsensusFactory.RATIS_CONSENSUS))
-        && COMMON_CONFIG.getSyncMlogPeriodInMs() != 0) {
+        && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               "SchemaEngine-TimedForceMLog-Thread");
       ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
           timedForceMLogThread,
           this::forceMlog,
-          COMMON_CONFIG.getSyncMlogPeriodInMs(),
-          COMMON_CONFIG.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
+          config.getSyncMlogPeriodInMs(),
           TimeUnit.MILLISECONDS);
     }
 

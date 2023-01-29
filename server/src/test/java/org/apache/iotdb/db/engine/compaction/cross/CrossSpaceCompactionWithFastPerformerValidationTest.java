@@ -24,9 +24,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
@@ -69,7 +69,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
@@ -275,7 +275,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
    */
   @Test
   public void test5() throws MetadataException, IOException, WriteProcessException, MergeException {
-    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(7);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(7);
     registerTimeseriesInMManger(5, 10, true);
     createFiles(7, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3300, 2150, 2150, 100, 100, true, false);
@@ -2128,7 +2128,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
@@ -2140,7 +2140,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =
         IoTDBDescriptor.getInstance()
-            .getConf()
+            .getConfig()
             .getCrossCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     // In the process of getting the file list and starting to select files, the file list is
@@ -2206,8 +2206,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
    */
   @Test
   public void testCompactionSchedule() throws Exception {
-    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(1);
-    IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     createFiles(10, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 1000, 4000, 4000, 0, 100, false, false);
     createFiles(1, 5, 10, 1000, 5000, 5000, 0, 100, false, false);
@@ -2218,7 +2218,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     // first cross compaction task
     ICrossSpaceSelector crossSpaceCompactionSelector =
         IoTDBDescriptor.getInstance()
-            .getConf()
+            .getConfig()
             .getCrossCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     CrossCompactionTaskResource sourceFiles =
@@ -2234,7 +2234,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles());
     performer.setSourceFiles(sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles());
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
@@ -2259,7 +2259,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     // tasks.
     ICompactionSelector innerSelector =
         IoTDBDescriptor.getInstance()
-            .getConf()
+            .getConfig()
             .getInnerSequenceCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());

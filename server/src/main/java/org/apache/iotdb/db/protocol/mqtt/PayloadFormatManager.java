@@ -48,7 +48,7 @@ public class PayloadFormatManager {
   }
 
   private static void init() {
-    mqttDir = IoTDBDescriptor.getInstance().getConf().getMqttDir();
+    mqttDir = IoTDBDescriptor.getInstance().getConfig().getMqttDir();
     logger.info("mqttDir: {}", mqttDir);
 
     try {
