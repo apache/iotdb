@@ -20,12 +20,10 @@
 package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
-import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.service.thrift.ThriftService;
@@ -81,12 +79,7 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
-              new RPCServiceThriftHandler(impl) {
-                @Override
-                protected SessionManager getSessionManager() {
-                  return ClusterSessionManager.getInstance();
-                }
-              },
+              new RPCServiceThriftHandler(impl),
               IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());

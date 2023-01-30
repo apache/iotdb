@@ -31,7 +31,6 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,13 +47,13 @@ public abstract class AbstractMetricManager {
   /** Is metric service enabled */
   protected static boolean isEnableMetric;
   /** metric name -> tag keys */
-  protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
+  protected Map<String, MetricInfo.MetaInfo> nameToTagInfo;
   /** metric type -> metric name -> metric info */
   protected Map<MetricInfo, IMetric> metrics;
 
   public AbstractMetricManager() {
     isEnableMetric = METRIC_CONFIG.getEnableMetric();
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    nameToTagInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
   }
 
@@ -76,7 +75,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Counter counter = createCounter(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return counter;
             });
     if (metric instanceof Counter) {
@@ -111,7 +110,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -141,7 +140,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createGauge(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -170,7 +169,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Rate rate = createRate(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return rate;
             });
     if (metric instanceof Rate) {
@@ -199,7 +198,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Histogram histogram = createHistogram(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return histogram;
             });
     if (metric instanceof Histogram) {
@@ -228,7 +227,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Timer timer = createTimer(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return timer;
             });
     if (metric instanceof Timer) {
@@ -252,10 +251,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Counter count(long delta, String name, MetricLevel metricLevel, String... tags) {
+  public void count(long delta, String name, MetricLevel metricLevel, String... tags) {
     Counter counter = getOrCreateCounter(name, metricLevel, tags);
     counter.inc(delta);
-    return counter;
   }
 
   /**
@@ -266,10 +264,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Gauge gauge(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void gauge(long value, String name, MetricLevel metricLevel, String... tags) {
     Gauge gauge = getOrCreateGauge(name, metricLevel, tags);
     gauge.set(value);
-    return gauge;
   }
 
   /**
@@ -280,10 +277,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Rate rate(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void rate(long value, String name, MetricLevel metricLevel, String... tags) {
     Rate rate = getOrCreateRate(name, metricLevel, tags);
     rate.mark(value);
-    return rate;
   }
 
   /**
@@ -294,10 +290,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Histogram histogram(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void histogram(long value, String name, MetricLevel metricLevel, String... tags) {
     Histogram histogram = getOrCreateHistogram(name, metricLevel, tags);
     histogram.update(value);
-    return histogram;
   }
 
   /**
@@ -310,11 +305,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Timer timer(
+  public void timer(
       long delta, TimeUnit timeUnit, String name, MetricLevel metricLevel, String... tags) {
     Timer timer = getOrCreateTimer(name, metricLevel, tags);
     timer.update(delta, timeUnit);
-    return timer;
   }
 
   // endregion
@@ -326,21 +320,85 @@ public abstract class AbstractMetricManager {
    *
    * @return [[name, tags...], ..., [name, tags...]]
    */
-  protected List<Pair<String, String[]>> getAllMetricKeys() {
-    List<Pair<String, String[]>> keys = new ArrayList<>(metrics.size());
+  protected List<String[]> getAllMetricKeys() {
+    List<String[]> keys = new ArrayList<>(metrics.size());
     metrics.keySet().forEach(k -> keys.add(k.toStringArray()));
     return keys;
   }
 
-  /** Get metric by type */
-  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
-    Map<MetricInfo, IMetric> metricInfoIMetricMap = new HashMap<>();
+  /**
+   * Get all counters
+   *
+   * @return [name, tags...] -> counter
+   */
+  protected Map<String[], Counter> getAllCounters() {
+    Map<String[], Counter> counterMap = new HashMap<>();
     for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getKey().getMetaInfo().getType() == metricType) {
-        metricInfoIMetricMap.put(entry.getKey(), entry.getValue());
+      if (entry.getValue() instanceof Counter) {
+        counterMap.put(entry.getKey().toStringArray(), (Counter) entry.getValue());
       }
     }
-    return metricInfoIMetricMap;
+    return counterMap;
+  }
+
+  /**
+   * Get all gauges
+   *
+   * @return [name, tags...] -> gauge
+   */
+  protected Map<String[], Gauge> getAllGauges() {
+    Map<String[], Gauge> gaugeMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Gauge) {
+        gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
+      }
+    }
+    return gaugeMap;
+  }
+
+  /**
+   * Get all rates
+   *
+   * @return [name, tags...] -> rate
+   */
+  protected Map<String[], Rate> getAllRates() {
+    Map<String[], Rate> rateMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Rate) {
+        rateMap.put(entry.getKey().toStringArray(), (Rate) entry.getValue());
+      }
+    }
+    return rateMap;
+  }
+
+  /**
+   * Get all histograms
+   *
+   * @return [name, tags...] -> histogram
+   */
+  protected Map<String[], Histogram> getAllHistograms() {
+    Map<String[], Histogram> histogramMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Histogram) {
+        histogramMap.put(entry.getKey().toStringArray(), (Histogram) entry.getValue());
+      }
+    }
+    return histogramMap;
+  }
+
+  /**
+   * Get all timers
+   *
+   * @return [name, tags...] -> timer
+   */
+  protected Map<String[], Timer> getAllTimers() {
+    Map<String[], Timer> timerMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Timer) {
+        timerMap.put(entry.getKey().toStringArray(), (Timer) entry.getValue());
+      }
+    }
+    return timerMap;
   }
 
   // endregion
@@ -357,20 +415,22 @@ public abstract class AbstractMetricManager {
   public void remove(MetricType type, String name, String... tags) {
     if (isEnableMetric()) {
       MetricInfo metricInfo = new MetricInfo(type, name, tags);
-      if (metrics.containsKey(metricInfo)) {
-        if (type == metricInfo.getMetaInfo().getType()) {
-          nameToMetaInfo.remove(metricInfo.getName());
-          metrics.remove(metricInfo);
-          removeMetric(type, metricInfo);
-        } else {
-          throw new IllegalArgumentException(
-              metricInfo + " failed to remove because the mismatch of type. ");
+      if (nameToTagInfo.containsKey(metricInfo.getName())) {
+        MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo.getName());
+        if (metaInfo.hasSameKey(tags)) {
+          if (type == metaInfo.getType()) {
+            remove(metricInfo);
+            remove(type, metricInfo);
+          } else {
+            throw new IllegalArgumentException(
+                metricInfo + " failed to remove because the mismatch of type. ");
+          }
         }
       }
     }
   }
 
-  protected abstract void removeMetric(MetricType type, MetricInfo metricInfo);
+  protected abstract void remove(MetricType type, MetricInfo metricInfo);
 
   // endregion
 
@@ -389,7 +449,7 @@ public abstract class AbstractMetricManager {
   protected boolean stop() {
     isEnableMetric = METRIC_CONFIG.getEnableMetric();
     metrics = new ConcurrentHashMap<>();
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    nameToTagInfo = new ConcurrentHashMap<>();
     return stopFramework();
   }
 
@@ -399,11 +459,16 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return false;
     }
-    if (!nameToMetaInfo.containsKey(name)) {
+    if (!nameToTagInfo.containsKey(name)) {
       return true;
     }
-    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
+    MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(name);
     return metaInfo.hasSameKey(tags);
+  }
+
+  private void remove(MetricInfo metricInfo) {
+    nameToTagInfo.remove(metricInfo.getName());
+    metrics.remove(metricInfo);
   }
 
   @Override

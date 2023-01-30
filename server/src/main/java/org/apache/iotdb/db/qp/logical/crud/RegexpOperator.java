@@ -37,14 +37,12 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
 public class RegexpOperator extends FunctionOperator {
 
-  private boolean not;
   protected String value;
 
-  public RegexpOperator(FilterType filterType, PartialPath path, String value, boolean not) {
+  public RegexpOperator(FilterType filterType, PartialPath path, String value) {
     super(filterType);
     this.singlePath = path;
     this.value = value;
-    this.not = not;
     isLeaf = true;
     isSingle = true;
   }
@@ -69,20 +67,19 @@ public class RegexpOperator extends FunctionOperator {
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
                   ? value.substring(1, value.length() - 1)
-                  : value,
-              not);
+                  : value);
     }
     return new Pair<>(ret, singlePath.getFullPath());
   }
 
   private static class Regexp {
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
-        PartialPath path, String value, boolean not) {
-      return new SingleSeriesExpression(path, ValueFilter.regexp(value, not));
+        PartialPath path, String value) {
+      return new SingleSeriesExpression(path, ValueFilter.regexp(value));
     }
 
-    public <T extends Comparable<T>> Filter getValueFilter(String value, boolean not) {
-      return ValueFilter.regexp(value, not);
+    public <T extends Comparable<T>> Filter getValueFilter(String value) {
+      return ValueFilter.regexp(value);
     }
   }
 
@@ -92,13 +89,13 @@ public class RegexpOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.getFullPath(), not, value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), value, ", single\n");
     return sc.toString();
   }
 
   @Override
   public RegexpOperator copy() {
-    RegexpOperator ret = new RegexpOperator(this.filterType, singlePath.clone(), value, not);
+    RegexpOperator ret = new RegexpOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -117,35 +114,20 @@ public class RegexpOperator extends FunctionOperator {
       return false;
     }
     RegexpOperator that = (RegexpOperator) o;
-    return Objects.equals(value, that.value) && not == that.not;
+    return Objects.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), singlePath, value, not);
+    return Objects.hash(super.hashCode(), singlePath, value);
   }
 
   @Override
   public String toString() {
-    return "["
-        + singlePath.getFullPath()
-        + (not ? " NOT " : " ")
-        + getFilterSymbol()
-        + " "
-        + value
-        + "]";
-  }
-
-  @Override
-  public void reverseFunc() {
-    not = !not;
+    return "[" + singlePath.getFullPath() + value + "]";
   }
 
   public String getValue() {
     return value;
-  }
-
-  public boolean isNot() {
-    return not;
   }
 }

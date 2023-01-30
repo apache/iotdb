@@ -49,15 +49,8 @@ public class FileMetrics implements IMetricSet {
   private long walFileTotalCount = 0L;
   private long sequenceFileTotalSize = 0L;
   private long sequenceFileTotalCount = 0L;
-  private long sequenceModsFileTotalCount = 0L;
   private long unsequenceFileTotalSize = 0L;
   private long unsequenceFileTotalCount = 0L;
-  private long unsequenceModsFileTotalCount = 0L;
-  private static final String KEY_WAL = "wal";
-  private static final String KEY_SEQ = "seq";
-  private static final String KEY_UNSEQ = "unseq";
-  private static final String KEY_SEQ_MODS = "seqmods";
-  private static final String KEY_UNSEQ_MODS = "unseqmods";
 
   public void bindTo(AbstractMetricService metricService) {
     metricService.getOrCreateAutoGauge(
@@ -66,56 +59,42 @@ public class FileMetrics implements IMetricSet {
         this,
         FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
-        KEY_WAL);
+        "wal");
     metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
-        KEY_SEQ);
+        "seq");
     metricService.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
-        KEY_UNSEQ);
+        "unseq");
     metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
-        KEY_WAL);
+        "wal");
     metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
-        KEY_SEQ);
+        "seq");
     metricService.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
-        KEY_UNSEQ);
-    metricService.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        FileMetrics::getSequenceModsFileTotalCount,
-        Tag.NAME.toString(),
-        KEY_SEQ_MODS);
-    metricService.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        FileMetrics::getUnsequenceModsFileTotalCount,
-        Tag.NAME.toString(),
-        KEY_UNSEQ_MODS);
+        "unseq");
 
     // finally start to update the value of some metrics in async way
     if (metricService.isEnable() && null == currentServiceFuture) {
@@ -138,22 +117,16 @@ public class FileMetrics implements IMetricSet {
       currentServiceFuture = null;
     }
 
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "wal");
+    metricService.remove(MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), KEY_WAL);
+        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), KEY_SEQ);
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), KEY_UNSEQ);
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), KEY_WAL);
-    metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), KEY_SEQ);
-    metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), KEY_UNSEQ);
-    metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), KEY_SEQ_MODS);
-    metricService.remove(
-        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), KEY_UNSEQ_MODS);
+        MetricType.GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
   }
 
   private void collect() {
@@ -178,7 +151,8 @@ public class FileMetrics implements IMetricSet {
             .sum();
     File walFolder = new File(walDirs);
     if (walFolder.exists() && walFolder.isDirectory()) {
-      walFileTotalCount = FileUtils.listFiles(new File(walDirs), null, true).size();
+      walFileTotalCount =
+          org.apache.commons.io.FileUtils.listFiles(new File(walDirs), null, true).size();
     }
     sequenceFileTotalCount =
         Stream.of(dataDirs)
@@ -188,28 +162,12 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return FileUtils.listFiles(new File(dir), new String[] {"tsfile"}, true)
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
                           .size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
                       logger.debug("Failed when count sequence tsfile: ", exception);
-                    }
-                  }
-                  return 0L;
-                })
-            .sum();
-    sequenceModsFileTotalCount =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                  File folder = new File(dir);
-                  if (folder.exists()) {
-                    try {
-                      return FileUtils.listFiles(new File(dir), new String[] {"mods"}, true).size();
-                    } catch (UncheckedIOException exception) {
-                      // do nothing
-                      logger.debug("Failed when count sequence mods: ", exception);
                     }
                   }
                   return 0L;
@@ -223,28 +181,12 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return FileUtils.listFiles(new File(dir), new String[] {"tsfile"}, true)
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
                           .size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
                       logger.debug("Failed when count unsequence tsfile: ", exception);
-                    }
-                  }
-                  return 0L;
-                })
-            .sum();
-    unsequenceModsFileTotalCount =
-        Stream.of(dataDirs)
-            .mapToLong(
-                dir -> {
-                  dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                  File folder = new File(dir);
-                  if (folder.exists()) {
-                    try {
-                      return FileUtils.listFiles(new File(dir), new String[] {"mods"}, true).size();
-                    } catch (UncheckedIOException exception) {
-                      // do nothing
-                      logger.debug("Failed when count unsequence mods: ", exception);
                     }
                   }
                   return 0L;
@@ -268,19 +210,11 @@ public class FileMetrics implements IMetricSet {
     return sequenceFileTotalCount;
   }
 
-  private long getSequenceModsFileTotalCount() {
-    return sequenceModsFileTotalCount;
-  }
-
   public long getUnsequenceFileTotalSize() {
     return unsequenceFileTotalSize;
   }
 
   public long getUnsequenceFileTotalCount() {
     return unsequenceFileTotalCount;
-  }
-
-  private long getUnsequenceModsFileTotalCount() {
-    return unsequenceModsFileTotalCount;
   }
 }

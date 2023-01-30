@@ -901,40 +901,4 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
   }
-
-  /** Test selecting with deleted files. */
-  @Test
-  public void testSelectionWithFileBeingDeleted() throws MergeException, IOException {
-    // cross select files with the last unseq file being deleted
-    unseqResources.get(unseqResources.size() - 1).setStatus(TsFileResourceStatus.DELETED);
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
-    assertEquals(5, resource.getSeqFiles().size());
-    assertEquals(5, resource.getUnseqFiles().size());
-    ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    List<TsFileResource> seqSelected = result[0];
-    List<TsFileResource> unseqSelected = result[1];
-
-    assertEquals(5, seqSelected.size());
-    assertEquals(5, unseqSelected.size());
-    assertEquals(seqResources, seqSelected);
-    assertEquals(resource.getUnseqFiles(), unseqSelected);
-    resource.clear();
-
-    // cross select files with the last unseq file and the last seq file being deleted
-    seqResources.get(seqResources.size() - 1).setStatus(TsFileResourceStatus.DELETED);
-    resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
-    assertEquals(4, resource.getSeqFiles().size());
-    assertEquals(5, resource.getUnseqFiles().size());
-    result = mergeFileSelector.select();
-
-    assertEquals(4, result[0].size());
-    assertEquals(4, result[1].size());
-
-    resource.getUnseqFiles().remove(resource.getUnseqFiles().size() - 1);
-    assertEquals(resource.getSeqFiles(), result[0]);
-    assertEquals(resource.getUnseqFiles(), result[1]);
-  }
 }

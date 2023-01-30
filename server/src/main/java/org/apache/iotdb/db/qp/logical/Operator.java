@@ -200,8 +200,6 @@ public abstract class Operator {
 
     SET_ARCHIVING,
     PAUSE_ARCHIVING,
-    SHOW_ARCHIVING,
-
-    EXPORT_SCHEMA
+    SHOW_ARCHIVING
   }
 }

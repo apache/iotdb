@@ -218,10 +218,6 @@ EXPLAIN
     : E X P L A I N
     ;
 
-EXPORT
-    : E X P O R T
-    ;
-
 FILL
     : F I L L
     ;

@@ -67,8 +67,9 @@ public class IoTDBArchivingIT {
 
   @Test
   @Category({ClusterTest.class})
-  public void testArchive2NonexistentSG() throws SQLException {
+  public void testArchiving() throws SQLException, InterruptedException {
     StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
+
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -92,19 +93,19 @@ public class IoTDBArchivingIT {
       } catch (SQLException e) {
         assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), e.getErrorCode());
       }
-    }
-  }
 
-  @Test
-  @Category({ClusterTest.class})
-  public void testArchiveDataInRange() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
       statement.execute(
           "CREATE TIMESERIES root.ARCHIVING_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      // prepare data
+
+      try {
+        statement.execute("SET ARCHIVING TO storage_group=root.ARCHIVING_SG1");
+      } catch (SQLException e) {
+        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+      }
+
+      // test set when ttl is in range
+
       long now = System.currentTimeMillis();
       for (int i = 0; i < 100; i++) {
         statement.execute(
@@ -112,6 +113,7 @@ public class IoTDBArchivingIT {
                 "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
                 now - 100000 + i, i));
       }
+
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -119,7 +121,8 @@ public class IoTDBArchivingIT {
         }
         assertEquals(100, cnt);
       }
-      // archive data
+
+      // test set when ttl isn't in range
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
@@ -134,26 +137,16 @@ public class IoTDBArchivingIT {
         }
         assertEquals(0, cnt);
       }
-    }
-  }
 
-  @Test
-  @Category({ClusterTest.class})
-  public void testArchiveDataNotInRange() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
-      statement.execute(
-          "CREATE TIMESERIES root.ARCHIVING_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      // prepare data
-      long now = System.currentTimeMillis();
+      // test pause archive
+
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
                 "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
                 now - 5000 + i, i));
       }
+
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -161,7 +154,7 @@ public class IoTDBArchivingIT {
         }
         assertEquals(100, cnt);
       }
-      // archive data
+
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       statement.execute(
@@ -178,34 +171,7 @@ public class IoTDBArchivingIT {
         }
         assertEquals(100, cnt);
       }
-    }
-  }
 
-  @Test
-  @Category({ClusterTest.class})
-  public void testPauseAndResumeArchiving() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
-      statement.execute(
-          "CREATE TIMESERIES root.ARCHIVING_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      // prepare data
-      long now = System.currentTimeMillis();
-      for (int i = 0; i < 100; i++) {
-        statement.execute(
-            String.format(
-                "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
-                now - 5000 + i, i));
-      }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        assertEquals(100, cnt);
-      }
-      // pause data archiving
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
@@ -216,7 +182,7 @@ public class IoTDBArchivingIT {
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
 
-      Thread.sleep(ARCHIVING_CHECK_TIME * 2);
+      waitUntilAllFinished();
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
@@ -226,7 +192,9 @@ public class IoTDBArchivingIT {
         assertEquals(100, cnt);
       }
 
-      // resume data archiving
+      StorageEngine.getInstance().syncCloseAllProcessor();
+
+      // test resume archive
       statement.execute("RESUME ARCHIVING ON root.ARCHIVING_SG1");
 
       waitUntilAllFinished();
@@ -238,26 +206,16 @@ public class IoTDBArchivingIT {
         }
         assertEquals(0, cnt);
       }
-    }
-  }
 
-  @Test
-  @Category({ClusterTest.class})
-  public void testCancelArchiving() throws SQLException, InterruptedException {
-    StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(ARCHIVING_CHECK_TIME);
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ARCHIVING_SG1");
-      statement.execute(
-          "CREATE TIMESERIES root.ARCHIVING_SG1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
-      // prepare data
-      long now = System.currentTimeMillis();
+      // test cancel archive
+
       for (int i = 0; i < 100; i++) {
         statement.execute(
             String.format(
                 "INSERT INTO root.ARCHIVING_SG1(timestamp, s1) VALUES (%d, %d)",
                 now - 5000 + i, i));
       }
+
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.ARCHIVING_SG1")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -265,7 +223,7 @@ public class IoTDBArchivingIT {
         }
         assertEquals(100, cnt);
       }
-      // test cancel archive
+
       StorageEngine.getInstance().syncCloseAllProcessor();
 
       StorageEngine.getInstance().getArchivingManager().setCheckThreadTime(Long.MAX_VALUE);
@@ -289,10 +247,10 @@ public class IoTDBArchivingIT {
   }
 
   private void waitUntilAllFinished() throws InterruptedException {
+    int cnt = 10;
     for (ArchivingTask task : ArchivingManager.getInstance().getArchivingTasks()) {
-      int cnt = 0;
-      while (task.isActive()) {
-        Thread.sleep(ARCHIVING_CHECK_TIME * 10);
+      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.FINISHED) {
+        Thread.sleep(ARCHIVING_CHECK_TIME * 2);
         cnt++;
         if (cnt >= 50) {
           throw new RuntimeException("Wait too long for all archiving task finished.");

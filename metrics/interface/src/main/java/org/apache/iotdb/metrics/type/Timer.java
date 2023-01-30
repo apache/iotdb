@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public interface Timer extends IMetric {
@@ -47,10 +46,4 @@ public interface Timer extends IMetric {
 
   /** It's not safe to use the update interface of this rate */
   Rate getImmutableRate();
-
-  @Override
-  default void constructValueMap(Map<String, Object> result) {
-    takeSnapshot().constructValueMap(result);
-    getImmutableRate().constructValueMap(result);
-  }
 }

@@ -190,10 +190,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -271,10 +280,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -354,10 +372,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -427,11 +454,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -528,10 +563,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -598,10 +642,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -671,10 +724,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -738,10 +800,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -807,10 +878,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

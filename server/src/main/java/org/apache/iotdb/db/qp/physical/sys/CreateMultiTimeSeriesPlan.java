@@ -184,7 +184,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     }
 
     for (CompressionType compressor : compressors) {
-      stream.write(compressor.serialize());
+      stream.write(compressor.ordinal());
     }
 
     serializeOptional(stream);
@@ -242,7 +242,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     }
 
     for (CompressionType compressor : compressors) {
-      buffer.put(compressor.serialize());
+      buffer.put((byte) compressor.ordinal());
     }
 
     serializeOptional(buffer);
@@ -298,7 +298,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     }
     compressors = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
-      compressors.add(CompressionType.deserialize(buffer.get()));
+      compressors.add(CompressionType.values()[buffer.get()]);
     }
 
     deserializeOptional(buffer, totalSize);

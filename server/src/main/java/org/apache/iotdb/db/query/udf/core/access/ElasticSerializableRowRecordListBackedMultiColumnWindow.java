@@ -61,9 +61,6 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
 
   @Override
   public Row getRow(int rowIndex) throws IOException {
-    if (this.size == 0) {
-      throw new IndexOutOfBoundsException("Size is 0");
-    }
     return row.setRowRecord(rowRecordList.getRowRecord(beginIndex + rowIndex));
   }
 
@@ -74,9 +71,6 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
 
   @Override
   public RowIterator getRowIterator() {
-    if (this.size == 0) {
-      return new EmptyRowIterator();
-    }
     if (rowIterator == null) {
       rowIterator =
           new ElasticSerializableRowRecordListBackedMultiColumnWindowIterator(
@@ -85,12 +79,6 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
 
     rowIterator.reset();
     return rowIterator;
-  }
-
-  public void setEmptyWindow(long startTime, long endTime) {
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.size = 0;
   }
 
   @Override

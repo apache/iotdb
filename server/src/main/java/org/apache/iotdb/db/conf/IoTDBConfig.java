@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.audit.AuditLogOperation;
-import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
@@ -41,8 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -297,7 +293,7 @@ public class IoTDBConfig {
   private int maxPendingWindowEvaluationTasks = 64;
 
   /** Is the write mem control for writing enable. */
-  private boolean enableMemControl = true;
+  private boolean enableMemControl = false;
 
   /** Is the write ahead log enable. */
   private boolean enableIndex = false;
@@ -308,11 +304,11 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index} share a total common buffer size. With the
-   * memory-control mechanism, the occupied memory of all raw data and index structures will be
-   * counted. If the memory buffer size reaches this threshold, the indexes will be flushed to the
-   * disk file. As a result, data in one series may be divided into more than one part and indexed
-   * separately. Unit: byte
+   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
+   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
+   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
+   * will be flushed to the disk file. As a result, data in one series may be divided into more than
+   * one part and indexed separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -374,13 +370,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space copaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space copaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private boolean enableCrossSpaceCompaction = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -877,20 +873,6 @@ public class IoTDBConfig {
   /** number of threads given to archiving tasks */
   private int archivingThreadNum = 2;
 
-  /** whether to enable the audit log * */
-  private boolean enableAuditLog = false;
-
-  /** Output location of audit logs * */
-  private List<AuditLogStorage> auditLogStorage =
-      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
-
-  /** Indicates the category collection of audit logs * */
-  private List<AuditLogOperation> auditLogOperation =
-      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
-
-  /** whether the local write api records audit logs * */
-  private boolean enableAuditLogForNativeInsertApi = true;
-
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -1016,19 +998,18 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
   private void formulateFolders() {
-
-    systemDir = addDataHomeDir(systemDir);
-    schemaDir = addDataHomeDir(schemaDir);
-    syncDir = addDataHomeDir(syncDir);
-    tracingDir = addDataHomeDir(tracingDir);
-    walDir = addDataHomeDir(walDir);
-    indexRootFolder = addDataHomeDir(indexRootFolder);
-    extDir = addDataHomeDir(extDir);
-    udfDir = addDataHomeDir(udfDir);
-    triggerDir = addDataHomeDir(triggerDir);
-    operationSyncLogDir = addDataHomeDir(operationSyncLogDir);
+    systemDir = addHomeDir(systemDir);
+    schemaDir = addHomeDir(schemaDir);
+    syncDir = addHomeDir(syncDir);
+    tracingDir = addHomeDir(tracingDir);
+    walDir = addHomeDir(walDir);
+    indexRootFolder = addHomeDir(indexRootFolder);
+    extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
+    triggerDir = addHomeDir(triggerDir);
+    operationSyncLogDir = addHomeDir(operationSyncLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1037,9 +1018,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addDataHomeDir(queryDir);
+      queryDir = addHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
+        dataDirs[i] = addHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1052,7 +1033,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
+        dataDirs[i] = addHomeDir(dataDirs[i]);
       }
     }
     this.dataDirs = dataDirs;
@@ -1060,25 +1041,12 @@ public class IoTDBConfig {
   }
 
   private String addHomeDir(String dir) {
-    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
-  }
-
-  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
-  // In this way, we can keep consistent with v0.13.0~2.
-  private String addDataHomeDir(String dir) {
-    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
-    if (dataHomeDir == null) {
-      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    }
-    return addDirPrefix(dataHomeDir, dir);
-  }
-
-  private String addDirPrefix(String prefix, String dir) {
-    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
-      if (!prefix.endsWith(File.separator)) {
-        dir = prefix + File.separatorChar + dir;
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
       } else {
-        dir = prefix + dir;
+        dir = homeDir + dir;
       }
     }
     return dir;
@@ -1482,7 +1450,7 @@ public class IoTDBConfig {
             new RuntimeException("System mode is set to ERROR"));
         System.exit(-1);
       }
-    } else if (status != newStatus) {
+    } else {
       logger.warn("Set system mode from {} to {}.", status, newStatus);
     }
     this.status = newStatus;
@@ -2837,37 +2805,5 @@ public class IoTDBConfig {
 
   public void setPatternMatchingThreshold(int patternMatchingThreshold) {
     this.patternMatchingThreshold = patternMatchingThreshold;
-  }
-
-  public boolean isEnableAuditLog() {
-    return enableAuditLog;
-  }
-
-  public void setEnableAuditLog(boolean enableAuditLog) {
-    this.enableAuditLog = enableAuditLog;
-  }
-
-  public List<AuditLogStorage> getAuditLogStorage() {
-    return auditLogStorage;
-  }
-
-  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
-    this.auditLogStorage = auditLogStorage;
-  }
-
-  public List<AuditLogOperation> getAuditLogOperation() {
-    return auditLogOperation;
-  }
-
-  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
-    this.auditLogOperation = auditLogOperation;
-  }
-
-  public boolean isEnableAuditLogForNativeInsertApi() {
-    return enableAuditLogForNativeInsertApi;
-  }
-
-  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
-    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
   }
 }

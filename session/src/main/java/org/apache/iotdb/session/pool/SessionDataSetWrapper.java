@@ -18,41 +18,35 @@
  */
 package org.apache.iotdb.session.pool;
 
-import org.apache.iotdb.isession.IDataIterator;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
-import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
-import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
-public class SessionDataSetWrapper implements ISessionDataSetWrapper {
+public class SessionDataSetWrapper implements AutoCloseable {
 
-  ISessionDataSet sessionDataSet;
-  ISession session;
-  ISessionPool pool;
+  SessionDataSet sessionDataSet;
+  Session session;
+  SessionPool pool;
 
-  public SessionDataSetWrapper(
-      ISessionDataSet sessionDataSet, ISession session, ISessionPool pool) {
+  public SessionDataSetWrapper(SessionDataSet sessionDataSet, Session session, SessionPool pool) {
     this.sessionDataSet = sessionDataSet;
     this.session = session;
     this.pool = pool;
   }
 
-  @Override
-  public ISession getSession() {
+  protected Session getSession() {
     return session;
   }
 
-  @Override
   public int getBatchSize() {
     return sessionDataSet.getFetchSize();
   }
 
-  @Override
   public void setBatchSize(int batchSize) {
     sessionDataSet.setFetchSize(batchSize);
   }
@@ -65,7 +59,6 @@ public class SessionDataSetWrapper implements ISessionDataSetWrapper {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  @Override
   public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
     boolean next = sessionDataSet.hasNext();
     if (!next) {
@@ -81,23 +74,19 @@ public class SessionDataSetWrapper implements ISessionDataSetWrapper {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  @Override
   public RowRecord next() throws IoTDBConnectionException, StatementExecutionException {
     return sessionDataSet.next();
   }
 
   /** retrieve data set like jdbc */
-  @Override
-  public IDataIterator iterator() {
+  public DataIterator iterator() {
     return sessionDataSet.iterator();
   }
 
-  @Override
   public List<String> getColumnNames() {
     return sessionDataSet.getColumnNames();
   }
 
-  @Override
   public List<String> getColumnTypes() {
     return sessionDataSet.getColumnTypes();
   }
@@ -106,10 +95,5 @@ public class SessionDataSetWrapper implements ISessionDataSetWrapper {
   @Override
   public void close() {
     pool.closeResultSet(this);
-  }
-
-  @Override
-  public ISessionDataSet getSessionDataSet() {
-    return sessionDataSet;
   }
 }
