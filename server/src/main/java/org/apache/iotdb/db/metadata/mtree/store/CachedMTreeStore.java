@@ -61,7 +61,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
-  private final ICacheManager cacheManager = new LRUCacheManager();
+  private static final ICacheManager cacheManager = new LRUCacheManager();
 
   private ISchemaFile file;
 
@@ -88,6 +88,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
     hasFlushTask = false;
     hasReleaseTask = false;
+    ensureMemoryStatus();
   }
 
   @Override
