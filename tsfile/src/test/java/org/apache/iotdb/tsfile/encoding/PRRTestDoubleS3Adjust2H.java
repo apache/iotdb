@@ -323,18 +323,18 @@ public class PRRTestDoubleS3Adjust2H {
         epsilon_v -= (int) (coefficient.get(2*pi+1) * (double) ts_block.get(j - pi).get(1));
       }
 
-      if(epsilon_r<timestamp_delta_min){
-        timestamp_delta_min = epsilon_r;
-      }
-      if(epsilon_v<value_delta_min){
-        value_delta_min = epsilon_v;
-      }
-      if(epsilon_r>max_timestamp){
-        max_timestamp = epsilon_r;
-      }
-      if(epsilon_v>max_value){
-        max_value = epsilon_v;
-      }
+//      if(epsilon_r<timestamp_delta_min){
+//        timestamp_delta_min = epsilon_r;
+//      }
+//      if(epsilon_v<value_delta_min){
+//        value_delta_min = epsilon_v;
+//      }
+//      if(epsilon_r>max_timestamp){
+//        max_timestamp = epsilon_r;
+//      }
+//      if(epsilon_v>max_value){
+//        max_value = epsilon_v;
+//      }
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -1143,10 +1143,10 @@ public class PRRTestDoubleS3Adjust2H {
     byte[] theta0_v_byte = double2Bytes(coefficient.get(1)+raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
 
-//    for(int i=2;i<coefficient.size();i++){
-//      byte[] theta_byte = double2Bytes(coefficient.get(i));
-//      for (byte b : theta_byte) encoded_result.add(b);
-//    }
+    for(int i=2;i<coefficient.size();i++){
+      byte[] theta_byte = double2Bytes(coefficient.get(i));
+      for (byte b : theta_byte) encoded_result.add(b);
+    }
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
