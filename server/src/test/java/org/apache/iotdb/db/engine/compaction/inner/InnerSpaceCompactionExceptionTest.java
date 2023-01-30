@@ -519,7 +519,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
@@ -595,7 +595,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
