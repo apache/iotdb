@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -201,7 +200,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
@@ -311,9 +310,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("datatype must be declared");
     }
 
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
     createTimeSeriesStatement.setEncoding(
-        CommonDescriptor.getInstance()
-            .getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
+        ioTDBDescriptor.getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
     if (props != null
         && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
@@ -374,7 +373,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    TSEncoding encoding = CommonDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
@@ -2317,10 +2316,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRealLiteral(String value) {
     // 3.33 is float by default
     return new ConstantOperand(
-        CommonDescriptor.getInstance()
-                .getConf()
-                .getFloatingStringInferType()
-                .equals(TSDataType.DOUBLE)
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
             ? TSDataType.DOUBLE
             : TSDataType.FLOAT,
         value);
@@ -2420,7 +2416,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
     MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
     }
     mergeStatement.setOnCluster(ctx.LOCAL() == null);
@@ -2430,7 +2426,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
     MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
     }
     mergeStatement.setOnCluster(ctx.LOCAL() == null);
@@ -2446,7 +2442,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.BOOLEAN_LITERAL() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     }
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
     }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
@@ -2465,7 +2461,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
     }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
@@ -2478,7 +2474,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
     LoadConfigurationStatement loadConfigurationStatement =
         new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException(
           "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
     }
@@ -2491,7 +2487,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
     SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException(
           "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
     }
@@ -2677,7 +2673,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    TSEncoding encoding = CommonDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
     if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
           props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
@@ -3050,7 +3046,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.timeSlot != null) {
       getRegionIdStatement.setTimeSlotId(
           new TTimePartitionSlot(
-              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getDnTimePartitionInterval()));
+              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
     } else if (ctx.timeStamp != null) {
       getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
     }

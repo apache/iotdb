@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -56,13 +55,13 @@ public class SourceHandleTest {
 
   @BeforeClass
   public static void beforeClass() {
-    maxBytesPerFI = CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
-    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+    maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
   }
 
   @AfterClass
   public static void afterClass() {
-    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
   }
 
   @Test
@@ -70,7 +69,7 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -184,7 +183,7 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -236,7 +235,7 @@ public class SourceHandleTest {
     long maxBytesCanReserve =
         Math.min(
             5 * MOCK_TSBLOCK_SIZE,
-            CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance());
+            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
     sourceHandle.setMaxBytesCanReserve(maxBytesCanReserve);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
@@ -340,7 +339,7 @@ public class SourceHandleTest {
     final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -520,7 +519,7 @@ public class SourceHandleTest {
     final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -599,7 +598,7 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");

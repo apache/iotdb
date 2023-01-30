@@ -25,8 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
@@ -34,6 +32,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -97,7 +97,8 @@ import java.util.stream.Collectors;
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int PROCEDURE_WAIT_TIME_OUT = 30;
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
@@ -117,18 +118,20 @@ public class ProcedureManager {
     this.env = new ConfigNodeProcedureEnv(configManager, scheduler);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
     this.planSizeLimit =
-        CommonDescriptor.getInstance().getConf().getConfigNodeRatisConsensusLogAppenderBufferSize()
+        ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
   }
 
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(COMMON_CONFIG.getProcedureCoreWorkerThreadsCount());
+        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
-            COMMON_CONFIG.getProcedureCompletedCleanInterval(),
-            COMMON_CONFIG.getProcedureCompletedEvictTTL());
+            CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+            CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
         LOGGER.info("ProcedureManager is started successfully.");
       }
@@ -417,6 +420,17 @@ public class ProcedureManager {
             .map(TDataNodeConfiguration::getLocation)
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toSet());
+    if (!aliveDataNodes.contains(migrateRegionReq.getFromId())) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the sourceDataNode {} is Unknown.",
+          migrateRegionReq.getFromId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because the sourceDataNode "
+              + migrateRegionReq.getFromId()
+              + " is Unknown.");
+      return status;
+    }
     dataNodesInRegion.retainAll(aliveDataNodes);
     if (dataNodesInRegion.isEmpty()) {
       LOGGER.warn(

@@ -38,7 +38,7 @@ public class FileReaderManagerTest {
 
   private static final int MAX_FILE_SIZE = 10;
 
-  private IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConf();
+  private IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
   private long cacheFileReaderClearPeriod;
 
   @Before

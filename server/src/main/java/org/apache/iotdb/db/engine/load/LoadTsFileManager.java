@@ -58,7 +58,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class LoadTsFileManager {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileManager.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final File loadDir;
 

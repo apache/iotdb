@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -54,6 +55,8 @@ public class FunctionExpression extends Expression {
    * false: time series generating function
    */
   private Boolean isBuiltInAggregationFunctionExpressionCache;
+
+  private Boolean isBuiltInScalarFunctionCache;
 
   private final String functionName;
   private final LinkedHashMap<String, String> functionAttributes;
@@ -108,6 +111,14 @@ public class FunctionExpression extends Expression {
           BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
     }
     return isBuiltInAggregationFunctionExpressionCache;
+  }
+
+  public Boolean isBuiltInScalarFunction() {
+    if (isBuiltInScalarFunctionCache == null) {
+      isBuiltInScalarFunctionCache =
+          BuiltinScalarFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
+    }
+    return isBuiltInScalarFunctionCache;
   }
 
   @Override
@@ -197,7 +208,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression()) {
+    if (isBuiltInAggregationFunctionExpression() || isBuiltInScalarFunction()) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)

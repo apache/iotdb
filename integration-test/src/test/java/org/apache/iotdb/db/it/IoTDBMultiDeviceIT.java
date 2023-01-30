@@ -56,6 +56,7 @@ public class IoTDBMultiDeviceIT {
         .setGroupSizeInByte(1024 * 100)
         .setMemtableSizeThreshold(1024 * 100)
         .setPartitionInterval(100)
+        .setQueryThreadCount(2)
         .setCompressor("LZ4");
 
     EnvFactory.getEnv().initClusterEnvironment();

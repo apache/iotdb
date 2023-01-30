@@ -20,14 +20,14 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
@@ -59,7 +59,8 @@ public class UDFInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFInfo.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONF =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   private final UDFTable udfTable;
   private final Map<String, String> existedJarToMD5;
@@ -75,7 +76,7 @@ public class UDFInfo implements SnapshotProcessor {
     existedJarToMD5 = new HashMap<>();
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
-            COMMON_CONFIG.getUdfTemporaryLibDir(), COMMON_CONFIG.getUdfDir());
+            CONFIG_NODE_CONF.getUdfTemporaryLibDir(), CONFIG_NODE_CONF.getUdfDir());
   }
 
   public void acquireUDFTableLock() {

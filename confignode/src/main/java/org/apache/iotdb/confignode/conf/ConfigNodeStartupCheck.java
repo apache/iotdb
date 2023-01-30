@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
@@ -41,9 +39,7 @@ public class ConfigNodeStartupCheck {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
-      ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
     checkGlobalConfig();
@@ -57,98 +53,78 @@ public class ConfigNodeStartupCheck {
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the target_config_node_list needs to point to itself
-    if (COMMON_CONFIG
-            .getConfigNodeConsensusProtocolClass()
-            .getProtocol()
-            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && (!CONFIG_NODE_CONFIG
-                .getCnInternalAddress()
-                .equals(CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp())
-            || CONFIG_NODE_CONFIG.getCnInternalPort()
-                != CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort())) {
+    if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
+            || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
-          CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp()
-              + ":"
-              + CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort(),
-          CONFIG_NODE_CONFIG.getCnInternalAddress() + ":" + CONFIG_NODE_CONFIG.getCnInternalPort());
+          CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
+          CONF.getInternalAddress() + ":" + CONF.getInternalPort());
     }
 
     // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
     // the data replication factor must be 1
-    if (COMMON_CONFIG
-            .getDataRegionConsensusProtocolClass()
-            .getProtocol()
-            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && COMMON_CONFIG.getDataReplicationFactor() != 1) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        && CONF.getDataReplicationFactor() != 1) {
       throw new ConfigurationException(
           "data_replication_factor",
-          String.valueOf(COMMON_CONFIG.getDataReplicationFactor()),
+          String.valueOf(CONF.getDataReplicationFactor()),
           String.valueOf(1));
     }
 
     // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
     // the schema replication factor must be 1
-    if (COMMON_CONFIG
-            .getSchemaRegionConsensusProtocolClass()
-            .getProtocol()
-            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && COMMON_CONFIG.getSchemaReplicationFactor() != 1) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        && CONF.getSchemaReplicationFactor() != 1) {
       throw new ConfigurationException(
           "schema_replication_factor",
-          String.valueOf(COMMON_CONFIG.getSchemaReplicationFactor()),
+          String.valueOf(CONF.getSchemaReplicationFactor()),
           String.valueOf(1));
     }
 
     // When the schema region consensus protocol is set to IoTConsensus,
     // we should report an error
-    if (COMMON_CONFIG
-        .getSchemaRegionConsensusProtocolClass()
-        .getProtocol()
-        .equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
-          String.valueOf(COMMON_CONFIG.getSchemaRegionConsensusProtocolClass()),
+          String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS));
     }
 
     // The leader distribution policy is limited
-    if (!LeaderDistributionPolicy.GREEDY.equals(COMMON_CONFIG.getLeaderDistributionPolicy())
-        && !LeaderDistributionPolicy.MIN_COST_FLOW.equals(
-            COMMON_CONFIG.getLeaderDistributionPolicy())) {
+    if (!ILeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
+        && !ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "leader_distribution_policy",
-          CONFIG_NODE_CONFIG.getRoutePriorityPolicy(),
-          "GREEDY or MIN_COST_FLOW");
+          "leader_distribution_policy", CONF.getRoutePriorityPolicy(), "GREEDY or MIN_COST_FLOW");
     }
 
     // The route priority policy is limited
-    if (!CONFIG_NODE_CONFIG.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
-        && !CONFIG_NODE_CONFIG.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
+    if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
+        && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "route_priority_policy", CONFIG_NODE_CONFIG.getRoutePriorityPolicy(), "LEADER or GREEDY");
+          "route_priority_policy", CONF.getRoutePriorityPolicy(), "LEADER or GREEDY");
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0
-    if (CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp().equals("0.0.0.0")) {
+    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
       throw new ConfigurationException(
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
 
     // The least DataRegionGroup number should be positive
-    if (COMMON_CONFIG.getLeastDataRegionGroupNum() <= 0) {
+    if (CONF.getLeastDataRegionGroupNum() <= 0) {
       throw new ConfigurationException("The least_data_region_group_num should be positive");
     }
   }
 
   private void createDirsIfNecessary() throws IOException {
     // If systemDir does not exist, create systemDir
-    File systemDir = new File(CONFIG_NODE_CONFIG.getCnSystemDir());
+    File systemDir = new File(CONF.getSystemDir());
     createDirIfEmpty(systemDir);
 
     // If consensusDir does not exist, create consensusDir
-    File consensusDir = new File(CONFIG_NODE_CONFIG.getCnConsensusDir());
+    File consensusDir = new File(CONF.getConsensusDir());
     createDirIfEmpty(consensusDir);
   }
 

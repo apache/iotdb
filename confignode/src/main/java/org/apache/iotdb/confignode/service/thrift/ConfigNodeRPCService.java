@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
   private static final ConfigNodeConfig configConf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
@@ -72,9 +72,9 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               getBindIP(),
               getBindPort(),
               configConf.getCnRpcMaxConcurrentClientNum(),
-              configConf.getCnConnectionTimeoutMs() / 1000,
+              configConf.getThriftServerAwaitTimeForStopService(),
               new ConfigNodeRPCServiceHandler(),
-              configConf.isCnRpcThriftCompressionEnable());
+              commonConfig.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -84,11 +84,11 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public String getBindIP() {
-    return configConf.getCnInternalAddress();
+    return configConf.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return configConf.getCnInternalPort();
+    return configConf.getInternalPort();
   }
 }

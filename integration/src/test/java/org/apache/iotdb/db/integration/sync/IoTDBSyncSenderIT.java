@@ -72,14 +72,15 @@ public class IoTDBSyncSenderIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+    enableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableCrossSpaceCompaction(false);
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     Class.forName(Config.JDBC_DRIVER_NAME);
 
     IoTDBPipeSink pipeSink = new IoTDBPipeSink(pipeSinkName);
@@ -89,12 +90,12 @@ public class IoTDBSyncSenderIT {
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.cleanEnv();

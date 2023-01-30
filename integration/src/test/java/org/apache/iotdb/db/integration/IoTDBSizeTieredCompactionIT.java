@@ -47,7 +47,7 @@ public class IoTDBSizeTieredCompactionIT {
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
-    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
   }
 
   @After
@@ -1010,16 +1010,17 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testSequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount();
-    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(2);
-    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
+    long oriTargetFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     int originCandidateNum =
-        IoTDBDescriptor.getInstance().getConf().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
     CompactionPriority compactionPriority =
-        IoTDBDescriptor.getInstance().getConf().getCompactionPriority();
-    IoTDBDescriptor.getInstance().getConf().setCompactionPriority(CompactionPriority.INNER_CROSS);
+        IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1087,19 +1088,20 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(oriThreadNum);
-      IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
-      IoTDBDescriptor.getInstance().getConf().setCompactionPriority(compactionPriority);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(compactionPriority);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setMaxInnerCompactionCandidateFileNum(originCandidateNum);
     }
   }
 
   @Test
   public void testSequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
+    long oriTargetFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1154,20 +1156,21 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
     }
   }
 
   @Test
   public void testUnsequenceInnerCompactionContinously() throws SQLException {
-    int oriThreadNum = IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount();
-    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(2);
-    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
+    long oriTargetFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(2);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originFinishCount = CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionPriority compactionPriority =
-        IoTDBDescriptor.getInstance().getConf().getCompactionPriority();
-    IoTDBDescriptor.getInstance().getConf().setCompactionPriority(CompactionPriority.INNER_CROSS);
+        IoTDBDescriptor.getInstance().getConfig().getCompactionPriority();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 1; i <= 3; i++) {
@@ -1223,16 +1226,19 @@ public class IoTDBSizeTieredCompactionIT {
         }
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(oriThreadNum);
-      IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
-      IoTDBDescriptor.getInstance().getConf().setCompactionPriority(CompactionPriority.INNER_CROSS);
+      IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setCompactionPriority(CompactionPriority.INNER_CROSS);
     }
   }
 
   @Test
   public void testUnsequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
+    long oriTargetFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1289,15 +1295,16 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
     }
   }
 
   // Test concurrent compaction in sequence space and unsequence space
   @Test
   public void testSequenceAndUnsequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
+    long oriTargetFileSize =
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1357,7 +1364,7 @@ public class IoTDBSizeTieredCompactionIT {
       }
 
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
     }
   }
 }

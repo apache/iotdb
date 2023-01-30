@@ -49,16 +49,16 @@ public class CompactionConfigRestorer {
   private int compactionWriteThroughputMbPerSec = 8;
 
   private CrossCompactionPerformer oldCrossPerformer =
-      IoTDBDescriptor.getInstance().getConf().getCrossCompactionPerformer();
+      IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer();
   private InnerSeqCompactionPerformer oldInnerSeqPerformer =
-      IoTDBDescriptor.getInstance().getConf().getInnerSeqCompactionPerformer();
+      IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer();
   private InnerUnseqCompactionPerformer oldInnerUnseqPerformer =
-      IoTDBDescriptor.getInstance().getConf().getInnerUnseqCompactionPerformer();
+      IoTDBDescriptor.getInstance().getConfig().getInnerUnseqCompactionPerformer();
 
   public CompactionConfigRestorer() {}
 
   public void restoreCompactionConfig() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     config.setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     config.setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     config.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);

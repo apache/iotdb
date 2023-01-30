@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -45,7 +43,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     if (IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .getRpcImplClassName()
         .equals(ClientRPCServiceImpl.class.getName())) {
       impl =
@@ -54,7 +52,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
     } else {
       impl =
           (IInfluxDBServiceWithHandler)
-              Class.forName(IoTDBDescriptor.getInstance().getConf().getInfluxDBImplClassName())
+              Class.forName(IoTDBDescriptor.getInstance().getConfig().getInfluxDBImplClassName())
                   .newInstance();
     }
     initSyncedServiceImpl(null);
@@ -63,20 +61,19 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
 
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
-    CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
               getID().getName(),
               ThreadName.INFLUXDB_RPC_PROCESSOR.getName(),
-              config.getDnRpcAddress(),
-              commonConfig.getInfluxDBRpcPort(),
-              config.getDnRpcMaxConcurrentClientNum(),
+              config.getRpcAddress(),
+              config.getInfluxDBRpcPort(),
+              config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InfluxDBServiceThriftHandler(impl),
-              IoTDBDescriptor.getInstance().getConf().isDnRpcThriftCompressionEnable());
+              IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -85,12 +82,12 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConf().getDnRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return CommonDescriptor.getInstance().getConf().getInfluxDBRpcPort();
+    return IoTDBDescriptor.getInstance().getConfig().getInfluxDBRpcPort();
   }
 
   @Override

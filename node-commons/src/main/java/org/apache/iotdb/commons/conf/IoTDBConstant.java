@@ -228,7 +228,6 @@ public class IoTDBConstant {
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
-  public static final String TRACING_FOLDER_NAME = "tracing";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -268,9 +267,6 @@ public class IoTDBConstant {
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
-
-  public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
-  public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
   // client version number
   public enum ClientVersion {

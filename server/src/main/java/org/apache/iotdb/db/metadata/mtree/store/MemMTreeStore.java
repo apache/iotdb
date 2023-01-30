@@ -59,7 +59,7 @@ public class MemMTreeStore implements IMTreeStore {
           new StorageGroupMNode(
               null,
               rootPath.getTailNode(),
-              CommonDescriptor.getInstance().getConf().getDefaultTtlInMs());
+              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     } else {
       this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     }

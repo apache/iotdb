@@ -66,7 +66,7 @@ public class IDTableHashmapImpl implements IDTable {
   /** disk schema manager to manage disk schema entry */
   private IDiskSchemaManager IDiskSchemaManager;
   /** iotdb config */
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public IDTableHashmapImpl(File storageGroupDir) {
     idTables = new Map[NUM_OF_SLOTS];

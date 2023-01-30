@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
@@ -80,11 +80,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private IMPPDataExchangeManager blockManager;
 
   private static final int MAX_CAPACITY =
-      CommonDescriptor.getInstance().getConf().getMaxAllowedConcurrentQueries();
+      IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM =
-      CommonDescriptor.getInstance().getConf().getQueryThreadCount();
+      IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
   private static final long QUERY_TIMEOUT_MS =
-      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold();
+      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 
@@ -460,16 +460,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
         if (queryRelatedTasks != null) {
           for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
             if (fragmentRelatedTasks != null) {
-              for (DriverTask otherTask : fragmentRelatedTasks) {
-                if (task.equals(otherTask)) {
-                  continue;
-                }
-                otherTask.lock();
-                try {
-                  otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
-                  clearDriverTask(otherTask);
-                } finally {
-                  otherTask.unlock();
+              synchronized (fragmentRelatedTasks) {
+                for (DriverTask otherTask : fragmentRelatedTasks) {
+                  if (task.equals(otherTask)) {
+                    continue;
+                  }
+                  otherTask.lock();
+                  try {
+                    otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+                    clearDriverTask(otherTask);
+                  } finally {
+                    otherTask.unlock();
+                  }
                 }
               }
             }

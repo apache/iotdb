@@ -80,7 +80,7 @@ import java.util.Set;
 public class TagSchemaRegion implements ISchemaRegion {
   private static final Logger logger = LoggerFactory.getLogger(TagSchemaRegion.class);
 
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // when a path ends with ".**", it represents batch processing
   private final String TAIL = ".**";

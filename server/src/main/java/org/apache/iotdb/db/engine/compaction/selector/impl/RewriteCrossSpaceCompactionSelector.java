@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.selector.impl;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,8 +45,7 @@ import java.util.stream.Collectors;
 public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final int SELECT_WARN_THRESHOLD = 10;
   protected String logicalStorageGroupName;
@@ -75,16 +73,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.memoryBudget =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
-                * CommonDescriptor.getInstance().getConf().getUsableCompactionMemoryProportion());
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     this.maxCrossCompactionFileSize =
-        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileSize();
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
 
     this.compactionEstimator =
         ICompactionSelector.getCompactionEstimator(
-            IoTDBDescriptor.getInstance().getConf().getCrossCompactionPerformer(), false);
+            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
   }
 
   /**

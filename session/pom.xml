@@ -43,6 +43,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${session.ut.skip}</skipTests>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -61,6 +63,8 @@
                 <configuration>
                     <skipTests>${session.test.skip}</skipTests>
                     <skipITs>${session.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>

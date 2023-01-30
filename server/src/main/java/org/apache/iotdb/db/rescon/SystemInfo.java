@@ -21,9 +21,9 @@ package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private long totalStorageGroupMemCost = 0L;
@@ -55,8 +55,8 @@ public class SystemInfo {
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private double FLUSH_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getFlushProportion();
-  private double REJECT_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getRejectProportion();
+  private double FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+  private double REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -132,7 +132,6 @@ public class SystemInfo {
     if (reportedStorageGroupMemCostMap.containsKey(dataRegionInfo)) {
       delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - dataRegionInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
-      dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
       reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
     }
 
@@ -180,7 +179,7 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    if (COMMON_CONFIG.isEnableMemControl()) {
+    if (config.isEnableMemControl()) {
       long originSize = this.compactionMemoryCost.get();
       while (originSize + memoryCost > memorySizeForCompaction
           || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
@@ -195,7 +194,7 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    if (COMMON_CONFIG.isEnableMemControl()) {
+    if (config.isEnableMemControl()) {
       return memorySizeForCompaction;
     } else {
       return Long.MAX_VALUE;
@@ -205,14 +204,11 @@ public class SystemInfo {
   public void allocateWriteMemory() {
     memorySizeForMemtable =
         (long)
-            (COMMON_CONFIG.getAllocateMemoryForStorageEngine()
-                * COMMON_CONFIG.getWriteProportionForMemtable());
+            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
-        (long)
-            (COMMON_CONFIG.getAllocateMemoryForStorageEngine()
-                * COMMON_CONFIG.getCompactionProportion());
-    FLUSH_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getRejectProportion();
+        (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   @TestOnly
@@ -294,14 +290,14 @@ public class SystemInfo {
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable -= estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getRejectProportion();
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable += estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getRejectProportion();
+    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
   }
 
   public long getTotalMemTableSize() {

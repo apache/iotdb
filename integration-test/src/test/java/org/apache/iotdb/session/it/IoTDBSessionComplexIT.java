@@ -266,7 +266,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecords(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -315,7 +315,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertMultiTablets(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -343,7 +343,7 @@ public class IoTDBSessionComplexIT {
 
   private void insertRecordsOfOneDevice(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
-    long timePartition = IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
+    long timePartition = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
