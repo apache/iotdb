@@ -132,7 +132,6 @@ public class SystemInfo {
     if (reportedStorageGroupMemCostMap.containsKey(dataRegionInfo)) {
       delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - dataRegionInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
-      dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
       reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
     }
 
