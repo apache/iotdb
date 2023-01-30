@@ -176,7 +176,10 @@ public abstract class CacheManager implements ICacheManager {
         // the status change affects the subTre collect in nodeBuffer
         cacheEntry.setVolatile(true);
       }
-      getBelongedContainer(node).updateMNode(node.getName());
+      if (!node.isStorageGroup()) {
+        // if node is StorageGroup, getBelongedContainer is null
+        getBelongedContainer(node).updateMNode(node.getName());
+      }
       // MNode update operation like node replace may reset the mapping between cacheEntry and node,
       // thus it should be updated
       updateCacheStatusAfterUpdate(cacheEntry, node);

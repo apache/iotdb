@@ -267,25 +267,11 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void updateMNode(IMNode node) throws MetadataException {
-    if (node.isStorageGroup()) {
-      this.root = node;
-      writeLock.lock();
-      try {
-        file.updateStorageGroupNode(node.getAsStorageGroupMNode());
-      } catch (IOException e) {
-        logger.error(
-            "IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
-        throw new MetadataException(e);
-      } finally {
-        writeLock.unlock();
-      }
-    } else {
-      readLock.lock();
-      try {
-        cacheManager.updateCacheStatusAfterUpdate(node);
-      } finally {
-        readLock.unlock();
-      }
+    readLock.lock();
+    try {
+      cacheManager.updateCacheStatusAfterUpdate(node);
+    } finally {
+      readLock.unlock();
     }
   }
 
@@ -486,6 +472,9 @@ public class CachedMTreeStore implements IMTreeStore {
       List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       for (IMNode volatileNode : nodesToPersist) {
         try {
+          if (volatileNode.isStorageGroup()) {
+            file.updateStorageGroupNode(volatileNode.getAsStorageGroupMNode());
+          }
           file.writeMNode(volatileNode);
         } catch (MetadataException | IOException e) {
           logger.error(
