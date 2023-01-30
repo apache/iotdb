@@ -3224,20 +3224,20 @@ public class IoTDBConfig {
 
   public static String getEnvironmentVariables() {
     return "\n\t"
-      + IoTDBConstant.IOTDB_HOME
-      + "="
-      + System.getProperty(IoTDBConstant.IOTDB_HOME, "null")
-      + ";"
-      + "\n\t"
-      + IoTDBConstant.IOTDB_CONF
-      + "="
-      + System.getProperty(IoTDBConstant.IOTDB_CONF, "null")
-      + ";"
-      + "\n\t"
-      + IoTDBConstant.IOTDB_DATA_HOME
-      + "="
-      + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
-      + ";";
+        + IoTDBConstant.IOTDB_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_HOME, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_CONF
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_CONF, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_DATA_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
+        + ";";
   }
 
   public void setCompactionProportion(double compactionProportion) {
