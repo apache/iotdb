@@ -150,10 +150,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
-  public Set<String> getDevices() {
-    return deviceToIndex.keySet();
-  }
-
   @Override
   public boolean endTimeEmpty() {
     for (long endTime : endTimes) {

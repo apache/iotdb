@@ -20,14 +20,13 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.template.TemplateNode;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateNode;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -669,18 +668,6 @@ public class SessionTest {
       fail("No exception thrown.");
     } catch (Exception e) {
       assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
-    }
-  }
-
-  @Test
-  public void testGetBackupConfiguration() throws IoTDBConnectionException {
-    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
-    session.open();
-    try {
-      TSBackupConfigurationResp resp = session.getBackupConfiguration();
-      assertEquals("127.0.0.1", resp.getSecondaryAddress());
-    } catch (Exception e) {
-      fail();
     }
   }
 }

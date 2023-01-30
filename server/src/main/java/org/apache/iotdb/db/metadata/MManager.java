@@ -103,8 +103,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -190,7 +188,6 @@ public class MManager {
 
   private final AtomicLong totalNormalSeriesNumber = new AtomicLong();
   private final AtomicLong totalTemplateSeriesNumber = new AtomicLong();
-  private final AtomicLong totalTemplateActivatedNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -205,7 +202,7 @@ public class MManager {
   private MTree mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
-  private TagManager tagManager = new TagManager();
+  private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
   // seriesNumerMonitor may be null, so we must check it before use it.
@@ -309,7 +306,7 @@ public class MManager {
     try {
       isRecovering = true;
 
-      tagManager.init(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+      tagManager.init();
       mtree = new MTree();
       mtree.init();
 
@@ -444,7 +441,6 @@ public class MManager {
       }
       this.totalNormalSeriesNumber.set(0);
       this.totalTemplateSeriesNumber.set(0);
-      this.totalTemplateActivatedNumber.set(0);
       this.templateManager.clear();
       if (logWriter != null) {
         logWriter.close();
@@ -561,9 +557,7 @@ public class MManager {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart."
-              + "Current timeseries num is "
-              + totalNormalSeriesNumber.get());
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
 
     if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
@@ -689,9 +683,7 @@ public class MManager {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart."
-              + "Current timeseries num is "
-              + totalNormalSeriesNumber.get());
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     int seriesCount = plan.getMeasurements().size();
 
@@ -1048,15 +1040,6 @@ public class MManager {
     return totalTemplateSeriesNumber.get();
   }
 
-  public long getTotalTemplateActivatedNumber() {
-    return totalTemplateActivatedNumber.get();
-  }
-
-  public long getTotalEstimatedMemoryUsage() {
-    return (totalNormalSeriesNumber.get() + totalTemplateActivatedNumber.get())
-        * config.getEstimatedSeriesSize();
-  }
-
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
@@ -1353,86 +1336,6 @@ public class MManager {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
-  public void exportSchema(File dir) throws IOException, MetadataException {
-    File tagTargetFile = new File(dir, MetadataConstant.TAG_LOG);
-    File mlogTargetFile = new File(dir, MetadataConstant.METADATA_LOG);
-    if (!dir.exists()) {
-      dir.mkdirs();
-    } else {
-      if (!dir.isDirectory()) {
-        throw new IOException(String.format("%s is not a directory.", dir.getAbsolutePath()));
-      }
-      if (mlogTargetFile.exists() || tagTargetFile.exists()) {
-        List<String> existedPath = new ArrayList<>();
-        if (mlogTargetFile.exists()) {
-          existedPath.add(mlogTargetFile.getAbsolutePath());
-          if (tagTargetFile.exists()) {
-            existedPath.add(tagTargetFile.getAbsolutePath());
-          }
-          throw new IOException(
-              String.format(
-                  "File %s already exist%s.",
-                  StringUtils.join(existedPath.toArray(), ","),
-                  existedPath.size() == 1 ? "s" : ""));
-        }
-      }
-    }
-
-    try (MLogWriter mLogWriter =
-        new MLogWriter(dir.getAbsolutePath(), MetadataConstant.METADATA_LOG)) {
-      // export storage group
-      for (PartialPath sg : mtree.getAllStorageGroupPaths()) {
-        mLogWriter.setStorageGroup(sg);
-      }
-      // export template
-      for (Map.Entry<String, Template> entry : templateManager.getTemplateMap().entrySet()) {
-        if (entry.getValue().isDirectAligned()) {
-          List<List<String>> measurements = Collections.singletonList(new ArrayList<>());
-          List<List<TSDataType>> dataTypes = Collections.singletonList(new ArrayList<>());
-          List<List<TSEncoding>> encodings = Collections.singletonList(new ArrayList<>());
-          List<List<CompressionType>> compressions = Collections.singletonList(new ArrayList<>());
-          entry
-              .getValue()
-              .getSchemaMap()
-              .values()
-              .forEach(
-                  i -> {
-                    measurements.get(0).add(i.getMeasurementId());
-                    dataTypes.get(0).add(i.getType());
-                    encodings.get(0).add(i.getEncodingType());
-                    compressions.get(0).add(i.getCompressor());
-                  });
-          mLogWriter.createSchemaTemplate(
-              new CreateTemplatePlan(
-                  entry.getKey(), measurements, dataTypes, encodings, compressions));
-        } else {
-          List<List<String>> measurements = new ArrayList<>();
-          List<List<TSDataType>> dataTypes = new ArrayList<>();
-          List<List<TSEncoding>> encodings = new ArrayList<>();
-          List<List<CompressionType>> compressions = new ArrayList<>();
-          entry
-              .getValue()
-              .getSchemaMap()
-              .values()
-              .forEach(
-                  i -> {
-                    measurements.add(Collections.singletonList(i.getMeasurementId()));
-                    dataTypes.add(Collections.singletonList(i.getType()));
-                    encodings.add(Collections.singletonList(i.getEncodingType()));
-                    compressions.add(Collections.singletonList(i.getCompressor()));
-                  });
-          mLogWriter.createSchemaTemplate(
-              new CreateTemplatePlan(
-                  entry.getKey(), measurements, dataTypes, encodings, compressions));
-        }
-      }
-      // export timeseries
-      mtree.exportSchema(mLogWriter);
-      // export tag
-      FileUtils.copyFile(new File(config.getSchemaDir(), MetadataConstant.TAG_LOG), tagTargetFile);
-    }
-  }
-
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     // show timeseries with index
@@ -1469,8 +1372,6 @@ public class MManager {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagManager.readTagFile(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
-          Pair<String, String> deadbandInfo =
-              MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -1483,9 +1384,7 @@ public class MManager {
                       ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
                       : 0,
                   tagAndAttributePair.left,
-                  tagAndAttributePair.right,
-                  deadbandInfo.left,
-                  deadbandInfo.right));
+                  tagAndAttributePair.right));
           if (limit != 0) {
             count++;
           }
@@ -1530,9 +1429,7 @@ public class MManager {
                 CompressionType.valueOf(ansString.right[4]),
                 ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
-                tagAndAttributePair.right,
-                ansString.right[7],
-                ansString.right[8]));
+                tagAndAttributePair.right));
       } catch (IOException e) {
         throw new MetadataException(
             "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),
@@ -2602,7 +2499,6 @@ public class MManager {
 
       node.setUseTemplate(false);
       int seriesCount = node.getUpperTemplate().getMeasurementsCount();
-      totalTemplateActivatedNumber.addAndGet(-1);
       totalTemplateSeriesNumber.addAndGet(-seriesCount);
       if (seriesNumerMonitor != null) {
         seriesNumerMonitor.deleteTimeSeries(seriesCount);
@@ -2665,7 +2561,6 @@ public class MManager {
       throw t;
     }
 
-    totalTemplateActivatedNumber.addAndGet(1);
     totalTemplateSeriesNumber.addAndGet(template.getMeasurementsCount());
 
     if (node != mountedMNode) {
@@ -2710,14 +2605,13 @@ public class MManager {
   @TestOnly
   public void initForMultiMManagerTest() {
     templateManager = TemplateManager.getNewInstanceForTest();
-    tagManager = new TagManager();
+    tagManager = TagManager.getNewInstanceForTest();
     init();
   }
 
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
-    tagManager.clear();
   }
 
   @TestOnly

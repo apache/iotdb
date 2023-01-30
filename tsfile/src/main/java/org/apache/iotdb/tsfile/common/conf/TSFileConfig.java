@@ -73,9 +73,9 @@ public class TSFileConfig implements Serializable {
   /** Memory size threshold for flushing to disk, default value is 128MB. */
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
-  private int pageSizeInByte = 64 * 1024;
+  private int pageSizeInByte = 64 * 102400;
   /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 10240;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */

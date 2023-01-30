@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import org.apache.iotdb.db.audit.AuditLogOperation;
-import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.concurrent.HashLock;
@@ -45,9 +43,6 @@ public abstract class BasicUserManager implements IUserManager {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
   private static final String NO_SUCH_USER_ERROR = "No such user %s";
-
-  private static final boolean enableAuditLog =
-      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   private Map<String, User> userMap;
   private IUserAccessor accessor;
@@ -112,9 +107,7 @@ public abstract class BasicUserManager implements IUserManager {
   public boolean createUser(String username, String password) throws AuthException {
     AuthUtils.validateUsername(username);
     AuthUtils.validatePassword(password);
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("user %s is created", username), AuditLogOperation.DDL);
-    }
+
     User user = getUser(username);
     if (user != null) {
       return false;
@@ -137,9 +130,6 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       if (accessor.deleteUser(username)) {
-        if (enableAuditLog) {
-          AuditLogger.log(String.format("user %s is deleted", username), AuditLogOperation.DDL);
-        }
         userMap.remove(username);
         return true;
       } else {
@@ -213,9 +203,7 @@ public abstract class BasicUserManager implements IUserManager {
       logger.debug("An illegal password detected ", e);
       return false;
     }
-    if (enableAuditLog) {
-      AuditLogger.log("password is updated", AuditLogOperation.DDL);
-    }
+
     lock.writeLock(username);
     try {
       User user = getUser(username);

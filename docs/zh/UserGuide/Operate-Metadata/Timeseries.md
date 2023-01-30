@@ -103,28 +103,28 @@ IoTDB> show timeseries root.ln.**
 执行结果分别为：
 
 ```
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
-|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
-|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
-|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|    null|               null|
-|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
-|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
 Total line number = 7
 It costs 0.016s
 
-+-----------------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|deadband|deadband parameters|
-+-----------------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
-|   root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|null|      null|    null|               null|
-|     root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|    null|               null|
-|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|    null|               null|
-|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|    null|               null|
-+-----------------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|   root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|null|      null|
+|     root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 Total line number = 4
 It costs 0.004s
 ```
@@ -158,17 +158,17 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 例如有如下时间序列（可以使用`show timeseries`展示所有时间序列）：
 
 ```
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
-|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
-|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
-|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|    null|               null|
-|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                               {"unit":"c"}|                                                    null|    null|               null|
-|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                    {"description":"test1"}|                                                    null|    null|               null|
-|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
-|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
-+-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                               {"unit":"c"}|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                    {"description":"test1"}|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
 Total line number = 7
 It costs 0.004s
 ```
@@ -288,19 +288,19 @@ show timeseries root.ln.** where description contains 'test1'
 执行结果分别为：
 
 ```
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+--------+-------------------+
-|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|deadband|deadband parameters|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+--------+-------------------+
-|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|    null|               null|
-+--------------------------+-----+-------------+--------+--------+-----------+------------+----------+--------+-------------------+
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
 Total line number = 1
 It costs 0.005s
 
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+--------+-------------------+
-|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|deadband|deadband parameters|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+--------+-------------------+
-|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|    null|               null|
-+------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+--------+-------------------+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
 Total line number = 1
 It costs 0.004s
 ```

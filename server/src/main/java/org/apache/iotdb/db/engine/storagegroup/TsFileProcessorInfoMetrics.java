@@ -27,14 +27,15 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Objects;
+
 public class TsFileProcessorInfoMetrics implements IMetricSet {
   private String storageGroupName;
-  private TsFileProcessorInfo tsFileProcessorInfo;
+  private long memCost;
 
-  public TsFileProcessorInfoMetrics(
-      String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {
+  public TsFileProcessorInfoMetrics(String storageGroupName, long memCost) {
     this.storageGroupName = storageGroupName;
-    this.tsFileProcessorInfo = tsFileProcessorInfo;
+    this.memCost = memCost;
   }
 
   @Override
@@ -43,8 +44,8 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
         .getOrCreateAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
-            tsFileProcessorInfo,
-            TsFileProcessorInfo::getMemCost,
+            memCost,
+            o -> o,
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
   }
@@ -57,5 +58,18 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
             Metric.MEM.toString(),
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFileProcessorInfoMetrics that = (TsFileProcessorInfoMetrics) o;
+    return memCost == that.memCost && Objects.equals(storageGroupName, that.storageGroupName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupName, memCost);
   }
 }

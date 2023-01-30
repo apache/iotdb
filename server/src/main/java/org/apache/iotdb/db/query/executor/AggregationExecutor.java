@@ -34,29 +34,40 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.ArAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -86,6 +97,7 @@ public class AggregationExecutor {
   protected boolean ascending;
   protected QueryContext context;
   protected AggregateResult[] aggregateResultList;
+  protected List<Map<String, String>> parameters;
 
   /** aggregation batch calculation size. */
   private int aggregateFetchSize;
@@ -102,6 +114,7 @@ public class AggregationExecutor {
     this.ascending = aggregationPlan.isAscending();
     this.context = context;
     this.aggregateResultList = new AggregateResult[selectedSeries.size()];
+    this.parameters = aggregationPlan.getParameters();
   }
 
   /** execute aggregate function with only time filter or no filter. */
@@ -178,13 +191,21 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> ascAggregateResultList = new ArrayList<>();
     List<AggregateResult> descAggregateResultList = new ArrayList<>();
+    ArAggrResult arAggrResult = null;
     boolean[] isAsc = new boolean[aggregateResultList.length];
+    boolean[] isAr = new boolean[aggregateResultList.length];
 
     TSDataType tsDataType = dataTypes.get(indexes.get(0));
     for (int i : indexes) {
       // construct AggregateResult
       AggregateResult aggregateResult =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
+      if (aggregateResult.getAggregationType() == AggregationType.AR) {
+        arAggrResult = (ArAggrResult) aggregateResult;
+        arAggrResult.setParameters(parameters.get(i));
+        isAr[i] = true;
+        continue;
+      }
       if (aggregateResult.isAscending()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
@@ -202,14 +223,21 @@ public class AggregationExecutor {
         descAggregateResultList,
         null,
         ascending);
-
+    if (arAggrResult != null) {
+      aggregateAr(
+          seriesPath, allMeasurementsInDevice, context, timeFilter, tsDataType, arAggrResult, null);
+    }
     int ascIndex = 0;
     int descIndex = 0;
     for (int i : indexes) {
-      aggregateResultList[i] =
-          isAsc[i]
-              ? ascAggregateResultList.get(ascIndex++)
-              : descAggregateResultList.get(descIndex++);
+      if (isAr[i]) {
+        aggregateResultList[i] = arAggrResult;
+      } else {
+        aggregateResultList[i] =
+            isAsc[i]
+                ? ascAggregateResultList.get(ascIndex++)
+                : descAggregateResultList.get(descIndex++);
+      }
     }
   }
 
@@ -800,7 +828,7 @@ public class AggregationExecutor {
    */
   private QueryDataSet constructDataSet(
       List<AggregateResult> aggregateResultList, AggregationPlan plan) {
-    SingleDataSet dataSet;
+    ListDataSet dataSet;
     RowRecord record = new RowRecord(0);
 
     if (plan.isGroupByLevel()) {
@@ -813,16 +841,409 @@ public class AggregationExecutor {
         dataTypes.add(resultData.getResultDataType());
         record.addField(resultData.getResult(), resultData.getResultDataType());
       }
-      dataSet = new SingleDataSet(paths, dataTypes);
+      dataSet = new ListDataSet(paths, dataTypes);
+      dataSet.putRecord(record);
     } else {
+      dataSet = new ListDataSet(selectedSeries, dataTypes);
       for (AggregateResult resultData : aggregateResultList) {
         TSDataType dataType = resultData.getResultDataType();
-        record.addField(resultData.getResult(), dataType);
+        if (resultData instanceof ArAggrResult){
+          double[] coefficients =  ((ArAggrResult) resultData).getCoefficients();
+          for (int i = 0; i<coefficients.length; i++) {
+            record = new RowRecord(i);
+            record.addField(coefficients[i], dataType);
+            dataSet.putRecord(record);
+          }
+        }else record.addField(resultData.getResult(), dataType);
       }
-      dataSet = new SingleDataSet(selectedSeries, dataTypes);
     }
-    dataSet.setRecord(record);
 
     return dataSet;
+  }
+
+  private void aggregateAr(
+      PartialPath seriesPath,
+      Set<String> measurements,
+      QueryContext context,
+      Filter timeFilter,
+      TSDataType tsDataType,
+      ArAggrResult arAggrResult,
+      TsFileFilter fileFilter)
+      throws QueryProcessException, StorageEngineException, IOException {
+    // construct series reader without value filter
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(seriesPath, context, timeFilter, ascending);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+    long startTimeBound = Long.MIN_VALUE, endTimeBound = Long.MAX_VALUE;
+    long timeInterval = 0;
+    // TODO: manually update time filter
+    if (timeFilter != null) {
+      String strTimeFilter = timeFilter.toString().replace(" ", "");
+      strTimeFilter = strTimeFilter.replace("(", "").replace(")", "").replaceAll("time", "");
+      String[] strTimes = strTimeFilter.split("&&");
+      for (String strTime : strTimes) {
+        if (strTime.contains(">=")) startTimeBound = Long.parseLong(strTime.replaceAll(">=", ""));
+        else if (strTime.contains(">"))
+          startTimeBound = Long.parseLong(strTime.replaceAll(">", "")) + 1;
+        if (strTime.contains("<=")) endTimeBound = Long.parseLong(strTime.replaceAll("<=", ""));
+        else if (strTime.contains("<"))
+          endTimeBound = Long.parseLong(strTime.replaceAll("<", "")) - 1;
+      }
+    }
+
+    IAggregateReader seriesReader =
+        new SeriesAggregateReader(
+            seriesPath, measurements, tsDataType, context, queryDataSource, null, null, null, true);
+
+    int curIndex = 0;
+    int cnt = 0;
+    int p = arAggrResult.getParameterP();
+    List<Statistics> statisticsList = new ArrayList<>();
+
+    List<Integer> unseqIndexList = new ArrayList<>();
+    List<Long> startTimes = new ArrayList<>();
+    List<Long> endTimes = new ArrayList<>();
+    List<Boolean> ifUnseq = new ArrayList<>();
+    // TODO: determine seq or unseq pages
+    if (arAggrResult.getStatisticLevel().equals("page")) {
+      while (seriesReader.hasNextFile()) {
+        while (seriesReader.hasNextChunk()) {
+          while (seriesReader.hasNextPage()) {
+            cnt += 1;
+            if (seriesReader.canUseCurrentPageStatistics()) {
+              Statistics chunkStatistic = seriesReader.currentPageStatistics();
+              timeInterval = chunkStatistic.getTimeInterval();
+              statisticsList.add(chunkStatistic);
+              if (chunkStatistic.getStartTime() < startTimeBound
+                  && chunkStatistic.getEndTime() >= endTimeBound) ifUnseq.add(true);
+              else if (chunkStatistic.getStartTime() <= endTimeBound
+                  && chunkStatistic.getEndTime() > endTimeBound) ifUnseq.add(true);
+              else ifUnseq.add(false);
+              startTimes.add(chunkStatistic.getStartTime());
+              endTimes.add(chunkStatistic.getEndTime());
+              seriesReader.skipCurrentPage();
+            } else {
+              System.out.println("unSeq");
+              Statistics chunkStatistic = seriesReader.currentPageStatistics();
+              timeInterval = chunkStatistic.getTimeInterval();
+              unseqIndexList.add(curIndex);
+              statisticsList.add(chunkStatistic);
+              ifUnseq.add(true);
+              startTimes.add(chunkStatistic.getStartTime());
+              endTimes.add(chunkStatistic.getEndTime());
+              seriesReader.skipCurrentPage();
+            }
+            curIndex++;
+          }
+        }
+      }
+    }
+    // TODO: determine seq or unseq chunks
+    if (arAggrResult.getStatisticLevel().equals("chunk")) {
+      while (seriesReader.hasNextFile()) {
+        while (seriesReader.hasNextChunk()) {
+          cnt += 1;
+
+          if (seriesReader.canUseCurrentChunkStatistics()) {
+            Statistics chunkStatistic = seriesReader.currentChunkStatistics();
+            timeInterval = chunkStatistic.getTimeInterval();
+            statisticsList.add(chunkStatistic);
+            if (chunkStatistic.getStartTime() < startTimeBound
+                && chunkStatistic.getEndTime() >= endTimeBound) ifUnseq.add(true);
+            else if (chunkStatistic.getStartTime() <= endTimeBound
+                && chunkStatistic.getEndTime() > endTimeBound) ifUnseq.add(true);
+            else ifUnseq.add(false);
+            startTimes.add(chunkStatistic.getStartTime());
+            endTimes.add(chunkStatistic.getEndTime());
+            seriesReader.skipCurrentChunk();
+          } else {
+            System.out.println("unSeq");
+            Statistics chunkStatistic = seriesReader.currentChunkStatistics();
+            timeInterval = chunkStatistic.getTimeInterval();
+            unseqIndexList.add(curIndex);
+            statisticsList.add(chunkStatistic);
+            ifUnseq.add(true);
+            startTimes.add(chunkStatistic.getStartTime());
+            endTimes.add(chunkStatistic.getEndTime());
+            seriesReader.skipCurrentChunk();
+          }
+          curIndex++;
+        }
+      }
+    }
+    System.out.println(arAggrResult.getStatisticLevel() + " num:" + cnt);
+    System.out.println("true unseq num: " + unseqIndexList.size());
+    System.out.println("time interval: " + timeInterval);
+
+    SeriesReader tmpSeriesReader =
+        new SeriesReader(
+            seriesPath, measurements, tsDataType, context, queryDataSource, null, null, null, true);
+    curIndex = 0;
+
+    List<Integer> invalidChunkList = new ArrayList<>();
+    // TODO: split overlapped pages
+    if (arAggrResult.getStatisticLevel().equals("page")) {
+      while (seriesReader.hasNextFile()) {
+        while (seriesReader.hasNextChunk()) {
+          while (seriesReader.hasNextPage()) {
+            if (statisticsList.get(curIndex).getEndTime() < startTimeBound
+                || statisticsList.get(curIndex).getStartTime() > endTimeBound) {
+              invalidChunkList.add(curIndex);
+              curIndex++;
+              seriesReader.skipCurrentPage();
+              continue;
+            }
+            if (!ifUnseq.get(curIndex)) {
+              curIndex++;
+              seriesReader.skipCurrentPage();
+            } else {
+              System.out.println("Split one unseq.");
+              if (curIndex + 1 < startTimes.size()
+                  && startTimes.get(curIndex) >= startTimes.get(curIndex + 1)) {
+                invalidChunkList.add(curIndex);
+                curIndex++;
+                continue;
+              }
+              arAggrResult.setStatisticsInstance(statisticsList.get(curIndex));
+
+              IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
+              arAggrResult.updateTimeAndValueWindowFromPageData(batchDataIterator);
+              List<Long> timeWindow = arAggrResult.getStatisticsInstance().getTimeWindow();
+              List<Double> valueWindow = arAggrResult.getStatisticsInstance().getValueWindow();
+              double[] oldCovariances =
+                  arAggrResult.getStatisticsInstance().getCovariances().clone();
+              double[] newCovariances = new double[p + 1];
+              for (int i = 0; i <= p; i++) newCovariances[i] = oldCovariances[i];
+              List<Double> newFirstPoints = new ArrayList<>();
+              List<Double> newLastPoints = new ArrayList<>();
+
+              int length = timeWindow.size();
+              int newCount = 0;
+              long newStartTimeBound = Math.max(timeWindow.get(0), startTimeBound);
+              long newEndTimeBound = Math.min(timeWindow.get(timeWindow.size() - 1), endTimeBound);
+              if (curIndex + 1 < startTimes.size())
+                newEndTimeBound = Math.min(newEndTimeBound, startTimes.get(curIndex + 1) - 1);
+
+              // TODO: filter
+              for (int i = 0; i < length; i++) {
+                if (timeWindow.get(i) < newStartTimeBound) {
+                  for (int j = 0; j < p + 1; j++)
+                    if (i + j < length)
+                      newCovariances[j] -= valueWindow.get(i) * valueWindow.get(i + j);
+                } else if (timeWindow.get(i) > newEndTimeBound) {
+                  for (int j = 0; j < p + 1; j++)
+                    if (i - j >= 0)
+                      newCovariances[j] -= valueWindow.get(i) * valueWindow.get(i - j);
+                } else {
+                  if (newFirstPoints.size() < p + 1) newFirstPoints.add(valueWindow.get(i));
+                  if (newLastPoints.size() == p + 1) newLastPoints.remove(0);
+                  newLastPoints.add(valueWindow.get(i));
+                  newCount++;
+                }
+              }
+              Statistics statisticsInstance = new DoubleStatistics();
+              statisticsInstance.setEndTime(newEndTimeBound);
+              statisticsInstance.setCount(newCount);
+              statisticsInstance.setCovariances(newCovariances);
+              statisticsInstance.setLastPoints(newLastPoints);
+              statisticsList.set(curIndex, statisticsInstance);
+              arAggrResult.getStatisticsInstance().clearTimeAndValueWindow();
+              arAggrResult.reset();
+              curIndex++;
+            }
+          }
+        }
+      }
+    }
+    // TODO: split overlapped chunks
+    if (arAggrResult.getStatisticLevel().equals("chunk")) {
+      List<ChunkMetadata> chunkMetadataList = tmpSeriesReader.getAllChunkMetadatas();
+
+      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+        if (!ifUnseq.get(curIndex)) {
+          curIndex++;
+          continue;
+        } else {
+          System.out.println("Split one unseq Chunk.");
+          if (curIndex + 1 < startTimes.size()
+              && startTimes.get(curIndex) >= startTimes.get(curIndex + 1)) {
+            invalidChunkList.add(curIndex);
+            curIndex++;
+            continue;
+          }
+          if (statisticsList.get(curIndex).getEndTime() < startTimeBound
+              || statisticsList.get(curIndex).getStartTime() > endTimeBound) {
+            invalidChunkList.add(curIndex);
+            curIndex++;
+            continue;
+          }
+          arAggrResult.setStatisticsInstance(statisticsList.get(curIndex));
+
+          IChunkReader chunkReader;
+          IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+          if (chunkLoader instanceof MemChunkLoader) {
+            MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+            chunkReader = memChunkLoader.getChunkReader(chunkMetaData, null);
+          } else {
+            Chunk chunk =
+                chunkLoader.loadChunk(chunkMetaData); // loads chunk data from disk to memory
+            chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+            chunkReader =
+                new ChunkReader(chunk, null); // decompress page data, split time&value buffers
+          }
+          BatchData batchData = chunkReader.nextPageData();
+//            arAggrResult.updateTimeAndValueWindowFromBatchData(batchData);
+
+
+          List<Long> timeWindow = new ArrayList<>();
+          List<Double> valueWindow = new ArrayList<>();
+
+          double[] oldCovariances = arAggrResult.getStatisticsInstance().getCovariances().clone();
+          double[] newCovariances = new double[p + 1];
+          for (int i = 0; i <= p; i++) newCovariances[i] = oldCovariances[i];
+          List<Double> newLastPoints = new ArrayList<>();
+
+          for (int i = (int) ((startTimes.get(curIndex+1) - startTimes.get(curIndex))/timeInterval - p);
+               i <= (endTimes.get(curIndex) - startTimes.get(curIndex))/timeInterval; i++){
+            timeWindow.add(batchData.getTimeByIndex(i));
+            valueWindow.add(batchData.getDoubleByIndex(i));
+          }
+
+          int length = timeWindow.size();
+          int newCount = 0;
+          long newEndTime = startTimes.get(curIndex + 1) - timeInterval;
+          boolean flagStart = true, flagEnd = true;
+          for (int i = 0; i < length; i++) {
+              for (int j = 0; j < p + 1; j++)
+                if (i + j < valueWindow.size()) newCovariances[j] -= valueWindow.get(i) * valueWindow.get(i + j);
+              if (newLastPoints.size() == p + 1) newLastPoints.remove(0);
+              newLastPoints.add(valueWindow.get(i));
+              newCount++;
+          }
+          Statistics statisticsInstance = new DoubleStatistics();
+          statisticsInstance.setStartTime(startTimes.get(curIndex));
+          statisticsInstance.setEndTime(newEndTime);
+          statisticsInstance.setCount(statisticsList.get(curIndex).getCount() - newCount + p);
+          statisticsInstance.setCovariances(newCovariances);
+          for (int k = 0; k < statisticsInstance.getFirstPoints().length; k++)
+            statisticsInstance.setFirstPoints(statisticsInstance.getFirstPoints()[k], k);
+          statisticsInstance.setLastPoints(newLastPoints);
+          statisticsList.set(curIndex, statisticsInstance);
+          arAggrResult.getStatisticsInstance().clearTimeAndValueWindow();
+          arAggrResult.reset();
+          curIndex++;
+        }
+      }
+    }
+
+    // TODO: remove statistics filtered by time filter
+    for (int j = invalidChunkList.size() - 1; j >= 0; j--) {
+      statisticsList.remove(invalidChunkList.get(j).intValue());
+    }
+
+    // TODO: merge adjacent statistics
+    double[] resultCovariances = new double[p + 1];
+    int finalCount = statisticsList.get(0).getCount();
+    for (int j = 0; j < p + 1; j++)
+      resultCovariances[j] = statisticsList.get(0).getCovariances()[j];
+
+    for (int i = 1; i < statisticsList.size(); i++) {
+      if (Math.abs(
+              statisticsList.get(i).getStartTime()
+                  - statisticsList.get(i - 1).getEndTime()
+                  - timeInterval)
+          <= 1e-4) { // adjacent cases
+        finalCount += statisticsList.get(i).getCount();
+        for (int j = 0; j < p + 1; j++)
+          resultCovariances[j] += statisticsList.get(i).getCovariances()[j];
+
+        double[] firstPoints = statisticsList.get(i).getFirstPoints();
+        double[] lastPoints = statisticsList.get(i - 1).getLastPoints();
+        for (int j = 0; j < p + 1; j++)
+          for (int k = 0; k < lastPoints.length; k++)
+            if (k + j - lastPoints.length >= 0 && k + j - lastPoints.length < firstPoints.length)
+              resultCovariances[j] += lastPoints[k] * firstPoints[k + j - lastPoints.length];
+      } else { // disjoint cases
+        int u =
+            (int)
+                ((statisticsList.get(i).getStartTime() - statisticsList.get(i - 1).getEndTime())
+                    / timeInterval);
+        finalCount += statisticsList.get(i).getCount() + u - 1;
+        for (int j = 0; j < p + 1; j++) {
+          if (u - j - 1 > 0) { // proposition 4.3
+            resultCovariances[j] += statisticsList.get(i).getCovariances()[j];
+            double[] lastPoints = statisticsList.get(i - 1).getLastPoints();
+            double[] firstPoints = statisticsList.get(i).getFirstPoints();
+            double deltaToU = (firstPoints[0] - lastPoints[lastPoints.length - 1]) / u;
+            resultCovariances[j] +=
+                (u - j - 1)
+                    * (lastPoints[lastPoints.length - 1] * firstPoints[0]
+                        + (u - j) * j * deltaToU * deltaToU / 2
+                        + (u - j) * (2 * u - 2 * j - 1) * deltaToU * deltaToU / 6);
+            for (int l = 0; l <= Math.min(lastPoints.length - 1, j - 1); l++)
+              resultCovariances[j] +=
+                  lastPoints[lastPoints.length - 1 - l]
+                      * (lastPoints[lastPoints.length - 1] + (j - l) * deltaToU);
+            for (int l = 0; l <= Math.min(firstPoints.length - 1, j - 1); l++)
+              resultCovariances[j] +=
+                  firstPoints[l] * (lastPoints[lastPoints.length - 1] + (u - j + l) * deltaToU);
+          } else { // proposition 4.4
+            resultCovariances[j] += statisticsList.get(i).getCovariances()[j];
+            double[] lastPoints = statisticsList.get(i - 1).getLastPoints();
+            double[] firstPoints = statisticsList.get(i).getFirstPoints();
+            double deltaToU = (firstPoints[0] - lastPoints[lastPoints.length - 1]) / u;
+            for (int l = Math.max(1, j + 1 - lastPoints.length); l <= u - 1; l++)
+              resultCovariances[j] +=
+                  (lastPoints[lastPoints.length - 1] + l * deltaToU)
+                      * lastPoints[lastPoints.length - 1 - j + l];
+            for (int l = 1; l <= Math.min(j, firstPoints.length); l++) {
+              if (l <= j - u + 1)
+                resultCovariances[j] +=
+                    firstPoints[l - 1] * lastPoints[lastPoints.length - 1 + l + u - j - 1];
+              else
+                resultCovariances[j] +=
+                    firstPoints[l - 1]
+                        * (lastPoints[lastPoints.length - 1] + (l + u - j - 1) * deltaToU);
+            }
+          }
+        }
+      }
+    }
+    double[] autocorr = new double[p + 1];
+    for (int j = 0; j <= p; j++) {
+      autocorr[j] = resultCovariances[j] /= (finalCount - j);
+    }
+
+    // TODO: Yule-Walker Solver
+    double[] epsilons = new double[p + 1];
+    double[] kappas = new double[p + 1];
+    double[][] alphas = new double[p + 1][p + 1];
+    // alphas[i][j] denotes alpha_i^{(j)}
+    epsilons[0] = resultCovariances[0];
+    for (int i = 1; i <= p; i++) {
+      double tmpSum = 0.0;
+      for (int j = 1; j <= i - 1; j++) tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
+      kappas[i] = (resultCovariances[i] - tmpSum) / epsilons[i - 1];
+      alphas[i][i] = kappas[i];
+      if (i > 1) {
+        for (int j = 1; j <= i - 1; j++)
+          alphas[j][i] = alphas[j][i - 1] - kappas[i] * alphas[i - j][i - 1];
+      }
+      epsilons[i] = (1 - kappas[i] * kappas[i]) * epsilons[i - 1];
+    }
+    double[] coefficients = new double[p];
+    System.out.print("Coefficients: ");
+    for (int i = 1; i <= p; i++) {
+      coefficients[i - 1] = alphas[i][p];
+      System.out.print(String.format("%.4f", coefficients[i - 1]) + ", ");
+    }
+    System.out.println("\n");
+    arAggrResult.setCoefficients(coefficients);
+    statisticsList.clear();
   }
 }

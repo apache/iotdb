@@ -341,18 +341,13 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
             break;
           }
         }
-        if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
-          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
-          return true;
-        }
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
+        hasCached = nextIndexBegin != nextIndexEnd;
         return hasCached;
       }
 

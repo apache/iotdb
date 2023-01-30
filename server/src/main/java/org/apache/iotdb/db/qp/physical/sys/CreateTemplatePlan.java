@@ -226,8 +226,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       String measurementName = ReadWriteIOUtils.readString(buffer);
       TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readByte(buffer)];
       TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
-      CompressionType compressionType =
-          CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
+      CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);
@@ -402,7 +401,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
         int listSize = ReadWriteIOUtils.readInt(buffer);
         compressors[i] = new CompressionType[listSize];
         for (int j = 0; j < listSize; j++) {
-          compressors[i][j] = CompressionType.deserialize((byte) ReadWriteIOUtils.readInt(buffer));
+          compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
         }
       }
     } else {
@@ -412,7 +411,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
         int listSize = measurements[i].length;
         compressors[i] = new CompressionType[listSize];
         CompressionType alignedCompressionType =
-            CompressionType.deserialize((byte) ReadWriteIOUtils.readInt(buffer));
+            CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
         for (int j = 0; j < listSize; j++) {
           compressors[i][j] = alignedCompressionType;
         }

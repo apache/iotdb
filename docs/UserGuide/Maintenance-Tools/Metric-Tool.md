@@ -100,9 +100,9 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 1.3.3.3. Memory Usage
 
-| Metric | Tag                                                           | level     | Description                                                                                     | Sample                            |
-| ------ |---------------------------------------------------------------| --------- |-------------------------------------------------------------------------------------------------| --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/schemaUsage/schemaRemaining" | important | Current memory size of chunkMetaData/storageGroup/schema usage/schema remaining memory in bytes | mem{name="chunkMetaData",} 2050.0 |
+| Metric | Tag                                     | level     | Description                                                           | Sample                            |
+| ------ | --------------------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------- |
+| mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
 #### 1.3.3.4. Cache
 
@@ -112,10 +112,9 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 1.3.3.5. Business Data
 
-| Metric   | Tag                                                                                              | level     | Description                                                                          | Sample                                        |
-|----------|--------------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------|-----------------------------------------------|
-| quantity | name="timeSeries/storageGroup/device/deviceUsingTemplate", type="total/normal/template/template" | important | The current count of timeSeries/storageGroup/devices/devices using template in IoTDB | quantity{name="timeSeries",type="normal"} 1.0 |
-| points   | sg="{{storageGroup}}", type="flush"                                                              | core      | The point number of last flushed memtable                                            | quantity{name="memtable",type="flush"} 1.0    |
+| Metric   | Tag                                                                 | level     | Description                                                   | Sample                                        |
+| -------- | ------------------------------------------------------------------- | --------- | ------------------------------------------------------------- | --------------------------------------------- |
+| quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",type="normal"} 1.0 |
 
 #### 1.3.3.6. Cluster
 
@@ -257,9 +256,6 @@ predefinedMetrics:
 
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
-
-# whether store predefined metrics locally
-isStoreToLocal: false
 
 # The config of iotdb reporter
 ioTDBReporterConfig:

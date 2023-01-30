@@ -183,12 +183,6 @@ public class TsFileResource {
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
-  /** Used for compaction to create target files. */
-  public TsFileResource(File file, TsFileResourceStatus status) {
-    this(file);
-    this.status = status;
-  }
-
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
@@ -323,25 +317,6 @@ public class TsFileResource {
     }
   }
 
-  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
-    readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory()
-            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
-      ReadWriteIOUtils.readByte(inputStream);
-      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
-        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
-      }
-      return (DeviceTimeIndex) timeIndexFromResourceFile;
-    } catch (Exception e) {
-      throw new IOException(
-          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
-    } finally {
-      readUnlock();
-    }
-  }
-
   public void updateStartTime(String device, long time) {
     timeIndex.updateStartTime(device, time);
   }
@@ -459,11 +434,6 @@ public class TsFileResource {
 
   public void close() throws IOException {
     this.setStatus(TsFileResourceStatus.CLOSED);
-    closeWithoutSettingStatus();
-  }
-
-  /** Used for compaction. */
-  public void closeWithoutSettingStatus() throws IOException {
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -651,10 +621,6 @@ public class TsFileResource {
 
   public boolean isCompactionCandidate() {
     return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
-  }
-
-  public TsFileResourceStatus getStatus() {
-    return this.status;
   }
 
   public void setStatus(TsFileResourceStatus status) {

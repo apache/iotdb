@@ -1443,8 +1443,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
-        new SingleSeriesExpression(
-            new Path("root.vehicle.d5", "s1"), ValueFilter.regexp("string*", false));
+        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 

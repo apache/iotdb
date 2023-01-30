@@ -38,14 +38,12 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 /** fuzzy query structure LikeOperator. */
 public class LikeOperator extends FunctionOperator {
 
-  private boolean not;
   protected String value;
 
-  public LikeOperator(FilterType filterType, PartialPath path, String value, boolean not) {
+  public LikeOperator(FilterType filterType, PartialPath path, String value) {
     super(filterType);
     this.singlePath = path;
     this.value = value;
-    this.not = not;
     isLeaf = true;
     isSingle = true;
   }
@@ -70,20 +68,19 @@ public class LikeOperator extends FunctionOperator {
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
                   ? value.substring(1, value.length() - 1)
-                  : value,
-              not);
+                  : value);
     }
     return new Pair<>(ret, singlePath.getFullPath());
   }
 
   private static class Like {
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
-        PartialPath path, String value, boolean not) {
-      return new SingleSeriesExpression(path, ValueFilter.like(value, not));
+        PartialPath path, String value) {
+      return new SingleSeriesExpression(path, ValueFilter.like(value));
     }
 
-    public <T extends Comparable<T>> Filter getValueFilter(String value, boolean not) {
-      return ValueFilter.like(value, not);
+    public <T extends Comparable<T>> Filter getValueFilter(String value) {
+      return ValueFilter.like(value);
     }
   }
 
@@ -93,13 +90,13 @@ public class LikeOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.getFullPath(), getFilterSymbol(), not, value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), getFilterSymbol(), value, ", single\n");
     return sc.toString();
   }
 
   @Override
   public LikeOperator copy() {
-    LikeOperator ret = new LikeOperator(this.filterType, singlePath.clone(), value, not);
+    LikeOperator ret = new LikeOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -118,35 +115,20 @@ public class LikeOperator extends FunctionOperator {
       return false;
     }
     LikeOperator that = (LikeOperator) o;
-    return Objects.equals(value, that.value) && not == that.not;
+    return Objects.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), singlePath, value, not);
+    return Objects.hash(super.hashCode(), singlePath, value);
   }
 
   @Override
   public String toString() {
-    return "["
-        + singlePath.getFullPath()
-        + (not ? " NOT " : " ")
-        + getFilterSymbol()
-        + " "
-        + value
-        + "]";
-  }
-
-  @Override
-  public void reverseFunc() {
-    not = !not;
+    return "[" + singlePath.getFullPath() + getFilterSymbol() + value + "]";
   }
 
   public String getValue() {
     return value;
-  }
-
-  public boolean isNot() {
-    return not;
   }
 }

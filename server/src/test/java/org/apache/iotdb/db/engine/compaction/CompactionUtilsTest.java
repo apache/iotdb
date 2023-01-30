@@ -2423,7 +2423,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(x -> x.isDeleted());
+
     Assert.assertEquals(2, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
@@ -3443,7 +3443,6 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3970,7 +3969,6 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(x -> x.isDeleted());
 
     Assert.assertEquals(2, targetResources.size());
 
@@ -4834,7 +4832,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(x -> x.isDeleted());
+    targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -4962,7 +4960,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources);
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(x -> x.isDeleted());
+    targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();

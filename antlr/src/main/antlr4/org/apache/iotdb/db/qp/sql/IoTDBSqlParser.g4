@@ -63,7 +63,7 @@ utilityStatement
     : merge | fullMerge | flush | clearCache | settle
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile | exportSchema;
+    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 
 /**
@@ -718,11 +718,6 @@ removeFile
 // Unload TsFile
 unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
-    ;
-
-// Export Schema
-exportSchema
-    : EXPORT SCHEMA dstDir=STRING_LITERAL
     ;
 
 

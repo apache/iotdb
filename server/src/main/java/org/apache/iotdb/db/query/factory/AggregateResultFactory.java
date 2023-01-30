@@ -98,6 +98,8 @@ public class AggregateResultFactory {
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
         return new LastValueDescAggrResult(dataType);
+      case SQLConstant.AR:
+        return new ArAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -130,6 +132,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case EXTREME:
         return new ExtremeAggrResult(dataType);
+      case AR:
+        return new ArAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

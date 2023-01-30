@@ -20,26 +20,14 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
-import org.apache.commons.io.filefilter.FileFileFilter;
-import org.apache.commons.io.filefilter.IOFileFilter;
-import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.DirectoryNotEmptyException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class FileUtils {
   private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
@@ -81,47 +69,5 @@ public class FileUtils {
       sum += file.length();
     }
     return sum;
-  }
-
-  /**
-   * ListFiles replace org.apache.commons.io.FileUtils, solve the problem not closed
-   *
-   * @param directory
-   * @param extensions
-   * @param recursive
-   * @return
-   * @throws IOException
-   */
-  public static Collection<File> listFiles(File directory, String[] extensions, boolean recursive) {
-    if (directory == null) {
-      throw new UncheckedIOException(new IOException("directory is null"));
-    }
-    IOFileFilter pathFilter =
-        extensions == null
-            ? FileFileFilter.INSTANCE
-            : FileFileFilter.INSTANCE.and(new SuffixFileFilter(toSuffixes(extensions)));
-    try (Stream<Path> s =
-        Files.walk(directory.toPath(), toMaxDepth(recursive), FileVisitOption.FOLLOW_LINKS)) {
-      return s.filter((path) -> pathFilter.accept(path, null) == FileVisitResult.CONTINUE)
-          .map(Path::toFile)
-          .collect(Collectors.toList());
-    } catch (IOException e) {
-      throw new UncheckedIOException(directory.toString(), e);
-    }
-  }
-
-  private static String[] toSuffixes(String... extensions) {
-    Objects.requireNonNull(extensions, "extensions");
-    String[] suffixes = new String[extensions.length];
-
-    for (int i = 0; i < extensions.length; ++i) {
-      suffixes[i] = "." + extensions[i];
-    }
-
-    return suffixes;
-  }
-
-  private static int toMaxDepth(boolean recursive) {
-    return recursive ? 2147483647 : 1;
   }
 }

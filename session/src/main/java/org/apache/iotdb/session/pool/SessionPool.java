@@ -18,18 +18,13 @@
  */
 package org.apache.iotdb.session.pool;
 
-import org.apache.iotdb.isession.Config;
-import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
-import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
-import org.apache.iotdb.isession.pool.ISessionPool;
-import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
-import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -68,7 +63,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>Another case that you have to manually call closeResultSet() is that when there is exception
  * when you call SessionDataSetWrapper.hasNext() or next()
  */
-public class SessionPool implements ISessionPool {
+public class SessionPool {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPool.class);
   public static final String SESSION_POOL_IS_CLOSED = "Session pool is closed";
@@ -77,9 +72,9 @@ public class SessionPool implements ISessionPool {
   private static final int RETRY = 3;
   private static final int FINAL_RETRY = RETRY - 1;
 
-  private final ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
+  private final ConcurrentLinkedDeque<Session> queue = new ConcurrentLinkedDeque<>();
   // for session whose resultSet is not released.
-  private final ConcurrentMap<ISession, ISession> occupied = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Session, Session> occupied = new ConcurrentHashMap<>();
   private int size = 0;
   private int maxSize = 0;
   private final long waitToGetSessionTimeoutInMs;
@@ -320,8 +315,8 @@ public class SessionPool implements ISessionPool {
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
   // is incorrect.
   @SuppressWarnings({"squid:S3776", "squid:S2446"}) // Suppress high Cognitive Complexity warning
-  private ISession getSession() throws IoTDBConnectionException {
-    ISession session = queue.poll();
+  private Session getSession() throws IoTDBConnectionException {
+    Session session = queue.poll();
     if (closed) {
       throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
     }
@@ -420,18 +415,16 @@ public class SessionPool implements ISessionPool {
     return session;
   }
 
-  @Override
   public int currentAvailableSize() {
     return queue.size();
   }
 
-  @Override
   public int currentOccupiedSize() {
     return occupied.size();
   }
 
   @SuppressWarnings({"squid:S2446"})
-  private void putBack(ISession session) {
+  private void putBack(Session session) {
     queue.push(session);
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
@@ -444,14 +437,13 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private void occupy(ISession session) {
+  private void occupy(Session session) {
     occupied.put(session, session);
   }
 
-  @Override
   /** close all connections in the pool */
   public synchronized void close() {
-    for (ISession session : queue) {
+    for (Session session : queue) {
       try {
         session.close();
       } catch (IoTDBConnectionException e) {
@@ -459,7 +451,7 @@ public class SessionPool implements ISessionPool {
         logger.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
-    for (ISession session : occupied.keySet()) {
+    for (Session session : occupied.keySet()) {
       try {
         session.close();
       } catch (IoTDBConnectionException e) {
@@ -473,18 +465,17 @@ public class SessionPool implements ISessionPool {
     occupied.clear();
   }
 
-  @Override
-  public void closeResultSet(ISessionDataSetWrapper wrapper) {
+  public void closeResultSet(SessionDataSetWrapper wrapper) {
     boolean putback = true;
     try {
-      wrapper.getSessionDataSet().closeOperationHandle();
+      wrapper.sessionDataSet.closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       tryConstructNewSession();
       putback = false;
     } finally {
-      ISession session = occupied.remove(wrapper.getSession());
+      Session session = occupied.remove(wrapper.session);
       if (putback && session != null) {
-        putBack(wrapper.getSession());
+        putBack(wrapper.session);
       }
     }
   }
@@ -516,7 +507,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private void closeSession(ISession session) {
+  private void closeSession(Session session) {
     if (session != null) {
       try {
         session.close();
@@ -528,7 +519,7 @@ public class SessionPool implements ISessionPool {
   }
 
   private void cleanSessionAndMayThrowConnectionException(
-      ISession session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
+      Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
     tryConstructNewSession();
     if (times == FINAL_RETRY) {
@@ -539,12 +530,12 @@ public class SessionPool implements ISessionPool {
           e);
     }
   }
+
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
    * @param tablet data batch
    */
-  @Override
   public void insertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     /*
@@ -560,7 +551,6 @@ public class SessionPool implements ISessionPool {
     insertTablet(tablet, false);
   }
 
-  @Override
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -581,7 +571,7 @@ public class SessionPool implements ISessionPool {
      */
 
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertTablet(tablet, sorted);
         putBack(session);
@@ -597,7 +587,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -609,6 +598,7 @@ public class SessionPool implements ISessionPool {
       throws IoTDBConnectionException, StatementExecutionException {
     insertAlignedTablet(tablet, false);
   }
+
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -617,11 +607,10 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
-  @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedTablet(tablet, sorted);
         putBack(session);
@@ -636,36 +625,36 @@ public class SessionPool implements ISessionPool {
       }
     }
   }
+
   /**
    * use batch interface to insert data
    *
    * @param tablets multiple batch
    */
-  @Override
   public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     insertTablets(tablets, false);
   }
+
   /**
    * use batch interface to insert data
    *
    * @param tablets multiple batch
    */
-  @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     insertAlignedTablets(tablets, false);
   }
+
   /**
    * use batch interface to insert aligned data
    *
    * @param tablets multiple batch
    */
-  @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertTablets(tablets, sorted);
         putBack(session);
@@ -686,11 +675,10 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
-  @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedTablets(tablets, sorted);
         putBack(session);
@@ -713,7 +701,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -722,7 +709,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
         putBack(session);
@@ -745,7 +732,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
       List<Long> times,
@@ -754,7 +740,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecords(
             multiSeriesIds, times, multiMeasurementComponentsList, typesList, valuesList);
@@ -778,7 +764,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -787,7 +772,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, false);
@@ -812,7 +797,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertTablet(Tablet)
    */
   @Deprecated
-  @Override
   public void insertOneDeviceRecords(
       String deviceId,
       List<Long> times,
@@ -821,7 +805,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, false);
@@ -846,7 +830,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -854,7 +837,7 @@ public class SessionPool implements ISessionPool {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertStringRecordsOfOneDevice(
             deviceId, times, measurementsList, valuesList, false);
@@ -879,7 +862,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -889,7 +871,7 @@ public class SessionPool implements ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, haveSorted);
@@ -915,7 +897,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertTablet(Tablet)
    */
   @Deprecated
-  @Override
   public void insertOneDeviceRecords(
       String deviceId,
       List<Long> times,
@@ -925,7 +906,7 @@ public class SessionPool implements ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, haveSorted);
@@ -951,7 +932,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -960,7 +940,7 @@ public class SessionPool implements ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertStringRecordsOfOneDevice(
             deviceId, times, measurementsList, valuesList, haveSorted);
@@ -985,7 +965,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -994,7 +973,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, false);
@@ -1019,7 +998,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1027,7 +1005,7 @@ public class SessionPool implements ISessionPool {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedStringRecordsOfOneDevice(
             deviceId, times, measurementsList, valuesList);
@@ -1053,7 +1031,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1063,7 +1040,7 @@ public class SessionPool implements ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, haveSorted);
@@ -1089,7 +1066,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1098,7 +1074,7 @@ public class SessionPool implements ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedStringRecordsOfOneDevice(
             deviceId, times, measurementsList, valuesList, haveSorted);
@@ -1122,7 +1098,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1130,7 +1105,7 @@ public class SessionPool implements ISessionPool {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecords(deviceIds, times, measurementsList, valuesList);
         putBack(session);
@@ -1153,7 +1128,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
       List<Long> times,
@@ -1161,7 +1135,7 @@ public class SessionPool implements ISessionPool {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecords(
             multiSeriesIds, times, multiMeasurementComponentsList, valuesList);
@@ -1185,7 +1159,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecord(
       String deviceId,
       long time,
@@ -1194,7 +1167,7 @@ public class SessionPool implements ISessionPool {
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecord(deviceId, time, measurements, types, values);
         putBack(session);
@@ -1217,7 +1190,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecord(
       String multiSeriesId,
       long time,
@@ -1226,7 +1198,7 @@ public class SessionPool implements ISessionPool {
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, types, values);
         putBack(session);
@@ -1249,12 +1221,11 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertRecord(deviceId, time, measurements, values);
         putBack(session);
@@ -1277,12 +1248,11 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertAlignedRecord(
       String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, values);
         putBack(session);
@@ -1302,11 +1272,10 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertTablet(tablet);
         putBack(session);
@@ -1326,11 +1295,10 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertTablets(tablets);
         putBack(session);
@@ -1350,7 +1318,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1358,7 +1325,7 @@ public class SessionPool implements ISessionPool {
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertRecords(deviceIds, times, measurementsList, valuesList);
         putBack(session);
@@ -1378,7 +1345,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1387,7 +1353,7 @@ public class SessionPool implements ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertRecords(deviceIds, times, measurementsList, typesList, valuesList);
         putBack(session);
@@ -1407,12 +1373,11 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertRecord(deviceId, time, measurements, values);
         putBack(session);
@@ -1432,7 +1397,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @Override
   public void testInsertRecord(
       String deviceId,
       long time,
@@ -1441,7 +1405,7 @@ public class SessionPool implements ISessionPool {
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.testInsertRecord(deviceId, time, measurements, types, values);
         putBack(session);
@@ -1462,11 +1426,10 @@ public class SessionPool implements ISessionPool {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  @Override
   public void deleteTimeseries(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteTimeseries(path);
         putBack(session);
@@ -1487,11 +1450,10 @@ public class SessionPool implements ISessionPool {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteTimeseries(paths);
         putBack(session);
@@ -1513,11 +1475,10 @@ public class SessionPool implements ISessionPool {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  @Override
   public void deleteData(String path, long time)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteData(path, time);
         putBack(session);
@@ -1539,11 +1500,10 @@ public class SessionPool implements ISessionPool {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  @Override
   public void deleteData(List<String> paths, long time)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteData(paths, time);
         putBack(session);
@@ -1566,11 +1526,10 @@ public class SessionPool implements ISessionPool {
    * @param startTime delete range start time
    * @param endTime delete range end time
    */
-  @Override
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteData(paths, startTime, endTime);
         putBack(session);
@@ -1586,11 +1545,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.setStorageGroup(storageGroupId);
         putBack(session);
@@ -1606,11 +1564,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteStorageGroup(storageGroup);
         putBack(session);
@@ -1626,11 +1583,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void deleteStorageGroups(List<String> storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteStorageGroups(storageGroup);
         putBack(session);
@@ -1646,12 +1602,11 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createTimeseries(path, dataType, encoding, compressor);
         putBack(session);
@@ -1667,7 +1622,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void createTimeseries(
       String path,
       TSDataType dataType,
@@ -1679,7 +1633,7 @@ public class SessionPool implements ISessionPool {
       String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createTimeseries(
             path, dataType, encoding, compressor, props, tags, attributes, measurementAlias);
@@ -1696,7 +1650,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void createMultiTimeseries(
       List<String> paths,
       List<TSDataType> dataTypes,
@@ -1708,7 +1661,7 @@ public class SessionPool implements ISessionPool {
       List<String> measurementAliasList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createMultiTimeseries(
             paths,
@@ -1732,11 +1685,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         boolean resp = session.checkTimeseriesExists(path);
         putBack(session);
@@ -1754,7 +1706,6 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @Override
   /**
    * Construct Template at session and create it at server.
    *
@@ -1763,7 +1714,7 @@ public class SessionPool implements ISessionPool {
   public void createSchemaTemplate(Template template)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createSchemaTemplate(template);
         putBack(session);
@@ -1790,7 +1741,6 @@ public class SessionPool implements ISessionPool {
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
    */
-  @Override
   public void createSchemaTemplate(
       String templateName,
       List<String> measurements,
@@ -1800,7 +1750,7 @@ public class SessionPool implements ISessionPool {
       boolean isAligned)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createSchemaTemplate(
             templateName, measurements, dataTypes, encodings, compressors, isAligned);
@@ -1836,7 +1786,6 @@ public class SessionPool implements ISessionPool {
    * @throws StatementExecutionException
    */
   @Deprecated
-  @Override
   public void createSchemaTemplate(
       String name,
       List<String> schemaNames,
@@ -1846,7 +1795,7 @@ public class SessionPool implements ISessionPool {
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createSchemaTemplate(
             name, schemaNames, measurements, dataTypes, encodings, compressors);
@@ -1863,7 +1812,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -1872,7 +1820,7 @@ public class SessionPool implements ISessionPool {
       List<CompressionType> compressors)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.addAlignedMeasurementsInTemplate(
             templateName, measurementsPath, dataTypes, encodings, compressors);
@@ -1889,7 +1837,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void addAlignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -1898,7 +1845,7 @@ public class SessionPool implements ISessionPool {
       CompressionType compressor)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.addAlignedMeasurementInTemplate(
             templateName, measurementPath, dataType, encoding, compressor);
@@ -1915,7 +1862,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -1924,7 +1870,7 @@ public class SessionPool implements ISessionPool {
       List<CompressionType> compressors)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.addUnalignedMeasurementsInTemplate(
             templateName, measurementsPath, dataTypes, encodings, compressors);
@@ -1941,7 +1887,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void addUnalignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -1950,7 +1895,7 @@ public class SessionPool implements ISessionPool {
       CompressionType compressor)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.addUnalignedMeasurementInTemplate(
             templateName, measurementPath, dataType, encoding, compressor);
@@ -1967,11 +1912,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deleteNodeInTemplate(templateName, path);
         putBack(session);
@@ -1987,11 +1931,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         int resp = session.countMeasurementsInTemplate(name);
         putBack(session);
@@ -2008,11 +1951,10 @@ public class SessionPool implements ISessionPool {
     return -1;
   }
 
-  @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         boolean resp = session.isMeasurementInTemplate(templateName, path);
         putBack(session);
@@ -2029,11 +1971,10 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         boolean resp = session.isPathExistInTemplate(templateName, path);
         putBack(session);
@@ -2050,11 +1991,10 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         List<String> resp = session.showMeasurementsInTemplate(templateName);
         putBack(session);
@@ -2071,11 +2011,10 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         List<String> resp = session.showMeasurementsInTemplate(templateName, pattern);
         putBack(session);
@@ -2092,11 +2031,10 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         List<String> resp = session.showAllTemplates();
         putBack(session);
@@ -2113,11 +2051,10 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         List<String> resp = session.showPathsTemplateSetOn(templateName);
         putBack(session);
@@ -2134,11 +2071,10 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         List<String> resp = session.showPathsTemplateUsingOn(templateName);
         putBack(session);
@@ -2155,11 +2091,10 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
   public void setSchemaTemplate(String templateName, String prefixPath)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.setSchemaTemplate(templateName, prefixPath);
         putBack(session);
@@ -2176,11 +2111,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.unsetSchemaTemplate(prefixPath, templateName);
         putBack(session);
@@ -2197,11 +2131,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void createTimeseriesOfTemplateOnPath(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.createTimeseriesOfTemplateOnPath(path);
         putBack(session);
@@ -2217,11 +2150,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void deactivateTempalte(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.deactivateTemplateOn(templateName, prefixPath);
         putBack(session);
@@ -2238,11 +2170,10 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @Override
   public void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.dropSchemaTemplate(templateName);
         putBack(session);
@@ -2268,13 +2199,12 @@ public class SessionPool implements ISessionPool {
    *     happen
    */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  @Override
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
-        ISessionDataSet resp = session.executeQueryStatement(sql);
+        SessionDataSet resp = session.executeQueryStatement(sql);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2302,13 +2232,12 @@ public class SessionPool implements ISessionPool {
    *     happen
    */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  @Override
   public SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
-        ISessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
+        SessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2330,11 +2259,10 @@ public class SessionPool implements ISessionPool {
    *
    * @param sql non query statement
    */
-  @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         session.executeNonQueryStatement(sql);
         putBack(session);
@@ -2351,13 +2279,12 @@ public class SessionPool implements ISessionPool {
   }
 
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  @Override
   public SessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
-        ISessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime);
+        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2375,11 +2302,10 @@ public class SessionPool implements ISessionPool {
   }
 
   /** Transmit insert record request for OperationSync */
-  @Override
   public boolean operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         buffer.position(0);
         session.operationSyncTransmit(buffer);
@@ -2397,10 +2323,9 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @Override
   public SystemStatus getSystemStatus() throws IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
+      Session session = getSession();
       try {
         SystemStatus status = session.getSystemStatus();
         putBack(session);
@@ -2416,100 +2341,48 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @Override
-  public TSBackupConfigurationResp getBackupConfiguration()
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
-      try {
-        TSBackupConfigurationResp resp = session.getBackupConfiguration();
-        putBack(session);
-        return resp;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (RuntimeException e) {
-        putBack(session);
-        throw e;
-      }
-    }
-    return null;
-  }
-
-  @Override
   public int getMaxSize() {
     return maxSize;
   }
 
-  @Override
   public String getHost() {
     return host;
   }
 
-  @Override
   public int getPort() {
     return port;
   }
 
-  @Override
   public String getUser() {
     return user;
   }
 
-  @Override
   public String getPassword() {
     return password;
   }
 
-  @Override
   public int getFetchSize() {
     return fetchSize;
   }
 
-  @Override
   public ZoneId getZoneId() {
     return zoneId;
   }
 
-  @Override
   public long getWaitToGetSessionTimeoutInMs() {
     return waitToGetSessionTimeoutInMs;
   }
 
-  @Override
   public boolean isEnableCompression() {
     return enableCompression;
   }
 
-  @Override
   public boolean isEnableCacheLeader() {
     return enableCacheLeader;
   }
 
-  @Override
   public int getConnectionTimeoutInMs() {
     return connectionTimeoutInMs;
-  }
-
-  @Override
-  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
-
-    for (int i = 0; i < RETRY; i++) {
-      ISession session = getSession();
-      try {
-        TSConnectionInfoResp resp = session.fetchAllConnections();
-        putBack(session);
-        return resp;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        logger.warn("fetchAllConnections failed", e);
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (Throwable t) {
-        putBack(session);
-        throw t;
-      }
-    }
-    return null;
   }
 
   public static class Builder {

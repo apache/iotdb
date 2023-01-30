@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
+import org.apache.iotdb.metrics.utils.OutPutFormat;
 
 public interface IMetric {
-  void constructValueMap(Map<String, Object> result);
+
+  /** format metric into string */
+  default StringBuffer toString(OutPutFormat format) {
+    return new StringBuffer();
+  }
 }

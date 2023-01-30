@@ -19,7 +19,7 @@
 
 -->
 
-## MLogParser Tool
+## MlogParser Tool
 
 After version 0.12.x, IoTDB encodes metadata files into binary format.
 
