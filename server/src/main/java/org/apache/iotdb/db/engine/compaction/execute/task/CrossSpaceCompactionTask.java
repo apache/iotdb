@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -87,6 +88,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
+    createSummary();
   }
 
   @Override
@@ -195,20 +197,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           FileUtils.delete(logFile);
         }
 
-        if (performer instanceof FastCompactionPerformer) {
-          SubCompactionTaskSummary subTaskSummary =
-              ((FastCompactionPerformer) performer).getSubTaskSummary();
-          LOGGER.info(
-              "CHUNK_NONE_OVERLAP num is {}, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is {}, CHUNK_OVERLAP_OR_MODIFIED num is {}, PAGE_NONE_OVERLAP num is {}, PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is {}, PAGE_OVERLAP_OR_MODIFIED num is {}, PAGE_FAKE_OVERLAP num is {}.",
-              subTaskSummary.CHUNK_NONE_OVERLAP,
-              subTaskSummary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
-              subTaskSummary.CHUNK_OVERLAP_OR_MODIFIED,
-              subTaskSummary.PAGE_NONE_OVERLAP,
-              subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
-              subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
-              subTaskSummary.PAGE_FAKE_OVERLAP);
-        }
-
         // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
@@ -225,13 +213,18 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
+
+        CompactionMetricsRecorder.updateSummary(summary);
+
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
+
         LOGGER.info(
-            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",
+            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
             costTime,
-            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime);
+            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime,
+            summary);
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
@@ -386,5 +379,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       throw e;
     }
     return true;
+  }
+
+  @Override
+  protected void createSummary() {
+    if (performer instanceof FastCompactionPerformer) {
+      this.summary = new FastCompactionTaskSummary();
+    } else {
+      this.summary = new CompactionTaskSummary();
+    }
   }
 }

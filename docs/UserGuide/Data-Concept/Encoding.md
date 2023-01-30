@@ -66,19 +66,24 @@ ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a
 
 ## Correspondence between data type and encoding
 
-The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
+The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. 
 
-<div style="text-align: center;"> 
+The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-**The correspondence between the data type and its supported encodings**
+| Data Type | Supported Encoding                          |
+|:---------:|:-------------------------------------------:|
+| BOOLEAN   | PLAIN, RLE                                  |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| FLOAT     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| DOUBLE    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| TEXT      | PLAIN, DICTIONARY                           |
 
-|Data Type	|Supported Encoding|
-|:---:|:---:|
-|BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|TEXT	|PLAIN, DICTIONARY|
+When the data type specified by the user does not correspond to the encoding method, the system will prompt an error. 
 
-</div>
+As shown below, the second-order difference encoding does not support the Boolean type:
+
+```
+IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
+Msg: 507: encoding TS_2DIFF does not support BOOLEAN
+```

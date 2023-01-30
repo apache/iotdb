@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -232,11 +233,12 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     }
 
     // check show timeseries
-    List<ShowTimeSeriesResult> result =
-        schemaRegion.showTimeseries(
+    List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 new PartialPath("root.**"), templateMap));
-    result.sort(ShowTimeSeriesResult::compareTo);
+    result.sort(Comparator.comparing(ISchemaInfo::getFullPath));
     for (int i = 0; i < result.size(); i++) {
       Assert.assertEquals(expectedTimeseries.get(i), result.get(i).getFullPath());
     }

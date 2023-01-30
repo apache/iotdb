@@ -30,7 +30,9 @@ import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L1PriorityQueue;
-import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
@@ -47,8 +49,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
@@ -60,6 +64,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
+  private static final double LEVEL_TIME_MULTIPLIER = 2;
+
   public static DriverScheduler getInstance() {
     return InstanceHolder.instance;
   }
@@ -69,6 +75,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> queryMap;
   private final ITaskScheduler scheduler;
+
+  private final AtomicInteger nextDriverTaskHandleId = new AtomicInteger(0);
   private IMPPDataExchangeManager blockManager;
 
   private static final int MAX_CAPACITY =
@@ -82,8 +90,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private DriverScheduler() {
     this.readyQueue =
-        new L2PriorityQueue<>(
-            MAX_CAPACITY, new DriverTask.SchedulePriorityComparator(), new DriverTask());
+        new MultilevelPriorityQueue(LEVEL_TIME_MULTIPLIER, MAX_CAPACITY, new DriverTask());
     this.timeoutQueue =
         new L1PriorityQueue<>(MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
     this.queryMap = new ConcurrentHashMap<>();
@@ -162,12 +169,20 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   @Override
   public void submitDrivers(QueryId queryId, List<IDriver> drivers, long timeOut) {
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            getNextDriverTaskHandleId(),
+            (MultilevelPriorityQueue) readyQueue,
+            OptionalInt.of(Integer.MAX_VALUE));
     List<DriverTask> tasks =
         drivers.stream()
             .map(
                 v ->
                     new DriverTask(
-                        v, timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
+                        v,
+                        timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS,
+                        DriverTaskStatus.READY,
+                        driverTaskHandle))
             .collect(Collectors.toList());
     for (DriverTask driverTask : tasks) {
       queryMap
@@ -232,13 +247,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public double getSchedulePriority(DriverTaskId driverTaskID) {
+  public Priority getSchedulePriority(DriverTaskId driverTaskID) {
     DriverTask task = timeoutQueue.get(driverTaskID);
     if (task == null) {
       throw new IllegalStateException(
           "the fragmentInstance " + driverTaskID.getFullId() + " has been cleared");
     }
-    return task.getSchedulePriority();
+    return task.getPriority();
   }
 
   private void clearDriverTask(DriverTask task) {
@@ -287,6 +302,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
       }
     }
+  }
+
+  private int getNextDriverTaskHandleId() {
+    return nextDriverTaskHandleId.getAndIncrement();
   }
 
   ITaskScheduler getScheduler() {
@@ -346,6 +365,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         QUERY_METRICS.recordTaskQueueTime(
             BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
         task.setLastEnterReadyQueueTime(System.nanoTime());
+        task.resetLevelScheduledTime();
         readyQueue.push(task);
         blockedTasks.remove(task);
       } finally {
@@ -440,16 +460,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
         if (queryRelatedTasks != null) {
           for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
             if (fragmentRelatedTasks != null) {
-              for (DriverTask otherTask : fragmentRelatedTasks) {
-                if (task.equals(otherTask)) {
-                  continue;
-                }
-                otherTask.lock();
-                try {
-                  otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
-                  clearDriverTask(otherTask);
-                } finally {
-                  otherTask.unlock();
+              synchronized (fragmentRelatedTasks) {
+                for (DriverTask otherTask : fragmentRelatedTasks) {
+                  if (task.equals(otherTask)) {
+                    continue;
+                  }
+                  otherTask.lock();
+                  try {
+                    otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+                    clearDriverTask(otherTask);
+                  } finally {
+                    otherTask.unlock();
+                  }
                 }
               }
             }

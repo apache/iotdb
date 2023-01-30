@@ -50,8 +50,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWri
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -64,7 +62,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
@@ -75,7 +75,6 @@ import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +84,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -784,14 +782,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
-    deleteOneTimeseriesUpdateStatistics(p);
-    if (!isRecovering) {
-      writeToMLog(
-          SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-    }
-  }
-
   /**
    * @param path full path from root to leaf node
    * @return After delete if the schema region is empty, return its path, otherwise return null
@@ -842,18 +832,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for Entity/Device info Query
 
-  /**
-   * Get all device paths and according database paths as ShowDevicesResult.
-   *
-   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult and the current offset of this region after traverse.
-   */
-  @Override
-  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
-    return mtree.getDevices(plan);
-  }
-  // endregion
-
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
@@ -863,82 +841,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
-  @Override
-  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-    // show timeseries with index
-    if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan);
-    } else {
-      return showTimeseriesWithoutIndex(plan);
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-
-    List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan);
-
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    PartialPath pathPattern = plan.getPath();
-    int curOffset = -1;
-    int count = 0;
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
-
-    for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (plan.isPrefixMatch()
-          ? pathPattern.prefixMatchFullPath(leaf.getPartialPath())
-          : pathPattern.matchFullPath(leaf.getPartialPath())) {
-        if (limit != 0 || offset != 0) {
-          curOffset++;
-          if (curOffset < offset || count == limit) {
-            continue;
-          }
-        }
-        try {
-          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-              tagManager.readTagFile(leaf.getOffset());
-          res.add(
-              new ShowTimeSeriesResult(
-                  leaf.getFullPath(),
-                  leaf.getAlias(),
-                  (MeasurementSchema) leaf.getSchema(),
-                  tagAndAttributePair.left,
-                  tagAndAttributePair.right,
-                  leaf.getParent().isAligned()));
-          if (limit != 0) {
-            count++;
-          }
-        } catch (IOException e) {
-          throw new MetadataException(
-              "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
-        }
-      }
-    }
-
-    return res;
-  }
-
-  /**
-   * Get the result of ShowTimeseriesPlan
-   *
-   * @param plan show time series query plan
-   */
-  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-    return mtree.getAllMeasurementSchema(
-        plan,
-        offset -> {
-          try {
-            return tagManager.readTagFile(offset);
-          } catch (IOException e) {
-            logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
-            return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
-          }
-        });
-  }
   // endregion
   // endregion
 
@@ -1221,6 +1123,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }
     return result;
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
+    return mtree.getDeviceReader(showDevicesPlan);
+  }
+
+  @Override
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
+    if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
+      return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
+    } else {
+      return mtree.getTimeSeriesReader(
+          showTimeSeriesPlan,
+          offset -> {
+            try {
+              return tagManager.readTagFile(offset);
+            } catch (IOException e) {
+              logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+              return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
+            }
+          });
+    }
   }
 
   @Override
