@@ -297,6 +297,7 @@ public class ConfigNodeRegionStateMachine
       // The method logWriter.write will execute flip() firstly, so we must make position==limit
       buffer.position(buffer.limit());
       logWriter.write(buffer);
+      logWriter.close();
       endIndex = endIndex + 1;
       File tmpLogFile = new File(PROGRESS_FILE_PATH + endIndex);
       Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
