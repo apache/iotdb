@@ -89,7 +89,7 @@ public class FileMetrics implements IMetricSet {
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         TS_FILE_METRIC_MANAGER,
-        o -> o.getModFileNum(),
+        TsFileMetricManager::getModFileNum,
         Tag.NAME.toString(),
         "mods");
   }

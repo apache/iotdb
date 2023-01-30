@@ -119,10 +119,12 @@ public class CompactionUtils {
       Set<Modification> seqModifications =
           new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
+      updateOneTargetMods(targetResource, modifications);
       if (modifications.size() > 0) {
         TsFileMetricManager.getInstance().increaseModFileNum(1);
+        TsFileMetricManager.getInstance()
+            .increaseModFileSize(targetResource.getModFile().getSize());
       }
-      updateOneTargetMods(targetResource, modifications);
       modifications.removeAll(seqModifications);
     }
   }
@@ -140,10 +142,11 @@ public class CompactionUtils {
         modifications.addAll(sourceCompactionModificationFile.getModifications());
       }
     }
+    updateOneTargetMods(targetTsFile, modifications);
     if (modifications.size() > 0) {
       TsFileMetricManager.getInstance().increaseModFileNum(1);
+      TsFileMetricManager.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
     }
-    updateOneTargetMods(targetTsFile, modifications);
   }
 
   private static void updateOneTargetMods(
@@ -205,8 +208,10 @@ public class CompactionUtils {
 
       ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
       if (normalModification.exists()) {
-        normalModification.remove();
         TsFileMetricManager.getInstance().decreaseModFileNum(1);
+        TsFileMetricManager.getInstance()
+            .decreaseModFileSize(tsFileResource.getModFile().getSize());
+        normalModification.remove();
       }
     }
   }

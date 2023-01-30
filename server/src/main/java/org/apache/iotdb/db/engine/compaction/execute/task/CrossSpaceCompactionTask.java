@@ -187,12 +187,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource sequenceResource : selectedSequenceFiles) {
           if (sequenceResource.getModFile().exists()) {
             TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(sequenceResource.getModFile().getSize());
           }
         }
 
         for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
           if (unsequenceResource.getModFile().exists()) {
             TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(unsequenceResource.getModFile().getSize());
           }
         }
 

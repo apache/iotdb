@@ -460,6 +460,11 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), true);
+            if (resource.getModFile().exists()) {
+              TsFileMetricManager.getInstance().increaseModFileNum(1);
+              TsFileMetricManager.getInstance()
+                  .increaseModFileSize(resource.getModFile().getSize());
+            }
           }
         }
         while (!value.isEmpty()) {
@@ -481,6 +486,10 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), false);
+          }
+          if (resource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().increaseModFileNum(1);
+            TsFileMetricManager.getInstance().increaseModFileSize(resource.getModFile().getSize());
           }
         }
         while (!value.isEmpty()) {
@@ -1478,6 +1487,7 @@ public class DataRegion implements IDataRegionForQuery {
           x -> {
             if (x.getModFile().exists()) {
               TsFileMetricManager.getInstance().decreaseModFileNum(1);
+              TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
             }
           });
       deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
@@ -2013,12 +2023,15 @@ public class DataRegion implements IDataRegionForQuery {
           deletion.setFileOffset(tsFileResource.getTsFileSize());
           // write deletion into modification file
           boolean modFileExists = tsFileResource.getModFile().exists();
+          long originSize = tsFileResource.getModFile().getSize();
           tsFileResource.getModFile().write(deletion);
           // remember to close mod file
           tsFileResource.getModFile().close();
           if (!modFileExists) {
             TsFileMetricManager.getInstance().increaseModFileNum(1);
           }
+          TsFileMetricManager.getInstance()
+              .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
         }
         logger.info(
             "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
