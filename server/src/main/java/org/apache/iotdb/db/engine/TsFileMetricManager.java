@@ -32,6 +32,8 @@ public class TsFileMetricManager {
   private final AtomicInteger seqFileNum = new AtomicInteger(0);
   private final AtomicInteger unseqFileNum = new AtomicInteger(0);
 
+  private final AtomicInteger modFileNum = new AtomicInteger(0);
+
   // compaction temporal files
   private final AtomicLong innerSeqCompactionTempFileSize = new AtomicLong(0);
   private final AtomicLong innerUnseqCompactionTempFileSize = new AtomicLong(0);
@@ -72,6 +74,18 @@ public class TsFileMetricManager {
 
   public long getFileNum(boolean seq) {
     return seq ? seqFileNum.get() : unseqFileNum.get();
+  }
+
+  public int getModFileNum() {
+    return modFileNum.get();
+  }
+
+  public void increaseModFileNum(int num) {
+    modFileNum.addAndGet(num);
+  }
+
+  public void decreaseModFileNum(int num) {
+    modFileNum.addAndGet(-num);
   }
 
   public void addCompactionTempFileSize(boolean innerSpace, boolean seq, long delta) {

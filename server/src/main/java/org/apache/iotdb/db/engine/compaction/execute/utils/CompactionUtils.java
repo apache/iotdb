@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -118,6 +119,9 @@ public class CompactionUtils {
       Set<Modification> seqModifications =
           new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
+      if (modifications.size() > 0) {
+        TsFileMetricManager.getInstance().increaseModFileNum(1);
+      }
       updateOneTargetMods(targetResource, modifications);
       modifications.removeAll(seqModifications);
     }
@@ -135,6 +139,9 @@ public class CompactionUtils {
           ModificationFile.getCompactionMods(mergeTsFile)) {
         modifications.addAll(sourceCompactionModificationFile.getModifications());
       }
+    }
+    if (modifications.size() > 0) {
+      TsFileMetricManager.getInstance().increaseModFileNum(1);
     }
     updateOneTargetMods(targetTsFile, modifications);
   }
@@ -199,6 +206,7 @@ public class CompactionUtils {
       ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
       if (normalModification.exists()) {
         normalModification.remove();
+        TsFileMetricManager.getInstance().decreaseModFileNum(1);
       }
     }
   }
