@@ -1768,13 +1768,13 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = byte2float2(encoded, decode_pos);
+      int theta0_r = bytes2Integer(encoded, decode_pos,4);
       decode_pos += 4;
-      float theta1_r = byte2float2(encoded, decode_pos);
+      int theta1_r = bytes2Integer(encoded, decode_pos,4);
       decode_pos += 4;
-      float theta0_v = byte2float2(encoded, decode_pos);
+      int theta0_v = bytes2Integer(encoded, decode_pos,4);
       decode_pos += 4;
-      float theta1_v = byte2float2(encoded, decode_pos);
+      int theta1_v = bytes2Integer(encoded, decode_pos,4);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1793,11 +1793,11 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 0; i < remain_length+zero_number-1; i++) {
-        int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
+        int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
         time_list.set(i,ti);
         ti_pre = ti;
 
-        int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
+        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
       }
