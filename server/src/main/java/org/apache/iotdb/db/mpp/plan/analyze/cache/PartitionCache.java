@@ -749,9 +749,9 @@ public class PartitionCache {
         String storageGroupName = entry1.getKey();
         if (null != storageGroupName) {
           DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroupName);
-          if (null == result) {
+          boolean needToUpdateCache = (null == result);
+          if (needToUpdateCache) {
             result = new DataPartitionTable();
-            dataPartitionCache.put(storageGroupName, result);
           }
           Map<TSeriesPartitionSlot, SeriesPartitionTable>
               seriesPartitionSlotSeriesPartitionTableMap = result.getDataPartitionMap();
@@ -774,6 +774,9 @@ public class PartitionCache {
                 result3.putAll(entry2.getValue());
               }
             }
+          }
+          if (needToUpdateCache) {
+            dataPartitionCache.put(storageGroupName, result);
           }
         }
       }

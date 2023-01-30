@@ -27,7 +27,6 @@ import java.util.List;
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private int consensusPort;
-  private final String targetConfigNodes;
   private final boolean isSeed;
   private final String defaultNodePropertiesFile =
       EnvUtils.getFilePathFromSysVar("DefaultConfigNodeProperties");
@@ -36,17 +35,18 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   public ConfigNodeWrapper(
       boolean isSeed,
-      String targetConfigNodes,
+      String targetCNs,
       String testClassName,
       String testMethodName,
       int[] portList) {
     super(testClassName, testMethodName, portList);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
+    String targetConfigNodes;
     if (isSeed) {
-      this.targetConfigNodes = getIpAndPortString();
+      targetConfigNodes = getIpAndPortString();
     } else {
-      this.targetConfigNodes = targetConfigNodes;
+      targetConfigNodes = targetCNs;
     }
 
     // initialize mutable properties
@@ -70,7 +70,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     immutableNodeProperties.setProperty(
         IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
     immutableNodeProperties.setProperty(
-        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, this.targetConfigNodes);
+        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, targetConfigNodes);
     immutableNodeProperties.setProperty("cn_system_dir", MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty("cn_consensus_dir", MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(
@@ -102,6 +102,15 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   @Override
   public String getSystemPropertiesPath() {
     return workDirFilePath("data/confignode/system", "confignode-system.properties");
+  }
+
+  @Override
+  protected MppJVMConfig initVMConfig() {
+    return MppJVMConfig.builder()
+        .setInitHeapSize(EnvUtils.getIntFromSysVar("ConfigNodeInitHeapSize", 256))
+        .setMaxHeapSize(EnvUtils.getIntFromSysVar("ConfigNodeMaxHeapSize", 256))
+        .setMaxDirectMemorySize(EnvUtils.getIntFromSysVar("ConfigNodeMaxDirectMemorySize", 256))
+        .build();
   }
 
   @Override

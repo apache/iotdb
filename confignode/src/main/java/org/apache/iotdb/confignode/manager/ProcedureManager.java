@@ -420,6 +420,17 @@ public class ProcedureManager {
             .map(TDataNodeConfiguration::getLocation)
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toSet());
+    if (!aliveDataNodes.contains(migrateRegionReq.getFromId())) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the sourceDataNode {} is Unknown.",
+          migrateRegionReq.getFromId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because the sourceDataNode "
+              + migrateRegionReq.getFromId()
+              + " is Unknown.");
+      return status;
+    }
     dataNodesInRegion.retainAll(aliveDataNodes);
     if (dataNodesInRegion.isEmpty()) {
       LOGGER.warn(
@@ -439,7 +450,7 @@ public class ProcedureManager {
       status.setMessage(
           "Submit RegionMigrateProcedure failed, because the destDataNode "
               + migrateRegionReq.getToId()
-              + " is ReadOnly.");
+              + " is ReadOnly or Unknown.");
       return status;
     }
     this.executor.submitProcedure(

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
@@ -293,16 +294,16 @@ public class AggregationOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         2, planNodeId2, SeriesAggregationScanOperator.class.getSimpleName());
     PlanNodeId planNodeId3 = new PlanNodeId("3");
-    fragmentInstanceContext.addOperatorContext(
-        3, planNodeId3, AggregationOperator.class.getSimpleName());
-    fragmentInstanceContext
+    driverContext.addOperatorContext(3, planNodeId3, AggregationOperator.class.getSimpleName());
+    driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext -> {
@@ -319,7 +320,7 @@ public class AggregationOperatorTest {
             planNodeId1,
             measurementPath1,
             Collections.singleton("sensor0"),
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
             null,
@@ -343,7 +344,7 @@ public class AggregationOperatorTest {
             planNodeId2,
             measurementPath1,
             Collections.singleton("sensor0"),
-            fragmentInstanceContext.getOperatorContexts().get(1),
+            driverContext.getOperatorContexts().get(1),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
             null,
@@ -372,7 +373,7 @@ public class AggregationOperatorTest {
     }
 
     return new AggregationOperator(
-        fragmentInstanceContext.getOperatorContexts().get(2),
+        driverContext.getOperatorContexts().get(2),
         finalAggregators,
         initTimeRangeIterator(groupByTimeParameter, true, true),
         children,

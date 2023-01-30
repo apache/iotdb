@@ -110,7 +110,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitSingleDeviceView(
       SingleDeviceViewNode node, DistributionPlanContext context) {
 
-    if (isAggregationQuery()) {
+    // Same process logic as visitDeviceView
+    if (analysis.isDeviceViewSpecialProcess()) {
       List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
       if (rewroteChildren.size() != 1) {
         throw new IllegalStateException("SingleDeviceViewNode have only one child");
@@ -152,10 +153,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         node.getDevices().size() == node.getChildren().size(),
         "size of devices and its children in DeviceViewNode should be same");
 
-    // If the logicalPlan is mixed by DeviceView and Aggregation, it should be processed by a
-    // special logic.
-    if (isAggregationQuery()) {
-      return processDeviceViewWithAggregation(node, context);
+    // If the DeviceView is mixed with Function that need to merge data from different Data Region,
+    // it should be processed by a special logic.
+    // Now the Functions are : all Aggregation Functions and DIFF
+    if (analysis.isDeviceViewSpecialProcess()) {
+      return processSpecialDeviceView(node, context);
     }
 
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
@@ -204,7 +206,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return Collections.singletonList(mergeSortNode);
   }
 
-  private List<PlanNode> processDeviceViewWithAggregation(
+  private List<PlanNode> processSpecialDeviceView(
       DeviceViewNode node, DistributionPlanContext context) {
     DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
     for (int i = 0; i < node.getDevices().size(); i++) {

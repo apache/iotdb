@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -69,7 +69,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -121,7 +121,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -169,7 +169,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -228,7 +228,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -283,7 +283,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -361,7 +361,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
@@ -423,7 +423,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
     performer.setSourceFiles(seqResources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);

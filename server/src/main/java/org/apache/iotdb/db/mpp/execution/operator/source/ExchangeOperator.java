@@ -84,6 +84,10 @@ public class ExchangeOperator implements SourceOperator {
     return sourceId;
   }
 
+  public ISourceHandle getSourceHandle() {
+    return sourceHandle;
+  }
+
   @Override
   public ListenableFuture<?> isBlocked() {
     // Avoid registering a new callback in the source handle when one is already pending

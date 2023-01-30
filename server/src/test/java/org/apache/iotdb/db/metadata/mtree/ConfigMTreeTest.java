@@ -99,13 +99,7 @@ public class ConfigMTreeTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

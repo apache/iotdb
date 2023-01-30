@@ -116,11 +116,15 @@ class ClusterSchemaFetchExecutor {
   ClusterSchemaTree fetchSchemaOfMultiDevices(
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
+      List<Integer> indexOfTargetDevices,
       List<List<Integer>> indexOfTargetMeasurementsList) {
     PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < devicePathList.size(); i++) {
-      for (int index : indexOfTargetMeasurementsList.get(i)) {
-        patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+    int deviceIndex;
+    for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
+      deviceIndex = indexOfTargetDevices.get(i);
+      for (int measurementIndex : indexOfTargetMeasurementsList.get(i)) {
+        patternTree.appendFullPath(
+            devicePathList.get(deviceIndex), measurementsList.get(deviceIndex)[measurementIndex]);
       }
     }
     patternTree.constructTree();

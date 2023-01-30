@@ -48,6 +48,7 @@ public class SharedTsBlockQueue {
   private final TFragmentInstanceId localFragmentInstanceId;
 
   private final String localPlanNodeId;
+
   private final LocalMemoryManager localMemoryManager;
 
   private boolean noMoreTsBlocks = false;
@@ -99,6 +100,10 @@ public class SharedTsBlockQueue {
 
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = maxBytesCanReserve;
+  }
+
+  public long getMaxBytesCanReserve() {
+    return maxBytesCanReserve;
   }
 
   public ListenableFuture<Void> isBlocked() {

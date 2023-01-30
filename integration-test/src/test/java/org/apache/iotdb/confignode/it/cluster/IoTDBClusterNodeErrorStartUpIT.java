@@ -50,29 +50,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterNodeErrorStartUpIT {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBClusterNodeErrorStartUpIT.class);
-
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
-  private static final int testNodeNum = testConfigNodeNum + testDataNodeNum;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
-  private static final int maxRetryTimes = 60;
 
   @Before
   public void setUp() throws Exception {
@@ -135,7 +127,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().getConfigNodeWrapper(1).getConsensusPort());
     conflictConfigNodeWrapper.changeConfig(
         (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
-        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig());
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
@@ -165,7 +158,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort());
     conflictDataNodeWrapper.changeConfig(
         (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
-        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig());
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
@@ -284,29 +278,12 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Shutdown and check
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
-      int retryTimes;
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger unknownCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Unknown.equals(NodeStatus.parse(status))) {
-                    unknownCnt.getAndIncrement();
-                  }
-                });
-
-        if (unknownCnt.get() == testNodeNum - 2) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
 
       /* Restart and updatePeer */
       // TODO: @Itami-sho, enable this test and delete it
@@ -336,51 +313,12 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Restart and check
       EnvFactory.getEnv().startConfigNode(1);
       EnvFactory.getEnv().startDataNode(0);
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger runningCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Running.equals(NodeStatus.parse(status))) {
-                    runningCnt.getAndIncrement();
-                  }
-                });
-
-        if (runningCnt.get() == testNodeNum) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Running, NodeStatus.Running));
     }
-  }
-
-  private String showClusterStatus(TShowClusterResp showClusterResp) {
-    StringBuilder sb = new StringBuilder();
-    showClusterResp
-        .getConfigNodeList()
-        .forEach(
-            d ->
-                sb.append("ConfigNode")
-                    .append(d.getInternalEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getConfigNodeId()))
-                    .append("\n"));
-    showClusterResp
-        .getDataNodeList()
-        .forEach(
-            d ->
-                sb.append("DataNode")
-                    .append(d.getClientRpcEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getDataNodeId()))
-                    .append("\n"));
-    return sb.toString();
   }
 }

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
@@ -102,14 +103,15 @@ public class VerticallyConcatOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
 
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           2, planNodeId2, SeriesAggregationScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, new PlanNodeId("3"), VerticallyConcatOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -126,7 +128,7 @@ public class VerticallyConcatOperatorTest {
               planNodeId1,
               measurementPath1,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
               null,
@@ -147,7 +149,7 @@ public class VerticallyConcatOperatorTest {
               planNodeId2,
               measurementPath2,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
               null,
@@ -162,7 +164,7 @@ public class VerticallyConcatOperatorTest {
 
       VerticallyConcatOperator verticallyConcatOperator =
           new VerticallyConcatOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesAggregationScanOperator1, seriesAggregationScanOperator2),
               Arrays.asList(
                   TSDataType.INT64,
