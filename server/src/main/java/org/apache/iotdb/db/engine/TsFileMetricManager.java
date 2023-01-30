@@ -91,7 +91,7 @@ public class TsFileMetricManager {
   }
 
   public void decreaseModFileNum(int num) {
-    modFileNum.addAndGet(num);
+    modFileNum.addAndGet(-num);
   }
 
   public void increaseModFileSize(long size) {
