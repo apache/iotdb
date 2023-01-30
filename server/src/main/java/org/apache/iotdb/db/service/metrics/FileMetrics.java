@@ -72,6 +72,13 @@ public class FileMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "unseq");
     metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileSize,
+        Tag.NAME.toString(),
+        "mods");
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         TS_FILE_METRIC_MANAGER,
