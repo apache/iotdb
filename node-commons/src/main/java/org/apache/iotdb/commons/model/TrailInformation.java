@@ -19,12 +19,23 @@
 
 package org.apache.iotdb.commons.model;
 
+import org.apache.iotdb.common.rpc.thrift.Activation;
+import org.apache.iotdb.common.rpc.thrift.TrainingState;
+
 import java.nio.ByteBuffer;
 
 public abstract class TrailInformation {
 
-  private String trailId;
-  private TrailState trailState;
+  protected String trailId;
+  protected TrainingState trailState;
+
+  protected long batchSize;
+  protected double learningRate;
+  protected long epochs;
+
+  protected long dModel;
+  protected long dFF;
+  protected Activation activation;
 
   public abstract ByteBuffer serializeShowTrailResult();
 }

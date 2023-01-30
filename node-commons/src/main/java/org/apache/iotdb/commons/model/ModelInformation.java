@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.model;
 
+import org.apache.iotdb.common.rpc.thrift.ModelTask;
+import org.apache.iotdb.common.rpc.thrift.TrainingState;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -33,7 +35,9 @@ public class ModelInformation {
 
   private String modelId;
   private ModelTask modelTask;
-  private ModelState modelState;
+  private String modelType;
+
+  private TrainingState modelState;
 
   private List<String> queryExpressions;
   private String queryFilter;

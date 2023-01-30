@@ -19,4 +19,14 @@
 
 package org.apache.iotdb.commons.model;
 
-public class ForecastTrailInformation extends TrailInformation {}
+import java.nio.ByteBuffer;
+
+public class ForecastTrailInformation extends TrailInformation {
+
+    private long outputLen;
+
+    @Override
+    public ByteBuffer serializeShowTrailResult() {
+        return null;
+    }
+}

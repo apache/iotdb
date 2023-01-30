@@ -123,3 +123,25 @@ struct TFilesResp {
   1: required TSStatus status
   2: required list<TFile> files
 }
+
+// for MLNode
+enum TrainingState {
+
+}
+
+enum ModelTask {
+  FORECAST
+}
+
+enum EvaluateMetric {
+  MSE,
+  MAE,
+  RMSE
+}
+
+enum Activation {
+  RELU,
+  GELU,
+  SIGMOID,
+  TANH
+}
