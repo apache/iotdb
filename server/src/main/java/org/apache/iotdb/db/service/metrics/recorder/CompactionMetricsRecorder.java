@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionTaskStatus;
@@ -64,6 +65,44 @@ public class CompactionMetricsRecorder {
             byteNum,
             Metric.DATA_READ.toString(),
             MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+  }
+
+  public static void updateSummary(CompactionTaskSummary summary) {
+    MetricService.getInstance()
+        .count(
+            summary.getProcessPointNum(),
+            "Compacted_Point_Num",
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getProcessChunkNum(),
+            "Compacted_Chunk_Num",
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getDirectlyFlushChunkNum(),
+            "Directly_Flush_Chunk_Num",
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getDeserializeChunkCount(),
+            "Deserialized_Chunk_Num",
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getMergedChunkNum(),
+            "Merged_Chunk_Num",
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             "compaction");
   }

@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.6"
+      "version": "8.4.2"
     },
     {
       "type": "datasource",
@@ -63,7 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1669708594135,
+  "iteration": 1675061569475,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1614,6 +1614,204 @@
       "type": "timeseries"
     },
     {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 51
+      },
+      "id": 56,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sum(rate(Compacted_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "interval": "",
+          "legendFormat": "Compacted Chunk Num Per Min",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sum(rate(Deserialized_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Deserialized Chunk Num Per Min",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sum(rate(Directly_Flush_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Directly Flush Chunk Per Min",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sum(rate(Merged_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Merged Chunk Per Min",
+          "refId": "D"
+        }
+      ],
+      "title": "Compaction Process Chunk Status",
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 51
+      },
+      "id": 58,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "sum(rate(Compacted_Point_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "interval": "",
+          "legendFormat": "Compacted Point Num Per Min",
+          "refId": "A"
+        }
+      ],
+      "title": "Compacted Point Num",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
@@ -1623,7 +1821,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 59
       },
       "id": 20,
       "panels": [],
@@ -1695,7 +1893,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 52
+        "y": 60
       },
       "id": 21,
       "options": {
@@ -1788,7 +1986,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 52
+        "y": 60
       },
       "id": 22,
       "options": {
@@ -1878,7 +2076,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 52
+        "y": 60
       },
       "id": 23,
       "options": {
@@ -1983,7 +2181,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 60
+        "y": 68
       },
       "id": 24,
       "options": {
@@ -2073,7 +2271,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 60
+        "y": 68
       },
       "id": 25,
       "options": {
@@ -2188,7 +2386,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 60
+        "y": 68
       },
       "id": 26,
       "options": {
@@ -2281,7 +2479,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 68
+        "y": 76
       },
       "id": 27,
       "options": {
@@ -2374,7 +2572,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 68
+        "y": 76
       },
       "id": 28,
       "options": {
@@ -2463,7 +2661,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 68
+        "y": 76
       },
       "id": 29,
       "options": {
@@ -2553,7 +2751,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 76
+        "y": 84
       },
       "id": 30,
       "options": {
@@ -2645,7 +2843,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 76
+        "y": 84
       },
       "id": 31,
       "options": {
@@ -2738,7 +2936,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 76
+        "y": 84
       },
       "id": 32,
       "options": {
@@ -2784,7 +2982,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 84
+        "y": 92
       },
       "id": 33,
       "panels": [],
@@ -2828,7 +3026,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 85
+        "y": 93
       },
       "id": 34,
       "options": {
@@ -2845,7 +3043,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.4.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -2922,7 +3120,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 85
+        "y": 93
       },
       "id": 35,
       "options": {
@@ -3025,7 +3223,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 85
+        "y": 93
       },
       "id": 40,
       "options": {
@@ -3116,7 +3314,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 93
+        "y": 101
       },
       "id": 41,
       "options": {
@@ -3231,7 +3429,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 93
+        "y": 101
       },
       "id": 42,
       "options": {
@@ -3334,7 +3532,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 93
+        "y": 101
       },
       "id": 43,
       "options": {
@@ -3447,7 +3645,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 101
+        "y": 109
       },
       "id": 44,
       "options": {
@@ -3545,7 +3743,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 101
+        "y": 109
       },
       "id": 45,
       "options": {
@@ -3645,7 +3843,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 101
+        "y": 109
       },
       "id": 46,
       "options": {
@@ -3747,7 +3945,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 109
+        "y": 117
       },
       "id": 47,
       "options": {
@@ -3848,7 +4046,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 109
+        "y": 117
       },
       "id": 48,
       "options": {
@@ -3946,7 +4144,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 109
+        "y": 117
       },
       "id": 49,
       "options": {
@@ -4045,7 +4243,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 116
+        "y": 124
       },
       "id": 50,
       "options": {
@@ -4180,7 +4378,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 116
+        "y": 124
       },
       "id": 51,
       "options": {
@@ -4313,7 +4511,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 116
+        "y": 124
       },
       "id": 52,
       "options": {
@@ -4403,7 +4601,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 124
+        "y": 132
       },
       "id": 53,
       "options": {
@@ -4493,7 +4691,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 124
+        "y": 132
       },
       "id": 54,
       "options": {
@@ -4539,7 +4737,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "15s",
   "schemaVersion": 35,
   "style": "dark",
   "tags": [
@@ -4596,8 +4794,8 @@
     ]
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "2023-01-30T05:44:55.019Z",
+    "to": "2023-01-30T07:44:55.023Z"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -4612,6 +4810,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7A",
-  "version": 18,
+  "version": 2,
   "weekStart": ""
 }
