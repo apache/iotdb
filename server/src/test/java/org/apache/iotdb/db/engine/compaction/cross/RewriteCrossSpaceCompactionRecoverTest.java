@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompacti
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -695,7 +696,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
@@ -771,7 +772,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
@@ -869,7 +870,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);

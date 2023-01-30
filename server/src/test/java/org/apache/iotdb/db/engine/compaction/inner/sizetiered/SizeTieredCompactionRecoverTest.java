@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
@@ -1297,7 +1296,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
@@ -1372,7 +1371,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
