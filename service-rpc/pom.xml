@@ -116,6 +116,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${rpc.ut.skip}</skipTests>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -134,6 +136,8 @@
                 <configuration>
                     <skipTests>${rpc.test.skip}</skipTests>
                     <skipITs>${rpc.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>

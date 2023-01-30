@@ -81,7 +81,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.SCHEDULE;
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
@@ -274,7 +273,6 @@ public class QueryExecution implements IQueryExecution {
     }
 
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    long startTime = System.nanoTime();
     this.scheduler =
         new ClusterScheduler(
             context,
@@ -286,9 +284,6 @@ public class QueryExecution implements IQueryExecution {
             scheduledExecutor,
             internalServiceClientManager);
     this.scheduler.start();
-    if (rawStatement.isQuery()) {
-      QUERY_METRICS.recordExecutionCost(SCHEDULE, System.nanoTime() - startTime);
-    }
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization

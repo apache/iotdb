@@ -54,6 +54,9 @@ public class SqlConstant {
   public static final String AVG = "avg";
   public static final String SUM = "sum";
 
+  // names of scalar functions
+  public static final String DIFF = "diff";
+
   public static final String LAST = "last";
 
   public static String[] getSingleRootArray() {
