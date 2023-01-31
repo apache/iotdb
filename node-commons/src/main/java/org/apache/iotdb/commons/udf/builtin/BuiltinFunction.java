@@ -26,13 +26,13 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public enum BuiltinScalarFunction {
+public enum BuiltinFunction {
   DIFF("diff"),
   ;
 
   private final String functionName;
 
-  BuiltinScalarFunction(String functionName) {
+  BuiltinFunction(String functionName) {
     this.functionName = functionName;
   }
 
@@ -42,8 +42,8 @@ public enum BuiltinScalarFunction {
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
-          Arrays.stream(BuiltinScalarFunction.values())
-              .map(BuiltinScalarFunction::getFunctionName)
+          Arrays.stream(BuiltinFunction.values())
+              .map(BuiltinFunction::getFunctionName)
               .collect(Collectors.toList()));
 
   /**
@@ -55,5 +55,15 @@ public enum BuiltinScalarFunction {
 
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;
+  }
+
+  public static boolean isMappable(String name) {
+    final String functionName = name.toLowerCase();
+    switch (functionName) {
+      case "diff":
+        return true;
+      default:
+        throw new IllegalArgumentException("No such function");
+    }
   }
 }

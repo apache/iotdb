@@ -256,7 +256,7 @@ public class ExpressionTypeAnalyzer {
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       }
-      if (functionExpression.isBuiltInScalarFunction()) {
+      if (functionExpression.isBuiltInFunction()) {
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getScalarFunctionDataType(
