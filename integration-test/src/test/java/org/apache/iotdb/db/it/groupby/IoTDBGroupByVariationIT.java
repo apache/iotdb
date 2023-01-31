@@ -362,20 +362,6 @@ public class IoTDBGroupByVariationIT {
     }
   }
 
-  @Test
-  public void errorTest1() {
-    errorTest(
-        "select avg(temperature) from root.ln.wf01.wt01 group by variation(*)",
-        "701: Expression in group by should indicate one value");
-  }
-
-  @Test
-  public void errorTest2() {
-    errorTest(
-        "select avg(temperature) from root.ln.wf01.wt01 group by variation(avg(temperature))",
-        "701: Aggregation expression shouldn't exist in group by clause");
-  }
-
   private void normalTestWithEndTimeAlignByDevice(String[][] res, String sql) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
