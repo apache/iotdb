@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Stack;
 
 import static java.lang.Math.abs;
 
@@ -92,33 +93,48 @@ public class PRRTestDoubleS3Adjust2H {
     }
     return result;
   }
-  public static void quickSort(ArrayList<ArrayList<Integer>> ts_block, int index, int low, int high) {
-    if(low>=high)
-      return;
-    ArrayList<Integer> pivot = ts_block.get(low);
-    int l = low;
-    int r = high;
-    ArrayList<Integer> temp;
-    while(l<r){
-      while (l < r && ts_block.get(r).get(index) >= pivot.get(index)) {
-        r--;
+  public static int part(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
+    ArrayList<Integer> tmp = arr.get(low);
+    while (low < high) {
+      while (low < high && arr.get(high).get(index) >= tmp.get(index)) {
+        high--;
       }
-      while (l < r && ts_block.get(l).get(index) <= pivot.get(index)) {
-        l++;
+      arr.set(low,arr.get(high));
+      while (low < high && arr.get(low).get(index) <= tmp.get(index)) {
+        low++;
       }
-      if (l < r) {
-        temp = ts_block.get(l);
-        ts_block.set(l, ts_block.get(r));
-        ts_block.set(r, temp);
-      }
+      arr.set(high,arr.get(low));
     }
-    ts_block.set(low, ts_block.get(l));
-    ts_block.set(l, pivot);
-    if (low < l) {
-      quickSort(ts_block,index, low, l - 1);
+    arr.set(low,tmp);
+    return low;
+  }
+
+  public static void quickSort(ArrayList<ArrayList<Integer>> arr, int index,  int low, int high) {
+    Stack<Integer> stack = new Stack<>();
+    int mid = part(arr, index, low, high);
+    //判断右半部分是否仅有一个数据
+    //将边界入栈，需要注意左右部分都先压左边界或右边界。顺序需要相同，以防出栈时不好判断是low还是high，此方法先压左边界后压右边界
+    if (mid + 1 < high) {
+      stack.push(mid + 1);
+      stack.push(high);
     }
-    if (r < high) {
-      quickSort(ts_block,index, r + 1, high);
+    //判断左半部分是否仅有一个数据
+    if (mid - 1 > low) {
+      stack.push(low);
+      stack.push(mid - 1);
+    }
+    while (stack.empty() == false) {
+      high = stack.pop();
+      low = stack.pop();
+      mid = part(arr, index,low, high);
+      if (mid + 1 < high) {
+        stack.push(mid + 1);
+        stack.push(high);
+      }
+      if (mid - 1 > low) {
+        stack.push(low);
+        stack.push(mid - 1);
+      }
     }
   }
   public static void quickSort2(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
