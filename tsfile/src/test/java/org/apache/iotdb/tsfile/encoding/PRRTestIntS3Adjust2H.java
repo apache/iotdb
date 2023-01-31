@@ -1832,7 +1832,7 @@ public class PRRTestIntS3Adjust2H {
 
         String inputPath = input_path_list.get(file_i);
         String Output =output_path_list.get(file_i);
-
+        System.out.println(inputPath);
 //        String Output =  "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
         // speed
@@ -1861,6 +1861,7 @@ public class PRRTestIntS3Adjust2H {
         assert tempList != null;
 //        for(int p=2;p<3;p++) {
         for(int p=1;p<10;p++) {
+          System.out.println("p="+p);
           for (File f : tempList) {
 //        ArrayList<Integer> flag = new ArrayList<>();
 //        flag.add(0);
