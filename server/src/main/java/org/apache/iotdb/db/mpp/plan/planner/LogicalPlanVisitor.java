@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -49,6 +53,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -65,8 +71,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -337,6 +345,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         internalCreateTimeSeriesStatement.getDevicePath(),
         measurementGroup,
         internalCreateTimeSeriesStatement.isAligned());
+  }
+
+  @Override
+  public PlanNode visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
+      MPPQueryContext context) {
+    return new InternalCreateMultiTimeSeriesNode(
+        context.getQueryId().genPlanNodeId(),
+        internalCreateMultiTimeSeriesStatement.getDeviceMap());
   }
 
   @Override
@@ -687,6 +704,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         activateTemplateStatement.getPath(),
         analysis.getTemplateSetInfo().right.get(0).getNodeLength() - 1,
         analysis.getTemplateSetInfo().left.getId());
+  }
+
+  @Override
+  public PlanNode visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement,
+      MPPQueryContext context) {
+    Map<PartialPath, Pair<Integer, Integer>> templateActivationMap = new HashMap<>();
+    for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
+        internalBatchActivateTemplateStatement.getDeviceMap().entrySet()) {
+      templateActivationMap.put(
+          entry.getKey(),
+          new Pair<>(entry.getValue().left.getId(), entry.getValue().right.getNodeLength() - 1));
+    }
+    return new InternalBatchActivateTemplateNode(
+        context.getQueryId().genPlanNodeId(), templateActivationMap);
   }
 
   @Override
