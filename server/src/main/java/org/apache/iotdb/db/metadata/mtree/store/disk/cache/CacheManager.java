@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
@@ -179,11 +180,12 @@ public abstract class CacheManager implements ICacheManager {
       if (!node.isStorageGroup()) {
         // if node is StorageGroup, getBelongedContainer is null
         getBelongedContainer(node).updateMNode(node.getName());
+        // MNode update operation like node replace may reset the mapping between cacheEntry and
+        // node,
+        // thus it should be updated
+        updateCacheStatusAfterUpdate(cacheEntry, node);
+        removeFromNodeCache(cacheEntry);
       }
-      // MNode update operation like node replace may reset the mapping between cacheEntry and node,
-      // thus it should be updated
-      updateCacheStatusAfterUpdate(cacheEntry, node);
-      removeFromNodeCache(cacheEntry);
       addToBufferAfterUpdate(node);
     }
   }
@@ -196,7 +198,7 @@ public abstract class CacheManager implements ICacheManager {
    */
   private void addToBufferAfterUpdate(IMNode node) {
     if (node.isStorageGroup()) {
-      nodeBuffer.put(getCacheEntry(node), node);
+      nodeBuffer.setUpdatedStorageGroupMNode(node.getAsStorageGroupMNode());
       return;
     }
 
@@ -253,6 +255,18 @@ public abstract class CacheManager implements ICacheManager {
     cacheEntry.setVolatile(false);
     container.moveMNodeToCache(node.getName());
     addToNodeCache(cacheEntry, node);
+  }
+
+  /**
+   * Collect updated storage group node.
+   *
+   * @return null if not exist
+   */
+  @Override
+  public IStorageGroupMNode collectUpdatedStorageGroupMNodes() {
+    IStorageGroupMNode storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
+    nodeBuffer.setUpdatedStorageGroupMNode(null);
+    return storageGroupMNode;
   }
 
   /**
@@ -505,12 +519,21 @@ public abstract class CacheManager implements ICacheManager {
 
     private static final int MAP_NUM = 17;
 
+    private IStorageGroupMNode updatedStorageGroupMNode;
     private Map<CacheEntry, IMNode>[] maps = new Map[MAP_NUM];
 
     NodeBuffer() {
       for (int i = 0; i < MAP_NUM; i++) {
         maps[i] = new ConcurrentHashMap<>();
       }
+    }
+
+    public IStorageGroupMNode getUpdatedStorageGroupMNode() {
+      return updatedStorageGroupMNode;
+    }
+
+    public void setUpdatedStorageGroupMNode(IStorageGroupMNode updatedStorageGroupMNode) {
+      this.updatedStorageGroupMNode = updatedStorageGroupMNode;
     }
 
     void put(CacheEntry cacheEntry, IMNode node) {
