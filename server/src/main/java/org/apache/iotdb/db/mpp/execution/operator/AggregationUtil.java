@@ -111,7 +111,8 @@ public class AggregationUtil {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        lastReadRowIndex =
+            Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock, true));
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;

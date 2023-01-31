@@ -27,11 +27,16 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 public interface Accumulator {
 
   /**
-   * Column should be like: | ControlColumn | Time | Value |
+   * Column should be like: | ControlColumn | Time | Value | IgnoringNull is required when
+   * considering the value with null-controlColumn
    *
    * <p>Return the last read row index of current timeColumn
    */
-  int addInput(Column[] column, IWindow window);
+  default int addInput(Column[] column, IWindow window) {
+    return addInput(column, window, true);
+  }
+
+  int addInput(Column[] column, IWindow window, boolean ignoringNull);
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,

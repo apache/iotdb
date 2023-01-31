@@ -38,6 +38,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -71,9 +72,9 @@ public class IoTDBGroupByVariationIT {
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(250, 38.4, false, 440)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(300, 38.3, false, 550)",
         "flush",
-        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(400, null, null, null)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(440, null, null, null)",
-        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(480, null, null, null)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(400, null, null, 0)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(440, null, null, 0)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(480, null, null, 0)",
         "flush",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(500, 38.2, false, 110)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(510, 37.5,  true, 220)",
@@ -117,9 +118,9 @@ public class IoTDBGroupByVariationIT {
         "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(250, 38.4, false, 440)",
         "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(300, 38.3, false, 550)",
         "flush",
-        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(400, null, null, null)",
-        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(440, null, null, null)",
-        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(480, null, null, null)",
+        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(400, null, null, 0)",
+        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(440, null, null, 0)",
+        "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(480, null, null, 0)",
         "flush",
         "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(500, 38.2, false, 110)",
         "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(510, 37.5,  true, 220)",
@@ -306,6 +307,39 @@ public class IoTDBGroupByVariationIT {
     normalTestWithEndTime(res, sql);
   }
 
+  private void normalTestWithoutIgnoringNull(String[][] res, String sql) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(
+            resultSetMetaData,
+            "Time,count(root.ln.wf01.wt01.hardware),avg(root.ln.wf01.wt01.temperature),sum(root.ln.wf01.wt01.hardware)");
+        int count = 0;
+        while (resultSet.next()) {
+          String actualTime = resultSet.getString(1);
+          String actualCount = resultSet.getString(2);
+          double actualAvg = resultSet.getDouble(3);
+          boolean wasNull = resultSet.wasNull();
+          double actualSum = resultSet.getDouble(4);
+
+          assertEquals(res[count][0], actualTime);
+          assertEquals(res[count][1], actualCount);
+          if (res[count][2].equals("null")) assertTrue(wasNull);
+          else assertEquals(Double.parseDouble(res[count][2]), actualAvg, 0.00001);
+          assertEquals(Double.parseDouble(res[count][3]), actualSum, 0.00001);
+          count++;
+        }
+        assertEquals(res.length, count);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void groupByVariationTestWithoutIgnoringNull() {
 
     String[][] res =
@@ -313,10 +347,8 @@ public class IoTDBGroupByVariationIT {
           {"1", "4", "35.825", "110"},
           {"5", "5", "37.26", "1155"},
           {"50", "6", "38.333333", "2200"},
-          {"400", "1", "0", "0"},
-          {"440", "1", "0", "0"},
-          {"480", "1", "0", "0"},
-          {"500", "3", "38.122222", "660"},
+          {"400", "3", "null", "0"},
+          {"500", "3", "37.7", "660"},
           {"530", "3", "37.333333", "1100"},
           {"590", "3", "37.666667", "990"},
           {"620", "1", "39.2", "550"},
@@ -324,10 +356,11 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=false)";
-    normalTest(res, sql);
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=false)";
+    normalTestWithoutIgnoringNull(res, sql);
   }
 
+  @Test
   public void groupByVariationEqualTestWithoutIgnoringNull() {
 
     String[][] res =
@@ -339,7 +372,7 @@ public class IoTDBGroupByVariationIT {
           {"30", "4", "37.7", "1430"},
           {"150", "1", "38.8", "220"},
           {"200", "3", "38.433333", "1320"},
-          {"400", "3", "0", "0"},
+          {"400", "3", "null", "0"},
           {"500", "1", "38.2", "110"},
           {"510", "1", "37.5", "220"},
           {"520", "4", "37.35", "1430"},
@@ -349,8 +382,8 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=false)";
-    normalTest(res, sql);
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(status,'ignoringNull'=false)";
+    normalTestWithoutIgnoringNull(res, sql);
   }
 
   private void errorTest(String sql, String error) {
@@ -442,5 +475,19 @@ public class IoTDBGroupByVariationIT {
     String sql =
         "select __endTime,count(status),avg(temperature),sum(hardware) from root.** group by variation(status) align by device";
     normalTestWithEndTimeAlignByDevice(res, sql);
+  }
+
+  @Test
+  public void errorTest1() {
+    errorTest(
+        "select avg(temperature) from root.ln.wf01.wt01 group by variation(*)",
+        "701: Expression in group by should indicate one value");
+  }
+
+  @Test
+  public void errorTest2() {
+    errorTest(
+        "select avg(temperature) from root.ln.wf01.wt01 group by variation(avg(temperature))",
+        "701: Aggregation expression shouldn't exist in group by clause");
   }
 }

@@ -143,7 +143,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        lastReadRowIndex =
+            Math.max(
+                lastReadRowIndex,
+                aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
