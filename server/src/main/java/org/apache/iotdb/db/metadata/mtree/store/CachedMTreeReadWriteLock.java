@@ -68,50 +68,60 @@ public class CachedMTreeReadWriteLock {
   public static final long ALLOCATE_STAMP = -2;
 
   /**
-   * Acquires the read lock.
+   * Acquires the stamp-bound read lock. Read lock acquire and release is stamp-bound and supports
+   * re-entry by the same stamp. Return a new stamp if no thread holds a write lock; block and wait
+   * if another thread holds a write lock or the write lock waiting queue is not empty.
    *
-   * @param stamp NON_STAMP, ALLOCATE_STAMP or re-entry based on stamp
-   *     <p>NON_STAMP means read lock acquire and release is thread-bound and supports re-entry
-   *     within the same thread. Return directly if no thread holds a write lock or the current
-   *     thread already holds a write lock; block and wait if another thread holds a write lock or
-   *     the write lock waiting queue is not empty.
-   *     <p>ALLOCATE_STAMP means read lock acquire and release is stamp-bound and supports re-entry
-   *     by the same stamp. Return a new stamp if no thread holds a write lock; block and wait if
-   *     another thread holds a write lock or the write lock waiting queue is not empty.
-   *     <p>Re-entry based on stamp. If the stamp exists, increase the read count and return;
-   *     otherwise, same as ALLOCATE_STAMP.
-   * @return stamp or NON_STAMP
+   * @return stamp
    */
-  public long readLock(long stamp) {
+  public long stampedReadLock() {
     lock.lock();
     try {
-      if (stamp == NON_STAMP) {
-        return threadReadLock();
-      } else if (stamp == ALLOCATE_STAMP) {
-        return acquireReadLockStamp();
+      return acquireReadLockStamp();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Re-entry based on stamp. If the stamp exists, increase the read count and return; otherwise,
+   * same as {@link CachedMTreeReadWriteLock#stampedReadLock()}.
+   *
+   * @return stamp
+   */
+  public long stampedReadLock(long stamp) {
+    lock.lock();
+    try {
+      if (readCnt.containsKey(stamp)) {
+        readCnt.put(stamp, readCnt.get(stamp) + 1);
+        return stamp;
       } else {
-        if (readCnt.containsKey(stamp)) {
-          readCnt.put(stamp, readCnt.get(stamp) + 1);
-          return stamp;
-        } else {
-          return acquireReadLockStamp();
-        }
+        return acquireReadLockStamp();
       }
     } finally {
       lock.unlock();
     }
   }
 
-  private long threadReadLock() {
-    Long allocateStamp = sharedOwnerStamp.get();
-    if (allocateStamp == null) {
-      // first time entry, acquire read lock and set thread local
-      sharedOwnerStamp.set(acquireReadLockStamp());
-    } else {
-      // reentry, add read count
-      readCnt.put(allocateStamp, readCnt.get(allocateStamp) + 1);
+  /**
+   * Acquires the thread-bound read lock. Read lock acquire and release is thread-bound and supports
+   * re-entry within the same thread. Return directly if no thread holds a write lock ; block and
+   * wait if another thread holds a write lock or the write lock waiting queue is not empty.
+   */
+  public void threadReadLock() {
+    lock.lock();
+    try {
+      Long allocateStamp = sharedOwnerStamp.get();
+      if (allocateStamp == null) {
+        // first time entry, acquire read lock and set thread local
+        sharedOwnerStamp.set(acquireReadLockStamp());
+      } else {
+        // reentry, add read count
+        readCnt.put(allocateStamp, readCnt.get(allocateStamp) + 1);
+      }
+    } finally {
+      lock.unlock();
     }
-    return NON_STAMP;
   }
 
   /**
@@ -150,28 +160,22 @@ public class CachedMTreeReadWriteLock {
   }
 
   /**
-   * Attempts to release read lock.
+   * Attempts to release stamp-bound read lock.
    *
-   * @param stamp read lock stamp or NON_STAMP
-   *     <p>NON_STAMP means release the thread-bound read lock.
-   *     <p>Read lock stamp means release the stamp-bound read lock.
+   * @param stamp read lock stamp
    */
-  public void unlockRead(long stamp) {
+  public void stampedReadUnlock(long stamp) {
     lock.lock();
     try {
-      if (stamp == NON_STAMP) {
-        threadReadUnlock();
-      } else {
-        if (readCnt.containsKey(stamp)) {
-          if (readCnt.get(stamp) == 1) {
-            readCnt.remove(stamp);
-            if (readCnt.isEmpty() && writeWait > 0) {
-              // no reader, then signal all writer
-              okToWrite.signalAll();
-            }
-          } else {
-            readCnt.put(stamp, readCnt.get(stamp) - 1);
+      if (readCnt.containsKey(stamp)) {
+        if (readCnt.get(stamp) == 1) {
+          readCnt.remove(stamp);
+          if (readCnt.isEmpty() && writeWait > 0) {
+            // no reader, then signal all writer
+            okToWrite.signalAll();
           }
+        } else {
+          readCnt.put(stamp, readCnt.get(stamp) - 1);
         }
       }
     } finally {
@@ -179,13 +183,19 @@ public class CachedMTreeReadWriteLock {
     }
   }
 
-  private void threadReadUnlock() {
-    if (sharedOwnerStamp.get() != null) {
-      long allocateStamp = sharedOwnerStamp.get();
-      unlockRead(allocateStamp);
-      if (!readCnt.containsKey(allocateStamp)) {
-        sharedOwnerStamp.remove();
+  /** Attempts to release thread-bound read lock. */
+  public void threadReadUnlock() {
+    lock.lock();
+    try {
+      if (sharedOwnerStamp.get() != null) {
+        long allocateStamp = sharedOwnerStamp.get();
+        stampedReadUnlock(allocateStamp);
+        if (!readCnt.containsKey(allocateStamp)) {
+          sharedOwnerStamp.remove();
+        }
       }
+    } finally {
+      lock.unlock();
     }
   }
 

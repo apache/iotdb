@@ -34,7 +34,7 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
 
   public ReentrantReadOnlyCachedMTreeStore(CachedMTreeStore store) {
     this.store = store;
-    this.readLockStamp = store.readLock(CachedMTreeReadWriteLock.ALLOCATE_STAMP);
+    this.readLockStamp = store.stampedReadLock();
   }
 
   @Override
@@ -44,17 +44,17 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean hasChild(IMNode parent, String name) throws MetadataException {
-    return store.hasChild(parent, name, readLockStamp);
+    return store.hasChild(parent, name, false);
   }
 
   @Override
   public IMNode getChild(IMNode parent, String name) throws MetadataException {
-    return store.getChild(parent, name, readLockStamp);
+    return store.getChild(parent, name, false);
   }
 
   @Override
   public IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException {
-    return store.getChildrenIterator(parent, readLockStamp);
+    return store.getChildrenIterator(parent, false);
   }
 
   @Override
@@ -96,27 +96,17 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
 
   @Override
   public void pin(IMNode node) throws MetadataException {
-    store.pin(node, readLockStamp);
+    store.pin(node, false);
   }
 
   @Override
   public void unPin(IMNode node) {
-    store.unPin(node, readLockStamp);
+    store.unPin(node, false);
   }
 
   @Override
   public void unPinPath(IMNode node) {
-    store.unPinPath(node, readLockStamp);
-  }
-
-  @Override
-  public void writeLock() {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
-  }
-
-  @Override
-  public void unlockWrite() {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    store.unPinPath(node, false);
   }
 
   @Override
@@ -135,6 +125,6 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
   }
 
   public void unlockRead() {
-    store.unlockRead(readLockStamp);
+    store.stampedReadUnlock(readLockStamp);
   }
 }

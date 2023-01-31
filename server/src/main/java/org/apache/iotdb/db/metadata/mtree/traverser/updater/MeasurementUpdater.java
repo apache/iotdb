@@ -38,7 +38,7 @@ public abstract class MeasurementUpdater extends MeasurementTraverser<Void> impl
   public MeasurementUpdater(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch, true);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override

@@ -79,10 +79,6 @@ public interface IMTreeStore {
 
   void unPinPath(IMNode node);
 
-  void writeLock();
-
-  void unlockWrite();
-
   IMTreeStore getWithReentrantReadLock();
 
   void clear();

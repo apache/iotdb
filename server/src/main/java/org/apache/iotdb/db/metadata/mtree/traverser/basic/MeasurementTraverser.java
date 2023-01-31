@@ -41,16 +41,6 @@ public abstract class MeasurementTraverser<R> extends Traverser<R> {
     super(startNode, path, store, isPrefixMatch);
   }
 
-  protected MeasurementTraverser(
-      IMNode startNode,
-      PartialPath path,
-      IMTreeStore store,
-      boolean isPrefixMatch,
-      boolean needWriteLock)
-      throws MetadataException {
-    super(startNode, path, store, isPrefixMatch, needWriteLock);
-  }
-
   @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     return node.isMeasurement();

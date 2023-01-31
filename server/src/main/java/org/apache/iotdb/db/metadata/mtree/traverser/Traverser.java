@@ -61,14 +61,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
-  private boolean needWriteLock;
-
   protected Traverser() {}
-
-  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
-      throws MetadataException {
-    this(startNode, path, store, isPrefixMatch, false);
-  }
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -77,30 +70,18 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    * @param path use wildcard to specify which part to traverse
    * @param store MTree store to traverse
    * @param isPrefixMatch prefix match or not
-   * @param needWriteLock true if there may be a write operation during the traversal
    * @throws MetadataException path does not meet the expected rules
    */
-  protected Traverser(
-      IMNode startNode,
-      PartialPath path,
-      IMTreeStore store,
-      boolean isPrefixMatch,
-      boolean needWriteLock)
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
-    if (needWriteLock) {
-      store.writeLock();
-      this.store = store;
-    } else {
-      this.store = store.getWithReentrantReadLock();
-    }
+    this.store = store.getWithReentrantReadLock();
     initStack();
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
-    this.needWriteLock = needWriteLock;
     this.startNode = startNode;
     this.nodes = nodes;
   }
@@ -163,9 +144,8 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   public void close() {
     super.close();
-    if (needWriteLock) {
-      store.unlockWrite();
-    } else if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+    if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+      // TODO update here
       ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
     }
   }

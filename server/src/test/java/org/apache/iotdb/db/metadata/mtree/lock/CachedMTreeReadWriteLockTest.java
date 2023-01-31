@@ -41,7 +41,7 @@ public class CachedMTreeReadWriteLockTest {
     // Read lock can be locked by one thread but unlocked by another thread.
     new Thread(
             () -> {
-              stamp.set(lock.readLock(CachedMTreeReadWriteLock.ALLOCATE_STAMP));
+              stamp.set(lock.stampedReadLock());
               semaphore.release(2);
               counter.incrementAndGet();
             })
@@ -50,7 +50,7 @@ public class CachedMTreeReadWriteLockTest {
             () -> {
               try {
                 semaphore.acquire();
-                lock.unlockRead(stamp.get());
+                lock.stampedReadUnlock(stamp.get());
                 counter.incrementAndGet();
               } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
@@ -81,10 +81,10 @@ public class CachedMTreeReadWriteLockTest {
     // Thread-bound read lock must be locked and unlocked by the same thread.
     new Thread(
             () -> {
-              lock.readLock(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadLock();
               semaphore.release(1);
               counter.incrementAndGet();
-              lock.unlockRead(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadUnlock();
             })
         .start();
     new Thread(
@@ -106,7 +106,7 @@ public class CachedMTreeReadWriteLockTest {
     // Thread-bound read lock cannot be unlocked by the another thread
     new Thread(
             () -> {
-              lock.readLock(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadLock();
               semaphore.release(2);
               counter.incrementAndGet();
             })
@@ -115,7 +115,7 @@ public class CachedMTreeReadWriteLockTest {
             () -> {
               try {
                 semaphore.acquire();
-                lock.unlockRead(CachedMTreeReadWriteLock.NON_STAMP);
+                lock.threadReadUnlock();
                 counter.incrementAndGet();
               } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
@@ -149,9 +149,9 @@ public class CachedMTreeReadWriteLockTest {
     AtomicInteger counter = new AtomicInteger();
     new Thread(
             () -> {
-              lock.readLock(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadLock();
               counter.incrementAndGet();
-              lock.unlockRead(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadUnlock();
             })
         .start();
     // block reader util writer release write lock
@@ -166,7 +166,7 @@ public class CachedMTreeReadWriteLockTest {
     CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
     AtomicInteger counter = new AtomicInteger();
     // main thread get read lock by stamp
-    long stamp = lock.readLock(CachedMTreeReadWriteLock.ALLOCATE_STAMP);
+    long stamp = lock.stampedReadLock();
     new Thread(
             () -> {
               // writer thread will be blocked util main thread release read lock.
@@ -185,25 +185,25 @@ public class CachedMTreeReadWriteLockTest {
     new Thread(
             () -> {
               // it can be reentry by stamp
-              lock.readLock(stamp);
+              lock.stampedReadLock(stamp);
               counter.incrementAndGet();
-              lock.unlockRead(stamp);
+              lock.stampedReadUnlock(stamp);
             })
         .start();
     new Thread(
             () -> {
               // it will be blocked because of writer preferred
-              lock.readLock(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadLock();
               counter.incrementAndGet();
-              lock.unlockRead(CachedMTreeReadWriteLock.NON_STAMP);
+              lock.threadReadUnlock();
             })
         .start();
     new Thread(
             () -> {
               // it will be blocked because of writer preferred
-              long stamp1 = lock.readLock(CachedMTreeReadWriteLock.ALLOCATE_STAMP);
+              long stamp1 = lock.stampedReadLock();
               counter.incrementAndGet();
-              lock.unlockRead(stamp1);
+              lock.stampedReadUnlock(stamp1);
             })
         .start();
     try {
@@ -213,7 +213,7 @@ public class CachedMTreeReadWriteLockTest {
       Assert.assertEquals(1, counter.get());
     }
     // release main read lock
-    lock.unlockRead(stamp);
+    lock.stampedReadUnlock(stamp);
     Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
     Assert.assertEquals(4, counter.get());
   }

@@ -37,7 +37,7 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
    */
   public EntityUpdater(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch, true);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
