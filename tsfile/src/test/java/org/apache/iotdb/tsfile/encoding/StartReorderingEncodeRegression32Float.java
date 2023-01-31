@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
+public class StartReorderingEncodeRegression32Float {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -85,7 +85,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       for(int j=0;j<bit_width;j++){
         int tmp_int = 0;
         for(int k=0;k<8;k++){
-          tmp_int += (((numbers.get(i*8+k+1).get(index) >>j) %2) << k);
+          tmp_int += (((numbers.get(i*8+k).get(index) >>j) %2) << k);
         }
 //        System.out.println(Integer.toBinaryString(tmp_int));
         result[i*bit_width+j] = (byte) tmp_int;
@@ -1079,6 +1079,10 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
 
+    ArrayList<Integer> tmp0 =new ArrayList<>();
+    tmp0.add(0);
+    tmp0.add(0);
+    ts_block.set(0,tmp0);
 //    // encode min_delta_interval and min_delta_value
 //    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
 //    for (byte b : min_delta_interval_byte) encoded_result.add(b);
@@ -1122,7 +1126,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
   }
   //public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td, ArrayList<Integer> flag){
   public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
-    block_size ++;
+//    block_size ++;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
     byte[] length_all_bytes = int2Bytes(length_all);
@@ -1699,15 +1703,14 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
 
-    //for(int file_i=0;file_i<1;file_i++){
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=0;file_i<1;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
-      String Output =output_path_list.get(file_i);
+//      String Output =output_path_list.get(file_i);
       System.out.println(inputPath);
 
-  //    String Output =
-  //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
+      String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
       // speed
       int repeatTime = 1; // set repeat time
@@ -1768,8 +1771,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
-              data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+//            for(int repeat_i=0;repeat_i<10;repeat_i++)
+//              data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
             decodeTime += ((e - s)/10);
           }
