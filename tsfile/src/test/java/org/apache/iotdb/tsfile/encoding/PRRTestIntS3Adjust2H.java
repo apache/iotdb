@@ -1957,7 +1957,7 @@ public class PRRTestIntS3Adjust2H {
                   String.valueOf(compressed_size),
                   String.valueOf(ratio)
           };
-          System.out.println(ratio);
+//          System.out.println(ratio);
           writer.writeRecord(record);
 //          break;
         }
