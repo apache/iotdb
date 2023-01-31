@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
@@ -267,25 +268,11 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void updateMNode(IMNode node) throws MetadataException {
-    if (node.isStorageGroup()) {
-      this.root = node;
-      writeLock.lock();
-      try {
-        file.updateStorageGroupNode(node.getAsStorageGroupMNode());
-      } catch (IOException e) {
-        logger.error(
-            "IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
-        throw new MetadataException(e);
-      } finally {
-        writeLock.unlock();
-      }
-    } else {
-      readLock.lock();
-      try {
-        cacheManager.updateCacheStatusAfterUpdate(node);
-      } finally {
-        readLock.unlock();
-      }
+    readLock.lock();
+    try {
+      cacheManager.updateCacheStatusAfterUpdate(node);
+    } finally {
+      readLock.unlock();
     }
   }
 
@@ -483,6 +470,18 @@ public class CachedMTreeStore implements IMTreeStore {
   private void flushVolatileNodes() {
     writeLock.lock();
     try {
+      IStorageGroupMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
+      if (updatedStorageGroupMNode != null) {
+        try {
+          file.updateStorageGroupNode(updatedStorageGroupMNode);
+        } catch (IOException e) {
+          logger.error(
+              "IOException occurred during updating StorageGroupMNode {}",
+              updatedStorageGroupMNode.getFullPath(),
+              e);
+          return;
+        }
+      }
       List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       for (IMNode volatileNode : nodesToPersist) {
         try {
