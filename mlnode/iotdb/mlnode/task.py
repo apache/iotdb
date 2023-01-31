@@ -23,10 +23,13 @@ import argparse
 import time
 
 import numpy as np
+import multiprocessing as mp
 
 from algorithm.forecast.models.DLinear import DLinear
 from algorithm.forecast.utils import parseModelConfig
 from data_provider.build_dataset_debug import debug_dataset
+
+
 # from iotdb.data.utils import parseDataConfig, data_provider
 
 
@@ -85,9 +88,12 @@ class BasicTask(object):
 
 
 class ForecastingTrainingTask(BasicTask):
-    def __init__(self, args):
+    def __init__(self, args, task_map, task_id):
         super(ForecastingTrainingTask, self).__init__(args)
-
+        self.task_map = task_map
+        self.pid = os.getpid()
+        self.task_id = task_id
+        
     def train(self, model, optimizer, criterion, dataloader, configs, epoch):
         model.train()
         train_loss = []
@@ -112,14 +118,14 @@ class ForecastingTrainingTask(BasicTask):
             loss = criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
-            if (i + 1) % 50 == 0:
-                print('\titers: {0}, epoch: {1} | loss: {2:.7f}'.format(i + 1, epoch + 1, loss.item()))
+            #if (i + 1) % 50 == 0:
+            #    print('\titers: {0}, epoch: {1} | loss: {2:.7f}'.format(i + 1, epoch + 1, loss.item()))
             
             loss.backward()
             optimizer.step()
         
         train_loss = np.average(train_loss)
-        print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'.format(epoch + 1, time.time() - epoch_time, train_loss))
+        # print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'.format(epoch + 1, time.time() - epoch_time, train_loss))
 
         return train_loss
     
@@ -129,12 +135,18 @@ class ForecastingTrainingTask(BasicTask):
 
         for epoch in range(self.configs.epochs):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, self.configs, epoch) 
-        
-        return self.model
+        self.task_map[self.task_id][self.pid] = 'finished'
+        return 
         
 
 class ForecastingInferenceTask(BasicTask):
     def __init__(self, args):
+        """
+        model configs
+        model path
+        model id
+        data 
+        """
         super(BasicTask, self).__init__(args)
 
     def start(self):
