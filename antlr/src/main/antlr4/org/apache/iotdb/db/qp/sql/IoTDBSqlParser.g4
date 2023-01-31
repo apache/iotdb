@@ -291,7 +291,7 @@ stopTrigger
 
 // Show Storage Group
 showStorageGroup
-    : SHOW (STORAGE GROUP | DATABASES) (DETAILS)? (OF prefixPath)?
+    : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
     ;
 
 // Show Devices
