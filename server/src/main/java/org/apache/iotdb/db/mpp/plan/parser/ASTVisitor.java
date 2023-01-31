@@ -589,11 +589,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
+    ShowStorageGroupStatement showStorageGroupStatement;
+
+    // Parse prefixPath
     if (ctx.prefixPath() != null) {
-      return new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
+      showStorageGroupStatement = new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
-      return new ShowStorageGroupStatement(new PartialPath(SqlConstant.getSingleRootArray()));
+      showStorageGroupStatement =
+          new ShowStorageGroupStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
+
+    // Is detailed
+    showStorageGroupStatement.setDetailed(ctx.DETAILS() != null);
+
+    return showStorageGroupStatement;
   }
 
   // Show Devices ========================================================================

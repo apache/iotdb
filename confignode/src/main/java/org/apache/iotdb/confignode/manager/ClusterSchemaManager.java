@@ -194,9 +194,9 @@ public class ClusterSchemaManager {
 
     Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
-      String name = storageGroupSchema.getName();
+      String database = storageGroupSchema.getName();
       TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
-      storageGroupInfo.setName(name);
+      storageGroupInfo.setName(database);
       storageGroupInfo.setTTL(storageGroupSchema.getTTL());
       storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
       storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
@@ -204,9 +204,17 @@ public class ClusterSchemaManager {
 
       try {
         storageGroupInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.SchemaRegion));
+            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
         storageGroupInfo.setDataRegionNum(
-            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.DataRegion));
+            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
+        storageGroupInfo.setMinSchemaRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setMaxSchemaRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setMinDataRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
+        storageGroupInfo.setMaxDataRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
       } catch (DatabaseNotExistsException e) {
         // Return immediately if some StorageGroups doesn't exist
         return new TShowStorageGroupResp()
@@ -215,7 +223,7 @@ public class ClusterSchemaManager {
                     .setMessage(e.getMessage()));
       }
 
-      infoMap.put(name, storageGroupInfo);
+      infoMap.put(database, storageGroupInfo);
     }
 
     return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
