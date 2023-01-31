@@ -19,6 +19,7 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.template.Template;
@@ -76,7 +77,7 @@ public class SessionExample {
     try {
       session.createDatabase("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw e;
       }
     }
@@ -93,10 +94,12 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    //    query();
+    query();
     //    queryWithTimeout();
-    //    rawDataQuery();
-    //    lastDataQuery();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
@@ -772,6 +775,46 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
     try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void aggregationQuery()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
+    try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void groupByQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
+    try (SessionDataSet sessionDataSet =
+        session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {

@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.SqlConstant;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -142,7 +142,7 @@ public class SchemaUtils {
    * data
    */
   public static boolean isConsistentWithScanOrder(
-      AggregationType aggregationFunction, Ordering scanOrder) {
+      TAggregationType aggregationFunction, Ordering scanOrder) {
     boolean ascending = scanOrder == Ordering.ASC;
     switch (aggregationFunction) {
       case MIN_TIME:
@@ -172,14 +172,14 @@ public class SchemaUtils {
     }
   }
 
-  public static List<AggregationType> splitPartialAggregation(AggregationType aggregationType) {
+  public static List<TAggregationType> splitPartialAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case FIRST_VALUE:
-        return Collections.singletonList(AggregationType.MIN_TIME);
+        return Collections.singletonList(TAggregationType.MIN_TIME);
       case LAST_VALUE:
-        return Collections.singletonList(AggregationType.MAX_TIME);
+        return Collections.singletonList(TAggregationType.MAX_TIME);
       case AVG:
-        return Arrays.asList(AggregationType.COUNT, AggregationType.SUM);
+        return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
       case SUM:
       case MIN_VALUE:
       case MAX_VALUE:

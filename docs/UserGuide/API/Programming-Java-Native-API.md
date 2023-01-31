@@ -442,16 +442,44 @@ void deleteData(List<String> paths, long time)
 
 #### Query
 
-* Raw data query. Time interval include startTime and exclude endTime
+* Time-series raw data query with time range:
+  - The specified query time range is a left-closed right-open interval, including the start time but excluding the end time.
 
 ```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
-* Query the last data, whose timestamp is greater than or equal LastTime
+* Last query: 
+  - Query the last data, whose timestamp is greater than or equal LastTime.
 
 ```java
-SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime);
+```
+
+* Aggregation query:
+  - Support specified query time range: The specified query time range is a left-closed right-open interval, including the start time but not the end time.
+  - Support GROUP BY TIME.
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
 ```
 
 ### IoTDB-SQL Interface
