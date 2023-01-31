@@ -76,7 +76,7 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
 
   @Override
   public void updateMNode(IMNode node) {
-    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
+    store.updateMNode(node, false);
   }
 
   @Override

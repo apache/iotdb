@@ -157,7 +157,6 @@ public class CachedMTreeStore implements IMTreeStore {
       if (needLock) {
         lock.threadReadUnlock();
       }
-      ;
     }
   }
 
@@ -294,12 +293,20 @@ public class CachedMTreeStore implements IMTreeStore {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(IMNode node) throws MetadataException {
-    lock.threadReadLock();
+  public void updateMNode(IMNode node) {
+    updateMNode(node, true);
+  }
+
+  final void updateMNode(IMNode node, boolean needLock) {
+    if (needLock) {
+      lock.threadReadLock();
+    }
     try {
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
-      lock.threadReadUnlock();
+      if (needLock) {
+        lock.threadReadUnlock();
+      }
     }
   }
 

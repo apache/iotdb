@@ -600,7 +600,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void updateMeasurement(IMeasurementMNode node) throws MetadataException {
             node.setPreDeleted(true);
-            updateMNode(node);
+            store.updateMNode(node);
             result.add(getPartialPathFromRootToNode(node));
           }
         }) {
@@ -618,7 +618,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void updateMeasurement(IMeasurementMNode node) throws MetadataException {
             node.setPreDeleted(false);
-            updateMNode(node);
+            store.updateMNode(node);
             result.add(getPartialPathFromRootToNode(node));
           }
         }) {
@@ -907,11 +907,18 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 node.deactivateTemplate();
                 store.updateMNode(node);
-                deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node);
               }
             }
           }) {
         collector.traverse();
+      }
+    }
+    for (PartialPath path : resultTemplateSetInfo.keySet()) {
+      IMNode node = getNodeByPath(path);
+      try {
+        deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node.getAsEntityMNode());
+      } finally {
+        unPinMNode(node);
       }
     }
     return resultTemplateSetInfo;
@@ -935,10 +942,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    *
    * @param node
    */
+  // TODO: This interface should not be exposed to SchemaRegion
   public void pinMNode(IMNode node) throws MetadataException {
     store.pin(node);
   }
 
+  // TODO: This interface should not be exposed to SchemaRegion
   public void unPinMNode(IMNode node) {
     store.unPin(node);
   }
@@ -947,6 +956,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     store.unPinPath(node);
   }
 
+  // TODO: This interface should not be exposed to SchemaRegion
   public void updateMNode(IMNode node) throws MetadataException {
     store.updateMNode(node);
   }
