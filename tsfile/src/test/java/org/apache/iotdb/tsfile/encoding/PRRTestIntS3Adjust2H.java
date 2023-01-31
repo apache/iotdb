@@ -1728,7 +1728,9 @@ public class PRRTestIntS3Adjust2H {
 
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256, dataset_map_td.get(file_i), p);
+            ArrayList<Byte> buffer = new ArrayList<>();
+            for(int repeat_i=0;repeat_i<10;repeat_i++)
+              buffer = ReorderingRegressionEncoder(data, 256, dataset_map_td.get(file_i), p);
 
             long e = System.nanoTime();
             encodeTime += (e - s);
