@@ -315,6 +315,19 @@ public class ConfigNodeConfig {
     return dir;
   }
 
+  public static String getEnvironmentVariables() {
+    return "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_HOME
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, "null")
+        + ";"
+        + "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_CONF
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, "null")
+        + ";";
+  }
+
   public String getClusterName() {
     return clusterName;
   }
