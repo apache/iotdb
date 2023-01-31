@@ -1698,8 +1698,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
-    for(int file_i=0;file_i<1;file_i++){
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
