@@ -16,6 +16,14 @@ import static java.lang.Math.abs;
 
 public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 
+//  static long time0;
+//  static long time1;
+//  static long time2;
+//  static long time3;
+//  static long time4;
+//
+//  static long adjust;
+
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
   public static int zigzag(int num){
@@ -1137,6 +1145,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     int count_reorder = 0;
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
+//      long s0 = System.nanoTime();
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
@@ -1193,6 +1202,9 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
 //      System.out.println(i_star);
 //      System.out.println(j_star);
 
+//      long e0 = System.nanoTime();
+//      time0 += (e0 - s0);
+
       int adjust_count = 0;
       while(j_star!=-1 && i_star !=-1){
         if(adjust_count < block_size/2 && adjust_count <= 33){
@@ -1223,28 +1235,42 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         }
         ts_block.set(j_star,tmp_tv);
 
+//        long s1 = System.nanoTime();
         getEncodeBitsRegression(ts_block,  block_size, raw_length, i_star_ready_reorder,theta);
-
         if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
           ts_block = old_ts_block;
           break;
         }
+//        long e1 = System.nanoTime();
+//        time1 += (e1 - s1);
 
 //        System.out.println(raw_length);
 //        System.out.println("--------------------------------------------------------------");
+
+//        long s2 = System.nanoTime();
         i_star =getIStar(ts_block,block_size,raw_length,theta);
+//        long e2 = System.nanoTime();
+//        time2 += (e2 - s2);
+
         if(i_star == j_star) break;
+
+//        long s3 = System.nanoTime();
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+//        long e3 = System.nanoTime();
+//        time3 += (e3 - s3);
+
 //        System.out.println(i_star);
 //        System.out.println(j_star);
         //flag.set(2,flag.get(2)+1);
       }
+//      adjust += adjust_count;
 
       ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder,theta);
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
     }
 
+//    long s4 = System.nanoTime();
     int remaining_length = length_all - block_num*block_size;
     if(remaining_length==1){
       byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
@@ -1314,6 +1340,9 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
       encoded_result.addAll(cur_encoded_result);
     }
+//    long e4 = System.nanoTime();
+//    time4 += (e4 - s4);
+
     return encoded_result;
   }
 
@@ -1524,7 +1553,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       data.addAll(ts_block);
 
     }
-
+    //int pos = decode_pos;
+    //System.out.println(decode_pos);
     if(remain_length == 1){
       int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
@@ -1599,6 +1629,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
         data.add(ts_block.get(i));
       }
     }
+    //System.out.println(decode_pos-pos);
 
     return data;
   }
@@ -1665,7 +1696,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
-
+    
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
@@ -1702,6 +1733,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
     //for(int file_i=0;file_i<1;file_i++){
     for(int file_i=0;file_i<input_path_list.size();file_i++){
 
+
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
       System.out.println(inputPath);
@@ -1733,7 +1765,7 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<12;block_size_exp++) {
+      for(int block_size_exp=10;block_size_exp<12;block_size_exp++) {
         int block_size = (int) Math.pow(2, block_size_exp);
         System.out.println(block_size);
         for (File f : tempList) {
@@ -1753,12 +1785,18 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
           inputStream.close();
           long encodeTime = 0;
           long decodeTime = 0;
+//          time0 = 0;
+//          time1 = 0;
+//          time2 = 0;
+//          time3 = 0;
+//          time4 = 0;
+//          adjust = 0;
           double ratio = 0;
           double compressed_size = 0;
           for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
 //            System.out.println(dataset_map_td.get(file_i));
             ArrayList<Byte> buffer = new ArrayList<>();
+            long s = System.nanoTime();
             for(int repeat_i=0;repeat_i<10;repeat_i++)
               buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
             long e = System.nanoTime();
@@ -1779,6 +1817,19 @@ public class ReorderingEncodeRegression32FloatBlocksizeTestAdjust2H {
           compressed_size /= repeatTime;
           encodeTime /= repeatTime;
           decodeTime /= repeatTime;
+
+//          System.out.print("time0: ");
+//          System.out.println(time0);
+//          System.out.print("time1: ");
+//          System.out.println(time1);
+//          System.out.print("time2: ");
+//          System.out.println(time2);
+//          System.out.print("time3: ");
+//          System.out.println(time3);
+//          System.out.print("time4: ");
+//          System.out.println(time4);
+//          System.out.print("adjust: ");
+//          System.out.println(adjust);
 
           String[] record = {
                   f.toString(),
