@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -171,6 +172,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServiceProcessor.class);
 
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
+
   private final ConfigManager configManager;
 
   public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
@@ -266,7 +270,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowVariablesResp showVariables() throws TException {
+  public TShowVariablesResp showVariables() {
     return configManager.showVariables();
   }
 
@@ -280,20 +284,26 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
-          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+          CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
     }
     if (!storageGroupSchema.isSetDataReplicationFactor()) {
-      storageGroupSchema.setDataReplicationFactor(
-          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+      storageGroupSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
     }
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
-      storageGroupSchema.setTimePartitionInterval(
-          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+      storageGroupSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
+    }
+    if (!storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
+      storageGroupSchema.setMinSchemaRegionGroupNum(
+          CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupPerDatabase());
+    }
+    if (!storageGroupSchema.isSetMinDataRegionGroupNum()) {
+      storageGroupSchema.setMinDataRegionGroupNum(
+          CONFIG_NODE_CONFIG.getDefaultDataRegionGroupPerDatabase());
     }
 
-    // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
-    storageGroupSchema.setMaxSchemaRegionGroupNum(0);
-    storageGroupSchema.setMaxDataRegionGroupNum(0);
+    // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
+    storageGroupSchema.setMaxSchemaRegionGroupNum(storageGroupSchema.getMinSchemaRegionGroupNum());
+    storageGroupSchema.setMaxDataRegionGroupNum(storageGroupSchema.getMinDataRegionGroupNum());
 
     SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);

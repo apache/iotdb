@@ -112,9 +112,12 @@ public class ConfigNodeStartupCheck {
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
 
-    // The least DataRegionGroup number should be positive
-    if (CONF.getLeastDataRegionGroupNum() <= 0) {
-      throw new ConfigurationException("The least_data_region_group_num should be positive");
+    // The least RegionGroupNum should be positive
+    if (CONF.getDefaultSchemaRegionGroupPerDatabase() <= 0) {
+      throw new ConfigurationException("The default_schema_region_group_num should be positive");
+    }
+    if (CONF.getDefaultDataRegionGroupPerDatabase() <= 0) {
+      throw new ConfigurationException("The default_data_region_group_num should be positive");
     }
   }
 

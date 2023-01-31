@@ -1933,7 +1933,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.storageGroupAttributeClause()) {
       if (attribute.TTL() != null) {
         long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setTtl(ttl);
+        setStorageGroupStatement.setTTL(ttl);
       } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
         int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
@@ -1943,6 +1943,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
         long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+      } else if (attribute.SCHEMA_REGION_GROUP_NUM() != null) {
+        int schemaRegionGroupNum = Integer.parseInt(attribute.SCHEMA_REGION_GROUP_NUM().getText());
+        setStorageGroupStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
+      } else if (attribute.DATA_REGION_GROUP_NUM() != null) {
+        int dataRegionGroupNum = Integer.parseInt(attribute.DATA_REGION_GROUP_NUM().getText());
+        setStorageGroupStatement.setDataRegionGroupNum(dataRegionGroupNum);
       }
     }
   }
