@@ -53,6 +53,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -71,6 +73,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -167,6 +170,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
@@ -179,6 +183,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final Expression deviceExpression =
+      new TimeSeriesOperand(new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT));
+
+  private static final Expression endTimeExpression =
+      new TimeSeriesOperand(new MeasurementPath(new PartialPath(ENDTIME, false), TSDataType.INT64));
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -268,7 +278,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (queryStatement.isAlignByDevice()) {
         Set<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
-
+        analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
         Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
         analyzeHaving(
             analysis, queryStatement, schemaTree, deviceSet, deviceToAggregationExpressions);
@@ -289,6 +299,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
 
+        analyzeGroupBy(analysis, queryStatement, schemaTree);
         analyzeHaving(analysis, queryStatement, schemaTree);
 
         analyzeGroupByLevel(analysis, queryStatement, outputExpressionMap, outputExpressions);
@@ -310,7 +321,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeInto(analysis, queryStatement, outputExpressions);
       }
 
-      analyzeGroupBy(analysis, queryStatement);
+      analyzeGroupByTime(analysis, queryStatement);
 
       analyzeFill(analysis, queryStatement);
 
@@ -864,6 +875,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         for (Expression expression : aggregationExpressions) {
           sourceTransformExpressions.addAll(expression.getExpressions());
         }
+        if (analysis.hasGroupByParameter()) {
+          sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
+        }
         deviceToSourceTransformExpressions.put(deviceName, sourceTransformExpressions);
       }
     } else {
@@ -880,6 +894,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     } else {
       sourceTransformExpressions = analysis.getSelectExpressions();
+    }
+    if (queryStatement.hasGroupByExpression()) {
+      sourceTransformExpressions.add(analysis.getGroupByExpression());
     }
     analysis.setSourceTransformExpressions(sourceTransformExpressions);
   }
@@ -1000,8 +1017,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
-    Expression deviceExpression =
-        new TimeSeriesOperand(new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT));
 
     Set<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(deviceExpression);
@@ -1014,6 +1029,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
     if (queryStatement.isAggregationQuery()) {
       deviceViewOutputExpressions.add(deviceExpression);
+      if (queryStatement.isOutputEndTime()) {
+        deviceViewOutputExpressions.add(endTimeExpression);
+      }
       for (Expression selectExpression : selectExpressions) {
         deviceViewOutputExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(selectExpression));
@@ -1040,6 +1058,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (String deviceName : deviceToOutputExpressions.keySet()) {
       Set<Expression> outputExpressionsUnderDevice = deviceToOutputExpressions.get(deviceName);
       Set<String> outputColumns = new LinkedHashSet<>();
+      if (queryStatement.isOutputEndTime()) {
+        outputColumns.add(ENDTIME);
+      }
       for (Expression expression : outputExpressionsUnderDevice) {
         outputColumns.add(ExpressionAnalyzer.getMeasurementExpression(expression).toString());
       }
@@ -1089,11 +1110,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    boolean isIgnoreTimestamp =
-        queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
+    boolean isIgnoreTimestamp = queryStatement.isAggregationQuery() && !queryStatement.isGroupBy();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     if (queryStatement.isAlignByDevice()) {
       columnHeaders.add(new ColumnHeader(DEVICE, TSDataType.TEXT, null));
+    }
+    if (queryStatement.isOutputEndTime()) {
+      columnHeaders.add(new ColumnHeader(ENDTIME, TSDataType.INT64, null));
     }
     for (Pair<Expression, String> expressionAliasPair : outputExpressions) {
       columnHeaders.add(
@@ -1114,7 +1137,107 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis.getType(expression);
   }
 
-  private void analyzeGroupBy(Analysis analysis, QueryStatement queryStatement) {
+  private void analyzeDeviceToGroupBy(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      ISchemaTree schemaTree,
+      Set<PartialPath> deviceSet) {
+    if (queryStatement.getGroupByComponent() == null) {
+      return;
+    }
+    GroupByComponent groupByComponent = queryStatement.getGroupByComponent();
+    WindowType windowType = groupByComponent.getWindowType();
+    boolean ignoringNull = true;
+
+    Map<String, String> keyValuePair = groupByComponent.getPair();
+    if (keyValuePair != null) {
+      for (String key : keyValuePair.keySet()) {
+        if (key.equalsIgnoreCase("'IgnoringNull'")) {
+          ignoringNull = Boolean.parseBoolean(keyValuePair.get(key));
+        } else {
+          throw new SemanticException("Unsupported key-value pair in group by clause");
+        }
+      }
+    }
+
+    Map<String, Expression> deviceToGroupByExpression = new LinkedHashMap<>();
+    if (windowType == WindowType.EVENT_WINDOW) {
+      Expression expression = groupByComponent.getControlColumnExpression();
+      for (PartialPath device : deviceSet) {
+        List<Expression> groupByExpressionsOfOneDevice =
+            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(expression, device, schemaTree);
+
+        if (groupByExpressionsOfOneDevice.size() != 1) {
+          throw new SemanticException("Expression in group by should indicate one value");
+        }
+        Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
+
+        // Aggregation expression shouldn't exist in group by clause.
+        List<Expression> aggregationExpression =
+            ExpressionAnalyzer.searchAggregationExpressions(groupByExpressionOfOneDevice);
+        if (aggregationExpression != null && aggregationExpression.size() != 0) {
+          throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
+        }
+        analyzeExpression(analysis, groupByExpressionOfOneDevice);
+        deviceToGroupByExpression.put(device.getFullPath(), groupByExpressionOfOneDevice);
+      }
+
+      GroupByParameter groupByParameter = new GroupByParameter(windowType, ignoringNull);
+      groupByParameter.setDelta(groupByComponent.getDelta());
+      analysis.setGroupByParameter(groupByParameter);
+      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+    } else {
+      throw new SemanticException("Unsupported window type");
+    }
+  }
+
+  private void analyzeGroupBy(
+      Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
+
+    if (queryStatement.getGroupByComponent() == null) {
+      return;
+    }
+    GroupByComponent groupByComponent = queryStatement.getGroupByComponent();
+    WindowType windowType = groupByComponent.getWindowType();
+    boolean ignoringNull = true;
+
+    Map<String, String> keyValuePair = groupByComponent.getPair();
+    if (keyValuePair != null) {
+      for (String key : keyValuePair.keySet()) {
+        if (key.equalsIgnoreCase("'IgnoringNull'")) {
+          ignoringNull = Boolean.parseBoolean(keyValuePair.get(key));
+        } else {
+          throw new SemanticException("Unsupported key-value pair in group by clause");
+        }
+      }
+    }
+
+    if (windowType == WindowType.EVENT_WINDOW) {
+
+      Expression groupByExpression = groupByComponent.getControlColumnExpression();
+      // Expression in group by variation clause only indicates one column
+      List<Expression> expressions =
+          ExpressionAnalyzer.removeWildcardInExpression(groupByExpression, schemaTree);
+      if (expressions.size() != 1) {
+        throw new SemanticException("Expression in group by should indicate one value");
+      }
+      // Aggregation expression shouldn't exist in group by clause.
+      List<Expression> aggregationExpression =
+          ExpressionAnalyzer.searchAggregationExpressions(expressions.get(0));
+      if (aggregationExpression != null && aggregationExpression.size() != 0) {
+        throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
+      }
+      analyzeExpression(analysis, expressions.get(0));
+      GroupByParameter groupByParameter = new GroupByParameter(windowType, ignoringNull);
+      groupByParameter.setDelta(groupByComponent.getDelta());
+      analysis.setGroupByExpression(expressions.get(0));
+      analysis.setGroupByParameter(groupByParameter);
+    } else {
+      throw new SemanticException("Unsupported window type");
+    }
+  }
+
+  private void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.isGroupByTime()) {
       return;
     }

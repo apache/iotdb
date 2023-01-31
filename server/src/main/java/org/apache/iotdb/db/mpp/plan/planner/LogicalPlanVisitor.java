@@ -131,6 +131,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         ? analysis.getDeviceToWhereExpression().get(deviceName)
                         : null,
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
+                    analysis.getDeviceToGroupByExpression().get(deviceName),
                     analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
@@ -151,6 +152,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getSourceTransformExpressions(),
                   analysis.getWhereExpression(),
                   analysis.getAggregationExpressions(),
+                  analysis.getGroupByExpression(),
                   null,
                   context));
     }
@@ -188,6 +190,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Set<Expression> sourceTransformExpressions,
       Expression whereExpression,
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
@@ -209,7 +212,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     } else {
       // aggregation query
       boolean isRawDataSource =
-          analysis.hasValueFilter() || needTransform(sourceTransformExpressions);
+          analysis.hasValueFilter()
+              || needTransform(sourceTransformExpressions)
+              || analysis.hasGroupByParameter();
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -233,7 +238,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder =
             planBuilder.planAggregation(
                 aggregationExpressions,
+                groupByExpression,
                 analysis.getGroupByTimeParameter(),
+                analysis.getGroupByParameter(),
+                queryStatement.isOutputEndTime(),
                 curStep,
                 queryStatement.getResultTimeOrder());
 
