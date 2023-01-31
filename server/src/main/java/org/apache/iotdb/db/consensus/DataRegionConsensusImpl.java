@@ -189,7 +189,7 @@ public class DataRegionConsensusImpl {
 
   private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
     DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
-    if (conf.getDataRegionConsensusProtocolClass().contains("IoTConsensus")) {
+    if (ConsensusFactory.IOT_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
       return new IoTConsensusDataRegionStateMachine(dataRegion);
     } else {
       return new DataRegionStateMachine(dataRegion);

@@ -20,19 +20,21 @@
 package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DeserializedBatchIndexedConsensusRequest
     implements IConsensusRequest, Comparable<DeserializedBatchIndexedConsensusRequest> {
-  private long startSyncIndex;
-  private long endSyncIndex;
+  private final long startSyncIndex;
+  private final long endSyncIndex;
   private final List<IConsensusRequest> insertNodes;
 
-  public DeserializedBatchIndexedConsensusRequest(long startSyncIndex, long endSyncIndex) {
+  public DeserializedBatchIndexedConsensusRequest(
+      long startSyncIndex, long endSyncIndex, int size) {
     this.startSyncIndex = startSyncIndex;
     this.endSyncIndex = endSyncIndex;
-    this.insertNodes = new LinkedList<>();
+    // use arraylist here because we know the number of requests
+    this.insertNodes = new ArrayList<>(size);
   }
 
   public long getStartSyncIndex() {

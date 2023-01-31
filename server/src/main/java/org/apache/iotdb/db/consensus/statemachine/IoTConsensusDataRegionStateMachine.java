@@ -80,11 +80,13 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
       BatchIndexedConsensusRequest batchRequest = (BatchIndexedConsensusRequest) request;
       DeserializedBatchIndexedConsensusRequest deserializedRequest =
           new DeserializedBatchIndexedConsensusRequest(
-              batchRequest.getStartSyncIndex(), batchRequest.getEndSyncIndex());
+              batchRequest.getStartSyncIndex(),
+              batchRequest.getEndSyncIndex(),
+              batchRequest.getRequests().size());
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
         deserializedRequest.add(grabInsertNode(indexedRequest));
       }
-      return deserializedRequest;
+      result = deserializedRequest;
     } else {
       result = getPlanNode(request);
     }

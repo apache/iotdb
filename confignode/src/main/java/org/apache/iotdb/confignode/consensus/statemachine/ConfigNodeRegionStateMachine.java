@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -96,10 +97,9 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    if (request == null) {
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-    return write((ConfigPhysicalPlan) request);
+    return Optional.ofNullable(request)
+        .map(o -> write((ConfigPhysicalPlan) request))
+        .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
   @Override
