@@ -1895,7 +1895,7 @@ public class PRRTestFloatS3Adjust2H {
             for(int repeat_i=0;repeat_i<10;repeat_i++)
               buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_map_td.get(file_i), p);
             long e = System.nanoTime();
-            encodeTime += (e - s);
+            encodeTime += ((e - s)/10);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
@@ -1903,7 +1903,7 @@ public class PRRTestFloatS3Adjust2H {
             s = System.nanoTime();
 //          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += (e - s);
+            decodeTime += ((e - s)/10);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
