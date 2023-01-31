@@ -1250,13 +1250,13 @@ public class StartReorderingEncodeRegression32Float {
     }
 
     int remaining_length = length_all - block_num*block_size;
-    if(remaining_length==1){
-      byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
-      for(byte b : timestamp_end_bytes) encoded_result.add(b);
-      byte[] value_end_bytes = int2Bytes(data.get(data.size()-1).get(1));
-      for(byte b : value_end_bytes) encoded_result.add(b);
-    }
-    if(remaining_length!=0 && remaining_length!=1){
+//    if(remaining_length==1){
+//      byte[] timestamp_end_bytes = int2Bytes(data.get(data.size()-1).get(0));
+//      for(byte b : timestamp_end_bytes) encoded_result.add(b);
+//      byte[] value_end_bytes = int2Bytes(data.get(data.size()-1).get(1));
+//      for(byte b : value_end_bytes) encoded_result.add(b);
+//    }
+    if(remaining_length!=0 ){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
 
@@ -1299,13 +1299,10 @@ public class StartReorderingEncodeRegression32Float {
 
       int supple_length;
       if(remaining_length % 8 == 0){
-        supple_length = 1;
-      }
-      else if (remaining_length % 8 == 1){
         supple_length = 0;
       }
       else{
-        supple_length = 9 - remaining_length % 8;
+        supple_length = 8 - remaining_length % 8;
       }
       for(int s = 0;s<supple_length;s++) {
         ArrayList<Integer> tmp = new ArrayList<>();

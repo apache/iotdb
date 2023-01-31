@@ -1807,49 +1807,49 @@ public class PRRTestDoubleS3Adjust2H {
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
+            "\\p\\rr_double\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     dataset_block_size.add(512);
 
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
+            "\\p\\rr_double\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     dataset_block_size.add(256);
 
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\p\\rr_double\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     dataset_block_size.add(512);
 
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\p\\rr_double\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     dataset_block_size.add(128);
 
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
+            "\\p\\rr_double\\TH-Climate_ratio.csv");
     dataset_map_td.add(4);
     dataset_block_size.add(512);
 
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
+            "\\p\\rr_double\\TY-Transport_ratio.csv");
     dataset_map_td.add(6);
     dataset_block_size.add(512);
 
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
+            "\\p\\rr_double\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     dataset_block_size.add(64);
 
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
+            "\\p\\rr_double\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
     dataset_block_size.add(128);
 
