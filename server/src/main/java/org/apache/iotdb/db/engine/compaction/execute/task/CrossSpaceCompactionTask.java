@@ -189,6 +189,22 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
 
+        for (TsFileResource sequenceResource : selectedSequenceFiles) {
+          if (sequenceResource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(sequenceResource.getModFile().getSize());
+          }
+        }
+
+        for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
+          if (unsequenceResource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(unsequenceResource.getModFile().getSize());
+          }
+        }
+
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
