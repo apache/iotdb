@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Stack;
 
 import static java.lang.Math.abs;
 
@@ -92,13 +93,58 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     }
     return result;
   }
-  public static void quickSort(ArrayList<ArrayList<Integer>> ts_block, int index, int low, int high) {
+
+  public static int part(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
+    ArrayList<Integer> tmp = arr.get(low);
+    while (low < high) {
+      while (low < high && arr.get(high).get(index) >= tmp.get(index)) {
+        high--;
+      }
+      arr.set(low,arr.get(high));
+      while (low < high && arr.get(low).get(index) <= tmp.get(index)) {
+        low++;
+      }
+      arr.set(high,arr.get(low));
+    }
+    arr.set(low,tmp);
+    return low;
+  }
+
+  public static void quickSort(ArrayList<ArrayList<Integer>> arr, int index,  int low, int high) {
+    Stack<Integer> stack = new Stack<>();
+    int mid = part(arr, index, low, high);
+    //判断右半部分是否仅有一个数据
+    //将边界入栈，需要注意左右部分都先压左边界或右边界。顺序需要相同，以防出栈时不好判断是low还是high，此方法先压左边界后压右边界
+    if (mid + 1 < high) {
+      stack.push(mid + 1);
+      stack.push(high);
+    }
+    //判断左半部分是否仅有一个数据
+    if (mid - 1 > low) {
+      stack.push(low);
+      stack.push(mid - 1);
+    }
+    while (stack.empty() == false) {
+      high = stack.pop();
+      low = stack.pop();
+      mid = part(arr, index,low, high);
+      if (mid + 1 < high) {
+        stack.push(mid + 1);
+        stack.push(high);
+      }
+      if (mid - 1 > low) {
+        stack.push(low);
+        stack.push(mid - 1);
+      }
+    }
+  }
+  public static void quickSort0(ArrayList<ArrayList<Integer>> ts_block, int index, int low, int high) {
     if(low>=high)
       return;
     ArrayList<Integer> pivot = ts_block.get(low);
     int l = low;
     int r = high;
-    ArrayList<Integer> temp;
+    ArrayList<Integer> temp = new ArrayList<>();
     while(l<r){
       while (l < r && ts_block.get(r).get(index) >= pivot.get(index)) {
         r--;
@@ -120,6 +166,8 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     if (r < high) {
       quickSort(ts_block,index, r + 1, high);
     }
+    pivot.clear();
+    temp.clear();
   }
   public static void quickSort2(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
     if(low>=high)
@@ -384,6 +432,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     float theta1_v = theta.get(3);
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
+    ArrayList<Integer> max_index = new ArrayList<>();
     int j_star = -1;
 
     if(alpha == -1){
@@ -409,6 +458,14 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
         raw_value_delta_max_index = i;
       }
     }
+    for(int i = 1;i<block_size;i++){
+      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
+      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+
+      if(i != alpha && (delta_t_i == raw_timestamp_delta_max || delta_v_i == raw_value_delta_max )){
+        max_index.add(i);
+      }
+    }
     raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
     raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
 //    System.out.println(raw_length);
@@ -418,6 +475,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     if(alpha==0){
 //      System.out.println("alpha == 1");
       for(int j = 2;j<block_size;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         ArrayList<Integer> b = adjust0(ts_block,alpha,j,theta);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -446,6 +504,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     else if(alpha == block_size-1){
 //      System.out.println("alpha == n");
       for(int j = 1;j<block_size-1;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         ArrayList<Integer> b = adjustn(ts_block,alpha,j,theta);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -474,6 +533,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
     else {
 //      System.out.println("alpha == else");
       for(int j = 1;j<block_size;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         if(alpha != j && (alpha+1) !=j){
           ArrayList<Integer> b = adjustAlphaToJ(ts_block,alpha,j,theta);
           if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
