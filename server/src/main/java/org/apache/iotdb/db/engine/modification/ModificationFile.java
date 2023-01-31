@@ -180,4 +180,13 @@ public class ModificationFile implements AutoCloseable {
     return new ModificationFile(
         tsFileResource.getTsFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
   }
+
+  public long getSize() {
+    File file = new File(filePath);
+    if (file.exists()) {
+      return file.length();
+    } else {
+      return 0;
+    }
+  }
 }
