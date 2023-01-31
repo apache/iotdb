@@ -951,23 +951,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus setRegionStatus(TSetRegionStatusReq req) {
-    try {
-      if (req.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionStatusMap()
-            .put(new DataRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
-      } else {
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .getSchemaRegionStatusMap()
-            .put(
-                new SchemaRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.SET_REGION_STATUS_ERROR.getStatusCode());
+    if (req.getRegionId().getType() == TConsensusGroupType.DataRegion) {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .getDataRegionStatusMap()
+          .put(new DataRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
+    } else if (req.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .getSchemaRegionStatusMap()
+          .put(new SchemaRegionId(req.getRegionId().getId()), RegionStatus.parse(req.getStatus()));
+    } else {
+      return new TSStatus(TSStatusCode.ILLEGAL_REGION_TYPE.getStatusCode());
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

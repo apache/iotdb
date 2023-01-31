@@ -157,7 +157,8 @@ public class DataNodeRemoveHandler {
     return newNode.get();
   }
 
-  public TSStatus setRegionStatus(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
+  public TSStatus setRegionStatusAsRemoving(
+      TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
     TSetRegionStatusReq req = new TSetRegionStatusReq(regionId, RegionStatus.Removing.getStatus());
 
     TSStatus status =
