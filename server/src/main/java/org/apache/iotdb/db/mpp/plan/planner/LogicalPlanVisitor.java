@@ -131,7 +131,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         ? analysis.getDeviceToWhereExpression().get(deviceName)
                         : null,
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
-                    analysis.getDeviceToGroupByExpression().get(deviceName),
+                    analysis.getDeviceToGroupByExpression() != null
+                        ? analysis.getDeviceToGroupByExpression().get(deviceName)
+                        : null,
                     analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
