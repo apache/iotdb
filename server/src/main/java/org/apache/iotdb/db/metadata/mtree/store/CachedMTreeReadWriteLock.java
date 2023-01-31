@@ -88,13 +88,13 @@ public class CachedMTreeReadWriteLock {
       if (stamp == NON_STAMP) {
         return threadReadLock();
       } else if (stamp == ALLOCATE_STAMP) {
-        return acquireReadLock();
+        return acquireReadLockStamp();
       } else {
         if (readCnt.containsKey(stamp)) {
           readCnt.put(stamp, readCnt.get(stamp) + 1);
           return stamp;
         } else {
-          return acquireReadLock();
+          return acquireReadLockStamp();
         }
       }
     } finally {
@@ -106,7 +106,7 @@ public class CachedMTreeReadWriteLock {
     Long allocateStamp = sharedOwnerStamp.get();
     if (allocateStamp == null) {
       // first time entry, acquire read lock and set thread local
-      sharedOwnerStamp.set(acquireReadLock());
+      sharedOwnerStamp.set(acquireReadLockStamp());
     } else {
       // reentry, add read count
       readCnt.put(allocateStamp, readCnt.get(allocateStamp) + 1);
@@ -120,8 +120,8 @@ public class CachedMTreeReadWriteLock {
    *
    * @return read lock stamp
    */
-  private long acquireReadLock() {
-    if (exclusiveOwnerThread != Thread.currentThread()) {
+  private long acquireReadLockStamp() {
+    if (exclusiveOwnerThread != null) {
       if (writeCnt + writeWait > 0) {
         readWait++;
         try {
@@ -193,7 +193,7 @@ public class CachedMTreeReadWriteLock {
   public void writeLock() {
     lock.lock();
     try {
-      if (exclusiveOwnerThread != Thread.currentThread()) {
+      if (exclusiveOwnerThread != null) {
         while (!readCnt.isEmpty() || writeCnt > 0) {
           writeWait++;
           try {
