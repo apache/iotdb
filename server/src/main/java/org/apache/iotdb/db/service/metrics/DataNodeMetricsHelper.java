@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
@@ -43,7 +44,8 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new SeriesScanCostMetricSet());
     MetricService.getInstance().addMetricSet(new QueryExecutionMetricSet());
     MetricService.getInstance().addMetricSet(new QueryResourceMetricSet());
-    MetricService.getInstance().addMetricSet(new DataExchangeMetricSet());
+    MetricService.getInstance().addMetricSet(new DataExchangeCostMetricSet());
+    MetricService.getInstance().addMetricSet(new DataExchangeCountMetricSet());
     MetricService.getInstance().addMetricSet(new DriverSchedulerMetricSet());
   }
 }

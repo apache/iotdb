@@ -46,7 +46,7 @@ public abstract class AbstractCompactionTask {
   protected final TsFileManager tsFileManager;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
-  protected CompactionTaskSummary summary = new CompactionTaskSummary();
+  protected CompactionTaskSummary summary;
   protected long serialId;
 
   public AbstractCompactionTask(
@@ -148,4 +148,6 @@ public abstract class AbstractCompactionTask {
   public long getSerialId() {
     return serialId;
   }
+
+  protected abstract void createSummary();
 }

@@ -136,7 +136,7 @@ If the openid service is turned on, openid_URL is required,openID_url value is h
 ```
 openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
 ```
-####keycloack configuration
+#### keycloack configuration
 
 1、Download the keycloack file and start keycloack in keycloack/bin
 

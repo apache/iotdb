@@ -52,7 +52,7 @@ public class WindowManagerFactory {
       case DOUBLE:
         return new EqualEventDoubleWindowManager(eventWindowParameter, ascending);
       case TEXT:
-        return new EqualEventTextWindowManager(eventWindowParameter, ascending);
+        return new EqualEventBinaryWindowManager(eventWindowParameter, ascending);
       case BOOLEAN:
         return new EqualEventBooleanWindowManager(eventWindowParameter, ascending);
       default:

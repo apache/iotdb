@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.isession.ISession;
@@ -76,7 +75,6 @@ public class IoTDBSessionSimpleIT {
 
   @Before
   public void setUp() throws Exception {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.plan.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -293,11 +293,11 @@ public class AggregationDistributionTest {
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(
-                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
+                genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT),
+                genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT)),
             Collections.singletonList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
@@ -331,11 +331,11 @@ public class AggregationDistributionTest {
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(
-                genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT)),
+                genAggregationSourceNode(queryId, d3s1Path, TAggregationType.COUNT),
+                genAggregationSourceNode(queryId, d4s1Path, TAggregationType.COUNT)),
             Collections.singletonList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
@@ -383,12 +383,12 @@ public class AggregationDistributionTest {
         genSlidingWindowAggregationNode(
             queryId,
             Arrays.asList(new PartialPath(d3s1Path), new PartialPath(d4s1Path)),
-            AggregationType.COUNT,
+            TAggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT));
+    timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, TAggregationType.COUNT));
+    timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, TAggregationType.COUNT));
     slidingWindowAggregationNode.addChild(timeJoinNode);
 
     GroupByLevelNode groupByLevelNode =
@@ -397,7 +397,7 @@ public class AggregationDistributionTest {
             Collections.singletonList(slidingWindowAggregationNode),
             Collections.singletonList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d3s1Path)),
@@ -475,16 +475,16 @@ public class AggregationDistributionTest {
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(
-                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT)),
+                genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT),
+                genAggregationSourceNode(queryId, d1s2Path, TAggregationType.COUNT)),
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -534,19 +534,19 @@ public class AggregationDistributionTest {
         new GroupByLevelNode(
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(
-                genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT),
-                genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT)),
+                genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT),
+                genAggregationSourceNode(queryId, d1s2Path, TAggregationType.COUNT),
+                genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT)),
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -594,16 +594,16 @@ public class AggregationDistributionTest {
     String groupedPathS2 = "root.sg.*.s2";
 
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT));
-    timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT));
+    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, TAggregationType.COUNT));
+    timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s2Path, TAggregationType.COUNT));
+    timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT));
 
     SlidingWindowAggregationNode slidingWindowAggregationNode =
         genSlidingWindowAggregationNode(
             queryId,
             Arrays.asList(
                 new PartialPath(d1s1Path), new PartialPath(d1s2Path), new PartialPath(d2s1Path)),
-            AggregationType.COUNT,
+            TAggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
     slidingWindowAggregationNode.addChild(timeJoinNode);
@@ -614,14 +614,14 @@ public class AggregationDistributionTest {
             Collections.singletonList(slidingWindowAggregationNode),
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath(d1s1Path)),
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS1))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
@@ -705,7 +705,7 @@ public class AggregationDistributionTest {
     QueryId queryId = new QueryId("test_aggregation_1_series_1_region");
     String d2s1Path = "root.sg.d22.s1";
 
-    PlanNode root = genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT);
+    PlanNode root = genAggregationSourceNode(queryId, d2s1Path, TAggregationType.COUNT);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -814,7 +814,7 @@ public class AggregationDistributionTest {
   private SlidingWindowAggregationNode genSlidingWindowAggregationNode(
       QueryId queryId,
       List<PartialPath> paths,
-      AggregationType type,
+      TAggregationType type,
       AggregationStep step,
       GroupByTimeParameter groupByTimeParameter) {
     return new SlidingWindowAggregationNode(
@@ -832,7 +832,7 @@ public class AggregationDistributionTest {
   }
 
   private SeriesAggregationSourceNode genAggregationSourceNode(
-      QueryId queryId, String path, AggregationType type) throws IllegalPathException {
+      QueryId queryId, String path, TAggregationType type) throws IllegalPathException {
     List<AggregationDescriptor> descriptors = new ArrayList<>();
     descriptors.add(
         new AggregationDescriptor(

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatO
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -117,8 +117,8 @@ public class VerticallyConcatOperatorTest {
       MeasurementPath measurementPath1 =
           new MeasurementPath(
               VERTICALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<AggregationType> aggregationTypes =
-          Arrays.asList(AggregationType.COUNT, AggregationType.SUM, AggregationType.FIRST_VALUE);
+      List<TAggregationType> aggregationTypes =
+          Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
       GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 10, 1, 1, true);
       List<Aggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)

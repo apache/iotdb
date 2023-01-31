@@ -73,8 +73,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
-        .setTimePartitionInterval(testTimePartitionInterval)
-        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+        .setTimePartitionInterval(testTimePartitionInterval);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
@@ -294,25 +295,11 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void updateMNode(IMNode node) throws MetadataException {
-    if (node.isStorageGroup()) {
-      this.root = node;
-      lock.writeLock();
-      try {
-        file.updateStorageGroupNode(node.getAsStorageGroupMNode());
-      } catch (IOException e) {
-        logger.error(
-            "IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
-        throw new MetadataException(e);
-      } finally {
-        lock.unlockWrite();
-      }
-    } else {
-      lock.threadReadLock();
-      try {
-        cacheManager.updateCacheStatusAfterUpdate(node);
-      } finally {
-        lock.threadReadLock();
-      }
+    lock.threadReadLock();
+    try {
+      cacheManager.updateCacheStatusAfterUpdate(node);
+    } finally {
+      lock.threadReadUnlock();
     }
   }
 
@@ -462,6 +449,7 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public boolean createSnapshot(File snapshotDir) {
     lock.writeLock();
+    // TODO: re-entry
     try {
       flushVolatileNodes();
       return file.createSnapshot(snapshotDir);
@@ -543,6 +531,18 @@ public class CachedMTreeStore implements IMTreeStore {
   private void flushVolatileNodes() {
     lock.writeLock();
     try {
+      IStorageGroupMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
+      if (updatedStorageGroupMNode != null) {
+        try {
+          file.updateStorageGroupNode(updatedStorageGroupMNode);
+        } catch (IOException e) {
+          logger.error(
+              "IOException occurred during updating StorageGroupMNode {}",
+              updatedStorageGroupMNode.getFullPath(),
+              e);
+          return;
+        }
+      }
       List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       for (IMNode volatileNode : nodesToPersist) {
         try {
@@ -579,7 +579,6 @@ public class CachedMTreeStore implements IMTreeStore {
     boolean isIteratingDisk;
     IMNode nextNode;
     boolean isLocked;
-    long readLockStamp;
 
     CachedMNodeIterator(IMNode parent, boolean needLock) throws MetadataException, IOException {
       if (needLock) {
@@ -695,11 +694,5 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
     }
-  }
-
-  enum ReadLockMode {
-    NO_LOCK,
-    STAMPED_LOCK,
-    THREAD_LOCK
   }
 }
