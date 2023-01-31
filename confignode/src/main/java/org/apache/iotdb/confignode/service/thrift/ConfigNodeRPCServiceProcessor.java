@@ -277,28 +277,67 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+    TSStatus errorResp = null;
 
     // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
       storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    } else if (storageGroupSchema.getTTL() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to create database. The TTL should be positive.");
     }
+
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
           CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
+    } else if (storageGroupSchema.getSchemaReplicationFactor() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The schemaReplicationFactor should be positive.");
     }
+
     if (!storageGroupSchema.isSetDataReplicationFactor()) {
       storageGroupSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
+    } else if (storageGroupSchema.getDataReplicationFactor() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The dataReplicationFactor should be positive.");
     }
+
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
       storageGroupSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
+    } else if (storageGroupSchema.getTimePartitionInterval() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The timePartitionInterval should be positive.");
     }
+
     if (!storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
       storageGroupSchema.setMinSchemaRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupPerDatabase());
+    } else if (storageGroupSchema.getMinSchemaRegionGroupNum() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to create database. The schemaRegionGroupNum should be positive.");
     }
+
     if (!storageGroupSchema.isSetMinDataRegionGroupNum()) {
       storageGroupSchema.setMinDataRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultDataRegionGroupPerDatabase());
+    } else if (storageGroupSchema.getMinDataRegionGroupNum() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
+    }
+
+    if (errorResp != null) {
+      LOGGER.warn("Execute SetStorageGroupRequest {} with result {}", req, errorResp);
+      return errorResp;
     }
 
     // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize

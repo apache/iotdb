@@ -379,15 +379,15 @@ public class ClusterSchemaManager {
   }
 
   public static int calcMaxRegionGroupNum(
-      int leastRegionGroupNum,
+      int minRegionGroupNum,
       double resourceWeight,
       int resource,
       int storageGroupNum,
       int replicationFactor,
       int allocatedRegionGroupCount) {
     return Math.max(
-        // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
-        leastRegionGroupNum,
+        // The maxRegionGroupNum should be great or equal to the minRegionGroupNum
+        minRegionGroupNum,
         Math.max(
             (int)
                 // Use Math.ceil here to ensure that the maxRegionGroupNum
