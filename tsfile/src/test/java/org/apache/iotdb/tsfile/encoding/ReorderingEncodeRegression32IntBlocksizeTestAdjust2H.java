@@ -1334,7 +1334,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
 
       int adjust_count = 0;
       while(j_star!=-1 && i_star !=-1){
-        if(adjust_count < block_size/2 && adjust_count <= 30){
+        if(adjust_count < block_size/2 && adjust_count <= 33){
           adjust_count ++;
         }else {
           break;

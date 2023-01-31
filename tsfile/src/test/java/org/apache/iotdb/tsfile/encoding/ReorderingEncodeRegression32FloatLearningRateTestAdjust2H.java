@@ -1136,7 +1136,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
       int adjust_count = 0;
       int learning = 0;
       while(j_star!=-1 && i_star !=-1){
-        if(adjust_count < block_size/2 && adjust_count <= 30){
+        if(adjust_count < block_size/2 && adjust_count <= 33){
           adjust_count ++;
         }else {
           break;
@@ -1166,13 +1166,12 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
 
         if(learning % rate == 0) {
           getEncodeBitsRegression(ts_block, block_size, raw_length, i_star_ready_reorder, theta);
+          if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
+            ts_block = old_ts_block;
+            break;
+          }
         }
         learning += 1;
-
-        if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
-          ts_block = old_ts_block;
-          break;
-        }
 
 //        System.out.println(raw_length);
 //        System.out.println("--------------------------------------------------------------");
@@ -1652,7 +1651,7 @@ public class ReorderingEncodeRegression32FloatLearningRateTestAdjust2H {
   //    String Output =
   //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
-      int repeatTime = 5; // set repeat time
+      int repeatTime = 10; // set repeat time
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
