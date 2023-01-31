@@ -223,7 +223,8 @@ public class IoTConsensusServerImpl {
             indexedConsensusRequest.getSearchIndex());
       }
       // TODO wal and memtable
-      TSStatus result = stateMachine.write(indexedConsensusRequest);
+      IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
+      TSStatus result = stateMachine.write(planNode);
       long writeToStateMachineEndTime = System.currentTimeMillis();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()
