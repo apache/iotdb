@@ -47,6 +47,11 @@ public abstract class BaseStateMachine
     return instance;
   }
 
+  @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    return getPlanNode(request);
+  }
+
   protected PlanNode getPlanNode(IConsensusRequest request) {
     PlanNode node;
     if (request instanceof ByteBufferConsensusRequest) {

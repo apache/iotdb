@@ -249,11 +249,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
-    return getPlanNode(request);
-  }
-
-  @Override
   public DataSet read(IConsensusRequest request) {
     if (request instanceof GetConsensusReqReaderPlan) {
       return region.getWALNode();

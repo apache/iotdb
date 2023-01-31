@@ -83,11 +83,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
-    return getPlanNode(request);
-  }
-
-  @Override
   public DataSet read(IConsensusRequest request) {
     FragmentInstance fragmentInstance;
     try {
