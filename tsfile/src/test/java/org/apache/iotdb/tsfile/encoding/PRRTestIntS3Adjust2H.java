@@ -1832,7 +1832,7 @@ public class PRRTestIntS3Adjust2H {
 
         String inputPath = input_path_list.get(file_i);
         String Output =output_path_list.get(file_i);
-
+        System.out.println(inputPath);
 //        String Output =  "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
         // speed
@@ -1861,6 +1861,7 @@ public class PRRTestIntS3Adjust2H {
         assert tempList != null;
 //        for(int p=2;p<3;p++) {
         for(int p=1;p<10;p++) {
+          System.out.println("p="+p);
           for (File f : tempList) {
 //        ArrayList<Integer> flag = new ArrayList<>();
 //        flag.add(0);
@@ -1894,7 +1895,7 @@ public class PRRTestIntS3Adjust2H {
               buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_map_td.get(file_i), p);
 
             long e = System.nanoTime();
-            encodeTime += (e - s);
+            encodeTime += ((e - s)/10);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
@@ -1902,7 +1903,7 @@ public class PRRTestIntS3Adjust2H {
             s = System.nanoTime();
 //          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += (e - s);
+            decodeTime += ((e - s)/10);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
@@ -1956,7 +1957,7 @@ public class PRRTestIntS3Adjust2H {
                   String.valueOf(compressed_size),
                   String.valueOf(ratio)
           };
-          System.out.println(ratio);
+//          System.out.println(ratio);
           writer.writeRecord(record);
 //          break;
         }

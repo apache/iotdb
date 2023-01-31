@@ -1804,38 +1804,54 @@ public class PRRTestDoubleS3Adjust2H {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
+    ArrayList<Integer> dataset_block_size = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\Metro-Traffic_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
+    dataset_block_size.add(512);
+
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\Nifty-Stocks_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
+    dataset_block_size.add(256);
+
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\USGS-Earthquakes_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
+    dataset_block_size.add(512);
+
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\Cyber-Vehicle_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
+    dataset_block_size.add(128);
+
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\TH-Climate_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(4);
+    dataset_block_size.add(512);
+
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\TY-Transport_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(6);
+    dataset_block_size.add(512);
+
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\TY-Fuel_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
+    dataset_block_size.add(64);
+
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\p\\rr_double\\GW-Magnetic_ratio.csv");
+            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
+    dataset_block_size.add(128);
 
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
@@ -1875,7 +1891,7 @@ public class PRRTestDoubleS3Adjust2H {
 
         String inputPath = input_path_list.get(file_i);
         String Output =output_path_list.get(file_i);
-
+        System.out.println(inputPath);
         //String Output =  "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
         // speed
@@ -1903,6 +1919,7 @@ public class PRRTestDoubleS3Adjust2H {
 
         assert tempList != null;
         for(int p=1;p<10;p++) {
+          System.out.println("p="+p);
           for (File f : tempList) {
 //        ArrayList<Integer> flag = new ArrayList<>();
 //        flag.add(0);
@@ -1933,10 +1950,10 @@ public class PRRTestDoubleS3Adjust2H {
             long s = System.nanoTime();
             ArrayList<Byte> buffer = new ArrayList<>();
             for(int repeat_i=0;repeat_i<10;repeat_i++)
-              buffer = ReorderingRegressionEncoder(data, 256, dataset_map_td.get(file_i), p);
+              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_map_td.get(file_i), p);
 
             long e = System.nanoTime();
-            encodeTime += (e - s);
+            encodeTime += ((e - s)/10);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
@@ -1944,7 +1961,7 @@ public class PRRTestDoubleS3Adjust2H {
             s = System.nanoTime();
 //          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += (e - s);
+            decodeTime += ((e - s)/10);
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
@@ -1998,7 +2015,7 @@ public class PRRTestDoubleS3Adjust2H {
                   String.valueOf(compressed_size),
                   String.valueOf(ratio)
           };
-          System.out.println(ratio);
+//          System.out.println(ratio);
           writer.writeRecord(record);
         }
         }
