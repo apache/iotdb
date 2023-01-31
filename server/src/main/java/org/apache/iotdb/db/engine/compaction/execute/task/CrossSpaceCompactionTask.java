@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
 
@@ -148,9 +149,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.logFiles(selectedSequenceFiles, STR_SOURCE_FILES);
         compactionLogger.logFiles(selectedUnsequenceFiles, STR_SOURCE_FILES);
         compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-        // indicates that the cross compaction is complete and the result can be reused during a
-        // restart recovery
-        compactionLogger.close();
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
@@ -170,6 +168,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
+        // find empty target files and add log
+        for (TsFileResource targetResource : targetTsfileResourceList) {
+          if (targetResource.isDeleted()) {
+            compactionLogger.logFile(targetResource, STR_DELETED_TARGET_FILES);
+          }
+        }
+
         if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
             && !CompactionUtils.validateTsFileResources(
                 tsFileManager, storageGroupName, timePartition)) {
@@ -186,7 +191,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         if (logFile.exists()) {
@@ -195,11 +199,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
-          if (targetResource != null) {
+          if (!targetResource.isDeleted()) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.CLOSED);
+          } else {
+            // target resource is empty after compaction, then delete it
+            targetResource.remove();
           }
         }
         TsFileMetricManager.getInstance()
