@@ -179,12 +179,6 @@ public class MemMTreeStore implements IMTreeStore {
   public void unPinPath(IMNode node) {}
 
   @Override
-  public void writeLock() {}
-
-  @Override
-  public void unlockWrite() {}
-
-  @Override
   public IMTreeStore getWithReentrantReadLock() {
     return this;
   }

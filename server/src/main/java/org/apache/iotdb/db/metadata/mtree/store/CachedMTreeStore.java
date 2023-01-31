@@ -73,7 +73,7 @@ public class CachedMTreeStore implements IMTreeStore {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
-  private final CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+  private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId)
       throws MetadataException, IOException {
@@ -268,7 +268,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public void deleteChild(IMNode parent, String childName) throws MetadataException {
     lock.writeLock();
     try {
-      IMNode deletedMNode = getChild(parent, childName);
+      IMNode deletedMNode = getChild(parent, childName, false);
       ICachedMNodeContainer container = getCachedMNodeContainer(parent);
       if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
         // the container has been persisted and this child is not a new child, which means the child
@@ -448,14 +448,8 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    lock.writeLock();
-    // TODO: re-entry
-    try {
-      flushVolatileNodes();
-      return file.createSnapshot(snapshotDir);
-    } finally {
-      lock.unlockWrite();
-    }
+    flushVolatileNodes();
+    return file.createSnapshot(snapshotDir);
   }
 
   public static CachedMTreeStore loadFromSnapshot(

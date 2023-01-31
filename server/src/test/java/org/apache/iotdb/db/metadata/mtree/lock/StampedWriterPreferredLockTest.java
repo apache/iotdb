@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.lock;
 
-import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeReadWriteLock;
+import org.apache.iotdb.db.metadata.mtree.store.StampedWriterPreferredLock;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
@@ -30,11 +30,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CachedMTreeReadWriteLockTest {
+public class StampedWriterPreferredLockTest {
 
   @Test
   public void testStampReadLock() {
-    CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+    StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
     Semaphore semaphore = new Semaphore(0);
     AtomicInteger counter = new AtomicInteger();
     AtomicLong stamp = new AtomicLong();
@@ -75,7 +75,7 @@ public class CachedMTreeReadWriteLockTest {
 
   @Test
   public void testThreadReadLock() {
-    CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+    StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
     Semaphore semaphore = new Semaphore(0);
     AtomicInteger counter = new AtomicInteger();
     // Thread-bound read lock must be locked and unlocked by the same thread.
@@ -144,7 +144,7 @@ public class CachedMTreeReadWriteLockTest {
 
   @Test
   public void testAcquireReadLockWhileWriting() {
-    CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+    StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
     lock.writeLock();
     AtomicInteger counter = new AtomicInteger();
     new Thread(
@@ -163,7 +163,7 @@ public class CachedMTreeReadWriteLockTest {
 
   @Test
   public void testWriterPreferred() {
-    CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+    StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
     AtomicInteger counter = new AtomicInteger();
     // main thread get read lock by stamp
     long stamp = lock.stampedReadLock();
@@ -184,14 +184,6 @@ public class CachedMTreeReadWriteLockTest {
     // start other reader
     new Thread(
             () -> {
-              // it can be reentry by stamp
-              lock.stampedReadLock(stamp);
-              counter.incrementAndGet();
-              lock.stampedReadUnlock(stamp);
-            })
-        .start();
-    new Thread(
-            () -> {
               // it will be blocked because of writer preferred
               lock.threadReadLock();
               counter.incrementAndGet();
@@ -207,14 +199,14 @@ public class CachedMTreeReadWriteLockTest {
             })
         .start();
     try {
-      Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
+      Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 3);
       Assert.fail();
     } catch (ConditionTimeoutException e) {
-      Assert.assertEquals(1, counter.get());
+      Assert.assertEquals(0, counter.get());
     }
     // release main read lock
     lock.stampedReadUnlock(stamp);
-    Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
-    Assert.assertEquals(4, counter.get());
+    Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 3);
+    Assert.assertEquals(3, counter.get());
   }
 }

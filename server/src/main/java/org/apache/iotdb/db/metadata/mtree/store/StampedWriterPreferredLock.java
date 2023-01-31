@@ -25,14 +25,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * CachedMTreeReadWriteLock is a special read-write lock.
+ * StampedWriterPreferredLock is a special read-write lock.
  *
- * <p>There are two modes of reading locks. The first mode uses NON_STAMP for identification, and
- * the acquirement and release of the read lock is thread-bound, supporting reentry within the same
- * thread. In the other mode, the read operation may be performed collaboratively by multiple
- * threads, so the acquirement and release of the read lock is not thread-bound, but stamp-bound.
- * Read lock can be locked by one thread but unlocked by another thread. It supports reentry by
- * stamp.
+ * <p>There are two modes of reading locks. The first mode is thread-bound. The acquirement and
+ * release of the read lock is thread-bound, supporting reentry within the same thread. In the other
+ * mode, the read operation may be performed collaboratively by multiple threads, so the acquirement
+ * and release of the read lock is not thread-bound, but stamp-bound. Read lock can be locked by one
+ * thread but unlocked by another thread. It supports reentry by stamp.
  *
  * <p>Write lock is thread-bound, so it must be acquired and released by the same thread.
  *
@@ -40,33 +39,25 @@ import java.util.concurrent.locks.ReentrantLock;
  *   <li>!!!WARNING!!!
  *   <li>As the lock holder is not recorded, the caller must assure that lock() and unlock() match,
  *       i.e., if you only call lock() once then do not call unlock() more than once and vice versa.
- *   <li>In particular, if the current thread has already requested a WriteLock, it can continue to
- *       reenter to acquire a WriteLock or a ReadLock. However, if a ReadLock has already been
- *       acquired (including by the current thread), the WriteLock acquiring will be blocked, which
- *       may cause deadlocks. Therefore, if a write operation needs to be performed, a WriteLock
- *       must be applied first.
+ *   <li>In particular, only thread-bound support re-entry. So if you want to use write lock or
+ *       stamp-bound read lock, lock re-entry should not occur in the code in order to avoid
+ *       deadlocks.
  *   <li>Writer preferred is used to avoid starving the write lock request, which means once a write
- *       lock request is waiting, it will block the newly arriving read lock request expect for the
- *       re-entrant read lock request.
+ *       lock request is waiting, it will block the newly arriving lock request.
  * </ul>
  */
-public class CachedMTreeReadWriteLock {
+public class StampedWriterPreferredLock {
   private final Lock lock = new ReentrantLock();
   private final Condition okToRead = lock.newCondition();
   private final Condition okToWrite = lock.newCondition();
   private long stampAllocator = 0;
 
-  private Thread exclusiveOwnerThread;
   private final Map<Long, Integer> readCnt = new HashMap<>();
   private int readWait = 0;
   private int writeCnt = 0;
   private int writeWait = 0;
 
   private final ThreadLocal<Long> sharedOwnerStamp = new ThreadLocal<>();
-
-  public static final long NON_STAMP = -1;
-  public static final long ALLOCATE_STAMP = -2;
-
   /**
    * Acquires the stamp-bound read lock. Read lock acquire and release is stamp-bound and supports
    * re-entry by the same stamp. Return a new stamp if no thread holds a write lock; block and wait
@@ -78,26 +69,6 @@ public class CachedMTreeReadWriteLock {
     lock.lock();
     try {
       return acquireReadLockStamp();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /**
-   * Re-entry based on stamp. If the stamp exists, increase the read count and return; otherwise,
-   * same as {@link CachedMTreeReadWriteLock#stampedReadLock()}.
-   *
-   * @return stamp
-   */
-  public long stampedReadLock(long stamp) {
-    lock.lock();
-    try {
-      if (readCnt.containsKey(stamp)) {
-        readCnt.put(stamp, readCnt.get(stamp) + 1);
-        return stamp;
-      } else {
-        return acquireReadLockStamp();
-      }
     } finally {
       lock.unlock();
     }
@@ -131,16 +102,14 @@ public class CachedMTreeReadWriteLock {
    * @return read lock stamp
    */
   private long acquireReadLockStamp() {
-    if (exclusiveOwnerThread != null) {
-      if (writeCnt + writeWait > 0) {
-        readWait++;
-        try {
-          okToRead.await();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        } finally {
-          readWait--;
-        }
+    if (writeCnt + writeWait > 0) {
+      readWait++;
+      try {
+        okToRead.await();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } finally {
+        readWait--;
       }
     }
     long allocateStamp = allocateUniqueStamp();
@@ -203,19 +172,16 @@ public class CachedMTreeReadWriteLock {
   public void writeLock() {
     lock.lock();
     try {
-      if (exclusiveOwnerThread != null) {
-        while (!readCnt.isEmpty() || writeCnt > 0) {
-          writeWait++;
-          try {
-            okToWrite.await();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          } finally {
-            writeWait--;
-          }
+      while (!readCnt.isEmpty() || writeCnt > 0) {
+        writeWait++;
+        try {
+          okToWrite.await();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        } finally {
+          writeWait--;
         }
       }
-      exclusiveOwnerThread = Thread.currentThread();
       writeCnt++;
     } finally {
       lock.unlock();
@@ -228,7 +194,6 @@ public class CachedMTreeReadWriteLock {
     try {
       writeCnt--;
       if (writeCnt == 0) {
-        exclusiveOwnerThread = null;
         if (writeWait > 0) {
           okToWrite.signalAll();
         } else if (readWait > 0) {
