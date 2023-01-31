@@ -29,21 +29,22 @@ import java.io.File;
 
 public class TsFileIOWriterEndFileTest {
   public static void main(String[] args) throws Exception {
-    TsFileIOWriter writer = new TsFileIOWriter(new File("test.tsfile"));
-    for (int deviceIndex = 0; deviceIndex < 1000; deviceIndex++) {
-      writer.startChunkGroup("root.sg.d" + deviceIndex);
-      for (int seriesIndex = 0; seriesIndex < 1000; seriesIndex++) {
-        ChunkWriterImpl chunkWriter =
-            new ChunkWriterImpl(
-                new MeasurementSchema(
-                    "s" + seriesIndex, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
-        for (long time = 0; time < 10; ++time) {
-          chunkWriter.write(time, 0);
+    try (TsFileIOWriter writer = new TsFileIOWriter(new File("test.tsfile"))) {
+      for (int deviceIndex = 0; deviceIndex < 1000; deviceIndex++) {
+        writer.startChunkGroup("root.sg.d" + deviceIndex);
+        for (int seriesIndex = 0; seriesIndex < 1000; seriesIndex++) {
+          ChunkWriterImpl chunkWriter =
+              new ChunkWriterImpl(
+                  new MeasurementSchema(
+                      "s" + seriesIndex, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+          for (long time = 0; time < 10; ++time) {
+            chunkWriter.write(time, 0);
+          }
+          chunkWriter.writeToFileWriter(writer);
         }
-        chunkWriter.writeToFileWriter(writer);
+        writer.endChunkGroup();
       }
-      writer.endChunkGroup();
+      writer.endFile();
     }
-    writer.endFile();
   }
 }
