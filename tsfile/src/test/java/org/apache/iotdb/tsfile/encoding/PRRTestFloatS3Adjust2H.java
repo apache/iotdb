@@ -650,7 +650,7 @@ public class PRRTestFloatS3Adjust2H {
           j_star_list.add(j);
         }
       }
-      for(j=alpha+2;j<alpha+p;j++){
+      for(j=alpha+2;j<alpha+p&&j<block_size;j++){
         // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}], [alpha + 1, j - 1]
         boolean is_contain_2p = false;
         for(int hg_j = alpha + 1;hg_j<j+p && hg_j<block_size; hg_j++){
@@ -769,7 +769,7 @@ public class PRRTestFloatS3Adjust2H {
           j_star_list.add(j);
         }
       }
-      for(j=alpha+2;j<alpha+p;j++){
+      for(j=alpha+2;j<alpha+p&&j<block_size;j++){
         // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}], [alpha + 1, j - 1]
         boolean is_contain_2p = false;
         for(int hg_j = alpha + 1;hg_j<j+p && hg_j<block_size; hg_j++){
@@ -781,18 +781,6 @@ public class PRRTestFloatS3Adjust2H {
         if(!is_contain_2p){
           continue;
         }
-        b = adjustCase3(ts_block,alpha,j,coefficient,p);
-        if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
-          raw_bit_width_timestamp = b.get(0);
-          raw_bit_width_value = b.get(1);
-          j_star_list.clear();
-          j_star_list.add(j);
-        }
-        else if ((b.get(0) + b.get(1)) == (raw_bit_width_timestamp+raw_bit_width_value)){
-          j_star_list.add(j);
-        }
-      }
-      for(;j<block_size;j++){
         b = adjustCase3(ts_block,alpha,j,coefficient,p);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -1337,6 +1325,9 @@ public class PRRTestFloatS3Adjust2H {
         }else {
           break;
         }
+        ArrayList<ArrayList<Integer>> old_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+        ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+
         ArrayList<Integer> tmp_tv = ts_block.get(i_star);
         if(j_star<i_star){
           for(int u=i_star-1;u>=j_star;u--){
@@ -1358,6 +1349,11 @@ public class PRRTestFloatS3Adjust2H {
 
         getEncodeBitsRegressionP(ts_block,  block_size, raw_length, coefficient,p);
 
+        if(old_length.get(1)+old_length.get(2) < raw_length.get(1)+raw_length.get(2)){
+          ts_block = old_ts_block;
+          break;
+        }
+
         i_star =getIStarP(ts_block,block_size,raw_length,coefficient,p);
         if(i_star == j_star) break;
         j_star =getJStarP(ts_block,i_star,block_size,coefficient,p);
@@ -1365,6 +1361,8 @@ public class PRRTestFloatS3Adjust2H {
 //        System.out.println(j_star);
 
       }
+//      if(adjust_count != 1)
+//      System.out.println(adjust_count);
        ts_block_delta = getEncodeBitsRegressionP( ts_block,  block_size, raw_length,coefficient,p);
       ArrayList<Byte> cur_encoded_result = encode2BytesP(ts_block_delta,raw_length,coefficient,result2);
       encoded_result.addAll(cur_encoded_result);
@@ -1819,7 +1817,7 @@ public class PRRTestFloatS3Adjust2H {
 
         String inputPath = input_path_list.get(file_i);
         String Output =output_path_list.get(file_i);
-
+        System.out.println(inputPath);
         //String Output =  "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
         // speed
@@ -1847,6 +1845,7 @@ public class PRRTestFloatS3Adjust2H {
 
         assert tempList != null;
         for(int p=1;p<10;p++) {
+          System.out.println("p="+p);
           for (File f : tempList) {
 //        ArrayList<Integer> flag = new ArrayList<>();
 //        flag.add(0);
