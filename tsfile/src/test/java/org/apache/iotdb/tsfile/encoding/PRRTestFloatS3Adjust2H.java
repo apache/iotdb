@@ -484,14 +484,7 @@ public class PRRTestFloatS3Adjust2H {
 //      tmp.add(epsilon_v);
 //      ts_block_delta.add(tmp);
     }
-    for(int j=block_size-1;j>0;j--) {
-      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(epsilon_r);
-      tmp.add(epsilon_v);
-      ts_block_delta.set(j,tmp);
-    }
+
     int raw_bit_width_timestamp = getBitWith(max_timestamp-timestamp_delta_min);
     int raw_bit_width_value = getBitWith(max_value-value_delta_min);
     // regression residual
