@@ -573,7 +573,7 @@ public class PRRTestFloatS3Adjust2H {
           j_star_list.add(j);
         }
       }
-      b = adjustnCase5(ts_block,alpha,coefficient);
+      b = adjustCase5(ts_block,alpha,coefficient,p);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value)){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -635,7 +635,7 @@ public class PRRTestFloatS3Adjust2H {
           j_star_list.add(j);
         }
       }
-      b = adjustnCase5(ts_block,alpha,coefficient);
+      b = adjustCase5(ts_block,alpha,coefficient,p);
       if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value)){
         raw_bit_width_timestamp = b.get(0);
         raw_bit_width_value = b.get(1);
@@ -652,6 +652,29 @@ public class PRRTestFloatS3Adjust2H {
     }
     return j_star;
   }
+
+  private static ArrayList<Integer> adjustCase1(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> coefficient, int p) {
+    return null;
+  }
+  private static ArrayList<Integer> adjustCase2(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> coefficient, int p) {
+    return null;
+  }
+  private static ArrayList<Integer> adjustCase3(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> coefficient, int p) {
+    return null;
+  }
+  private static ArrayList<Integer> adjustCase4(ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> coefficient, int p) {
+    return null;
+  }
+
+  private static ArrayList<Integer> adjustCase5(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> coefficient,int p) {
+    return null;
+  }
+
+
+
+
+
+
 
   private static ArrayList<Integer> adjustTo0(ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
     int block_size = ts_block.size();

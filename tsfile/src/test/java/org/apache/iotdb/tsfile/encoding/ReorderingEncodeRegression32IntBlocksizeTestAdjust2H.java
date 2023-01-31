@@ -508,6 +508,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     int theta1_v = theta.get(3);
 
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
+    ArrayList<Integer> max_index = new ArrayList<>();
     int j_star = -1;
 
     if(alpha == -1){
@@ -533,6 +534,14 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
         raw_value_delta_max_index = i;
       }
     }
+    for(int i = 1;i<block_size;i++){
+      int delta_t_i =  ts_block.get(i).get(0) -(int) ( theta0_t + theta1_t * (float)ts_block.get(i-1).get(0));
+      int delta_v_i =  ts_block.get(i).get(1) -(int) ( theta0_v + theta1_v * (float) ts_block.get(i-1).get(1));
+
+      if(i != alpha && (delta_t_i == raw_timestamp_delta_max || delta_v_i == raw_value_delta_max )){
+        max_index.add(i);
+      }
+    }
     raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
     raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
 //    System.out.println(raw_length);
@@ -542,6 +551,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     if(alpha==0){
 //      System.out.println("alpha == 1");
       for(int j = 2;j<block_size;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         ArrayList<Integer> b = adjust0(ts_block,alpha,j,theta);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -570,6 +580,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     else if(alpha == block_size-1){
 //      System.out.println("alpha == n");
       for(int j = 1;j<block_size-1;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         ArrayList<Integer> b = adjustn(ts_block,alpha,j,theta);
         if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
           raw_bit_width_timestamp = b.get(0);
@@ -598,6 +609,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTestAdjust2H {
     else {
 //      System.out.println("alpha == else");
       for(int j = 1;j<block_size;j++){
+        if(!max_index.contains(j)&&!max_index.contains(alpha+1)) continue;
         if(alpha != j && (alpha+1) !=j){
           ArrayList<Integer> b = adjustAlphaToJ(ts_block,alpha,j,theta);
           if((b.get(0) + b.get(1)) < (raw_bit_width_timestamp+raw_bit_width_value) ){
