@@ -844,7 +844,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
@@ -2064,7 +2064,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2754,7 +2754,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
+    targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
