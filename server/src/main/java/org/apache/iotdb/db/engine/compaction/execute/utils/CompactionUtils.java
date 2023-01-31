@@ -232,14 +232,6 @@ public class CompactionUtils {
     // in the new file
     for (int i = 0; i < targetResources.size(); i++) {
       TsFileResource targetResource = targetResources.get(i);
-      // remove the target file been deleted from list
-      if (!targetResource.getTsFile().exists()) {
-        logger.info(
-            "[Compaction] target file {} has been deleted after compaction.",
-            targetResource.getTsFilePath());
-        targetResources.set(i, null);
-        continue;
-      }
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updatePlanIndexes(unseqResource);
       }
