@@ -72,7 +72,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                       new RegionHeartbeatSample(
                           heartbeatResp.getHeartbeatTimestamp(),
                           receiveTime,
-                          // Each region will be updated by its own status
+                          // Each Region will be updated by its own status
                           RegionStatus.parse(
                               heartbeatResp.getRegionStatusMap().get(regionGroupId))));
 
