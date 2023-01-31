@@ -533,7 +533,7 @@ service IDataNodeRPCService {
   common.TSStatus stopDataNode()
 
   /**
-    * Config node will set a region's status to Data node.
+    * ConfigNode will set a Region's status to DataNode.
     */
   common.TSStatus setRegionStatus(TSetRegionStatusReq req)
   /**
