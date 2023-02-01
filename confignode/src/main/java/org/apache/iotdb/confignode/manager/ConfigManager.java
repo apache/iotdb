@@ -660,15 +660,17 @@ public class ConfigManager implements IManager {
 
   private void printNewCreatedSchemaPartition(
       List<String> devicePaths, TSchemaPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
     StringBuilder devicePathString = new StringBuilder("{");
     for (String devicePath : devicePaths) {
-      devicePathString.append("\n\t").append(devicePath).append(",");
+      devicePathString.append(lineSeparator).append("\t").append(devicePath).append(",");
     }
-    devicePathString.append("\n}");
+    devicePathString.append(lineSeparator).append("}");
 
     StringBuilder schemaPartitionRespString = new StringBuilder("{");
     schemaPartitionRespString
-        .append("\n\tTSStatus=")
+        .append(lineSeparator)
+        .append("\tTSStatus=")
         .append(resp.getStatus().getCode())
         .append(",");
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
@@ -676,22 +678,29 @@ public class ConfigManager implements IManager {
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> databaseEntry :
         schemaPartitionTable.entrySet()) {
       String database = databaseEntry.getKey();
-      schemaPartitionRespString.append("\n\tDatabase=").append(database).append(": {");
+      schemaPartitionRespString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> slotEntry :
           databaseEntry.getValue().entrySet()) {
         schemaPartitionRespString
-            .append("\n\t\t")
+            .append(lineSeparator)
+            .append("\t\t")
             .append(slotEntry.getKey())
             .append(", ")
             .append(slotEntry.getValue())
             .append(",");
       }
-      schemaPartitionRespString.append("\n\t},");
+      schemaPartitionRespString.append(lineSeparator).append("\t},");
     }
-    schemaPartitionRespString.append("\n}");
+    schemaPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateSchemaPartition]:\nReceive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+        "[GetOrCreateSchemaPartition]:"
+            + lineSeparator
+            + "Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
         devicePathString,
         schemaPartitionRespString);
   }
@@ -769,52 +778,73 @@ public class ConfigManager implements IManager {
 
   private void printNewCreatedDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
     StringBuilder partitionSlotsMapString = new StringBuilder("{");
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> databaseEntry :
         getOrCreateDataPartitionPlan.getPartitionSlotsMap().entrySet()) {
       String database = databaseEntry.getKey();
-      partitionSlotsMapString.append("\n\tDatabase=").append(database).append(": {");
+      partitionSlotsMapString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> slotEntry :
           databaseEntry.getValue().entrySet()) {
         partitionSlotsMapString
-            .append("\n\t\t")
+            .append(lineSeparator)
+            .append("\t\t")
             .append(slotEntry.getKey())
             .append(",")
             .append(slotEntry.getValue());
       }
-      partitionSlotsMapString.append("\n\t},");
+      partitionSlotsMapString.append(lineSeparator).append("\t},");
     }
-    partitionSlotsMapString.append("\n}");
+    partitionSlotsMapString.append(lineSeparator).append("}");
 
     StringBuilder dataPartitionRespString = new StringBuilder("{");
-    dataPartitionRespString.append("\n\tTSStatus=").append(resp.getStatus().getCode()).append(",");
+    dataPartitionRespString
+        .append(lineSeparator)
+        .append("\tTSStatus=")
+        .append(resp.getStatus().getCode())
+        .append(",");
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         dataPartitionTable = resp.getDataPartitionTable();
     for (Map.Entry<
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         databaseEntry : dataPartitionTable.entrySet()) {
       String database = databaseEntry.getKey();
-      dataPartitionRespString.append("\n\tDatabase=").append(database).append(": {");
+      dataPartitionRespString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
           seriesSlotEntry : databaseEntry.getValue().entrySet()) {
-        dataPartitionRespString.append("\n\t\t").append(seriesSlotEntry.getKey()).append(": {");
+        dataPartitionRespString
+            .append(lineSeparator)
+            .append("\t\t")
+            .append(seriesSlotEntry.getKey())
+            .append(": {");
         for (Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> timeSlotEntry :
             seriesSlotEntry.getValue().entrySet()) {
           dataPartitionRespString
-              .append("\n\t\t\t")
+              .append(lineSeparator)
+              .append("\t\t\t")
               .append(timeSlotEntry.getKey())
               .append(", ")
               .append(timeSlotEntry.getValue())
               .append(",");
         }
-        dataPartitionRespString.append("\n\t\t},");
+        dataPartitionRespString.append(lineSeparator).append("\t\t},");
       }
-      dataPartitionRespString.append("\n\t}");
+      dataPartitionRespString.append(lineSeparator).append("\t}");
     }
-    dataPartitionRespString.append("\n}");
+    dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:\nReceive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        "[GetOrCreateDataPartition]:"
+            + lineSeparator
+            + "Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
         partitionSlotsMapString,
         dataPartitionRespString);
   }
