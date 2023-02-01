@@ -44,7 +44,7 @@ public class SessionPoolTest {
             .enableCompression(true)
             .zoneId(ZoneOffset.UTC)
             .connectionTimeoutInMs(3)
-            .version(Version.V_0_13)
+            .version(Version.V_1_0)
             .build();
 
     assertEquals("localhost", pool.getHost());
@@ -58,6 +58,6 @@ public class SessionPoolTest {
     assertTrue(pool.isEnableCompression());
     assertEquals(3, pool.getConnectionTimeoutInMs());
     assertEquals(ZoneOffset.UTC, pool.getZoneId());
-    assertEquals(Version.V_0_13, pool.getVersion());
+    assertEquals(Version.V_1_0, pool.getVersion());
   }
 }

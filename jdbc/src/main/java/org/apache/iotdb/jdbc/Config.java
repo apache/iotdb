@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.Constant.Version;
+
 public class Config {
 
   private Config() {}
@@ -47,7 +49,7 @@ public class Config {
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   public static final String VERSION = "version";
-  static final Constant.Version DEFAULT_VERSION = Constant.Version.V_0_13;
+  static final Constant.Version DEFAULT_VERSION = Version.V_1_0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
