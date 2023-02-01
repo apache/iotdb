@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.db.integration.versionadaption;
 
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.Constant;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -38,17 +44,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.Constant;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 @Ignore // No longer forward compatible since v0.14
