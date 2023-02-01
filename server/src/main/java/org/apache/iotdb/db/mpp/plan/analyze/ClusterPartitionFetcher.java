@@ -410,11 +410,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   queryParam.getTimePartitionSlotList(),
                   queryParam.isNeedLeftAll(),
                   queryParam.isNeedRightAll());
-        } else {
-          deviceToTimePartitionMap.putIfAbsent(
-              partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
-              sharedTTimeSlotList);
         }
+        deviceToTimePartitionMap.putIfAbsent(
+            partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
+            sharedTTimeSlotList);
       }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }
