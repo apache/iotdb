@@ -67,11 +67,11 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
-  CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase);
+  CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase);
 
   CommonConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy);
 
-  CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase);
+  CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase);
 
   CommonConfig setSchemaReplicationFactor(int schemaReplicationFactor);
 
@@ -102,8 +102,6 @@ public interface CommonConfig {
 
   CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
       boolean enableAutoLeaderBalanceForIoTConsensus);
-
-  CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum);
 
   CommonConfig setQueryThreadCount(int queryThreadCount);
 

@@ -77,9 +77,9 @@ public class IoTDBCustomRegionGroupExtensionIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy)
-        .setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase)
+        .setDefaultSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase)
         .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
-        .setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase)
+        .setDefaultDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment

@@ -98,7 +98,7 @@ public class ConfigNodeConfig {
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupPerDatabase = 1;
+  private int defaultDataRegionGroupPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 1.0;

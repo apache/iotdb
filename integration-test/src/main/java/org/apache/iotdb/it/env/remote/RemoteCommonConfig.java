@@ -139,7 +139,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+  public CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
     return this;
   }
 
@@ -149,7 +149,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+  public CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
     return this;
   }
 
@@ -224,11 +224,6 @@ public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
       boolean enableAutoLeaderBalanceForIoTConsensus) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
     return this;
   }
 

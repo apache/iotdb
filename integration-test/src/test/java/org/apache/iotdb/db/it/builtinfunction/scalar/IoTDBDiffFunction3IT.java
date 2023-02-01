@@ -37,7 +37,7 @@ public class IoTDBDiffFunction3IT extends IoTDBDiffFunctionIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupPerDatabase(3);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupPerDatabase(3);
     EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);

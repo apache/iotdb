@@ -76,7 +76,7 @@ public class IoTDBPartitionGetterIT {
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
-  private static final int testLeastDataRegionGroupNum = 5;
+  private static final int testDataRegionGroupPerDatabase = 5;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -96,7 +96,7 @@ public class IoTDBPartitionGetterIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+        .setDefaultDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase);
     // .setSeriesSlotNum(testSeriesPartitionSlotNum);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -293,7 +293,7 @@ public class IoTDBPartitionGetterIT {
           (int)
               Math.ceil(
                   (double) totalCpuCoreNum / (double) (storageGroupNum * testReplicationFactor));
-      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testLeastDataRegionGroupNum);
+      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testDataRegionGroupPerDatabase);
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
