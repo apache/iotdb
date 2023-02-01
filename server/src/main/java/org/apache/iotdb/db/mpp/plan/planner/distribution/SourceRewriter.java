@@ -953,21 +953,54 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
+
+      Map<String, Expression> columnNameToExpression = new HashMap<>();
+      for (CrossSeriesAggregationDescriptor originalDescriptor :
+          handle.getGroupByLevelDescriptors()) {
+        for (Expression exp : originalDescriptor.getInputExpressions()) {
+          columnNameToExpression.put(exp.getExpressionString(), exp);
+        }
+        columnNameToExpression.put(
+            originalDescriptor.getOutputExpression().getExpressionString(),
+            originalDescriptor.getOutputExpression());
+      }
+
+      Set<Expression> childrenExpressionMap = new HashSet<>();
+      for (String childColumn : childrenOutputColumns) {
+        Expression childExpression =
+            columnNameToExpression.get(
+                childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
+        childrenExpressionMap.add(childExpression);
+      }
+
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
-        for (String childColumn : childrenOutputColumns) {
-          // If this condition matched, the childColumn should come from GroupByLevelNode
-          if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
-            descriptorExpressions.add(originalDescriptor.getOutputExpression());
-            continue;
-          }
-          for (Expression exp : originalDescriptor.getInputExpressions()) {
-            if (isAggColumnMatchExpression(childColumn, exp)) {
-              descriptorExpressions.add(exp);
-            }
+
+        if (childrenExpressionMap.contains(originalDescriptor.getOutputExpression())) {
+          descriptorExpressions.add(originalDescriptor.getOutputExpression());
+        }
+
+        for (Expression exp : originalDescriptor.getInputExpressions()) {
+          if (childrenExpressionMap.contains(exp)) {
+            descriptorExpressions.add(exp);
           }
         }
+
+        //        for (String childColumn : childrenOutputColumns) {
+        //          // If this condition matched, the childColumn should come from GroupByLevelNode
+        //          if (isAggColumnMatchExpression(childColumn,
+        // originalDescriptor.getOutputExpression())) {
+        //            descriptorExpressions.add(originalDescriptor.getOutputExpression());
+        //            continue;
+        //          }
+        //          for (Expression exp : originalDescriptor.getInputExpressions()) {
+        //            if (isAggColumnMatchExpression(childColumn, exp)) {
+        //              descriptorExpressions.add(exp);
+        //            }
+        //          }
+        //        }
+
         if (descriptorExpressions.isEmpty()) {
           continue;
         }
