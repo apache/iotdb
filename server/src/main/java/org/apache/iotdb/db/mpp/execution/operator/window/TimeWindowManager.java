@@ -69,6 +69,11 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
+  public boolean isFinished(boolean hasMoreData) {
+    return true;
+  }
+
+  @Override
   public void next() {
     // When we go into next window, we should pay attention to previous window whether all points
     // belong to previous window have been consumed. If not, we need skip these points.

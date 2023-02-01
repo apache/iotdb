@@ -76,7 +76,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   public boolean isFinished() {
-    return super.isFinished() && (inputTsBlock == null || inputTsBlock.isEmpty());
+    return super.isFinished() && windowManager.isFinished(hasMoreData());
   }
 
   @Override
