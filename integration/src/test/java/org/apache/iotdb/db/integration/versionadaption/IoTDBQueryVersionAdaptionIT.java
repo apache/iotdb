@@ -18,18 +18,12 @@
  */
 package org.apache.iotdb.db.integration.versionadaption;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.Constant;
-
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,13 +38,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.Constant;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 @Ignore // No longer forward compatible since v0.14
@@ -141,7 +139,7 @@ public class IoTDBQueryVersionAdaptionIT {
   }
 
   private static void importData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
@@ -169,7 +167,7 @@ public class IoTDBQueryVersionAdaptionIT {
           "1509466140000,false,20.98,v1,false,false,20.98,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root where time>10");
       Assert.assertTrue(hasResultSet);
@@ -226,7 +224,7 @@ public class IoTDBQueryVersionAdaptionIT {
                 "1509466140000,root.ln.wf01.wt01.temperature,20.98177,FLOAT",
                 "1509466140000,root.ln.wf01.wt01.status,false,BOOLEAN"));
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root order by time desc");
@@ -260,7 +258,7 @@ public class IoTDBQueryVersionAdaptionIT {
           "1509465600000,root.sgcc.wf03.wt01,25.96,true,null,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute("select * from root.* where temperature >= 25.957603 align by device");
