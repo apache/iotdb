@@ -112,9 +112,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
-      child = store.getChild(parent, childName);
-      if (child == null
-          && parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+      if (parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
           && !(skipPreDeletedSchema
               && parent
                   .getAsEntityMNode()
@@ -126,6 +124,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
           child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
         }
       }
+    }
+    if (child == null) {
+      child = store.getChild(parent, childName);
     }
     return child;
   }
