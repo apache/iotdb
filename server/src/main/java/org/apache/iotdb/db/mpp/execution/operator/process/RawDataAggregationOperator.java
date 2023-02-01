@@ -26,7 +26,9 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
@@ -89,6 +91,14 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       // NOTE: child.next() can only be invoked once
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
+
+        TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+        LOGGER.info("TsBlock read by RawDataAggregator:");
+        while (tsBlockRowIterator.hasNext()) {
+          LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+        }
+        LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+
         canCallNext = false;
         if (needSkip) {
           break;
