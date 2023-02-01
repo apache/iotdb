@@ -1743,23 +1743,24 @@ public class StartReorderingEncodeRegression32Int {
           long decodeTime = 0;
           double ratio = 0;
           double compressed_size = 0;
+          int repeatTime2 = 100;
           for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
 //            System.out.println(dataset_map_td.get(file_i));
             ArrayList<Byte> buffer = new ArrayList<>();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            long s = System.nanoTime();
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
             long e = System.nanoTime();
-            encodeTime += ((e - s)/10);
+            encodeTime += ((e - s)/repeatTime2);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += ((e - s)/10);
+            decodeTime += ((e - s)/repeatTime2);
 
 //            for(int j=0;j<256;j++){
 //              if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
