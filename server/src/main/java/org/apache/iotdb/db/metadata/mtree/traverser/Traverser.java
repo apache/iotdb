@@ -96,6 +96,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     if (!isSuccess()) {
       Throwable e = getFailure();
+      e.printStackTrace();
       throw new MetadataException(e.getMessage(), e);
     }
   }
@@ -106,14 +107,20 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
-      if (parent.getSchemaTemplateId() != NON_TEMPLATE) {
-        if (!skipPreDeletedSchema || !parent.getAsEntityMNode().isPreDeactivateTemplate()) {
+      child = store.getChild(parent, childName);
+      if (child == null
+          && parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+          && !(skipPreDeletedSchema
+              && parent
+                  .getAsEntityMNode()
+                  .isPreDeactivateTemplate())) { // the template should not skip
+        Template template = templateMap.get(parent.getSchemaTemplateId());
+        // if null, it means the template on this device is not covered in this query, refer to the
+        // mpp analyzing stage
+        if (template != null) {
           child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
         }
       }
-    }
-    if (child == null) {
-      child = store.getChild(parent, childName);
     }
     return child;
   }
