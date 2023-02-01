@@ -343,4 +343,18 @@ public class IoTDBDiffFunctionIT {
         expectedHeader,
         retArray);
   }
+
+  @Test
+  public void testCaseInSensitive() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "root.db.d1.s1", "root.db.d1.s2"};
+    String[] retArray = new String[] {"2,2,null,", "4,4,null,", "5,5,5.0,"};
+    resultSetEqualTest(
+        "select s1, s2 from root.db.d1 where Diff(s1) between 1 and 2", expectedHeader, retArray);
+
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "select s1, s2 from root.db.d1 where Diff(notExist) between 1 and 2",
+        expectedHeader,
+        retArray);
+  }
 }
