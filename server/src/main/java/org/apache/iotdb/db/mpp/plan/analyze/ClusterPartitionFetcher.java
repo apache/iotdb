@@ -182,7 +182,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       try (ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+            client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
@@ -209,7 +209,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TDataPartitionTableResp dataPartitionTableResp =
-          client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+          client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
       if (dataPartitionTableResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionTableResp);
@@ -352,10 +352,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     boolean needLeftAll;
     boolean needRightAll;
 
-    private ComplexTimeSlotList() {
+    private ComplexTimeSlotList(boolean needLeftAll, boolean needRightAll) {
       timeSlotList = new HashSet<>();
-      needLeftAll = false;
-      needRightAll = false;
+      this.needLeftAll = needLeftAll;
+      this.needRightAll = needRightAll;
     }
 
     private void putTimeSlot(List<TTimePartitionSlot> slotList) {
@@ -377,7 +377,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         seriesSlotTimePartitionMap
             .computeIfAbsent(
                 partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
-                k -> new ComplexTimeSlotList())
+                k ->
+                    new ComplexTimeSlotList(
+                        queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
             .putTimeSlot(queryParam.getTimePartitionSlotList());
       }
       seriesSlotTimePartitionMap.forEach(
@@ -386,6 +388,34 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   k,
                   new TTimeSlotList(
                       new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
+      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
+    }
+    return new TDataPartitionReq(partitionSlotsMap);
+  }
+
+  /** For query, DataPartitionQueryParam is shared by each device */
+  private TDataPartitionReq constructDataPartitionReqForQuery(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
+    TTimeSlotList sharedTTimeSlotList = null;
+    for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
+        sgNameToQueryParamsMap.entrySet()) {
+      // for each sg
+      Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
+
+      for (DataPartitionQueryParam queryParam : entry.getValue()) {
+        if (sharedTTimeSlotList == null) {
+          sharedTTimeSlotList =
+              new TTimeSlotList(
+                  queryParam.getTimePartitionSlotList(),
+                  queryParam.isNeedLeftAll(),
+                  queryParam.isNeedRightAll());
+        } else {
+          deviceToTimePartitionMap.putIfAbsent(
+              partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
+              sharedTTimeSlotList);
+        }
+      }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
