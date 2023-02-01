@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
+import org.apache.iotdb.tsfile.read.common.IOMonitor;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -136,6 +137,7 @@ public class PageReader implements IPageReader {
       // TODO update FP,LP with the help of stepRegress index. BP/TP not update here.
       int FP_pos = -1;
       int LP_pos = -1;
+      // (b) get the closest data point after or before a timestamp
       if (leftEndIncluded > chunkSuit4CPV.statistics.getStartTime()) {
         FP_pos = chunkSuit4CPV.updateFPwithTheClosetPointEqualOrAfter(leftEndIncluded);
       }
@@ -182,6 +184,7 @@ public class PageReader implements IPageReader {
     // [startPos,endPos] definitely for curStartTime interval, thanks to split4CPV
     int count = 0; // update here, not in statistics
     for (int pos = chunkSuit4CPV.startPos; pos <= chunkSuit4CPV.endPos; pos++) {
+      IOMonitor.incPointsTravered();
       long timestamp = timeBuffer.getLong(pos * 8);
       switch (dataType) {
         case INT64:

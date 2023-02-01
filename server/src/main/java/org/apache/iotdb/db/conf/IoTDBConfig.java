@@ -153,7 +153,7 @@ public class IoTDBConfig {
   private int flushWalThreshold = 10000;
 
   /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
-  private String timestampPrecision = "ms";
+  private String timestampPrecision = "ns";
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If

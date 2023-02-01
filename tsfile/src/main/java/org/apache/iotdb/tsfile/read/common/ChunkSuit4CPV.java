@@ -254,13 +254,16 @@ public class ChunkSuit4CPV {
     if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         estimatedPos++;
+        IOMonitor.incPointsTravered();
       }
     } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         estimatedPos--;
+        IOMonitor.incPointsTravered();
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         estimatedPos++;
+        IOMonitor.incPointsTravered();
       } // else equal
     } // else equal
     this.startPos = estimatedPos; // note this
@@ -315,13 +318,16 @@ public class ChunkSuit4CPV {
     if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         estimatedPos--;
+        IOMonitor.incPointsTravered();
       }
     } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         estimatedPos++;
+        IOMonitor.incPointsTravered();
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         estimatedPos--;
+        IOMonitor.incPointsTravered();
       } // else equal
     } // else equal
     this.endPos = estimatedPos; // note this
@@ -375,13 +381,16 @@ public class ChunkSuit4CPV {
     if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         estimatedPos--;
+        IOMonitor.incPointsTravered();
       }
     } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
       while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         estimatedPos++;
+        IOMonitor.incPointsTravered();
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         estimatedPos--;
+        IOMonitor.incPointsTravered();
       } // else equal
     } // else equal
 

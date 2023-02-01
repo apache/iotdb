@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db;
+package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +34,8 @@ public class IOMonitor {
   public static long totalTime;
   public static String sql;
 
+  public static long pointsTraversed;
+
   public static List<Long> metaIOTimes = new ArrayList<>();
   public static List<Long> dataIOTimes = new ArrayList<>();
   public static List<Long> readMemChunkTimes = new ArrayList<>();
@@ -43,6 +45,8 @@ public class IOMonitor {
 
   public static List<String> sqls = new ArrayList<>();
   public static List<Long> totalTimes = new ArrayList<>();
+
+  public static List<Long> pointsTraversedList = new ArrayList<>();
 
   public static boolean isSet = false;
 
@@ -58,9 +62,18 @@ public class IOMonitor {
     readMemChunkNum = 0;
   }
 
+  public static void resetPointsTraversed() {
+    pointsTraversedList.add(pointsTraversed);
+    pointsTraversed = 0;
+  }
+
   public static void incMeta(long v) {
     metaIOTime += v;
     metaIONum++;
+  }
+
+  public static void incPointsTravered() {
+    pointsTraversed++;
   }
 
   private static void resetMeta() {
@@ -109,6 +122,7 @@ public class IOMonitor {
     resetReadMemChunkTime();
     sqls.add(sql);
     sql = null;
+    resetPointsTraversed();
   }
 
   //  private static double getAvg(List<Long> vals) {
@@ -148,6 +162,9 @@ public class IOMonitor {
     dataIOTimes.clear();
     sqls.clear();
     totalTimes.clear();
+
+    pointsTraversedList.clear();
+    pointsTraversed = 0;
   }
 
   public static void finish() {
@@ -177,6 +194,8 @@ public class IOMonitor {
               + readMemChunkNums.get(i)
               + "\t total: \t"
               + totalTimes.get(i)
+              + "\t pointsTraversed: \t"
+              + pointsTraversedList.get(i)
               + "\n";
     }
     ret +=
@@ -194,6 +213,8 @@ public class IOMonitor {
             + getSumInteger(readMemChunkNums)
             + "\t avg total time: \t"
             + getSumLong(totalTimes)
+            + "\t points traversed: \t"
+            + getSumLong(pointsTraversedList)
             + "\t isSet: \t"
             + isSet;
     return ret;

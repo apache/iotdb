@@ -291,6 +291,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
             // TODO chunk data read operation (c): get all data points
+            // (c) get all data points
             chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
             // TODO check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
@@ -376,6 +377,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 //  WHICH WILL INTRODUCE BUGS!
                 chunkSuit4CPV.setPageReader(pageReader);
               }
+              // (a) check existence of data point at a timestamp:
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
               if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
                 break;
@@ -492,6 +494,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
             // TODO chunk data read operation (c): get all data points
+            // (c) get all data points
             chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
             // TODO check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
@@ -582,6 +585,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 //  WHICH WILL INTRODUCE BUGS!
                 chunkSuit4CPV.setPageReader(pageReader);
               }
+              // (a) check existence of data point at a timestamp
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
               if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
                 break;
@@ -670,6 +674,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           susp_candidate.setPageReader(pageReader);
         }
         // TODO update FP equal to or after statistics.getEndTime
+        // (b) get the closest data point after or before a timestamp
         susp_candidate.updateFPwithTheClosetPointEqualOrAfter(
             susp_candidate.getStatistics().getStartTime()); // TODO DEBUG
         susp_candidate.setLazyLoad(false); // DO NOT FORGET THIS!!!
@@ -778,6 +783,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           susp_candidate.setPageReader(pageReader);
         }
         // TODO update FP equal to or after statistics.getEndTime
+        // (b) get the closest data point after or before a timestamp
         susp_candidate.updateLPwithTheClosetPointEqualOrBefore(
             susp_candidate.getStatistics().getEndTime()); // TODO DEBUG
         susp_candidate.setLazyLoad(false); // TODO DO NOT FORGET THIS!!!
