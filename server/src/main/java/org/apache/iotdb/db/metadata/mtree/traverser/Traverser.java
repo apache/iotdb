@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Iterator;
@@ -67,11 +68,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @throws MetadataException path does not meet the expected rules
    */
   protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
+    this.store = store.getWithReentrantReadLock();
+    initStack();
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -79,7 +84,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     this.startNode = startNode;
     this.nodes = nodes;
-    this.store = store;
   }
 
   /**
@@ -135,6 +139,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
     ((IMNodeIterator) nodeIterator).close();
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+      // TODO update here
+      ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
+    }
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {

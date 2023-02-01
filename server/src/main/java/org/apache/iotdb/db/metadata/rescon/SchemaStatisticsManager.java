@@ -42,11 +42,11 @@ public class SchemaStatisticsManager {
     return totalSeriesNumber.get();
   }
 
-  public void addTimeseries(int addedNum) {
+  public void addTimeseries(long addedNum) {
     totalSeriesNumber.addAndGet(addedNum);
   }
 
-  public void deleteTimeseries(int deletedNum) {
+  public void deleteTimeseries(long deletedNum) {
     totalSeriesNumber.addAndGet(-deletedNum);
   }
 

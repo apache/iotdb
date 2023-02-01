@@ -16,50 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.updater;
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 
-public abstract class EntityUpdater extends EntityTraverser<Void> implements Updater {
-  /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
-   *
-   * @param startNode denote which tree to traverse by passing its root
-   * @param path use wildcard to specify which part to traverse
-   * @param store MTree store to traverse
-   * @param isPrefixMatch prefix match or not
-   * @throws MetadataException path does not meet the expected rules
-   */
-  public EntityUpdater(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+// This class implement measurement counter.
+public class MeasurementCounter extends MeasurementTraverser<Void> implements Counter {
+  private int count;
+
+  public MeasurementCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
   protected Void generateResult(IMNode nextMatchedNode) {
-    try {
-      updateEntity(nextMatchedNode.getAsEntityMNode());
-    } catch (MetadataException e) {
-      setFailure(e);
-    }
+    count++;
     return null;
   }
 
   @Override
-  public void update() throws MetadataException {
-    while (super.hasNext()) {
-      super.next();
+  public long count() throws MetadataException {
+    while (hasNext()) {
+      next();
     }
     if (!isSuccess()) {
       Throwable e = getFailure();
       throw new MetadataException(e.getMessage(), e);
     }
+    return count;
   }
-
-  protected abstract void updateEntity(IEntityMNode node) throws MetadataException;
 }
