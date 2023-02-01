@@ -651,7 +651,7 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    if (CONF.isPartitionDebugEnabled()) {
+    if (CONF.isPrintingNewlyCreatedPartitionEnabled()) {
       printNewCreatedSchemaPartition(devicePaths, resp);
     }
 
@@ -760,7 +760,7 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    if (CONF.isPartitionDebugEnabled()) {
+    if (CONF.isPrintingNewlyCreatedPartitionEnabled()) {
       printNewCreatedDataPartition(getOrCreateDataPartitionPlan, resp);
     }
 
