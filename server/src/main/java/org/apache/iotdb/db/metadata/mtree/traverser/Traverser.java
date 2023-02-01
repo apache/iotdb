@@ -29,6 +29,9 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Iterator;
 import java.util.Map;
 
@@ -46,6 +49,8 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  * </ol>
  */
 public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
+
+  private static final Logger logger = LoggerFactory.getLogger(Traverser.class);
 
   protected IMTreeStore store;
 
@@ -96,7 +101,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     if (!isSuccess()) {
       Throwable e = getFailure();
-      e.printStackTrace();
+      logger.warn(e.getMessage(), e);
       throw new MetadataException(e.getMessage(), e);
     }
   }
