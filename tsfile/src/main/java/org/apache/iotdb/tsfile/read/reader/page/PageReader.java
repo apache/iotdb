@@ -255,6 +255,7 @@ public class PageReader implements IPageReader {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
+      IOMonitor.incPointsTravered();
       long timestamp = timeDecoder.readLong(timeBuffer);
       switch (dataType) {
         case BOOLEAN:
