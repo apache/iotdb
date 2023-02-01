@@ -75,6 +75,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   @Override
+  public boolean isFinished() {
+    return super.isFinished() && (inputTsBlock == null || inputTsBlock.isEmpty());
+  }
+
+  @Override
   protected boolean calculateNextAggregationResult() {
 
     // if needSkip is true, just get the tsBlock directly.
