@@ -814,6 +814,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
+    Map<String, Expression> columnNameToExpression = new HashMap<>();
+    for (CrossSeriesAggregationDescriptor originalDescriptor :
+        newRoot.getGroupByLevelDescriptors()) {
+      for (Expression exp : originalDescriptor.getInputExpressions()) {
+        columnNameToExpression.put(exp.getExpressionString(), exp);
+      }
+      columnNameToExpression.put(
+          originalDescriptor.getOutputExpression().getExpressionString(),
+          originalDescriptor.getOutputExpression());
+    }
+
+    context.setColumnNameToExpression(columnNameToExpression);
     calculateGroupByLevelNodeAttributes(newRoot, 0, context);
     return Collections.singletonList(newRoot);
   }
@@ -953,18 +965,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
-
-      Map<String, Expression> columnNameToExpression = new HashMap<>();
-      for (CrossSeriesAggregationDescriptor originalDescriptor :
-          handle.getGroupByLevelDescriptors()) {
-        for (Expression exp : originalDescriptor.getInputExpressions()) {
-          columnNameToExpression.put(exp.getExpressionString(), exp);
-        }
-        columnNameToExpression.put(
-            originalDescriptor.getOutputExpression().getExpressionString(),
-            originalDescriptor.getOutputExpression());
-      }
-
+      Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
       Set<Expression> childrenExpressionMap = new HashSet<>();
       for (String childColumn : childrenOutputColumns) {
         Expression childExpression =
