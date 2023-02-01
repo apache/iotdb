@@ -43,9 +43,7 @@ import java.util.stream.Collectors;
 
 public class ShowRegionTask implements IConfigTask {
 
-  private ShowRegionStatement showRegionStatement;
-
-  public ShowRegionTask() {}
+  private final ShowRegionStatement showRegionStatement;
 
   public ShowRegionTask(ShowRegionStatement showRegionStatement) {
     this.showRegionStatement = showRegionStatement;
@@ -90,6 +88,7 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(7).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
         builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
         builder.getColumnBuilder(9).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
+        builder.getColumnBuilder(10).writeBinary(Binary.valueOf(regionInfo.getCreateTime()));
         builder.declarePosition();
       }
     }

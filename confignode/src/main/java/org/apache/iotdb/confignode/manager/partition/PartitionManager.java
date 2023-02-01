@@ -664,9 +664,9 @@ public class PartitionManager {
     // Get static result
     RegionInfoListResp regionInfoListResp =
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
-    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
 
     // Get cached result
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
     regionInfoListResp
         .getRegionInfoList()
         .forEach(

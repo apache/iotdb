@@ -518,6 +518,7 @@ struct TRegionInfo {
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType
+  10: optional string createTime
 }
 
 struct TShowRegionResp {

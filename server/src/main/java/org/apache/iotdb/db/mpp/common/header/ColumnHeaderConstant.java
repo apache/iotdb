@@ -249,7 +249,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
-          new ColumnHeader(ROLE, TSDataType.TEXT));
+          new ColumnHeader(ROLE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TIME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
