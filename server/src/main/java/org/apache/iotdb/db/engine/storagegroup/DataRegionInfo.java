@@ -86,6 +86,7 @@ public class DataRegionInfo {
     boolean needToReport =
         memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold
             || needToReportToSystem.get();
+    // report once and then reset flag to false
     if (needToReportToSystem.get()) {
       needToReportToSystem.set(false);
     }
