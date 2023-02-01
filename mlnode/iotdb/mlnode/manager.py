@@ -15,10 +15,13 @@ class Objective:
     def __init__(self, configs):
         self.configs = configs
     
-    def __call__(self, trial):
-        task = ForecastingTrainingTask(self.configs)
+    def __call__(self, trial: optuna.Trial):
+        configs = self.configs
+        configs.learning_rate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        configs.d_model = trial.suggest_categorical("d_model", [32, 64, 128, 256, 512, 768])
+        task = ForecastingTrainingTask(configs)
         loss = task.start()
-        return -loss
+        return loss
 
 def _create_training_task(configs, task_map, task_id):
     task = ForecastingTrainingTask(configs)
@@ -27,9 +30,8 @@ def _create_training_task(configs, task_map, task_id):
     task_map[task_id][pid] = 'finished'
 
 def _create_tunning_task(configs, task_map, task_id):
-    study = optuna.create_study()
+    study = optuna.create_study(direction='minimize')
     study.optimize(Objective(configs), n_trials=20)
-
     pid = os.getpid()
     task_map[task_id][pid] = 'finished'
 
@@ -101,11 +103,11 @@ class Manager(object):
 if __name__ == '__main__':
     mp.set_start_method('spawn')
     manager = Manager()
-    configs = debug_configs()
+    configs = default_configs()
     task_id = manager.createTuneTrainingTask(configs)
 
     while True:
-        time.sleep(2)
+        time.sleep(5)
         manager.update_process_state()
         print(manager.task_map[task_id])
 

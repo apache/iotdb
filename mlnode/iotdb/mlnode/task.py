@@ -76,10 +76,10 @@ class BasicTask(object):
             os.environ["CUDA_VISIBLE_DEVICES"] = str(
                 self.configs.gpu) if not self.configs.use_multi_gpu else self.configs.devices
             device = torch.device('cuda:{}'.format(self.configs.gpu))
-            print('Use GPU: cuda:{}'.format(self.configs.gpu))
+            # print('Use GPU: cuda:{}'.format(self.configs.gpu))
         else:
             device = torch.device('cpu')
-            print('Use CPU')
+            # print('Use CPU')
         return device
 
 
@@ -151,6 +151,6 @@ class ForecastingInferenceTask(BasicTask):
 
 if __name__ == '__main__':
     from data_provider.build_dataset_debug import *
-    configs = debug_configs()
+    configs = default_configs()
     task = ForecastingTrainingTask(configs)
     task.start()

@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import argparse
 import torch
 
-def debug_configs():
+def default_configs():
     configs = argparse.Namespace(
         seq_len=96,
         pred_len=96,
@@ -45,7 +45,7 @@ def debug_dataset():
 
     # configs = iotdb.ml.sql_config
     
-    configs = debug_configs()
+    configs = default_configs()
 
 
     # see from Grafana
