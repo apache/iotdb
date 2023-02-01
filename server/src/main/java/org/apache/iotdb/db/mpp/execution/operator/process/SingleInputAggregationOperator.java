@@ -102,6 +102,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       while (tsBlockRowIterator.hasNext()) {
         LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
       }
+      LOGGER.info("hasNext()" + Boolean.toString(hasNext()));
+      LOGGER.info("isFinished()" + Boolean.toString(isFinished()));
       LOGGER.info("###########################");
 
       return resultTsBlock;

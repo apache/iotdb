@@ -78,7 +78,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   public boolean isFinished() {
-    return super.isFinished() && windowManager.isFinished(hasMoreData());
+    return !child.hasNextWithTimer() && windowManager.isFinished(hasMoreData());
   }
 
   @Override
