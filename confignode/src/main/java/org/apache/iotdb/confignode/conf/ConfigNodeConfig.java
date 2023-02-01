@@ -84,7 +84,7 @@ public class ConfigNodeConfig {
    * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of SchemaRegionGroups for each Database.
    */
-  private int defaultSchemaRegionGroupPerDatabase = 1;
+  private int defaultSchemaRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = schemaReplicationFactor;
@@ -98,7 +98,7 @@ public class ConfigNodeConfig {
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupPerDatabase = 2;
+  private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 1.0;
@@ -477,12 +477,13 @@ public class ConfigNodeConfig {
     this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
   }
 
-  public int getDefaultSchemaRegionGroupPerDatabase() {
-    return defaultSchemaRegionGroupPerDatabase;
+  public int getDefaultSchemaRegionGroupNumPerDatabase() {
+    return defaultSchemaRegionGroupNumPerDatabase;
   }
 
-  public void setDefaultSchemaRegionGroupPerDatabase(int defaultSchemaRegionGroupPerDatabase) {
-    this.defaultSchemaRegionGroupPerDatabase = defaultSchemaRegionGroupPerDatabase;
+  public void setDefaultSchemaRegionGroupNumPerDatabase(
+      int defaultSchemaRegionGroupNumPerDatabase) {
+    this.defaultSchemaRegionGroupNumPerDatabase = defaultSchemaRegionGroupNumPerDatabase;
   }
 
   public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
@@ -494,12 +495,12 @@ public class ConfigNodeConfig {
     this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
   }
 
-  public int getDefaultDataRegionGroupPerDatabase() {
-    return defaultDataRegionGroupPerDatabase;
+  public int getDefaultDataRegionGroupNumPerDatabase() {
+    return defaultDataRegionGroupNumPerDatabase;
   }
 
-  public void setDefaultDataRegionGroupPerDatabase(int defaultDataRegionGroupPerDatabase) {
-    this.defaultDataRegionGroupPerDatabase = defaultDataRegionGroupPerDatabase;
+  public void setDefaultDataRegionGroupNumPerDatabase(int defaultDataRegionGroupNumPerDatabase) {
+    this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
   }
 
   public double getSchemaRegionPerDataNode() {

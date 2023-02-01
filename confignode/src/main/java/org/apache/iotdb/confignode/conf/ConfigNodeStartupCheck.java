@@ -113,10 +113,10 @@ public class ConfigNodeStartupCheck {
     }
 
     // The least RegionGroupNum should be positive
-    if (CONF.getDefaultSchemaRegionGroupPerDatabase() <= 0) {
+    if (CONF.getDefaultSchemaRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_schema_region_group_num should be positive");
     }
-    if (CONF.getDefaultDataRegionGroupPerDatabase() <= 0) {
+    if (CONF.getDefaultDataRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_data_region_group_num should be positive");
     }
   }

@@ -221,12 +221,12 @@ public class ConfigNodeDescriptor {
                 "schema_region_group_extension_policy",
                 conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
 
-    conf.setDefaultSchemaRegionGroupPerDatabase(
+    conf.setDefaultSchemaRegionGroupNumPerDatabase(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "default_schema_region_group_per_database",
-                    String.valueOf(conf.getDefaultSchemaRegionGroupPerDatabase()))
+                    "default_schema_region_group_num_per_database",
+                    String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase()))
                 .trim()));
 
     conf.setSchemaRegionPerDataNode(
@@ -243,11 +243,11 @@ public class ConfigNodeDescriptor {
                 "data_region_group_extension_policy",
                 conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
 
-    conf.setDefaultDataRegionGroupPerDatabase(
+    conf.setDefaultDataRegionGroupNumPerDatabase(
         Integer.parseInt(
             properties.getProperty(
-                "default_data_region_group_per_database",
-                String.valueOf(conf.getDefaultDataRegionGroupPerDatabase()).trim())));
+                "default_data_region_group_num_per_database",
+                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
     conf.setDataRegionPerProcessor(
         Double.parseDouble(

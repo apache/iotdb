@@ -318,7 +318,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (!storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
       storageGroupSchema.setMinSchemaRegionGroupNum(
-          CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupPerDatabase());
+          CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupNumPerDatabase());
     } else if (storageGroupSchema.getMinSchemaRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
@@ -328,7 +328,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     if (!storageGroupSchema.isSetMinDataRegionGroupNum()) {
       storageGroupSchema.setMinDataRegionGroupNum(
-          CONFIG_NODE_CONFIG.getDefaultDataRegionGroupPerDatabase());
+          CONFIG_NODE_CONFIG.getDefaultDataRegionGroupNumPerDatabase());
     } else if (storageGroupSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
