@@ -6,11 +6,15 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.ratis.metrics.MetricRegistries;
 
 public class RatisMetricSet implements IMetricSet {
+  private MetricRegistries manager;
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricRegistries.global();
+    manager = MetricRegistries.global();
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {}
+  public void unbindFrom(AbstractMetricService metricService) {
+    manager.clear();
+  }
 }

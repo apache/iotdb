@@ -45,8 +45,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final AbstractMetricService metricService;
   private final MetricRegistryInfo info;
   private final String prefix;
+  private final Map<String, String> metricNameCache = new ConcurrentHashMap<>();
+  private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
+  private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
 
-  private final Map<String, GaugeProxy> gaugeProxyMap = new ConcurrentHashMap<>();
+  private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
 
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
     this.info = info;
@@ -57,23 +60,24 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   private String getMetricName(String name) {
-    // TODO cache this
-    return MetricRegistry.name(prefix, name);
-  }
-  private String getGaugeName(String name) {
-    return MetricRegistry.name("GAUGE" ,getMetricName(name));
+    return metricNameCache.computeIfAbsent(name, n -> MetricRegistry.name(prefix, n));
   }
 
   @Override
   public Timer timer(String name) {
-    return new TimerProxy(
-        metricService.getOrCreateTimer(getMetricName(name), MetricLevel.IMPORTANT));
+    final String fullName = getMetricName(name);
+    return timerCache.computeIfAbsent(
+        fullName, fn -> new TimerProxy(metricService.getOrCreateTimer(fn, MetricLevel.IMPORTANT)));
   }
 
   @Override
   public Counter counter(String name) {
-    return new CounterProxy(
-        metricService.getOrCreateCounter(getMetricName(name), MetricLevel.IMPORTANT));
+    final String fullName = getMetricName(name);
+    return counterCache.computeIfAbsent(
+        fullName,
+        fn ->
+            new CounterProxy(
+                metricService.getOrCreateCounter(getMetricName(name), MetricLevel.IMPORTANT)));
   }
 
   @Override
@@ -96,12 +100,26 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     return true;
   }
 
+  void removeAll() {
+    counterCache.forEach((name, counter) -> metricService.remove(MetricType.COUNTER, name));
+    gaugeCache.forEach((name, gauge) -> metricService.remove(MetricType.AUTO_GAUGE, name));
+    timerCache.forEach((name, timer) -> metricService.remove(MetricType.TIMER, name));
+    metricNameCache.clear();
+    counterCache.clear();
+    gaugeCache.clear();
+    timerCache.clear();
+  }
+
   @Override
   public Gauge gauge(String name, MetricRegistry.MetricSupplier<Gauge> metricSupplier) {
-    GaugeProxy proxy = new GaugeProxy(metricSupplier);
-    gaugeProxyMap.compute(getMetricName(name), (key, oldValue) -> proxy);
-    metricService.createAutoGauge(getGaugeName(name), MetricLevel.IMPORTANT, proxy, GaugeProxy::getValueAsLong);
-    return null;
+    final String fullName = getMetricName(name);
+    final GaugeProxy gauge = new GaugeProxy(metricSupplier);
+    final GaugeProxy previous = gaugeCache.putIfAbsent(fullName, gauge);
+    if (previous == null) {
+      metricService.createAutoGauge(
+          fullName, MetricLevel.IMPORTANT, gauge, GaugeProxy::getValueAsLong);
+    }
+    return gauge;
   }
 
   @Override
@@ -111,7 +129,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public SortedMap<String, Gauge> getGauges(MetricFilter metricFilter) {
-    return null;
+    throw new UnsupportedOperationException("This method is not used in IoTDB project");
   }
 
   @Override
@@ -136,7 +154,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public Metric get(String name) {
-    return null;
+    throw new UnsupportedOperationException("Meter is not used in Ratis Metrics");
   }
 
   @Override
@@ -146,12 +164,12 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public MetricRegistry getDropWizardMetricRegistry() {
-    return null;
+    throw new UnsupportedOperationException("This method is not used in IoTDB project");
   }
 
   @Override
   public MetricRegistryInfo getMetricRegistryInfo() {
-    return null;
+    return info;
   }
 
   @Override

@@ -51,6 +51,9 @@ public class MetricRegistryManager extends MetricRegistries {
 
   @Override
   public void clear() {
+    registries.values().stream()
+        .map(registry -> (IoTDBMetricRegistry) registry)
+        .forEach(IoTDBMetricRegistry::removeAll);
     this.registries.clear();
   }
 
