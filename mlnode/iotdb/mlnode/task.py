@@ -88,11 +88,8 @@ class BasicTask(object):
 
 
 class ForecastingTrainingTask(BasicTask):
-    def __init__(self, args, task_map, task_id):
+    def __init__(self, args):
         super(ForecastingTrainingTask, self).__init__(args)
-        self.task_map = task_map
-        self.pid = os.getpid()
-        self.task_id = task_id
         
     def train(self, model, optimizer, criterion, dataloader, configs, epoch):
         model.train()
@@ -133,10 +130,10 @@ class ForecastingTrainingTask(BasicTask):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.configs.learning_rate)
         criterion = torch.nn.MSELoss()
 
+        train_loss = None
         for epoch in range(self.configs.epochs):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, self.configs, epoch) 
-        self.task_map[self.task_id][self.pid] = 'finished'
-        return 
+        return train_loss # TODO: convert to validation loss
         
 
 class ForecastingInferenceTask(BasicTask):
