@@ -966,24 +966,24 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
       Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
-      Set<Expression> childrenExpressionMap = new HashSet<>();
+      Set<Expression> childrenExpressionSet = new HashSet<>();
       for (String childColumn : childrenOutputColumns) {
         Expression childExpression =
             columnNameToExpression.get(
                 childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
-        childrenExpressionMap.add(childExpression);
+        childrenExpressionSet.add(childExpression);
       }
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
 
-        if (childrenExpressionMap.contains(originalDescriptor.getOutputExpression())) {
+        if (childrenExpressionSet.contains(originalDescriptor.getOutputExpression())) {
           descriptorExpressions.add(originalDescriptor.getOutputExpression());
         }
 
         for (Expression exp : originalDescriptor.getInputExpressions()) {
-          if (childrenExpressionMap.contains(exp)) {
+          if (childrenExpressionSet.contains(exp)) {
             descriptorExpressions.add(exp);
           }
         }
