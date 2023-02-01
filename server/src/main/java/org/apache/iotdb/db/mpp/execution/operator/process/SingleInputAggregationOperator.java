@@ -79,6 +79,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   @Override
   public TsBlock next() {
+    LOGGER.info("***********************");
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -96,18 +97,24 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
       resultTsBlockBuilder.reset();
-
       TsBlockRowIterator tsBlockRowIterator = resultTsBlock.getTsBlockRowIterator();
       LOGGER.info("RawDataAggregation output:");
       while (tsBlockRowIterator.hasNext()) {
         LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
       }
+      LOGGER.info("---------------------------");
+      tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+      LOGGER.info("InputTsBlock output:");
+      while (tsBlockRowIterator.hasNext()) {
+        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+      }
       LOGGER.info("hasNext()" + Boolean.toString(hasNext()));
       LOGGER.info("isFinished()" + Boolean.toString(isFinished()));
-      LOGGER.info("###########################");
-
+      LOGGER.info("***********************");
       return resultTsBlock;
     } else {
+      LOGGER.info("return null");
+      LOGGER.info("***********************");
       return null;
     }
   }

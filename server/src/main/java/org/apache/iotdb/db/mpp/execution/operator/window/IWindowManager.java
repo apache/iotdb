@@ -55,9 +55,6 @@ public interface IWindowManager {
    */
   boolean hasNext(boolean hasMoreData);
 
-  /** Used to determine whether the window calculation is finished */
-  boolean isFinished(boolean hasMoreData);
-
   /** Used to mark the current window has got last point */
   void next();
 

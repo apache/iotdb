@@ -77,11 +77,6 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    return !child.hasNextWithTimer() && windowManager.isFinished(hasMoreData());
-  }
-
-  @Override
   protected boolean calculateNextAggregationResult() {
 
     // if needSkip is true, just get the tsBlock directly.
@@ -92,12 +87,15 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
 
-        TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
-        LOGGER.info("TsBlock read by RawDataAggregator:");
-        while (tsBlockRowIterator.hasNext()) {
-          LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+        if (inputTsBlock != null) {
+          LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+          TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+          LOGGER.info("TsBlock read by RawDataAggregator:");
+          while (tsBlockRowIterator.hasNext()) {
+            LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+          }
+          LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         }
-        LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 
         canCallNext = false;
         if (needSkip) {
@@ -125,10 +123,25 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     // they need to skip the points in lastWindow in advance to get endTime
     if (windowManager.needSkipInAdvance()) {
       needSkip = true;
+      LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+      TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+      LOGGER.info("TsBlock before skip:");
+      while (tsBlockRowIterator.hasNext()) {
+        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+      }
+
       inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
       if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
+        LOGGER.info("null");
+        LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         return canCallNext;
       }
+      tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+      LOGGER.info("TsBlock after skip:");
+      while (tsBlockRowIterator.hasNext()) {
+        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+      }
+      LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
       needSkip = false;
     }
 
@@ -138,7 +151,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean calculateFromRawData() {
-
+    LOGGER.info("##############################");
+    TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+    LOGGER.info("Original TsBlock before skip:");
+    while (tsBlockRowIterator.hasNext()) {
+      LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+    }
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
       return false;
@@ -147,6 +165,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     // If current window has been initialized, we should judge whether inputTsBlock is empty
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return false;
+    }
+    tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+    LOGGER.info("Original TsBlock after skip:");
+    while (tsBlockRowIterator.hasNext()) {
+      LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
     }
 
     if (windowManager.satisfiedCurWindow(inputTsBlock)) {
@@ -167,9 +190,17 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         inputTsBlock = null;
         // For the last index of TsBlock, if we can know the aggregation calculation is over
         // we can directly updateResultTsBlock and return true
+        LOGGER.info("TsBlock after aggregation:null");
+        LOGGER.info("##############################");
         return isAllAggregatorsHasFinalResult(aggregators);
       } else {
         inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+        tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+        LOGGER.info("TsBlock after aggregation:");
+        while (tsBlockRowIterator.hasNext()) {
+          LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+        }
+        LOGGER.info("##############################");
         return true;
       }
     }
