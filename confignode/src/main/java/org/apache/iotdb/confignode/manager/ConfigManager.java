@@ -651,6 +651,15 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
+    if (CONF.isPartitionDebugEnabled()) {
+      printNewCreatedSchemaPartition(devicePaths, resp);
+    }
+
+    return resp;
+  }
+
+  private void printNewCreatedSchemaPartition(
+      List<String> devicePaths, TSchemaPartitionTableResp resp) {
     StringBuilder devicePathString = new StringBuilder("{");
     for (String devicePath : devicePaths) {
       devicePathString.append("\n\t").append(devicePath).append(",");
@@ -681,12 +690,10 @@ public class ConfigManager implements IManager {
     }
     schemaPartitionRespString.append("\n}");
 
-    LOGGER.debug(
+    LOGGER.info(
         "[GetOrCreateSchemaPartition]:\nReceive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
         devicePathString,
         schemaPartitionRespString);
-
-    return resp;
   }
 
   @Override
@@ -740,7 +747,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TDataPartitionTableResp getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq) {
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan) {
     // Construct empty response
     TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
@@ -750,13 +757,21 @@ public class ConfigManager implements IManager {
     }
 
     DataPartitionResp queryResult =
-        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
-
+        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
     resp = queryResult.convertToTDataPartitionTableResp();
 
+    if (CONF.isPartitionDebugEnabled()) {
+      printNewCreatedDataPartition(getOrCreateDataPartitionPlan, resp);
+    }
+
+    return resp;
+  }
+
+  private void printNewCreatedDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
     StringBuilder partitionSlotsMapString = new StringBuilder("{");
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> databaseEntry :
-        getOrCreateDataPartitionReq.getPartitionSlotsMap().entrySet()) {
+        getOrCreateDataPartitionPlan.getPartitionSlotsMap().entrySet()) {
       String database = databaseEntry.getKey();
       partitionSlotsMapString.append("\n\tDatabase=").append(database).append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> slotEntry :
@@ -798,12 +813,10 @@ public class ConfigManager implements IManager {
     }
     dataPartitionRespString.append("\n}");
 
-    LOGGER.debug(
+    LOGGER.info(
         "[GetOrCreateDataPartition]:\nReceive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
         partitionSlotsMapString,
         dataPartitionRespString);
-
-    return resp;
   }
 
   private TSStatus confirmLeader() {
