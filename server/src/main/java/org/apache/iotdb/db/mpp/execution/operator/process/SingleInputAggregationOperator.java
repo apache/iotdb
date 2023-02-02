@@ -23,12 +23,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -104,6 +106,10 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       LOGGER.info("---------------------------------------");
       LOGGER.info("normalReturn tsblock");
       LOGGER.info("hasNext: " + hasNext());
+      TsBlockRowIterator tsBlockRowIterator = resultTsBlock.getTsBlockRowIterator();
+      while (tsBlockRowIterator.hasNext()) {
+        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+      }
       LOGGER.info("---------------------------------------");
       return resultTsBlock;
     } else {
