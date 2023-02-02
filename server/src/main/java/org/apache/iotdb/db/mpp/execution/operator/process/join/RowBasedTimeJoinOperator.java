@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +80,8 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
   private boolean finished;
 
   private final TimeComparator comparator;
+
+  private Logger LOGGER = LoggerFactory.getLogger(RowBasedTimeJoinOperator.class);
 
   public RowBasedTimeJoinOperator(
       OperatorContext operatorContext,
@@ -206,6 +210,34 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   @Override
   public boolean hasNext() {
+    boolean res = backupHasNext();
+
+    //    if (finished) {
+    //      return false;
+    //    }
+    //    if (retainedTsBlock != null) {
+    //      return true;
+    //    }
+    //    for (int i = 0; i < inputOperatorsCount; i++) {
+    //      if (!empty(i)) {
+    //        return true;
+    //      } else if (!noMoreTsBlocks[i]) {
+    //        if (children.get(i).hasNextWithTimer()) {
+    //          return true;
+    //        } else {
+    //          noMoreTsBlocks[i] = true;
+    //          inputTsBlocks[i] = null;
+    //        }
+    //      }
+    //    }
+    //    return false;
+    LOGGER.info("#######################");
+    LOGGER.info(Boolean.toString(res));
+    LOGGER.info("#######################");
+    return res;
+  }
+
+  boolean backupHasNext() {
     if (finished) {
       return false;
     }
