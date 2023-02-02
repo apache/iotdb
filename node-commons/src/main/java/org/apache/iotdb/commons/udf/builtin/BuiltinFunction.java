@@ -63,7 +63,7 @@ public enum BuiltinFunction {
       case "diff":
         return true;
       default:
-        throw new IllegalArgumentException("No such function");
+        throw new IllegalArgumentException("Invalid BuiltInFunction: " + name);
     }
   }
 }

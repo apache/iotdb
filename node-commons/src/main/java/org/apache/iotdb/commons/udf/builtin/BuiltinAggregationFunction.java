@@ -76,7 +76,7 @@ public enum BuiltinAggregationFunction {
       case "count_if":
         return false;
       default:
-        throw new IllegalArgumentException("No such function");
+        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
     }
   }
 
@@ -98,7 +98,7 @@ public enum BuiltinAggregationFunction {
       case "count_if":
         return false;
       default:
-        throw new IllegalArgumentException("No such function");
+        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
     }
   }
 }

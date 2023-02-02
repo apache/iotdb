@@ -187,6 +187,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -2250,7 +2251,73 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
+
+    // check size of input expressions
+    // type check of input expressions is put in ExpressionTypeAnalyzer
+    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      checkAggregationFunctionInput(functionExpression);
+    } else if (functionExpression.isBuiltInFunction()) {
+      checkBuiltInFunctionInput(functionExpression);
+    }
     return functionExpression;
+  }
+
+  private void checkAggregationFunctionInput(FunctionExpression functionExpression) {
+    final String functionName = functionExpression.getFunctionName().toLowerCase();
+    switch (functionName) {
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.COUNT:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.EXTREME:
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            1);
+        return;
+      case SqlConstant.COUNT_IF:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            2);
+        return;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + functionExpression.getFunctionName());
+    }
+  }
+
+  private void checkBuiltInFunctionInput(FunctionExpression functionExpression) {
+    final String functionName = functionExpression.getFunctionName().toLowerCase();
+    switch (functionName) {
+      case SqlConstant.DIFF:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            1);
+        return;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid BuiltInFunction: " + functionExpression.getFunctionName());
+    }
+  }
+
+  private void checkFunctionExpressionInputSize(
+      String expressionString, int actual, int... expected) {
+    for (int expect : expected) {
+      if (expect == actual) {
+        return;
+      }
+    }
+    throw new SemanticException(
+        String.format(
+            "Error size of input expressions. expression: %s, actual size: %s, expected size: %s.",
+            expressionString, actual, Arrays.toString(expected)));
   }
 
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {

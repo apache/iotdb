@@ -110,26 +110,24 @@ public class TypeInferenceUtils {
     return TSDataType.TEXT;
   }
 
-  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType dataType) {
+  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType... dataType) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
-    if (!verifyIsAggregationDataTypeMatched(aggrFuncName, dataType)) {
-      throw new SemanticException(
-          "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
-    }
+    verifyIsAggregationDataTypeMatched(aggrFuncName, dataType);
 
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_IF:
         return TSDataType.INT64;
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.EXTREME:
-        return dataType;
+        return dataType[0];
       case SqlConstant.AVG:
       case SqlConstant.SUM:
         return TSDataType.DOUBLE;
@@ -138,31 +136,45 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static boolean verifyIsAggregationDataTypeMatched(
-      String aggrFuncName, TSDataType dataType) {
+  private static void verifyIsAggregationDataTypeMatched(
+      String aggrFuncName, TSDataType... dataTypes) {
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
-        return dataType.isNumeric();
+        if (dataTypes[0].isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Aggregation function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                aggrFuncName));
       case SqlConstant.COUNT:
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
-        return true;
+        return;
+      case SqlConstant.COUNT_IF:
+        if (dataTypes[0] == TSDataType.BOOLEAN) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Aggregation function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                aggrFuncName));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
   }
 
-  public static TSDataType getScalarFunctionDataType(String funcName, TSDataType dataType) {
+  public static TSDataType getBuiltInFunctionDataType(String funcName, TSDataType dataType) {
     if (funcName == null) {
       throw new IllegalArgumentException("ScalarFunction Name must not be null");
     }
-    verifyIsScalarFunctionDataTypeMatched(funcName, dataType);
+    verifyIsBuiltInFunctionDataTypeMatched(funcName, dataType);
 
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
@@ -172,7 +184,7 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+  private static void verifyIsBuiltInFunctionDataTypeMatched(String funcName, TSDataType dataType) {
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
         if (dataType.isNumeric()) {

@@ -250,16 +250,21 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        final TSDataType[] dataTypes = new TSDataType[inputExpressions.size()];
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getAggrDataType(
                 functionExpression.getFunctionName(),
-                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+                inputExpressions.stream()
+                    .map(NodeRef::of)
+                    .map(expressionTypes::get)
+                    .collect(Collectors.toList())
+                    .toArray(dataTypes)));
       }
       if (functionExpression.isBuiltInFunction()) {
         return setExpressionType(
             functionExpression,
-            TypeInferenceUtils.getScalarFunctionDataType(
+            TypeInferenceUtils.getBuiltInFunctionDataType(
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       } else {
