@@ -29,7 +29,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class SetStorageGroupStatement extends Statement implements IConfigStatement {
+public class DatabaseSchemaStatement extends Statement implements IConfigStatement {
+
+  private final DatabaseSchemaStatementType subType;
+
   private PartialPath storageGroupPath;
   private Long TTL = null;
   private Integer schemaReplicationFactor = null;
@@ -38,9 +41,14 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
   private Integer schemaRegionGroupNum = null;
   private Integer dataRegionGroupNum = null;
 
-  public SetStorageGroupStatement() {
+  public DatabaseSchemaStatement(DatabaseSchemaStatementType subType) {
     super();
-    statementType = StatementType.SET_STORAGE_GROUP;
+    this.subType = subType;
+    statementType = StatementType.STORAGE_GROUP_SCHEMA;
+  }
+
+  public DatabaseSchemaStatementType getSubType() {
+    return subType;
   }
 
   public PartialPath getStorageGroupPath() {
@@ -101,7 +109,13 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetStorageGroup(this, context);
+    switch (subType) {
+      case CREATE:
+        return visitor.visitSetDatabase(this, context);
+      case ALTER:
+      default:
+        return visitor.visitAlterDatabase(this, context);
+    }
   }
 
   @Override
@@ -134,5 +148,10 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
         + ", dataRegionGroupNum="
         + dataRegionGroupNum
         + '}';
+  }
+
+  public enum DatabaseSchemaStatementType {
+    CREATE,
+    ALTER
   }
 }

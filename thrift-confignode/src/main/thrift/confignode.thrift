@@ -145,11 +145,7 @@ struct TSetDataNodeStatusReq {
   2: required string status
 }
 
-// StorageGroup
-struct TSetStorageGroupReq {
-  1: required TStorageGroupSchema storageGroup
-}
-
+// Database
 struct TDeleteStorageGroupReq {
   1: required string prefixPath
 }
@@ -792,7 +788,15 @@ service IConfigNodeRPCService {
    *         PATH_ILLEGAL if the new StorageGroup's name is illegal
    *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup already exist
    */
-  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
+  common.TSStatus setDatabase(TStorageGroupSchema databaseSchema)
+
+  /**
+   * Alter a StorageGroup's schema, including
+   * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
+   *
+   * @return SUCCESS_STATUS if the specified StorageGroupSchema is altered successfully
+   */
+  common.TSStatus alterDatabase(TStorageGroupSchema databaseSchema)
 
   /**
    * Generate a DeleteStorageGroupProcedure to delete a specific StorageGroup

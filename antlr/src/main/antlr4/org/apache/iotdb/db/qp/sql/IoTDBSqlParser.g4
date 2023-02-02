@@ -38,7 +38,7 @@ statement
 ddlStatement
     : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
+    | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
@@ -84,6 +84,11 @@ storageGroupAttributesClause
 
 storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL | SCHEMA_REGION_GROUP_NUM | DATA_REGION_GROUP_NUM) '=' INTEGER_LITERAL
+    ;
+
+// Alter StorageGroup
+alterStorageGroup
+    : ALTER (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause
     ;
 
 // Create Timeseries
