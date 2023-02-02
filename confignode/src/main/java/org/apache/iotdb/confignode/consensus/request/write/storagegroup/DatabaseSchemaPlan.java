@@ -28,17 +28,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SetStorageGroupPlan extends ConfigPhysicalPlan {
+public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
 
   private TStorageGroupSchema schema;
 
-  public SetStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.SetStorageGroup);
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
+    super(planType);
     this.schema = new TStorageGroupSchema();
   }
 
-  public SetStorageGroupPlan(TStorageGroupSchema schema) {
-    this();
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TStorageGroupSchema schema) {
+    this(planType);
     this.schema = schema;
   }
 
@@ -61,7 +61,7 @@ public class SetStorageGroupPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
     return schema.equals(that.schema);
   }
 

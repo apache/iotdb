@@ -63,11 +63,11 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -263,12 +263,14 @@ public class ConfigPlanExecutor {
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
       case UpdateDataNodeConfiguration:
         return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
-      case SetStorageGroup:
-        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      case CreateDatabase:
+        TSStatus status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+        return partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+      case AlterDatabase:
+        return clusterSchemaInfo.alterDatabase((DatabaseSchemaPlan) physicalPlan);
       case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
             (AdjustMaxRegionGroupNumPlan) physicalPlan);
@@ -397,23 +399,22 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList.stream()
-        .forEach(
-            x -> {
-              boolean takeSnapshotResult = true;
-              try {
-                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
-              } catch (TException | IOException e) {
-                LOGGER.error("Take snapshot error: {}", e.getMessage());
-                takeSnapshotResult = false;
-              } finally {
-                // If any snapshot fails, the whole fails
-                // So this is just going to be false
-                if (!takeSnapshotResult) {
-                  result.set(false);
-                }
-              }
-            });
+    snapshotProcessorList.forEach(
+        x -> {
+          boolean takeSnapshotResult = true;
+          try {
+            takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+          } catch (TException | IOException e) {
+            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            takeSnapshotResult = false;
+          } finally {
+            // If any snapshot fails, the whole fails
+            // So this is just going to be false
+            if (!takeSnapshotResult) {
+              result.set(false);
+            }
+          }
+        });
     if (result.get()) {
       LOGGER.info("Task snapshot success, snapshotDir: {}", snapshotDir);
     }

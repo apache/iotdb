@@ -33,8 +33,8 @@ public enum ConfigPhysicalPlanType {
   RemoveDataNode((short) 102),
   UpdateDataNodeConfiguration((short) 103),
 
-  /** StorageGroup */
-  SetStorageGroup((short) 200),
+  /** Database */
+  CreateDatabase((short) 200),
   SetTTL((short) 201),
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
@@ -44,6 +44,7 @@ public enum ConfigPhysicalPlanType {
   PreDeleteStorageGroup((short) 207),
   GetStorageGroup((short) 208),
   CountStorageGroup((short) 209),
+  AlterDatabase((short) 210),
 
   /** Region */
   CreateRegionGroups((short) 300),

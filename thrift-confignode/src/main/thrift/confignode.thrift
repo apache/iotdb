@@ -777,24 +777,28 @@ service IConfigNodeRPCService {
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
-  // StorageGroup
+  // Database
   // ======================================================
 
   /**
-   * Set a new StorageGroup, all fields in TStorageGroupSchema can be customized
+   * Set a new Databse, all fields in TStorageGroupSchema can be customized
    * while the undefined fields will automatically use default values
    *
-   * @return SUCCESS_STATUS if the new StorageGroup set successfully
-   *         PATH_ILLEGAL if the new StorageGroup's name is illegal
-   *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup already exist
+   * @return SUCCESS_STATUS if the new Database set successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_ALREADY_EXISTS if the Database already exist
    */
   common.TSStatus setDatabase(TStorageGroupSchema databaseSchema)
 
   /**
-   * Alter a StorageGroup's schema, including
+   * Alter a Database's schema, including
    * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
    *
-   * @return SUCCESS_STATUS if the specified StorageGroupSchema is altered successfully
+   * @return SUCCESS_STATUS if the specified DatabaseSchema is altered successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
   common.TSStatus alterDatabase(TStorageGroupSchema databaseSchema)
 

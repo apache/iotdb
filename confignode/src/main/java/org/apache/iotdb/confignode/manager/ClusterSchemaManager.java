@@ -42,10 +42,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTe
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -115,25 +115,19 @@ public class ClusterSchemaManager {
   // Consensus read/write interfaces
   // ======================================================
 
-  /**
-   * Set StorageGroup
-   *
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. STORAGE_GROUP_ALREADY_EXISTS if
-   *     the StorageGroup is already set. PERSISTENCE_FAILURE if fail to set StorageGroup in
-   *     MTreeAboveSG.
-   */
-  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  /** Set Database */
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus result;
-    if (setStorageGroupPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
+    if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
       IllegalPathException illegalPathException =
           new IllegalPathException(
-              setStorageGroupPlan.getSchema().getName(),
+              databaseSchemaPlan.getSchema().getName(),
               "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       return RpcUtils.getStatus(
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
     try {
-      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
+      clusterSchemaInfo.checkContainsStorageGroup(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -146,12 +140,70 @@ public class ClusterSchemaManager {
     }
 
     // Cache StorageGroupSchema
-    result = getConsensusManager().write(setStorageGroupPlan).getStatus();
+    result = getConsensusManager().write(databaseSchemaPlan).getStatus();
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     adjustMaxRegionGroupNum();
 
     return result;
+  }
+
+  /** Alter Database */
+  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+    TSStatus result;
+    boolean isDatabaseExisted;
+    TStorageGroupSchema storageGroupSchema = databaseSchemaPlan.getSchema();
+
+    try {
+      isDatabaseExisted = clusterSchemaInfo.isDatabaseExisted(storageGroupSchema.getName());
+    } catch (IllegalPathException e) {
+      // Reject if DatabaseName is illegal
+      result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
+      result.setMessage("Failed to alter database. " + e.getMessage());
+      return result;
+    }
+
+    if (!isDatabaseExisted) {
+      // Reject if Database doesn't exist
+      result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      result.setMessage(
+          "Failed to alter database. The Database "
+              + storageGroupSchema.getName()
+              + " doesn't exist.");
+      return result;
+    }
+
+    if (storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
+      // Validate alter SchemaRegionGroupNum
+      int minSchemaRegionGroupNum =
+          getMinRegionGroupNum(storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
+      if (storageGroupSchema.getMinSchemaRegionGroupNum() <= minSchemaRegionGroupNum) {
+        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
+        result.setMessage(
+            String.format(
+                "Failed to alter database. The SchemaRegionGroupNum could only be increased. "
+                    + "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d",
+                minSchemaRegionGroupNum, storageGroupSchema.getMinSchemaRegionGroupNum()));
+        return result;
+      }
+    }
+    if (storageGroupSchema.isSetMinDataRegionGroupNum()) {
+      // Validate alter DataRegionGroupNum
+      int minDataRegionGroupNum =
+          getMinRegionGroupNum(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
+      if (storageGroupSchema.getMinDataRegionGroupNum() <= minDataRegionGroupNum) {
+        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
+        result.setMessage(
+            String.format(
+                "Failed to alter database. The DataRegionGroupNum could only be increased. "
+                    + "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d",
+                minDataRegionGroupNum, storageGroupSchema.getMinDataRegionGroupNum()));
+        return result;
+      }
+    }
+
+    // Alter DatabaseSchema
+    return getConsensusManager().write(databaseSchemaPlan).getStatus();
   }
 
   /** Delete StorageGroup synchronized to protect the safety of adjustMaxRegionGroupNum */
