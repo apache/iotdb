@@ -56,6 +56,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   public DeviceViewIntoOperator(
       OperatorContext operatorContext,
       Operator child,
+      List<TSDataType> inputColumnTypes,
       Map<String, Map<PartialPath, Map<String, InputLocation>>>
           deviceToTargetPathSourceInputLocationMap,
       Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap,
@@ -67,7 +68,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     super(
         operatorContext,
         child,
-        null,
+        inputColumnTypes,
         sourceColumnToInputLocationMap,
         intoOperationExecutor,
         maxStatementSize);
@@ -144,7 +145,10 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
         deviceToTargetPathDataTypeMap.get(currentDevice);
     return constructInsertTabletStatementGenerators(
-        targetPathToSourceInputLocationMap, targetPathToDataTypeMap, targetDeviceToAlignedMap);
+        targetPathToSourceInputLocationMap,
+        targetPathToDataTypeMap,
+        targetDeviceToAlignedMap,
+        typeConvertors);
   }
 
   private void updateResultTsBlock() {

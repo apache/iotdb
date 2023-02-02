@@ -90,7 +90,7 @@ public class RegionGroupCacheTest {
         2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
     Assert.assertTrue(disabledRegionGroup0.periodicUpdate());
     Assert.assertEquals(
-        RegionGroupStatus.Disabled, disabledRegionGroup0.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Discouraged, disabledRegionGroup0.getStatistics().getRegionGroupStatus());
 
     RegionGroupCache disabledRegionGroup1 =
         new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 3));

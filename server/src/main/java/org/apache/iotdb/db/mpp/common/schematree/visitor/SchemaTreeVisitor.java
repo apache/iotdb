@@ -33,6 +33,7 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   public SchemaTreeVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
+    initStack();
   }
 
   public List<R> getAllResult() {

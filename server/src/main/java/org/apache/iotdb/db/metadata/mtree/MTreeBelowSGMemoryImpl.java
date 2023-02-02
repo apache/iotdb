@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -76,7 +78,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -466,7 +467,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      parent.addAlias(deletedNode.getAlias(), deletedNode);
+      parent.deleteAliasChild(deletedNode.getAlias());
     }
     return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
   }
@@ -690,26 +691,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public List<IMeasurementMNode> getAllMeasurementMNode() {
-    IMNode cur = storageGroupMNode;
-    // collect all the LeafMNode in this database
-    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<IMNode> queue = new LinkedList<>();
-    queue.add(cur);
-    while (!queue.isEmpty()) {
-      IMNode node = queue.poll();
-      IMNodeIterator iterator = store.getChildrenIterator(node);
-      IMNode child;
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          leafMNodes.add(child.getAsMeasurementMNode());
-        } else {
-          queue.add(child);
-        }
-      }
+  public long countAllMeasurement() throws MetadataException {
+    try (MeasurementCounter measurementCounter =
+        new MeasurementCounter(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
+      return measurementCounter.count();
     }
-    return leafMNodes;
   }
 
   // endregion
@@ -736,7 +722,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
 
       if (cur.isUseTemplate()) {
-        throw new TemplateIsInUseException(cur.getFullPath());
+        if (template.getId() == cur.getSchemaTemplateId()) {
+          throw new TemplateIsInUseException(cur.getFullPath());
+        } else {
+          throw new DifferentTemplateException(activatePath.getFullPath(), template.getName());
+        }
       }
 
       if (cur.isEntity()) {

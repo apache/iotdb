@@ -156,8 +156,9 @@ public class MemoryPool {
         bytesToReserve);
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
-          "Cannot reserve {} bytes memory from MemoryPool for planNodeId{}",
+          "Cannot reserve {}(Max: {}) bytes memory from MemoryPool for planNodeId{}",
           bytesToReserve,
+          maxBytesCanReserve,
           planNodeId);
       throw new IllegalArgumentException(
           "Query is aborted since it requests more memory than can be allocated.");

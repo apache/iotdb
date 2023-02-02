@@ -26,7 +26,11 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -45,6 +49,8 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  * </ol>
  */
 public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
+
+  private static final Logger logger = LoggerFactory.getLogger(Traverser.class);
 
   protected IMTreeStore store;
 
@@ -67,11 +73,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @throws MetadataException path does not meet the expected rules
    */
   protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
+    this.store = store.getWithReentrantReadLock();
+    initStack();
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -79,7 +89,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     this.startNode = startNode;
     this.nodes = nodes;
-    this.store = store;
   }
 
   /**
@@ -92,6 +101,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     if (!isSuccess()) {
       Throwable e = getFailure();
+      logger.warn(e.getMessage(), e);
       throw new MetadataException(e.getMessage(), e);
     }
   }
@@ -102,8 +112,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
-      if (parent.getSchemaTemplateId() != NON_TEMPLATE) {
-        if (!skipPreDeletedSchema || !parent.getAsEntityMNode().isPreDeactivateTemplate()) {
+      if (parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+          && !(skipPreDeletedSchema
+              && parent
+                  .getAsEntityMNode()
+                  .isPreDeactivateTemplate())) { // the template should not skip
+        Template template = templateMap.get(parent.getSchemaTemplateId());
+        // if null, it means the template on this device is not covered in this query, refer to the
+        // mpp analyzing stage
+        if (template != null) {
           child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
         }
       }
@@ -135,6 +152,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
     ((IMNodeIterator) nodeIterator).close();
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+      // TODO update here
+      ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
+    }
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
