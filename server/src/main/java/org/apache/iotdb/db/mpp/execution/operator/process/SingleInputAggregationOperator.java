@@ -85,7 +85,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     canCallNext = true;
 
     while (hasNext() && !resultTsBlockBuilder.isFull()) {
-      if (System.nanoTime() - start < maxRuntime) {
+      if (System.nanoTime() - start >= maxRuntime) {
         LOGGER.info("---------------------------------------");
         LOGGER.info("timeout");
         LOGGER.info("hasNext: " + hasNext());
