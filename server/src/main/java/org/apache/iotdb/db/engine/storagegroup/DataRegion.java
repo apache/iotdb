@@ -3149,15 +3149,20 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
       throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
-      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      try {
-        insertTablet(insertTabletNode);
-      } catch (WriteProcessException | BatchProcessException e) {
-        insertMultiTabletsNode
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    writeLock("InsertTablets");
+    try {
+      for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+        InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+        try {
+          insertTablet(insertTabletNode);
+        } catch (WriteProcessException | BatchProcessException e) {
+          insertMultiTabletsNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
+    } finally {
+      writeUnlock();
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
