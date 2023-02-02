@@ -2326,6 +2326,9 @@ public class DataRegion implements IDataRegionForQuery {
           newFilePartitionId,
           insertPos,
           deleteOriginFile);
+      TsFileMetricManager.getInstance()
+          .addFile(
+              newTsFileResource.getTsFile().length(), tsFileType == LoadTsFileType.LOAD_SEQUENCE);
 
       resetLastCacheWhenLoadingTsFile(); // update last cache
       updateLastFlushTime(newTsFileResource); // update last flush time

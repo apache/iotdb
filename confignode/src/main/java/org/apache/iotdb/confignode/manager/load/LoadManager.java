@@ -36,9 +36,9 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -119,11 +119,11 @@ public class LoadManager {
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException If there are not enough DataNodes
-   * @throws StorageGroupNotExistsException If some specific StorageGroups don't exist
+   * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 

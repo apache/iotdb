@@ -146,6 +146,10 @@ public class TypeInferenceUtils {
   }
 
   private static void verifyIsAggregationDataTypeMatched(String aggrFuncName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return;
+    }
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -172,7 +176,6 @@ public class TypeInferenceUtils {
                   "Input series of Aggregation function [%s] only supports data type [BOOLEAN]",
                   aggrFuncName));
         }
-        // TODO: check keep
         return;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
@@ -254,6 +257,10 @@ public class TypeInferenceUtils {
   }
 
   private static void verifyIsBuiltInFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return;
+    }
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
         if (dataType.isNumeric()) {
