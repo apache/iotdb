@@ -139,7 +139,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
     return this;
   }
 
@@ -149,7 +149,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
     return this;
   }
 

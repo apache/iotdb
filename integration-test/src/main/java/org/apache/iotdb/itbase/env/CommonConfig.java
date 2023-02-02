@@ -67,11 +67,11 @@ public interface CommonConfig {
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
-  CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase);
+  CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
 
   CommonConfig setDataRegionGroupExtensionPolicy(String dataRegionGroupExtensionPolicy);
 
-  CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase);
+  CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase);
 
   CommonConfig setSchemaReplicationFactor(int schemaReplicationFactor);
 

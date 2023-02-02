@@ -178,9 +178,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
     setProperty(
-        "default_schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+        "default_schema_region_group_num_per_database",
+        String.valueOf(schemaRegionGroupPerDatabase));
     return this;
   }
 
@@ -191,9 +192,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
     setProperty(
-        "default_data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+        "default_data_region_group_num_per_database", String.valueOf(dataRegionGroupPerDatabase));
     return this;
   }
 

@@ -90,7 +90,7 @@ public class IoTDBPartitionCreationIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setDefaultDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase);
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);

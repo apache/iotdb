@@ -194,9 +194,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    cnConfig.setDefaultSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
-    dnConfig.setDefaultSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    cnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
+    dnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
     return this;
   }
 
@@ -208,9 +208,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDefaultDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    cnConfig.setDefaultDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
-    dnConfig.setDefaultDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    cnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
+    dnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
     return this;
   }
 
