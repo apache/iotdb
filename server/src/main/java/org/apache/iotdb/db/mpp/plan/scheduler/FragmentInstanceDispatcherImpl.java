@@ -100,36 +100,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   //  unsafe for current FragmentInstance scheduler framework. We need to implement the
   //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
-    List<TSStatus> failureStatusList = new ArrayList<>();
     for (FragmentInstance instance : instances) {
       long startTime = System.nanoTime();
-      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        dispatchOneInstance(instance);
-      } catch (FragmentInstanceDispatchException e) {
-        TSStatus failureStatus = e.getFailureStatus();
-        if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-          failureStatusList.addAll(failureStatus.getSubStatus());
-        } else {
-          failureStatusList.add(failureStatus);
-        }
-      } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
-        failureStatusList.add(
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
-      } finally {
-        QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
-      }
-    }
-    if (failureStatusList.isEmpty()) {
-      return immediateFuture(new FragInstanceDispatchResult(true));
-    } else {
-      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
-    }
-  }
-
-  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
-    for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
@@ -140,9 +112,46 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+      } finally {
+        QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    List<TSStatus> failureStatusList = new ArrayList<>();
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        TSStatus failureStatus = e.getFailureStatus();
+        if (instances.size() == 1) {
+          failureStatusList.add(failureStatus);
+        } else {
+          if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            failureStatusList.addAll(failureStatus.getSubStatus());
+          } else {
+            failureStatusList.add(failureStatus);
+          }
+        }
+      } catch (Throwable t) {
+        logger.warn("[DispatchFailed]", t);
+        failureStatusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+      }
+    }
+    if (failureStatusList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } else {
+      if (instances.size() == 1) {
+        return immediateFuture(new FragInstanceDispatchResult(failureStatusList.get(0)));
+      } else {
+        return immediateFuture(
+            new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+      }
+    }
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
