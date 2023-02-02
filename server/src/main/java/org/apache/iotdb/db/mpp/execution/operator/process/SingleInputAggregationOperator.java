@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +48,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
+
+  private Logger LOGGER = LoggerFactory.getLogger(SingleInputAggregationOperator.class);
 
   protected SingleInputAggregationOperator(
       OperatorContext operatorContext,
@@ -80,7 +84,14 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
+    while (hasNext() && !resultTsBlockBuilder.isFull()) {
+      if (System.nanoTime() - start < maxRuntime) {
+        LOGGER.info("---------------------------------------");
+        LOGGER.info("timeout");
+        LOGGER.info("hasNext: " + hasNext());
+        LOGGER.info("---------------------------------------");
+        break;
+      }
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
         break;
@@ -90,8 +101,17 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
       resultTsBlockBuilder.reset();
+      LOGGER.info("---------------------------------------");
+      LOGGER.info("normalReturn tsblock");
+      LOGGER.info("hasNext: " + hasNext());
+      LOGGER.info(Integer.toString(inputTsBlock.getPositionCount()));
+      LOGGER.info("---------------------------------------");
       return resultTsBlock;
     } else {
+      LOGGER.info("---------------------------------------");
+      LOGGER.info("hasNext: " + hasNext());
+      LOGGER.info("return null");
+      LOGGER.info("---------------------------------------");
       return null;
     }
   }
