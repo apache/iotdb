@@ -257,7 +257,7 @@ Now, let us introduce the way of creating timeseries, inserting data and queryin
 The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a database. Before defining a timeseries, we should define a database using CREATE DATABASE first, and here is an example:
 
 ```
-IoTDB> CREATE DATABSE root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
 We can also use SHOW DATABASES to check the database being created:

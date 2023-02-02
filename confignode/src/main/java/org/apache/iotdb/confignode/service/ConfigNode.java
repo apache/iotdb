@@ -78,6 +78,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   public static void main(String[] args) {
+    LOGGER.info(
+        ConfigNodeConstant.GLOBAL_NAME
+            + " environment variables: "
+            + ConfigNodeConfig.getEnvironmentVariables());
     new ConfigNodeCommandLine().doMain(args);
   }
 

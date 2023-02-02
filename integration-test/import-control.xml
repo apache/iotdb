@@ -89,10 +89,12 @@
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
     <allow class="org.apache.iotdb.db.conf.OperationType" />
-    <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
+    <allow class="org.apache.iotdb.db.it.utils.AlignedWriteUtil" />
+    <allow class="org.apache.iotdb.commons.cluster.NodeStatus" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
+    <allow class="org.apache.iotdb.common.rpc.thrift.TAggregationType" />
     <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.isession.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
@@ -101,6 +103,7 @@
     <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
+    <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true" />
   </subpackage>
   <subpackage name="zeppelin.it">
     <allow class="org.apache.zeppelin.interpreter.InterpreterResult" />

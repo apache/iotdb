@@ -29,19 +29,19 @@ import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
-  private static TSDataType booleanStringInferType =
+  private static final TSDataType booleanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
-  private static TSDataType integerStringInferType =
+  private static final TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
-  private static TSDataType longStringInferType =
+  private static final TSDataType longStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
-  private static TSDataType floatingStringInferType =
+  private static final TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
-  private static TSDataType nanStringInferType =
+  private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
@@ -140,6 +140,10 @@ public class TypeInferenceUtils {
 
   private static boolean verifyIsAggregationDataTypeMatched(
       String aggrFuncName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return true;
+    }
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -155,6 +159,66 @@ public class TypeInferenceUtils {
         return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  public static TSDataType getScalarFunctionDataType(String funcName, TSDataType dataType) {
+    if (funcName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null");
+    }
+    verifyIsScalarFunctionDataTypeMatched(funcName, dataType);
+
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
+  private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return;
+    }
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        if (dataType.isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Scalar function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                funcName));
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
+  public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
+    if (fromType.equals(toType)) {
+      return true;
+    }
+
+    switch (fromType) {
+      case INT32:
+        switch (toType) {
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            return true;
+          default:
+            return false;
+        }
+      case INT64:
+      case FLOAT:
+        return toType.equals(TSDataType.DOUBLE);
+      case DOUBLE:
+      case BOOLEAN:
+      case TEXT:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + fromType);
     }
   }
 }

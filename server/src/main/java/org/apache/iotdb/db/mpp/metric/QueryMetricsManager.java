@@ -27,8 +27,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_NUM;
-
 public class QueryMetricsManager {
 
   private final MetricService metricService = MetricService.getInstance();
@@ -88,7 +86,7 @@ public class QueryMetricsManager {
   }
 
   public void recordDataExchangeCost(String stage, long costTimeInNanos) {
-    MetricInfo metricInfo = DataExchangeMetricSet.metricInfoMap.get(stage);
+    MetricInfo metricInfo = DataExchangeCostMetricSet.metricInfoMap.get(stage);
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
@@ -97,13 +95,10 @@ public class QueryMetricsManager {
         metricInfo.getTagsInArray());
   }
 
-  public void recordDataBlockNum(int num) {
+  public void recordDataBlockNum(String type, int num) {
+    MetricInfo metricInfo = DataExchangeCountMetricSet.metricInfoMap.get(type);
     metricService.histogram(
-        num,
-        Metric.DATA_EXCHANGE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        GET_DATA_BLOCK_NUM);
+        num, metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
   }
 
   public void recordTaskQueueTime(String name, long queueTimeInNanos) {
