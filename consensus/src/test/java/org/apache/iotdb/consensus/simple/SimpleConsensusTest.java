@@ -109,6 +109,11 @@ public class SimpleConsensusTest {
     }
 
     @Override
+    public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+      return request;
+    }
+
+    @Override
     public DataSet read(IConsensusRequest request) {
       return null;
     }
