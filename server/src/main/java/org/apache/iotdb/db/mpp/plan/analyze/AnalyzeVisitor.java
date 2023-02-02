@@ -67,6 +67,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDes
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -75,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -185,10 +187,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Expression deviceExpression =
-      new TimeSeriesOperand(new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT));
+      TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
 
   private static final Expression endTimeExpression =
-      new TimeSeriesOperand(new MeasurementPath(new PartialPath(ENDTIME, false), TSDataType.INT64));
+      TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -1147,18 +1149,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     GroupByComponent groupByComponent = queryStatement.getGroupByComponent();
     WindowType windowType = groupByComponent.getWindowType();
-    boolean ignoringNull = true;
-
-    Map<String, String> keyValuePair = groupByComponent.getPair();
-    if (keyValuePair != null) {
-      for (String key : keyValuePair.keySet()) {
-        if (key.equalsIgnoreCase("'IgnoringNull'")) {
-          ignoringNull = Boolean.parseBoolean(keyValuePair.get(key));
-        } else {
-          throw new SemanticException("Unsupported key-value pair in group by clause");
-        }
-      }
-    }
 
     Map<String, Expression> deviceToGroupByExpression = new LinkedHashMap<>();
     if (windowType == WindowType.EVENT_WINDOW) {
@@ -1182,8 +1172,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceToGroupByExpression.put(device.getFullPath(), groupByExpressionOfOneDevice);
       }
 
-      GroupByParameter groupByParameter = new GroupByParameter(windowType, ignoringNull);
-      groupByParameter.setDelta(groupByComponent.getDelta());
+      GroupByParameter groupByParameter =
+          new GroupByVariationParameter(
+              windowType,
+              groupByComponent.isIgnoringNull(),
+              ((GroupByVariationComponent) groupByComponent).getDelta());
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else {
@@ -1199,18 +1192,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     GroupByComponent groupByComponent = queryStatement.getGroupByComponent();
     WindowType windowType = groupByComponent.getWindowType();
-    boolean ignoringNull = true;
-
-    Map<String, String> keyValuePair = groupByComponent.getPair();
-    if (keyValuePair != null) {
-      for (String key : keyValuePair.keySet()) {
-        if (key.equalsIgnoreCase("'IgnoringNull'")) {
-          ignoringNull = Boolean.parseBoolean(keyValuePair.get(key));
-        } else {
-          throw new SemanticException("Unsupported key-value pair in group by clause");
-        }
-      }
-    }
 
     if (windowType == WindowType.EVENT_WINDOW) {
 
@@ -1228,8 +1209,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
       }
       analyzeExpression(analysis, expressions.get(0));
-      GroupByParameter groupByParameter = new GroupByParameter(windowType, ignoringNull);
-      groupByParameter.setDelta(groupByComponent.getDelta());
+      GroupByParameter groupByParameter =
+          new GroupByVariationParameter(
+              windowType,
+              groupByComponent.isIgnoringNull(),
+              ((GroupByVariationComponent) groupByComponent).getDelta());
       analysis.setGroupByExpression(expressions.get(0));
       analysis.setGroupByParameter(groupByParameter);
     } else {

@@ -27,8 +27,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 public interface Accumulator {
 
   /**
-   * Column should be like: | ControlColumn | Time | Value | IgnoringNull is required when
-   * considering the value with null-controlColumn
+   * Column should be like: | ControlColumn | Time | Value |
+   *
+   * <p>IgnoringNull is required when considering the row where the value of controlColumn is null
    *
    * <p>Return the last read row index of current timeColumn
    */

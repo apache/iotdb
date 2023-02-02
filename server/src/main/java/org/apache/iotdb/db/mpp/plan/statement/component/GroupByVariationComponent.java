@@ -20,38 +20,19 @@
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
-public abstract class GroupByComponent extends StatementNode {
+public class GroupByVariationComponent extends GroupByComponent {
+  private double delta = 0;
 
-  protected Expression ControlColumnExpression;
-
-  private boolean ignoringNull;
-
-  private final WindowType windowType;
-
-  public GroupByComponent(WindowType windowType) {
-    this.windowType = windowType;
+  public GroupByVariationComponent(WindowType windowType) {
+    super(windowType);
   }
 
-  public WindowType getWindowType() {
-    return windowType;
+  public double getDelta() {
+    return delta;
   }
 
-  public void setControlColumnExpression(Expression controlColumnExpression) {
-    ControlColumnExpression = controlColumnExpression;
-  }
-
-  public Expression getControlColumnExpression() {
-    return ControlColumnExpression;
-  }
-
-  public void setIgnoringNull(boolean ignoringNull) {
-    this.ignoringNull = ignoringNull;
-  }
-
-  public boolean isIgnoringNull() {
-    return ignoringNull;
+  public void setDelta(double delta) {
+    this.delta = delta;
   }
 }

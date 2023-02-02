@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -27,15 +28,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/** The parameter of `GROUP BY`. including: `GROUP BY VARIATION` */
-public class GroupByParameter {
+/** The parameter of `GROUP BY` clause. */
+public abstract class GroupByParameter {
 
-  WindowType windowType;
+  protected WindowType windowType;
 
-  boolean ignoringNull;
-
-  // the parameter of `GROUP BY VARIATION`
-  double delta;
+  protected boolean ignoringNull;
 
   public GroupByParameter(WindowType windowType, boolean ignoringNull) {
     this.windowType = windowType;
@@ -50,43 +48,20 @@ public class GroupByParameter {
     return ignoringNull;
   }
 
-  // parameters for `GROUP BY VARIATION`
-  public void setDelta(double delta) {
-    this.delta = delta;
-  }
+  protected abstract void serializeAttributes(ByteBuffer byteBuffer);
 
-  public double getDelta() {
-    return delta;
-  }
+  protected abstract void serializeAttributes(DataOutputStream stream) throws IOException;
 
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(windowType.getType(), buffer);
     ReadWriteIOUtils.write(ignoringNull, buffer);
-    if (windowType == WindowType.EVENT_WINDOW) {
-      ReadWriteIOUtils.write(delta, buffer);
-    }
+    serializeAttributes(buffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(windowType.getType(), stream);
     ReadWriteIOUtils.write(ignoringNull, stream);
-    if (windowType == WindowType.EVENT_WINDOW) {
-      ReadWriteIOUtils.write(delta, stream);
-    }
-  }
-
-  public static GroupByParameter deserialize(ByteBuffer buffer) {
-    byte type = ReadWriteIOUtils.readByte(buffer);
-    boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
-    if (type == WindowType.EVENT_WINDOW.getType()) {
-      double delta = ReadWriteIOUtils.readDouble(buffer);
-      GroupByParameter groupByParameter =
-          new GroupByParameter(WindowType.EVENT_WINDOW, ignoringNull);
-      groupByParameter.setDelta(delta);
-      return groupByParameter;
-    } else {
-      throw new IllegalArgumentException("Unsupported Type in group by.");
-    }
+    serializeAttributes(stream);
   }
 
   public boolean equals(Object obj) {
@@ -94,19 +69,17 @@ public class GroupByParameter {
       return false;
     }
     GroupByParameter other = (GroupByParameter) obj;
-    boolean commonPart =
-        this.windowType == other.windowType && this.ignoringNull == other.ignoringNull;
-
-    if (!commonPart) return false;
-    switch (this.windowType) {
-      case EVENT_WINDOW:
-        return this.delta == other.delta;
-      default:
-        return true;
-    }
+    return this.windowType == other.windowType && this.ignoringNull == other.ignoringNull;
   }
 
   public int hashCode() {
-    return Objects.hash(windowType, ignoringNull, delta);
+    return Objects.hash(windowType, ignoringNull);
+  }
+
+  public static GroupByParameter deserialize(ByteBuffer byteBuffer) {
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    if (type == WindowType.EVENT_WINDOW.getType()) {
+      return GroupByVariationParameter.deserializeVariation(byteBuffer);
+    } else throw new SemanticException("Unsupported window type");
   }
 }

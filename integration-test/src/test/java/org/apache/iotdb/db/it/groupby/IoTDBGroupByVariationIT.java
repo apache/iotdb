@@ -236,7 +236,7 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=true)";
+        "select count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoringNull=true)";
     normalTest(res, sql);
   }
 
@@ -255,7 +255,7 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select __endTime,count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=true)";
+        "select __endTime,count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoringNul=true)";
     normalTestWithEndTime(res, sql);
   }
 
@@ -356,7 +356,7 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,'ignoringNull'=false)";
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,1,ignoringNull=false)";
     normalTestWithoutIgnoringNull(res, sql);
   }
 
@@ -382,7 +382,7 @@ public class IoTDBGroupByVariationIT {
         };
 
     String sql =
-        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(status,'ignoringNull'=false)";
+        "select count(hardware),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(status,ignoringNull=false)";
     normalTestWithoutIgnoringNull(res, sql);
   }
 
