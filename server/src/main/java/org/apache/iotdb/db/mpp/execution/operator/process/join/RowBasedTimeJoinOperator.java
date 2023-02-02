@@ -210,45 +210,29 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   @Override
   public boolean hasNext() {
-    boolean res = backupHasNext();
-
-    //    if (finished) {
-    //      return false;
-    //    }
-    //    if (retainedTsBlock != null) {
-    //      return true;
-    //    }
-    //    for (int i = 0; i < inputOperatorsCount; i++) {
-    //      if (!empty(i)) {
-    //        return true;
-    //      } else if (!noMoreTsBlocks[i]) {
-    //        if (children.get(i).hasNextWithTimer()) {
-    //          return true;
-    //        } else {
-    //          noMoreTsBlocks[i] = true;
-    //          inputTsBlocks[i] = null;
-    //        }
-    //      }
-    //    }
-    //    return false;
-    LOGGER.info("#######################");
-    LOGGER.info(Boolean.toString(res));
-    LOGGER.info("#######################");
-    return res;
-  }
-
-  boolean backupHasNext() {
     if (finished) {
       return false;
     }
     if (retainedTsBlock != null) {
+      LOGGER.info("Invalid true");
       return true;
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!empty(i)) {
+        LOGGER.info("Invalid true");
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (children.get(i).hasNextWithTimer()) {
+        boolean res = children.get(i).hasNextWithTimer();
+        String log =
+            "RowBasedTimeJoin"
+                + this.getOperatorContext().getOperatorId()
+                + "'s "
+                + "ExchangeNode:";
+        log += children.get(i).getOperatorContext().getOperatorId();
+        log += " " + i;
+        log += " " + res;
+        LOGGER.info(log);
+        if (res) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;

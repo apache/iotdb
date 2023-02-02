@@ -106,7 +106,14 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       resultTsBlockBuilder.reset();
       LOGGER.info("---------------------------------------");
       LOGGER.info("normalReturn tsblock");
-      LOGGER.info("hasNext: " + hasNext());
+      String childInfo = " ";
+      childInfo +=
+          child.getClass()
+              + " "
+              + child.hasNext()
+              + " in node "
+              + child.getOperatorContext().getOperatorId();
+      LOGGER.info("hasNext: " + hasNext() + childInfo);
       LOGGER.info("tsblockBuilder is full:" + resultTsBlockBuilder.isFull());
       if (inputTsBlock == null || inputTsBlock.isEmpty()) {
         LOGGER.info("inputTsBlock is null");

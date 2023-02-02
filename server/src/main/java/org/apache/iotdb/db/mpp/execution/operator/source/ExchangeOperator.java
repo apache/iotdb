@@ -24,8 +24,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
@@ -38,8 +36,6 @@ public class ExchangeOperator implements SourceOperator {
   private final PlanNodeId sourceId;
 
   private ListenableFuture<?> isBlocked = NOT_BLOCKED;
-
-  private Logger LOGGER = LoggerFactory.getLogger(ExchangeOperator.class);
 
   public ExchangeOperator(
       OperatorContext operatorContext, ISourceHandle sourceHandle, PlanNodeId sourceId) {
@@ -60,11 +56,7 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public boolean hasNext() {
-    boolean hasNext = !sourceHandle.isFinished();
-    LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
-    LOGGER.info(Boolean.toString(hasNext));
-    LOGGER.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
-    return hasNext;
+    return !sourceHandle.isFinished();
   }
 
   @Override
