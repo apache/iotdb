@@ -49,6 +49,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -99,23 +100,32 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   //  unsafe for current FragmentInstance scheduler framework. We need to implement the
   //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
+    List<TSStatus> failureStatusList = new ArrayList<>();
     for (FragmentInstance instance : instances) {
       long startTime = System.nanoTime();
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+        TSStatus failureStatus = e.getFailureStatus();
+        if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          failureStatusList.addAll(failureStatus.getSubStatus());
+        } else {
+          failureStatusList.add(failureStatus);
+        }
       } catch (Throwable t) {
         logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+        failureStatusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
       } finally {
         QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
       }
     }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+    if (failureStatusList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } else {
+      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+    }
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
