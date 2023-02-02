@@ -89,16 +89,21 @@ public class TestUtils {
 
     @Override
     public TSStatus write(IConsensusRequest request) {
+      if (((TestRequest) request).isIncr()) {
+        integer.incrementAndGet();
+      }
+      return new TSStatus(200);
+    }
+
+    @Override
+    public IConsensusRequest deserializeRequest(IConsensusRequest request) {
       TestRequest testRequest;
       if (request instanceof ByteBufferConsensusRequest) {
         testRequest = new TestRequest(request.serializeToByteBuffer());
       } else {
         testRequest = (TestRequest) request;
       }
-      if (testRequest.isIncr()) {
-        integer.incrementAndGet();
-      }
-      return new TSStatus(200);
+      return testRequest;
     }
 
     @Override
