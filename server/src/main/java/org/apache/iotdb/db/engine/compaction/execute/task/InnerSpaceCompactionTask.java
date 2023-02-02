@@ -131,9 +131,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
-      LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] Close the logger", storageGroupName, dataRegionId);
-      compactionLogger.close();
+
       LOGGER.info(
           "{}-{} [Compaction] compaction with {}",
           storageGroupName,
@@ -177,6 +175,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             targetTsFileList,
             timePartition,
             false);
+      }
+
+      if (targetTsFileResource.isDeleted()) {
+        compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
@@ -231,12 +233,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       // inner space compaction task has only one target file
-      if (targetTsFileList.get(0) != null) {
+      if (!targetTsFileResource.isDeleted()) {
         TsFileMetricManager.getInstance()
-            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+            .addFile(targetTsFileResource.getTsFile().length(), sequence);
 
-        // set target resources to CLOSED, so that they can be selected to compact
-        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
+        // set target resource to CLOSED, so that it can be selected to compact
+        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      } else {
+        // target resource is empty after compaction, then delete it
+        targetTsFileResource.remove();
       }
       TsFileMetricManager.getInstance()
           .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());

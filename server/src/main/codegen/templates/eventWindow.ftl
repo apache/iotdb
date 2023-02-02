@@ -16,19 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+<@pp.dropOutputFile />
 
+<#list allDataTypes.types as type>
+
+    <#assign className = "Event${type.dataType?cap_first}Window">
+    <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/window/${className}.java" />
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+<#if type.dataType == "Binary">
 import org.apache.iotdb.tsfile.utils.Binary;
+</#if>
 
-public abstract class EventTextWindow extends EventWindow {
+/*
+* This class is generated using freemarker and the ${.template_name} template.
+*/
+public abstract class ${className} extends EventWindow {
 
-  protected Binary eventValue;
+  protected ${type.dataType} eventValue;
 
-  private Binary previousEventValue;
+  private ${type.dataType} previousEventValue;
 
-  public EventTextWindow(EventWindowParameter eventWindowParameter) {
+  public ${className}(EventWindowParameter eventWindowParameter) {
     super(eventWindowParameter);
   }
 
@@ -52,16 +62,18 @@ public abstract class EventTextWindow extends EventWindow {
     if (!initializedEventValue) {
       startTime = currentTime;
       endTime = currentTime;
-      eventValue = controlTimeAndValueColumn[0].getBinary(index);
+      eventValue = controlTimeAndValueColumn[0].get${type.dataType?cap_first}(index);
       initializedEventValue = true;
     }
   }
 
-  public Binary getEventValue() {
+  public ${type.dataType} getEventValue() {
     return eventValue;
   }
 
-  public Binary getPreviousEventValue() {
+  public ${type.dataType} getPreviousEventValue() {
     return previousEventValue;
   }
 }
+
+</#list>

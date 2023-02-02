@@ -3223,6 +3223,24 @@ public class IoTDBConfig {
     return loadTsFileProportion;
   }
 
+  public static String getEnvironmentVariables() {
+    return "\n\t"
+        + IoTDBConstant.IOTDB_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_HOME, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_CONF
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_CONF, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_DATA_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
+        + ";";
+  }
+
   public void setCompactionProportion(double compactionProportion) {
     this.compactionProportion = compactionProportion;
   }
@@ -3261,7 +3279,7 @@ public class IoTDBConfig {
   }
 
   public String getConfigMessage() {
-    String configMessage = "";
+    StringBuilder configMessage = new StringBuilder();
     String configContent;
     String[] notShowArray = {
       "NODE_NAME_MATCHER",
@@ -3285,12 +3303,17 @@ public class IoTDBConfig {
         } else {
           configContent = configField.get(this).toString();
         }
-        configMessage = configMessage + configField.getName() + "=" + configContent + "; ";
+        configMessage
+            .append("\n\t")
+            .append(configField.getName())
+            .append("=")
+            .append(configContent)
+            .append(";");
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
-    return configMessage;
+    return configMessage.toString();
   }
 
   public long getDataRatisConsensusSnapshotTriggerThreshold() {

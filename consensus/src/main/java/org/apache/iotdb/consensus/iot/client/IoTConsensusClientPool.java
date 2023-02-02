@@ -32,7 +32,9 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class IoTConsensusClientPool {
 
-  private IoTConsensusClientPool() {}
+  private IoTConsensusClientPool() {
+    // empty constructor
+  }
 
   public static class SyncIoTConsensusServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncIoTConsensusServiceClient> {

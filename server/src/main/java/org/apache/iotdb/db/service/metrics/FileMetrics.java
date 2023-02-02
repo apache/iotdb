@@ -72,6 +72,13 @@ public class FileMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "unseq");
     metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileSize,
+        Tag.NAME.toString(),
+        "mods");
+    metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         TS_FILE_METRIC_MANAGER,
@@ -85,6 +92,13 @@ public class FileMetrics implements IMetricSet {
         o -> o.getFileNum(false),
         Tag.NAME.toString(),
         "unseq");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileNum,
+        Tag.NAME.toString(),
+        "mods");
   }
 
   private void bindWalFileMetrics(AbstractMetricService metricService) {
@@ -181,9 +195,13 @@ public class FileMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "unseq");
     metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "mods");
+    metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "mods");
   }
 
   private void unbindWalMetrics(AbstractMetricService metricService) {

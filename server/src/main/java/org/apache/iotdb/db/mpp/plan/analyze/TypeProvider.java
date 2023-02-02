@@ -46,7 +46,10 @@ public class TypeProvider {
   }
 
   public void setType(String symbol, TSDataType dataType) {
-    this.typeMap.put(symbol, dataType);
+    // DataType of NullOperand is null, we needn't put it into TypeProvider
+    if (dataType != null) {
+      this.typeMap.put(symbol, dataType);
+    }
   }
 
   public boolean containsTypeInfoOf(String path) {

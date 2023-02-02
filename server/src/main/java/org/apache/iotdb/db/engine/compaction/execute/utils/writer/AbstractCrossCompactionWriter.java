@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -144,9 +145,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   public void endFile() throws IOException {
     for (int i = 0; i < isEmptyFile.length; i++) {
       targetFileWriters.get(i).endFile();
-      // delete empty target file
+      // set empty target file to DELETED
       if (isEmptyFile[i]) {
-        targetFileWriters.get(i).getFile().delete();
+        targetResources.get(i).setStatus(TsFileResourceStatus.DELETED);
       }
     }
   }
