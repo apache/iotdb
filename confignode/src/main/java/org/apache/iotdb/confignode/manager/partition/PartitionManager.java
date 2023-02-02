@@ -315,7 +315,15 @@ public class PartitionManager {
       }
     }
 
-    return (DataPartitionResp) getDataPartition(req);
+    resp = (DataPartitionResp) getDataPartition(req);
+    if (resp.isAllPartitionsExist()) {
+      LOGGER.error("");
+      resp.setStatus(
+          new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some data partition allocation result in the response"));
+      return resp;
+    }
+    return resp;
   }
 
   // ======================================================
