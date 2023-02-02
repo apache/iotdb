@@ -439,7 +439,6 @@ public class ConfigManager implements IManager {
     clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
-    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
     return clusterParameters;
   }
 
@@ -526,7 +525,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
-          getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
+          getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
@@ -569,7 +568,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<String> allStorageGroups = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allStorageGroupPaths = new ArrayList<>();
     for (String storageGroup : allStorageGroups) {
       try {
@@ -627,7 +626,7 @@ public class ConfigManager implements IManager {
     }
 
     List<String> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<String> storageGroups = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
@@ -936,10 +935,6 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
 
-    if (clusterParameters.getLeastDataRegionGroupNum() != CONF.getLeastDataRegionGroupNum()) {
-      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
-    }
-
     return null;
   }
 
@@ -1216,7 +1211,7 @@ public class ConfigManager implements IManager {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString())) {
+      if (!clusterSchemaManager.getDatabaseNames().contains(storageGroup.toString())) {
         noExistSg.add(storageGroup);
       }
     }

@@ -892,6 +892,14 @@ TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
     ;
 
+SCHEMA_REGION_GROUP_NUM
+    : S C H E M A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+DATA_REGION_GROUP_NUM
+    : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
 APPLY_TEMPLATE
     : A P P L Y '_' T E M P L A T E
     ;

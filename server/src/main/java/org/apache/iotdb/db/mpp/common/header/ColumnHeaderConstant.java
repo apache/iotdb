@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.collect.ImmutableList;
@@ -28,7 +26,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 
 public class ColumnHeaderConstant {
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // column names for query statement
   public static final String TIME = "Time";
@@ -48,10 +45,16 @@ public class ColumnHeaderConstant {
   public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
   public static final String COUNT = "Count";
-  public static final String COLUMN_TTL = "TTL(ms)";
+  public static final String COLUMN_TTL = "TTL";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
+  public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
+  public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
+  public static final String MAX_SCHEMA_REGION_GROUP_NUM = "MaxSchemaRegionGroupNum";
+  public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
+  public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
+  public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
   public static final String CHILD_NODES = "ChildNodes";
@@ -71,7 +74,6 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
-  public static final String HOST = "Host";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -110,7 +112,6 @@ public class ColumnHeaderConstant {
   public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
-  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
 
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
@@ -122,8 +123,8 @@ public class ColumnHeaderConstant {
   public static final String ROLE = "Role";
 
   // column names for show datanodes
-  public static final String DATA_REGION_NUM = "DataRegionNum";
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
+  public static final String DATA_REGION_NUM = "DataRegionNum";
 
   // column names for show schema template statement
   public static final String TEMPLATE_NAME = "TemplateName";
@@ -185,15 +186,27 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 
-  public static final List<ColumnHeader> showStorageGroupColumnHeaders =
+  public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
-          new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32),
-          new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32));
+          new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
