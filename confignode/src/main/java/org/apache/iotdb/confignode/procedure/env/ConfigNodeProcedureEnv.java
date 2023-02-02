@@ -42,7 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteSt
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
@@ -496,9 +496,8 @@ public class ConfigNodeProcedureEnv {
     for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
       try {
         ttlMap.put(
-            storageGroup,
-            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
-      } catch (StorageGroupNotExistsException e) {
+            storageGroup, getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL());
+      } catch (DatabaseNotExistsException e) {
         // Notice: This line will never reach since we've checked before
         LOG.error("StorageGroup doesn't exist", e);
       }
@@ -523,8 +522,8 @@ public class ConfigNodeProcedureEnv {
     return req;
   }
 
-  public long getTTL(String storageGroup) throws StorageGroupNotExistsException {
-    return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
+  public long getTTL(String storageGroup) throws DatabaseNotExistsException {
+    return getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {

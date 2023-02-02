@@ -75,34 +75,33 @@ public class ConfigNodeConfig {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
-  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
-  private double schemaRegionPerDataNode = schemaReplicationFactor;
-
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of SchemaRegionGroups for each Database when using CUSTOM extension policy */
-  private int schemaRegionGroupPerDatabase = 1;
+  /**
+   * When set schema_region_group_extension_policy=CUSTOM, this parameter is the default number of
+   * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
+   * parameter is the default minimal number of SchemaRegionGroups for each Database.
+   */
+  private int defaultSchemaRegionGroupNumPerDatabase = 1;
+
+  /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = schemaReplicationFactor;
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
       RegionGroupExtensionPolicy.AUTO;
 
-  /** The number of DataRegionGroups for each Database when using CUSTOM extension policy */
-  private int dataRegionGroupPerDatabase = 1;
+  /**
+   * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
+   * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
+   * parameter is the default minimal number of DataRegionGroups for each Database.
+   */
+  private int defaultDataRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 1.0;
-
-  /** The least number of SchemaRegionGroup for each Database. */
-  private volatile int leastSchemaRegionGroupNum = 1;
-
-  /** The least number of DataRegionGroup for each Database. */
-  private volatile int leastDataRegionGroupNum = 5;
-
-  /** Indicate whether the leastDataRegionGroupNum is set by user, if true, lock it. */
-  private volatile boolean leastDataRegionGroupNumSetByUser = false;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -491,12 +490,13 @@ public class ConfigNodeConfig {
     this.schemaRegionGroupExtensionPolicy = schemaRegionGroupExtensionPolicy;
   }
 
-  public int getSchemaRegionGroupPerDatabase() {
-    return schemaRegionGroupPerDatabase;
+  public int getDefaultSchemaRegionGroupNumPerDatabase() {
+    return defaultSchemaRegionGroupNumPerDatabase;
   }
 
-  public void setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    this.schemaRegionGroupPerDatabase = schemaRegionGroupPerDatabase;
+  public void setDefaultSchemaRegionGroupNumPerDatabase(
+      int defaultSchemaRegionGroupNumPerDatabase) {
+    this.defaultSchemaRegionGroupNumPerDatabase = defaultSchemaRegionGroupNumPerDatabase;
   }
 
   public RegionGroupExtensionPolicy getDataRegionGroupExtensionPolicy() {
@@ -508,12 +508,12 @@ public class ConfigNodeConfig {
     this.dataRegionGroupExtensionPolicy = dataRegionGroupExtensionPolicy;
   }
 
-  public int getDataRegionGroupPerDatabase() {
-    return dataRegionGroupPerDatabase;
+  public int getDefaultDataRegionGroupNumPerDatabase() {
+    return defaultDataRegionGroupNumPerDatabase;
   }
 
-  public void setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    this.dataRegionGroupPerDatabase = dataRegionGroupPerDatabase;
+  public void setDefaultDataRegionGroupNumPerDatabase(int defaultDataRegionGroupNumPerDatabase) {
+    this.defaultDataRegionGroupNumPerDatabase = defaultDataRegionGroupNumPerDatabase;
   }
 
   public double getSchemaRegionPerDataNode() {
@@ -538,30 +538,6 @@ public class ConfigNodeConfig {
 
   public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
-  }
-
-  public int getLeastSchemaRegionGroupNum() {
-    return leastSchemaRegionGroupNum;
-  }
-
-  public void setLeastSchemaRegionGroupNum(int leastSchemaRegionGroupNum) {
-    this.leastSchemaRegionGroupNum = leastSchemaRegionGroupNum;
-  }
-
-  public int getLeastDataRegionGroupNum() {
-    return leastDataRegionGroupNum;
-  }
-
-  public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    this.leastDataRegionGroupNum = leastDataRegionGroupNum;
-  }
-
-  public boolean isLeastDataRegionGroupNumSetByUser() {
-    return leastDataRegionGroupNumSetByUser;
-  }
-
-  public void setLeastDataRegionGroupNumSetByUser(boolean leastDataRegionGroupNumSetByUser) {
-    this.leastDataRegionGroupNumSetByUser = leastDataRegionGroupNumSetByUser;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {

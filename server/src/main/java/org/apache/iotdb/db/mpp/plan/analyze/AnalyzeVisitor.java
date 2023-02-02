@@ -2169,7 +2169,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(showStorageGroupStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowStorageGroupHeader());
+    analysis.setRespDatasetHeader(
+        DatasetHeaderFactory.getShowStorageGroupHeader(showStorageGroupStatement.isDetailed()));
     return analysis;
   }
 
