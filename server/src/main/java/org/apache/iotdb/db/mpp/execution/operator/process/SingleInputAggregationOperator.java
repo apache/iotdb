@@ -104,7 +104,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       LOGGER.info("---------------------------------------");
       LOGGER.info("normalReturn tsblock");
       LOGGER.info("hasNext: " + hasNext());
-      LOGGER.info(Integer.toString(inputTsBlock.getPositionCount()));
       LOGGER.info("---------------------------------------");
       return resultTsBlock;
     } else {
