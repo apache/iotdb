@@ -250,6 +250,8 @@ public class SlidingWindowAggregationOperatorTest {
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               rootAggregationTypes.get(i),
               TSDataType.INT32,
+              Collections.emptyList(),
+              Collections.emptyMap(),
               ascending,
               inputLocations.get(i).stream()
                   .map(tmpInputLocations -> tmpInputLocations.toArray(new InputLocation[0]))

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -73,6 +74,10 @@ public class AggregationDescriptor {
     this.inputAttributes = inputAttributes;
   }
 
+  // Old method, please don't use it any more
+  // keep here for compatibility of old Test before introduce of count_if
+  @TestOnly
+  @Deprecated
   public AggregationDescriptor(
       String aggregationFuncName, AggregationStep step, List<Expression> inputExpressions) {
     this.aggregationFuncName = aggregationFuncName;
@@ -243,6 +248,7 @@ public class AggregationDescriptor {
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, byteBuffer);
     }
+    ReadWriteIOUtils.write(inputAttributes, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -116,11 +117,14 @@ public class SlidingWindowAggregatorFactory {
   public static SlidingWindowAggregator createSlidingWindowAggregator(
       TAggregationType aggregationType,
       TSDataType dataType,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
       boolean ascending,
       List<InputLocation[]> inputLocationList,
       AggregationStep step) {
     Accumulator accumulator =
-        AccumulatorFactory.createAccumulator(aggregationType, dataType, ascending);
+        AccumulatorFactory.createAccumulator(
+            aggregationType, dataType, inputExpressions, inputAttributes, ascending);
     switch (aggregationType) {
       case SUM:
       case AVG:
