@@ -52,9 +52,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -128,7 +125,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
+  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+      } catch (Throwable t) {
+        logger.warn("[DispatchFailed]", t);
+        return immediateFuture(
+            new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+      }
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
   private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
+    // split local and remote instances
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
     for (FragmentInstance instance : instances) {
@@ -140,9 +155,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     // async dispatch to remote
-    CountDownLatch countDownLatch = new CountDownLatch(remoteInstances.size());
-    Map<Integer, TSendPlanNodeResp> instanceId2RespMap = new ConcurrentHashMap<>();
-    dispatchRemoteAsync(remoteInstances, countDownLatch, instanceId2RespMap);
+    AsyncPlanNodeSender asyncPlanNodeSender =
+        new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
+    asyncPlanNodeSender.sendAll();
     // sync dispatch to local
     for (FragmentInstance localInstance : localInstances) {
       try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
@@ -157,9 +172,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       }
     }
-    // wait remote dispatch done
+    // wait until remote dispatch done
     try {
-      countDownLatch.await();
+      asyncPlanNodeSender.waitUntilCompleted();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Interrupted when dispatching write async", e);
@@ -168,26 +183,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
     }
-    // judge remote dispatch status
-    for (Map.Entry<Integer, TSendPlanNodeResp> entry : instanceId2RespMap.entrySet()) {
-      if (!entry.getValue().accepted) {
-        logger.warn(
-            "dispatch write failed. status: {}, code: {}, message: {}, node {}",
-            entry.getValue().status,
-            TSStatusCode.representOf(entry.getValue().status.code),
-            entry.getValue().message,
-            remoteInstances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
-        if (entry.getValue().getStatus() == null) {
-          return immediateFuture(
-              new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage())));
-        } else {
-          return immediateFuture(new FragInstanceDispatchResult(entry.getValue().getStatus()));
-        }
-      }
-    }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+    return asyncPlanNodeSender.getResult();
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -262,29 +258,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       // so that the following retry will avoid dispatching instance towards this DataNode.
       queryContext.addFailedEndPoint(endPoint);
       throw new FragmentInstanceDispatchException(status);
-    }
-  }
-
-  public void dispatchRemoteAsync(
-      List<FragmentInstance> instances,
-      CountDownLatch countDownLatch,
-      Map<Integer, TSendPlanNodeResp> instanceId2RespMap) {
-    for (int i = 0; i < instances.size(); ++i) {
-      FragmentInstance instance = instances.get(i);
-      AsyncSendPlanNodeHandler handler =
-          new AsyncSendPlanNodeHandler(i, countDownLatch, instanceId2RespMap);
-      try {
-        TSendPlanNodeReq sendPlanNodeReq =
-            new TSendPlanNodeReq(
-                new TPlanNode(instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                instance.getRegionReplicaSet().getRegionId());
-        AsyncDataNodeInternalServiceClient client =
-            asyncInternalServiceClientManager.borrowClient(
-                instance.getHostDataNode().getInternalEndPoint());
-        client.sendPlanNode(sendPlanNodeReq, handler);
-      } catch (Exception e) {
-        handler.onError(e);
-      }
     }
   }
 
