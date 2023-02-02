@@ -2206,7 +2206,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                     ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
                     context.getDriverContext()),
-                childSource.getPlanNodeId());
+                childSource.getPlanNodeId(),
+                childOperation.calculateMaxReturnSize());
         context
             .getTimeSliceAllocator()
             .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
