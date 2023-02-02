@@ -74,6 +74,7 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTi
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
+import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
 public class ExpressionAnalyzer {
   /**
@@ -269,6 +270,16 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         extendedExpressions.add(
             concatExpressionWithSuffixPaths(suffixExpression, prefixPaths, patternTree));
+
+        // We just process first input Expression of AggregationFunction,
+        // keep other input Expressions as origin
+        if (expression.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = expression.getExpressions();
+          for (int i = 1; i < children.size(); i++) {
+            extendedExpressions.add(Collections.singletonList(children.get(i)));
+          }
+          break;
+        }
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -457,6 +468,15 @@ public class ExpressionAnalyzer {
           return Collections.emptyList();
         }
         extendedExpressions.add(actualExpressions);
+
+        // We just process first input Expression of AggregationFunction,
+        // keep other input Expressions as origin and bind Type
+        if (expression.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = expression.getExpressions();
+          bindTypeForAggregationNonSeriesInputExpressions(
+              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
+          break;
+        }
       }
 
       // Calculate the Cartesian product of extendedExpressions to get the actual expressions after

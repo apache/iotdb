@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.Collections;
+import java.util.List;
 
 public class TypeInferenceUtils {
 
@@ -110,7 +119,7 @@ public class TypeInferenceUtils {
     return TSDataType.TEXT;
   }
 
-  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType... dataType) {
+  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType dataType) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
@@ -127,7 +136,7 @@ public class TypeInferenceUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.EXTREME:
-        return dataType[0];
+        return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
         return TSDataType.DOUBLE;
@@ -136,20 +145,19 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static void verifyIsAggregationDataTypeMatched(
-      String aggrFuncName, TSDataType... dataTypes) {
+  private static void verifyIsAggregationDataTypeMatched(String aggrFuncName, TSDataType dataType) {
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
-        if (dataTypes[0].isNumeric()) {
+        if (dataType.isNumeric()) {
           return;
         }
         throw new SemanticException(
             String.format(
-                "Aggregation function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                "Input series of Aggregation function [%s] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]",
                 aggrFuncName));
       case SqlConstant.COUNT:
       case SqlConstant.MIN_TIME:
@@ -158,15 +166,76 @@ public class TypeInferenceUtils {
       case SqlConstant.LAST_VALUE:
         return;
       case SqlConstant.COUNT_IF:
-        if (dataTypes[0] == TSDataType.BOOLEAN) {
-          return;
+        if (dataType != TSDataType.BOOLEAN) {
+          throw new SemanticException(
+              String.format(
+                  "Input series of Aggregation function [%s] only supports data type [BOOLEAN]",
+                  aggrFuncName));
         }
-        throw new SemanticException(
-            String.format(
-                "Aggregation function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
-                aggrFuncName));
+        // TODO: check keep
+        return;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  /**
+   * Bind Type for non-series input Expressions of AggregationFunction and check Semantic
+   *
+   * <p>.e.g COUNT_IF(s1>1, keep>2, 'ignoreNull'='false'), we bind type {@link TSDataType#INT64} for
+   * 'keep'
+   */
+  public static void bindTypeForAggregationNonSeriesInputExpressions(
+      String functionName,
+      List<Expression> inputExpressions,
+      List<List<Expression>> outputExpressionLists) {
+    switch (functionName.toLowerCase()) {
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+      case SqlConstant.EXTREME:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.COUNT:
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.LAST_VALUE:
+        return;
+      case SqlConstant.COUNT_IF:
+        Expression keepExpression = inputExpressions.get(1);
+        if (keepExpression instanceof ConstantOperand) {
+          return;
+        } else if (keepExpression instanceof CompareBinaryExpression) {
+          Expression leftExpression =
+              ((CompareBinaryExpression) keepExpression).getLeftExpression();
+          Expression rightExpression =
+              ((CompareBinaryExpression) keepExpression).getRightExpression();
+          if (leftExpression instanceof TimeSeriesOperand
+              && leftExpression.getExpressionString().equalsIgnoreCase("keep")
+              && rightExpression.isConstantOperand()) {
+            outputExpressionLists.add(
+                Collections.singletonList(
+                    ExpressionUtils.reconstructBinaryExpression(
+                        keepExpression.getExpressionType(),
+                        new TimeSeriesOperand(
+                            new MeasurementPath(
+                                ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
+                        rightExpression)));
+            return;
+          } else {
+            throw new SemanticException(
+                String.format(
+                    "Please check input keep condition of Aggregation function [%s]",
+                    functionName));
+          }
+        } else {
+          throw new SemanticException(
+              String.format(
+                  "Keep condition of Aggregation function [%s] need to be constant or compare expression constructed by keep and a long number",
+                  functionName));
+        }
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
     }
   }
 
@@ -192,7 +261,7 @@ public class TypeInferenceUtils {
         }
         throw new SemanticException(
             String.format(
-                "Scalar function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                "Input series of Scalar function [%s] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]",
                 funcName));
       default:
         throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
