@@ -128,7 +128,7 @@ public class ConcatPathRewriter {
     List<Expression> resultExpressions =
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
     if (resultExpressions.size() != 1) {
-      throw new IllegalStateException("Expression in group by should indicate one column");
+      throw new IllegalStateException("Expression in group by should indicate one value");
     }
     return resultExpressions.get(0);
   }

@@ -26,12 +26,7 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
@@ -57,7 +52,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   // points out of current window.
   private boolean needSkip = false;
 
-  private Logger LOGGER = LoggerFactory.getLogger(RawDataAggregationOperator.class);
+  private boolean hasCachedDataInAggregator = false;
 
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
@@ -73,7 +68,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean hasMoreData() {
-    return !(inputTsBlock == null || inputTsBlock.isEmpty()) || child.hasNextWithTimer();
+    return !(inputTsBlock == null || inputTsBlock.isEmpty())
+        || child.hasNextWithTimer()
+        || hasCachedDataInAggregator;
   }
 
   @Override
@@ -91,15 +88,6 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       // NOTE: child.next() can only be invoked once
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
-        if (inputTsBlock != null) {
-          LOGGER.info("GET NEW TsBlock");
-          TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
-          while (tsBlockRowIterator.hasNext()) {
-            LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
-          }
-        } else {
-          LOGGER.info("GET NULL");
-        }
         canCallNext = false;
         if (needSkip) {
           break;
@@ -134,6 +122,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     updateResultTsBlock();
+    hasCachedDataInAggregator = false;
 
     return true;
   }
@@ -162,6 +151,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
             Math.max(
                 lastReadRowIndex,
                 aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
+      }
+      if (lastReadRowIndex != 0) {
+        hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;

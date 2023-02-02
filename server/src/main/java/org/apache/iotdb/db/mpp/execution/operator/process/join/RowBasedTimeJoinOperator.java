@@ -219,20 +219,9 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!empty(i)) {
-        LOGGER.info("Invalid true");
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        boolean res = children.get(i).hasNextWithTimer();
-        String log =
-            "RowBasedTimeJoin"
-                + this.getOperatorContext().getOperatorId()
-                + "'s "
-                + "ExchangeNode:";
-        log += children.get(i).getOperatorContext().getOperatorId();
-        log += " " + i;
-        log += " " + res;
-        LOGGER.info(log);
-        if (res) {
+        if (children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;

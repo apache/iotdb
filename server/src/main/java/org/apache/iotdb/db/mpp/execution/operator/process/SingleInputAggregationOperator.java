@@ -23,14 +23,10 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -50,8 +46,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
-
-  private Logger LOGGER = LoggerFactory.getLogger(SingleInputAggregationOperator.class);
 
   protected SingleInputAggregationOperator(
       OperatorContext operatorContext,
@@ -86,17 +80,9 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     // reset operator state
     canCallNext = true;
 
-    while (hasNext() && !resultTsBlockBuilder.isFull()) {
-      if (System.nanoTime() - start >= maxRuntime) {
-        LOGGER.info("---------------------------------------");
-        LOGGER.info("timeout");
-        LOGGER.info("hasNext: " + hasNext());
-        LOGGER.info("---------------------------------------");
-        break;
-      }
+    while (System.nanoTime() - start < maxRuntime && hasNext() && !resultTsBlockBuilder.isFull()) {
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
-        LOGGER.info("out from calculateNextAggregationResult");
         break;
       }
     }
@@ -104,31 +90,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
       resultTsBlockBuilder.reset();
-      LOGGER.info("---------------------------------------");
-      LOGGER.info("normalReturn tsblock");
-      String childInfo = " ";
-      childInfo +=
-          child.getClass()
-              + " "
-              + child.hasNext()
-              + " in node "
-              + child.getOperatorContext().getOperatorId();
-      LOGGER.info("hasNext: " + hasNext() + childInfo);
-      LOGGER.info("tsblockBuilder is full:" + resultTsBlockBuilder.isFull());
-      if (inputTsBlock == null || inputTsBlock.isEmpty()) {
-        LOGGER.info("inputTsBlock is null");
-      }
-      TsBlockRowIterator tsBlockRowIterator = resultTsBlock.getTsBlockRowIterator();
-      while (tsBlockRowIterator.hasNext()) {
-        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
-      }
-      LOGGER.info("---------------------------------------");
       return resultTsBlock;
     } else {
-      LOGGER.info("---------------------------------------");
-      LOGGER.info("hasNext: " + hasNext());
-      LOGGER.info("return null");
-      LOGGER.info("---------------------------------------");
       return null;
     }
   }
