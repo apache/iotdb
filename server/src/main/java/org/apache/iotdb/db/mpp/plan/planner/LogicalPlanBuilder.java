@@ -354,7 +354,10 @@ public class LogicalPlanBuilder {
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
     AggregationDescriptor aggregationDescriptor =
         new AggregationDescriptor(
-            sourceExpression.getFunctionName(), curStep, sourceExpression.getExpressions());
+            sourceExpression.getFunctionName(),
+            curStep,
+            sourceExpression.getExpressions(),
+            sourceExpression.getFunctionAttributes());
     if (curStep.isOutputPartial()) {
       updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
     }
@@ -797,7 +800,8 @@ public class LogicalPlanBuilder {
               return new AggregationDescriptor(
                   ((FunctionExpression) expression).getFunctionName(),
                   curStep,
-                  expression.getExpressions());
+                  expression.getExpressions(),
+                  ((FunctionExpression) expression).getFunctionAttributes());
             })
         .collect(Collectors.toList());
   }

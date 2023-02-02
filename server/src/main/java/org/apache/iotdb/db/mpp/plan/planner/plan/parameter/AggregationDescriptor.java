@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,7 +57,21 @@ public class AggregationDescriptor {
    */
   protected List<Expression> inputExpressions;
 
+  protected final Map<String, String> inputAttributes;
+
   private String parametersString;
+
+  public AggregationDescriptor(
+      String aggregationFuncName,
+      AggregationStep step,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes) {
+    this.aggregationFuncName = aggregationFuncName;
+    this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
+    this.step = step;
+    this.inputExpressions = inputExpressions;
+    this.inputAttributes = inputAttributes;
+  }
 
   public AggregationDescriptor(
       String aggregationFuncName, AggregationStep step, List<Expression> inputExpressions) {
@@ -64,6 +79,7 @@ public class AggregationDescriptor {
     this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
     this.step = step;
     this.inputExpressions = inputExpressions;
+    this.inputAttributes = Collections.emptyMap();
   }
 
   public AggregationDescriptor(AggregationDescriptor other) {
@@ -71,6 +87,7 @@ public class AggregationDescriptor {
     this.aggregationType = other.getAggregationType();
     this.step = other.getStep();
     this.inputExpressions = other.getInputExpressions();
+    this.inputAttributes = other.inputAttributes;
   }
 
   public String getAggregationFuncName() {
@@ -164,6 +181,28 @@ public class AggregationDescriptor {
           builder.append(", ").append(inputExpressions.get(i).toString());
         }
       }
+      if (!inputAttributes.isEmpty()) {
+        builder.append(", ");
+
+        Iterator<Map.Entry<String, String>> iterator = inputAttributes.entrySet().iterator();
+        Map.Entry<String, String> entry = iterator.next();
+        builder
+            .append("\"")
+            .append(entry.getKey())
+            .append("\"=\"")
+            .append(entry.getValue())
+            .append("\"");
+        while (iterator.hasNext()) {
+          entry = iterator.next();
+          builder
+              .append(", ")
+              .append("\"")
+              .append(entry.getKey())
+              .append("\"=\"")
+              .append(entry.getValue())
+              .append("\"");
+        }
+      }
       parametersString = builder.toString();
     }
     return parametersString;
@@ -171,6 +210,10 @@ public class AggregationDescriptor {
 
   public List<Expression> getInputExpressions() {
     return inputExpressions;
+  }
+
+  public Map<String, String> getInputAttributes() {
+    return inputAttributes;
   }
 
   public TAggregationType getAggregationType() {
@@ -209,6 +252,7 @@ public class AggregationDescriptor {
     for (Expression expression : inputExpressions) {
       Expression.serialize(expression, stream);
     }
+    ReadWriteIOUtils.write(inputAttributes, stream);
   }
 
   public static AggregationDescriptor deserialize(ByteBuffer byteBuffer) {
@@ -220,7 +264,8 @@ public class AggregationDescriptor {
       inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;
     }
-    return new AggregationDescriptor(aggregationFuncName, step, inputExpressions);
+    Map<String, String> inputAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    return new AggregationDescriptor(aggregationFuncName, step, inputExpressions, inputAttributes);
   }
 
   @Override

@@ -460,7 +460,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                   new AggregationDescriptor(
                       descriptor.getAggregationFuncName(),
                       AggregationStep.PARTIAL,
-                      descriptor.getInputExpressions()));
+                      descriptor.getInputExpressions(),
+                      descriptor.getInputAttributes()));
             });
     leafAggDescriptorList.forEach(
         d ->
@@ -474,7 +475,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                   new AggregationDescriptor(
                       descriptor.getAggregationFuncName(),
                       context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
-                      descriptor.getInputExpressions()));
+                      descriptor.getInputExpressions(),
+                      descriptor.getInputAttributes()));
             });
 
     AggregationNode aggregationNode =
@@ -733,7 +735,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                               regionCountPerSeries.get(handle.getPartitionPath()) == 1
                                   ? AggregationStep.STATIC
                                   : AggregationStep.FINAL,
-                              descriptor.getInputExpressions())));
+                              descriptor.getInputExpressions(),
+                              descriptor.getInputAttributes())));
         }
         SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
         newRoot =
@@ -759,7 +762,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                         new AggregationDescriptor(
                             descriptor.getAggregationFuncName(),
                             AggregationStep.INTERMEDIATE,
-                            descriptor.getInputExpressions())));
+                            descriptor.getInputExpressions(),
+                            descriptor.getInputAttributes())));
       }
       SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
       newRoot =
@@ -1003,7 +1007,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                                 new AggregationDescriptor(
                                     v.getAggregationFuncName(),
                                     AggregationStep.INTERMEDIATE,
-                                    v.getInputExpressions()));
+                                    v.getInputExpressions(),
+                                    v.getInputAttributes()));
                           }));
           parentOfGroup.setAggregationDescriptorList(childDescriptors);
           if (sourceNodes.size() == 1) {
