@@ -316,8 +316,9 @@ public class PartitionManager {
     }
 
     resp = (DataPartitionResp) getDataPartition(req);
-    if (resp.isAllPartitionsExist()) {
-      LOGGER.error("");
+    if (!resp.isAllPartitionsExist()) {
+      LOGGER.error(
+          "Lacked some data partition allocation result in the response of getOrCreateDataPartition method");
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
               .setMessage("Lacked some data partition allocation result in the response"));
