@@ -209,7 +209,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     } else {
       // aggregation query
       boolean isRawDataSource =
-          analysis.hasValueFilter() || needTransform(sourceTransformExpressions);
+          analysis.hasValueFilter() || needTransform(sourceTransformExpressions, false);
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -292,9 +292,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     return planBuilder.getRoot();
   }
 
-  private boolean needTransform(Set<Expression> expressions) {
+  private boolean needTransform(Set<Expression> expressions, boolean isAfterAggregation) {
     for (Expression expression : expressions) {
-      if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
+      if (ExpressionAnalyzer.checkIsNeedTransform(expression, isAfterAggregation)) {
         return true;
       }
     }

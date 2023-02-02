@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class AggregationDescriptor {
 
@@ -110,9 +109,8 @@ public class AggregationDescriptor {
 
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
-      return inputExpressions.stream()
-          .map(expression -> Collections.singletonList(expression.getExpressionString()))
-          .collect(Collectors.toList());
+      return Collections.singletonList(
+          Collections.singletonList(inputExpressions.get(0).getExpressionString()));
     }
 
     List<List<String>> inputColumnNames = new ArrayList<>();
