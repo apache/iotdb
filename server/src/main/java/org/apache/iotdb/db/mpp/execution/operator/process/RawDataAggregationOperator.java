@@ -26,7 +26,12 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
@@ -51,6 +56,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   // If the resultSet needs endTime, needSkip will be set to true when the operator is skipping the
   // points out of current window.
   private boolean needSkip = false;
+
+  private Logger LOGGER = LoggerFactory.getLogger(RawDataAggregationOperator.class);
 
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
@@ -84,6 +91,15 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       // NOTE: child.next() can only be invoked once
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
+        if (inputTsBlock != null) {
+          LOGGER.info("GET NEW TsBlock");
+          TsBlockRowIterator tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
+          while (tsBlockRowIterator.hasNext()) {
+            LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
+          }
+        } else {
+          LOGGER.info("GET NULL");
+        }
         canCallNext = false;
         if (needSkip) {
           break;

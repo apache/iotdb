@@ -96,6 +96,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       }
       // calculate aggregation result on current time window
       if (!calculateNextAggregationResult()) {
+        LOGGER.info("out from calculateNextAggregationResult");
         break;
       }
     }
@@ -106,6 +107,10 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
       LOGGER.info("---------------------------------------");
       LOGGER.info("normalReturn tsblock");
       LOGGER.info("hasNext: " + hasNext());
+      LOGGER.info("tsblockBuilder is full:" + resultTsBlockBuilder.isFull());
+      if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+        LOGGER.info("inputTsBlock is null");
+      }
       TsBlockRowIterator tsBlockRowIterator = resultTsBlock.getTsBlockRowIterator();
       while (tsBlockRowIterator.hasNext()) {
         LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
