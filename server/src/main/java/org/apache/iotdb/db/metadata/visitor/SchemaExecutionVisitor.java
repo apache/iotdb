@@ -213,7 +213,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         schemaRegion.createTimeseries(
             transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
       } catch (MeasurementAlreadyExistException e) {
-        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
+        //        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
         alreadyExistingTimeseries.add(
             RpcUtils.getStatus(
                 e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));

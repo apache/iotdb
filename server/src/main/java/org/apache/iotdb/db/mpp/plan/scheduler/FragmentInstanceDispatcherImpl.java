@@ -125,7 +125,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
+        //        logger.warn("[DispatchFailed]", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -177,12 +177,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
-            logger.warn(
-                "dispatch write failed. status: {}, code: {}, message: {}, node {}",
-                sendPlanNodeResp.status,
-                TSStatusCode.representOf(sendPlanNodeResp.status.code),
-                sendPlanNodeResp.message,
-                endPoint);
+            //            logger.warn(
+            //                "dispatch write failed. status: {}, code: {}, message: {}, node {}",
+            //                sendPlanNodeResp.status,
+            //                TSStatusCode.representOf(sendPlanNodeResp.status.code),
+            //                sendPlanNodeResp.message,
+            //                endPoint);
             if (sendPlanNodeResp.getStatus() == null) {
               throw new FragmentInstanceDispatchException(
                   RpcUtils.getStatus(
@@ -245,10 +245,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
-          logger.warn(
-              "write locally failed. TSStatus: {}, message: {}",
-              writeResult.getStatus(),
-              writeResult.getMessage());
+          //          logger.warn(
+          //              "write locally failed. TSStatus: {}, message: {}",
+          //              writeResult.getStatus(),
+          //              writeResult.getMessage());
           if (writeResult.getStatus() == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));

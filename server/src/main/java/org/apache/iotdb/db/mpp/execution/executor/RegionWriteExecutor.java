@@ -222,7 +222,7 @@ public class RegionWriteExecutor {
               String.format(
                   "Fail to insert measurements %s caused by %s",
                   insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
-          LOGGER.warn(partialInsertMessage);
+          //          LOGGER.warn(partialInsertMessage);
         }
 
         ConsensusWriteResponse writeResponse =
@@ -246,9 +246,9 @@ public class RegionWriteExecutor {
             response.setMessage(writeResponse.getStatus().message);
           }
         } else {
-          LOGGER.warn(
-              "Something wrong happened while calling consensus layer's write API.",
-              writeResponse.getException());
+          //          LOGGER.warn(
+          //              "Something wrong happened while calling consensus layer's write API.",
+          //              writeResponse.getException());
           response.setAccepted(false);
           response.setMessage(writeResponse.getException().toString());
           response.setStatus(
@@ -432,9 +432,9 @@ public class RegionWriteExecutor {
             metadataException = failingMeasurement.getValue();
             if (metadataException.getErrorCode()
                 == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-              LOGGER.info(
-                  "There's no need to internal create timeseries. {}",
-                  failingMeasurement.getValue().getMessage());
+              //              LOGGER.info(
+              //                  "There's no need to internal create timeseries. {}",
+              //                  failingMeasurement.getValue().getMessage());
               alreadyExistingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(),
@@ -532,9 +532,9 @@ public class RegionWriteExecutor {
               metadataException = failingMeasurement.getValue();
               if (metadataException.getErrorCode()
                   == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                LOGGER.info(
-                    "There's no need to internal create timeseries. {}",
-                    failingMeasurement.getValue().getMessage());
+                //                LOGGER.info(
+                //                    "There's no need to internal create timeseries. {}",
+                //                    failingMeasurement.getValue().getMessage());
                 alreadyExistingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(),
