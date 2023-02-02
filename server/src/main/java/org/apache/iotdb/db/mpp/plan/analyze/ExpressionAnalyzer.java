@@ -564,6 +564,15 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
             removeWildcardInFilter(suffixExpression, prefixPaths, schemaTree, isWhere));
+
+        // We just process first input Expression of AggregationFunction,
+        // keep other input Expressions as origin and bind Type
+        if (predicate.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = predicate.getExpressions();
+          bindTypeForAggregationNonSeriesInputExpressions(
+              ((FunctionExpression) predicate).getFunctionName(), children, extendedExpressions);
+          break;
+        }
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -687,6 +696,15 @@ public class ExpressionAnalyzer {
             concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
         if (concatedExpression != null && !concatedExpression.isEmpty()) {
           extendedExpressions.add(concatedExpression);
+        }
+
+        // We just process first input Expression of AggregationFunction,
+        // keep other input Expressions as origin and bind Type
+        if (expression.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = expression.getExpressions();
+          bindTypeForAggregationNonSeriesInputExpressions(
+              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
+          break;
         }
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
