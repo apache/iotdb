@@ -29,8 +29,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -140,7 +138,6 @@ public class IoTDBGroupByVariationIT {
         "INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status, hardware) values(1550, 10.2, true, 888)",
         "flush"
       };
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBGroupByVariationIT.class);
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -409,7 +406,6 @@ public class IoTDBGroupByVariationIT {
             "Time,Device,__endTime,count(status),avg(temperature),sum(hardware)");
         int count = 0;
         int rowNum = res.length;
-        LOGGER.info("the result of normalTestWithEndTimeAlignByDevice");
         String device = "root.ln.wf01.wt01";
         while (resultSet.next()) {
           if (rowNum == 0) {
@@ -422,18 +418,6 @@ public class IoTDBGroupByVariationIT {
           String actualCount = resultSet.getString(4);
           double actualAvg = resultSet.getDouble(5);
           double actualSum = resultSet.getDouble(6);
-          LOGGER.info(
-              actualTime
-                  + " "
-                  + actualEndTime
-                  + " "
-                  + actualDevice
-                  + " "
-                  + actualCount
-                  + " "
-                  + actualAvg
-                  + " "
-                  + actualSum);
           assertEquals(device, actualDevice);
           assertEquals(res[count][0], actualTime);
           assertEquals(res[count][1], actualEndTime);

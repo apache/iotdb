@@ -23,14 +23,10 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -50,8 +46,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
-
-  protected Logger LOGGER = LoggerFactory.getLogger(SingleInputAggregationOperator.class);
 
   protected SingleInputAggregationOperator(
       OperatorContext operatorContext,
@@ -79,7 +73,6 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   @Override
   public TsBlock next() {
-    LOGGER.info("***********************");
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -97,24 +90,8 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
       TsBlock resultTsBlock = resultTsBlockBuilder.build();
       resultTsBlockBuilder.reset();
-      TsBlockRowIterator tsBlockRowIterator = resultTsBlock.getTsBlockRowIterator();
-      LOGGER.info("RawDataAggregation output:");
-      while (tsBlockRowIterator.hasNext()) {
-        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
-      }
-      LOGGER.info("---------------------------");
-      tsBlockRowIterator = inputTsBlock.getTsBlockRowIterator();
-      LOGGER.info("InputTsBlock output:");
-      while (tsBlockRowIterator.hasNext()) {
-        LOGGER.info(Arrays.toString(tsBlockRowIterator.next()));
-      }
-      LOGGER.info("hasNext()" + Boolean.toString(hasNext()));
-      LOGGER.info("isFinished()" + Boolean.toString(isFinished()));
-      LOGGER.info("***********************");
       return resultTsBlock;
     } else {
-      LOGGER.info("return null");
-      LOGGER.info("***********************");
       return null;
     }
   }
