@@ -18,7 +18,7 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -87,7 +87,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
             new String(msg.getPassword()),
             ZoneId.systemDefault().toString(),
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-            IoTDBConstant.ClientVersion.V_0_13);
+            ClientVersion.V_1_0);
         clientIdToSessionMap.put(msg.getClientID(), session);
       } catch (TException e) {
         throw new RuntimeException(e);

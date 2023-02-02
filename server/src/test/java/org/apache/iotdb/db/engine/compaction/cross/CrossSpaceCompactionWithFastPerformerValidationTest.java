@@ -24,9 +24,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
@@ -2128,7 +2128,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
@@ -2234,7 +2234,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles());
     performer.setSourceFiles(sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles());
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");

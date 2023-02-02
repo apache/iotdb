@@ -1059,6 +1059,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       deviceViewInputIndexesMap.put(deviceName, indexes);
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
+    analysis.setDeviceViewSpecialProcess(
+        analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement));
+  }
+
+  private boolean analyzeDeviceViewSpecialProcess(
+      Set<Expression> deviceViewOutputExpressions, QueryStatement queryStatement) {
+    if (queryStatement.isAggregationQuery()
+        || queryStatement.hasWhere()
+            && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
+                queryStatement.getWhereCondition().getPredicate())) {
+      return true;
+    }
+    for (Expression expression : deviceViewOutputExpressions) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void analyzeOutput(
@@ -1275,6 +1293,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     intoComponent.validate(sourceDevices, sourceColumns);
 
     DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor = new DeviceViewIntoPathDescriptor();
+    PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoDeviceMeasurementIterator intoDeviceMeasurementIterator =
         intoComponent.getIntoDeviceMeasurementIterator();
     for (PartialPath sourceDevice : sourceDevices) {
@@ -1295,12 +1314,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         deviceViewIntoPathDescriptor.specifyTargetDeviceMeasurement(
             sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
+
+        targetPathTree.appendFullPath(targetDevice, targetMeasurement);
+        deviceViewIntoPathDescriptor.recordSourceColumnDataType(
+            sourceColumn.toString(), analysis.getType(sourceColumn));
+
         intoDeviceMeasurementIterator.nextMeasurement();
       }
 
       intoDeviceMeasurementIterator.nextDevice();
     }
     deviceViewIntoPathDescriptor.validate();
+
+    // fetch schema of target paths
+    long startTime = System.nanoTime();
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
+
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
   }
 
@@ -1322,6 +1353,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     intoComponent.validate(sourceColumns);
 
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
+    PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
     for (Expression sourceColumn : sourceColumns) {
       PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
@@ -1338,9 +1370,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
           targetPath.getDevicePath().toString(), isAlignedDevice);
+
+      targetPathTree.appendFullPath(targetPath);
+      intoPathDescriptor.recordSourceColumnDataType(
+          sourceColumn.toString(), analysis.getType(sourceColumn));
+
       intoPathIterator.next();
     }
     intoPathDescriptor.validate();
+
+    // fetch schema of target paths
+    long startTime = System.nanoTime();
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    intoPathDescriptor.bindType(targetSchemaTree);
+
     analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
 
@@ -1742,6 +1786,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // analyze tsfile metadata
     for (File tsFile : loadTsFileStatement.getTsFiles()) {
+      if (tsFile.length() == 0) {
+        logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
+        throw new SemanticException(
+            String.format(
+                "TsFile %s is empty, please check it be flushed to disk correctly.",
+                tsFile.getPath()));
+      }
       try {
         TsFileResource resource =
             analyzeTsFile(
@@ -1752,6 +1803,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 device2Schemas,
                 device2IsAligned);
         loadTsFileStatement.addTsFileResource(resource);
+      } catch (IllegalArgumentException e) {
+        logger.warn(
+            String.format(
+                "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
+            e);
+        throw new SemanticException(
+            String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (Exception e) {
         logger.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.source;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,7 +51,7 @@ public class SeriesAggregationScanNodeSerdeTest {
     List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MAX_TIME.name().toLowerCase(),
+            TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
     GroupByTimeParameter groupByTimeParameter =

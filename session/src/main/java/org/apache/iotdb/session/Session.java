@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -835,6 +836,109 @@ public class Session implements ISession {
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeAggregationQuery(paths, aggregations);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeAggregationQuery(paths, aggregations);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeAggregationQuery(
+          paths, aggregations, startTime, endTime);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeAggregationQuery(
+              paths, aggregations, startTime, endTime);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeAggregationQuery(
+          paths, aggregations, startTime, endTime, interval);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeAggregationQuery(
+              paths, aggregations, startTime, endTime, interval);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeAggregationQuery(
+          paths, aggregations, startTime, endTime, interval, slidingStep);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeAggregationQuery(
+              paths, aggregations, startTime, endTime, interval, slidingStep);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
   }
 
   /**

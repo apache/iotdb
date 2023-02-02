@@ -460,6 +460,11 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), true);
+            if (resource.getModFile().exists()) {
+              TsFileMetricManager.getInstance().increaseModFileNum(1);
+              TsFileMetricManager.getInstance()
+                  .increaseModFileSize(resource.getModFile().getSize());
+            }
           }
         }
         while (!value.isEmpty()) {
@@ -481,6 +486,10 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), false);
+          }
+          if (resource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().increaseModFileNum(1);
+            TsFileMetricManager.getInstance().increaseModFileSize(resource.getModFile().getSize());
           }
         }
         while (!value.isEmpty()) {
@@ -1472,6 +1481,15 @@ public class DataRegion implements IDataRegionForQuery {
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
+      List<TsFileResource> tsFileResourceList = tsFileManager.getTsFileList(true);
+      tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
+      tsFileResourceList.forEach(
+          x -> {
+            if (x.getModFile().exists()) {
+              TsFileMetricManager.getInstance().decreaseModFileNum(1);
+              TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
+            }
+          });
       deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
@@ -2004,9 +2022,16 @@ public class DataRegion implements IDataRegionForQuery {
         } else {
           deletion.setFileOffset(tsFileResource.getTsFileSize());
           // write deletion into modification file
+          boolean modFileExists = tsFileResource.getModFile().exists();
+          long originSize = tsFileResource.getModFile().getSize();
           tsFileResource.getModFile().write(deletion);
           // remember to close mod file
           tsFileResource.getModFile().close();
+          if (!modFileExists) {
+            TsFileMetricManager.getInstance().increaseModFileNum(1);
+          }
+          TsFileMetricManager.getInstance()
+              .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
         }
         logger.info(
             "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
@@ -2301,6 +2326,9 @@ public class DataRegion implements IDataRegionForQuery {
           newFilePartitionId,
           insertPos,
           deleteOriginFile);
+      TsFileMetricManager.getInstance()
+          .addFile(
+              newTsFileResource.getTsFile().length(), tsFileType == LoadTsFileType.LOAD_SEQUENCE);
 
       resetLastCacheWhenLoadingTsFile(); // update last cache
       updateLastFlushTime(newTsFileResource); // update last flush time

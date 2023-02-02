@@ -101,6 +101,9 @@ public class ConfigNodeConfig {
   /** The least number of DataRegionGroup for each Database. */
   private volatile int leastDataRegionGroupNum = 5;
 
+  /** Indicate whether the leastDataRegionGroupNum is set by user, if true, lock it. */
+  private volatile boolean leastDataRegionGroupNumSetByUser = false;
+
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
@@ -310,6 +313,19 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public static String getEnvironmentVariables() {
+    return "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_HOME
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, "null")
+        + ";"
+        + "\n\t"
+        + ConfigNodeConstant.CONFIGNODE_CONF
+        + "="
+        + System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, "null")
+        + ";";
   }
 
   public String getClusterName() {
@@ -538,6 +554,14 @@ public class ConfigNodeConfig {
 
   public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
+  }
+
+  public boolean isLeastDataRegionGroupNumSetByUser() {
+    return leastDataRegionGroupNumSetByUser;
+  }
+
+  public void setLeastDataRegionGroupNumSetByUser(boolean leastDataRegionGroupNumSetByUser) {
+    this.leastDataRegionGroupNumSetByUser = leastDataRegionGroupNumSetByUser;
   }
 
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {

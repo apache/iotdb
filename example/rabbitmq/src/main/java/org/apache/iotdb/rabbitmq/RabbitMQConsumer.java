@@ -44,43 +44,48 @@ import java.util.List;
  */
 public class RabbitMQConsumer {
 
-  private static final Logger logger = LoggerFactory.getLogger(RabbitMQProducer.class);
+  private static final Logger logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
 
   public RabbitMQConsumer() {}
 
   public static void main(String[] args) throws Exception {
-    Session session =
+    try (Session session =
         new Session(
             Constant.IOTDB_CONNECTION_HOST,
             Constant.IOTDB_CONNECTION_PORT,
             Constant.IOTDB_CONNECTION_USER,
-            Constant.IOTDB_CONNECTION_PWD);
-    session.open();
-    session.setStorageGroup(Constant.STORAGE_GROUP);
-    for (String[] timeseries : Constant.TIMESERIESLIST) {
-      createTimeseries(session, timeseries);
-    }
-    RabbitMQConsumer consumer = new RabbitMQConsumer();
-    Channel channel = RabbitMQChannelUtils.getChannelInstance(Constant.CONNECTION_NAME);
-    AMQP.Queue.DeclareOk declareOk =
-        channel.queueDeclare(Constant.RABBITMQ_CONSUMER_QUEUE, true, false, false, new HashMap<>());
-    channel.exchangeDeclare(Constant.TOPIC, BuiltinExchangeType.TOPIC);
-    channel.queueBind(declareOk.getQueue(), Constant.TOPIC, "IoTDB.#", new HashMap<>());
-    DefaultConsumer defaultConsumer =
-        new DefaultConsumer(channel) {
-          @Override
-          public void handleDelivery(
-              String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-            logger.info(consumerTag + ", " + envelope.toString() + ", " + properties.toString());
-            try {
-              consumer.insert(session, new String(body));
-            } catch (Exception e) {
-              logger.error(e.getMessage());
+            Constant.IOTDB_CONNECTION_PWD)) {
+      session.open();
+      session.setStorageGroup(Constant.STORAGE_GROUP);
+      for (String[] timeseries : Constant.TIMESERIESLIST) {
+        createTimeseries(session, timeseries);
+      }
+      RabbitMQConsumer consumer = new RabbitMQConsumer();
+      Channel channel = RabbitMQChannelUtils.getChannelInstance(Constant.CONNECTION_NAME);
+      AMQP.Queue.DeclareOk declareOk =
+          channel.queueDeclare(
+              Constant.RABBITMQ_CONSUMER_QUEUE, true, false, false, new HashMap<>());
+      channel.exchangeDeclare(Constant.TOPIC, BuiltinExchangeType.TOPIC);
+      channel.queueBind(declareOk.getQueue(), Constant.TOPIC, "IoTDB.#", new HashMap<>());
+      DefaultConsumer defaultConsumer =
+          new DefaultConsumer(channel) {
+            @Override
+            public void handleDelivery(
+                String consumerTag,
+                Envelope envelope,
+                AMQP.BasicProperties properties,
+                byte[] body) {
+              logger.info(consumerTag + ", " + envelope.toString() + ", " + properties.toString());
+              try {
+                consumer.insert(session, new String(body));
+              } catch (Exception e) {
+                logger.error(e.getMessage());
+              }
             }
-          }
-        };
-    channel.basicConsume(
-        declareOk.getQueue(), true, Constant.RABBITMQ_CONSUMER_TAG, defaultConsumer);
+          };
+      channel.basicConsume(
+          declareOk.getQueue(), true, Constant.RABBITMQ_CONSUMER_TAG, defaultConsumer);
+    }
   }
 
   private static void createTimeseries(Session session, String[] timeseries)
@@ -123,6 +128,8 @@ public class RabbitMQConsumer {
           break;
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
+          break;
+        default:
           break;
       }
     }
