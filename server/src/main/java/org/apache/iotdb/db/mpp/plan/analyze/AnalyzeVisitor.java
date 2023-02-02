@@ -876,7 +876,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> sourceTransformExpressions = new HashSet<>();
     if (queryStatement.isAggregationQuery()) {
       for (Expression expression : analysis.getAggregationExpressions()) {
-        sourceTransformExpressions.addAll(expression.getExpressions());
+        // for AggregationExpression, only the first Expression of input need to transform
+        sourceTransformExpressions.add(expression.getExpressions().get(0));
       }
     } else {
       sourceTransformExpressions = analysis.getSelectExpressions();
