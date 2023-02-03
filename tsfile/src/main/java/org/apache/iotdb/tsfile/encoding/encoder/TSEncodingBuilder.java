@@ -202,7 +202,6 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-
           return new DeltaBinaryEncoder.IntDeltaEncoder();
         case INT64:
           return new DeltaBinaryEncoder.LongDeltaEncoder();
