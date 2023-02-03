@@ -22,8 +22,7 @@
 # M4-LSM 
 - The codes for two deployments, M4-UDF and M4-LSM, are available in this repository.
     - M4-UDF: `server/src/main/java/org/apache/iotdb/db/query/udf/builtin/UDTFM4MAC.java`. The document of the M4 function is available on the product [website](https://iotdb.apache.org/UserGuide/Master/Operators-Functions/Sample.html#m4-function) of Apache IoTDB.
-    - M4-LSM: `server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutor4CPV.java`. The step regression index is implemented in: `tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/StepRegress.java`.
-    - Some integration tests for correctness are in `org.apache.iotdb.db.integration.m4.MyTest1/2/3/4`.
+    - M4-LSM: The candidate generation and verification framework is implemented in `server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutor4CPV.java`. The step regression index is implemented in `tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/StepRegress.java`.
+    - Some integration tests for correctness are in `server/src/test/java/org/apache/iotdb/db/integration/m4/MyTest1-4.java`.
 - The codes, data and scripts for experiments are in [another GitHub repository](https://github.com/LeiRui/M4-visualization-exp.git) for reproducibility.
-- For the README of Apache IoTDB itself, please see [README_IOTDB.md](README_IOTDB.md).
-- To build this repository, run `mvn clean package -DskipTests -pl -distribution`.
+- For the README of Apache IoTDB itself, please see [README_IOTDB.md](README_IOTDB.md). To build this repository, run `mvn clean package -DskipTests -pl -distribution`.
