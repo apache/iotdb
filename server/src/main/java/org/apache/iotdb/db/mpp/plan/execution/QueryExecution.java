@@ -264,13 +264,14 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     final long startTime = System.nanoTime();
+    Analysis result;
     try {
-      Analysis analysis = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+      result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
       PerformanceOverviewMetricsManager.getInstance()
           .recordAnalyzeCost(System.nanoTime() - startTime);
     }
-    return analysis;
+    return result;
   }
 
   private void schedule() {

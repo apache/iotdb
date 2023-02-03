@@ -318,7 +318,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 | Metric          | Tags                         | Type  | Description                |
 | --------------- | ---------------------------- | ----- | -------------------------- |
-| query_plan_cost | stage="sql_parser"           | Timer | SQL 解析耗时               |
 | query_plan_cost | stage="analyzer"             | Timer | 查询语句分析耗时           |
 | query_plan_cost | stage="logical_planner"      | Timer | 查询逻辑计划规划耗时       |
 | query_plan_cost | stage="distribution_planner" | Timer | 查询分布式执行计划规划耗时 |

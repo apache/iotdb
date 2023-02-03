@@ -320,7 +320,6 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 | Metric          | Tags                         | Type  | Description                                         |
 | --------------- | ---------------------------- | ----- | --------------------------------------------------- |
-| query_plan_cost | stage="sql_parser"           | Timer | The SQL parsing time-consuming                      |
 | query_plan_cost | stage="analyzer"             | Timer | The query statement analysis time-consuming         |
 | query_plan_cost | stage="logical_planner"      | Timer | The query logical plan planning time-consuming      |
 | query_plan_cost | stage="distribution_planner" | Timer | The query distribution plan planning time-consuming |
