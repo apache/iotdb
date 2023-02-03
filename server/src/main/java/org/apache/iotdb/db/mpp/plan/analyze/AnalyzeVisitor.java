@@ -862,7 +862,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Set<Expression> aggregationExpressions = deviceToAggregationExpressions.get(deviceName);
         Set<Expression> sourceTransformExpressions = new LinkedHashSet<>();
         for (Expression expression : aggregationExpressions) {
-          sourceTransformExpressions.addAll(expression.getExpressions());
+          sourceTransformExpressions.add(expression.getExpressions().get(0));
         }
         deviceToSourceTransformExpressions.put(deviceName, sourceTransformExpressions);
       }
