@@ -1688,7 +1688,7 @@ public class StartReorderingEncodeRegression32Int {
             "\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=1;file_i<2;file_i++){
+    for(int file_i=7;file_i<8;file_i++){
     //for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
@@ -1721,7 +1721,7 @@ public class StartReorderingEncodeRegression32Int {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<12;block_size_exp++) {
+      for(int block_size_exp=11;block_size_exp>=4;block_size_exp--) {
         int block_size = (int) Math.pow(2, block_size_exp);
         System.out.println(block_size);
         for (File f : tempList) {
@@ -1743,23 +1743,24 @@ public class StartReorderingEncodeRegression32Int {
           long decodeTime = 0;
           double ratio = 0;
           double compressed_size = 0;
+          int repeatTime2 = 100;
           for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
 //            System.out.println(dataset_map_td.get(file_i));
             ArrayList<Byte> buffer = new ArrayList<>();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            long s = System.nanoTime();
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
             long e = System.nanoTime();
-            encodeTime += ((e - s)/10);
+            encodeTime += ((e - s)/repeatTime2);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += ((e - s)/10);
+            decodeTime += ((e - s)/repeatTime2);
 
 //            for(int j=0;j<256;j++){
 //              if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){

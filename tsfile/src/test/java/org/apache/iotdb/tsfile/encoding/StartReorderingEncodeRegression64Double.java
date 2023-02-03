@@ -326,15 +326,15 @@ public class StartReorderingEncodeRegression64Double {
     }
 
     int m_reg = block_size -1;
-    double theta0_r = 0.0F;
-    double theta1_r = 1.0F;
+    double theta0_r = 0.0;
+    double theta1_r = 1.0;
     if(m_reg*sum_squ_X_r != sum_X_r*sum_X_r ){
       theta0_r = (double) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
       theta1_r = (double) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
     }
 
-    double theta0_v = 0.0F;
-    double theta1_v = 1.0F;
+    double theta0_v = 0.0;
+    double theta1_v = 1.0;
     if(m_reg*sum_squ_X_v != sum_X_v*sum_X_v ){
       theta0_v = (double) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
       theta1_v = (double) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
@@ -1688,7 +1688,7 @@ public class StartReorderingEncodeRegression64Double {
             "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=1;file_i<2;file_i++){
+    for(int file_i=7;file_i<8;file_i++){
     //for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
@@ -1721,7 +1721,7 @@ public class StartReorderingEncodeRegression64Double {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<12;block_size_exp++) {
+      for(int block_size_exp=11;block_size_exp>=4;block_size_exp--) {
         int block_size = (int) Math.pow(2, block_size_exp);
         System.out.println(block_size);
         for (File f : tempList) {
@@ -1743,23 +1743,24 @@ public class StartReorderingEncodeRegression64Double {
           long decodeTime = 0;
           double ratio = 0;
           double compressed_size = 0;
+          int repeatTime2 = 100;
           for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
 //            System.out.println(dataset_map_td.get(file_i));
             ArrayList<Byte> buffer = new ArrayList<>();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            long s = System.nanoTime();
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
             long e = System.nanoTime();
-            encodeTime += ((e - s)/10);
+            encodeTime += ((e - s)/repeatTime2);
             compressed_size += buffer.size();
             double ratioTmp =
                     (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
             s = System.nanoTime();
-            for(int repeat_i=0;repeat_i<10;repeat_i++)
+            for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
               data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += ((e - s)/10);
+            decodeTime += ((e - s)/repeatTime2);
 
 //            for(int j=0;j<256;j++){
 //              if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
