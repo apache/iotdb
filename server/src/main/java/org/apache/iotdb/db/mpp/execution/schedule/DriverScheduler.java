@@ -261,7 +261,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private void clearDriverTask(DriverTask task) {
     try (SetThreadName driverTaskName =
         new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
-      if (task.getStatus() != DriverTaskStatus.FINISHED) {
+      // If it has been aborted, return directly
+      if (task.getStatus() == DriverTaskStatus.ABORTED) {
+        return;
+      } else if (task.getStatus() != DriverTaskStatus.FINISHED) {
         task.setStatus(DriverTaskStatus.ABORTED);
       }
       readyQueue.remove(task.getDriverTaskId());
@@ -469,9 +472,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   }
                   otherTask.lock();
                   try {
-                    if (otherTask.isEndState()) {
-                      continue;
-                    }
                     otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
                     clearDriverTask(otherTask);
                   } finally {
