@@ -31,35 +31,57 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class CountIfAccumulator implements Accumulator {
 
+  // number of the point segment that satisfies the KEEP expression
   private long countValue = 0;
 
-  private final Evaluator evaluator;
+  // number of the continues data points satisfy IF expression
+  private long keep;
+
+  private final Evaluator keepEvaluator;
 
   private final boolean ignoreNull;
 
   @FunctionalInterface
   private interface Evaluator {
-    boolean evaluate(int keep);
+    boolean evaluate();
   }
 
   public CountIfAccumulator(
       List<Expression> inputExpressions, Map<String, String> inputAttributes) {
-    this.evaluator = initEvaluator(inputExpressions.get(1));
+    this.keepEvaluator = initKeepEvaluator(inputExpressions.get(1));
     this.ignoreNull = Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true"));
   }
 
-  private Evaluator initEvaluator(Expression expression) {
-    if (expression instanceof ConstantOperand) {
-      return keep -> keep >= Long.parseLong(expression.toString());
-    } else if (expression instanceof CompareBinaryExpression) {
-      return keep -> keep >= Long.parseLong(expression.toString());
+  private Evaluator initKeepEvaluator(Expression keepExpression) {
+    // We have check semantic in FE,
+    // keep expression must be ConstantOperand or CompareBinaryExpression here
+    if (keepExpression instanceof ConstantOperand) {
+      return () -> keep >= Long.parseLong(keepExpression.toString());
     } else {
-      throw new IllegalArgumentException(
-          "Please ensure your input keep condition, only support [>, >=, <, <=, =]");
+      long constant =
+          Long.parseLong(
+              ((CompareBinaryExpression) keepExpression)
+                  .getRightExpression()
+                  .getExpressionString());
+      switch (keepExpression.getExpressionType()) {
+        case LESS_THAN:
+          return () -> keep < constant;
+        case LESS_EQUAL:
+          return () -> keep <= constant;
+        case GREATER_THAN:
+          return () -> keep > constant;
+        case GREATER_EQUAL:
+          return () -> keep >= constant;
+        case EQUAL_TO:
+          return () -> keep == constant;
+        case NON_EQUAL:
+          return () -> keep != constant;
+        default:
+          throw new IllegalArgumentException(
+              "unsupported expression type: " + keepExpression.getExpressionType());
+      }
     }
   }
 
@@ -67,21 +89,27 @@ public class CountIfAccumulator implements Accumulator {
   @Override
   public int addInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
+    for (int i = 0; i < curPositionCount; i++) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
+        return i;
+      }
+      curWindow.mergeOnePoint(column, i);
 
-    if (!column[2].mayHaveNull() && curWindow.contains(column[0])) {
-      countValue += curPositionCount;
-    } else {
-      for (int i = 0; i < curPositionCount; i++) {
-        // skip null value in control column
-        if (column[0].isNull(i)) {
-          continue;
+      if (column[2].isNull(i)) {
+        if (!this.ignoreNull) {
+          keep = 0;
         }
-        if (!curWindow.satisfy(column[0], i)) {
-          return i;
-        }
-        curWindow.mergeOnePoint(column, i);
-        if (!column[2].isNull(i)) {
-          countValue++;
+      } else {
+        if (column[2].getBoolean(i)) {
+          keep++;
+          if (keepEvaluator.evaluate()) {
+            countValue++;
+            keep = 0;
+          }
         }
       }
     }
@@ -89,22 +117,14 @@ public class CountIfAccumulator implements Accumulator {
     return curPositionCount;
   }
 
-  // partialResult should be like: | partialCountValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Count should be 1");
-    if (partialResult[0].isNull(0)) {
-      return;
-    }
-    countValue += partialResult[0].getLong(0);
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    if (statistics == null) {
-      return;
-    }
-    countValue += statistics.getCount();
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   // finalResult should be single column, like: | finalCountValue |
@@ -116,11 +136,9 @@ public class CountIfAccumulator implements Accumulator {
     countValue = finalResult.getLong(0);
   }
 
-  // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Count should be 1");
-    columnBuilders[0].writeLong(countValue);
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
@@ -131,6 +149,7 @@ public class CountIfAccumulator implements Accumulator {
   @Override
   public void reset() {
     this.countValue = 0;
+    this.keep = 0;
   }
 
   @Override
@@ -140,7 +159,7 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public TSDataType[] getIntermediateType() {
-    return new TSDataType[] {TSDataType.INT64};
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
   @Override
