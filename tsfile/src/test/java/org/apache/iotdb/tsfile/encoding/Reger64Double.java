@@ -16,25 +16,6 @@ import static java.lang.Math.abs;
 
 public class Reger64Double {
 
-  static int DeviationOutlierThreshold = 8;
-  static int OutlierThreshold = 0;
-  public static int zigzag(int num){
-    if(num<0){
-      return 2*(-num)-1;
-    }else{
-      return 2*num;
-    }
-  }
-
-  public static int max3(int a,int b,int c){
-    if(a>=b && a >=c){
-      return a;
-    }else if(b >= a && b >= c){
-      return b;
-    }else{
-      return c;
-    }
-  }
   public static int getBitWith(int num){
     return 32 - Integer.numberOfLeadingZeros(num);
   }
@@ -196,29 +177,6 @@ public class Reger64Double {
     }
   }
 
-  public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int max_deviation = Integer.MIN_VALUE;
-
-    int t0 = ts_block.get(0).get(0);
-    for(int i=0;i<ts_block.size();i++){
-      ArrayList<Integer> tmp = new ArrayList<>();
-      int interval_i = (ts_block.get(i).get(0) - t0) / td;
-      int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
-      tmp.add(t0 + interval_i);
-      tmp.add(ts_block.get(i).get(1));
-      ts_block.set(i,tmp);
-
-      deviation_list.add(zigzag(deviation_i));
-      if(zigzag(deviation_i)>max_deviation){
-        max_deviation = zigzag(deviation_i);
-      }
-    }
-
-    int max_bit_width_deviation = getBitWith(max_deviation);
-    result.add(max_bit_width_deviation);
-  }
-
   public static int getCommon(int m,int n){
     int z;
     while (m%n!=0){
@@ -264,7 +222,6 @@ public class Reger64Double {
     }
     result.add(td_common);
   }
-
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                       ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Double> theta){
@@ -1281,17 +1238,6 @@ public class Reger64Double {
       value <<= 8;
       int b = encoded.get(i+start) & 0xFF;
       value |= b;
-    }
-    return value;
-  }
-
-  public static int reverseZigzag(int num) {
-    int value;
-    if(num%2==0){
-      value = num / 2;
-    }
-    else{
-      value = -(num + 1) / 2;
     }
     return value;
   }
