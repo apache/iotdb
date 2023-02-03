@@ -19,6 +19,53 @@
 
 -->
 
+# Apache IoTDB 0.13.4
+
+## New Feature
+
+* [IOTDB-3662] Add audit log
+* [IOTDB-4675] Support load mlog.bin
+* [IOTDB-4767] Support get all connection info in session api
+* [IOTDB-4967] Fix slidingTimeWindow stops when encounter an empty window
+* [IOTDB-5133] Export schema tool
+* [IOTDB-5173] Add the statistics of flush point
+
+## Improvements
+
+* [IOTDB-4230] Modify the start script for flexible startup: add iotdb.in.sh, add pid file
+* [IOTDB-4741] Deprecate sessionId in all rpc requests
+* [IOTDB-4776] Change default storage group to root.__system in iotdb metric reporter
+* [IOTDB-4946] Show Deadband Process Info
+* [IOTDB-5025] Fix tag of metric in 0.13
+* [IOTDB-5127] Separate ISession as a module
+* [IOTDB-5128] Perfect the usage of `-p pid`, `-v version` feature for start-server.sh
+* [IOTDB-5232] Add Schema Memory Usage metric monitor
+* [IOTDB-5346] Fix log error in MemtableFlushTask when recovering
+
+
+## Bug Fix
+
+* [IOTDB-3624] Fix meet error when inserting data in SQL without timestamp
+* [IOTDB-4716] Fix the statistics of disk size in linux system in 0.13
+* [IOTDB-4738] Fix TsFile damaged after writing empty value pages
+* [IOTDB-4781] Fix the NOT LIKE value filter does not work
+* [IOTDB-4842] Fix String number inserting bug
+* [IOTDB-4938] Fix data are lost when meets exception `storage group not ready`
+* [IOTDB-4939] Remove unsupport compress type
+* [IOTDB-5136] NPE when use a null as username in session
+* [IOTDB-5184] Fix CompressionType ArrayIndexOutOfBounds
+* [IOTDB-5157] Fix "Invalid ID for ZoneOffset, invalid format:"
+* [IOTDB-5206] Fix when target file is deleted in Compaction exception handler and recover
+* [IOTDB-5225] Fix setting chunkPointNumLowerBound in IoTDBDescriptor
+* [IOTDB-5236] DeleteData Python API cannot work
+* [IOTDB-5253] Fix chunkMetadata mem metric
+* [IOTDB-5266] Fix seq file may be lost when selecting cross compaction task
+* [IOTDB-5281] Fix selecting deleted files in compaction
+* [IOTDB-5286] Fix target files should not be select to participate in other compaction task
+* [IOTDB-5296] Fix close session npe when session is null
+* [IOTDB-5307] Fix failed to get TsFile input of file: NoSuchFileException
+* [IOTDB-5311] Fix RunTimeException and NoSuchFile Exception when selecting files causing compaction scheduled thread to get stuck
+
 # Apache IoTDB 0.13.3
 
 ## Improvements
