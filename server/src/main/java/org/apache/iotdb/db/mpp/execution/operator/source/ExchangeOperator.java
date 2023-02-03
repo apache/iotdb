@@ -46,6 +46,12 @@ public class ExchangeOperator implements SourceOperator {
     this.sourceId = sourceId;
   }
 
+  /**
+   * For ExchangeOperator in pipeline, the maxReturnSize is equal to the maxReturnSize of the child
+   * operator.
+   *
+   * @param maxReturnSize max return size of child operator
+   */
   public ExchangeOperator(
       OperatorContext operatorContext,
       ISourceHandle sourceHandle,
