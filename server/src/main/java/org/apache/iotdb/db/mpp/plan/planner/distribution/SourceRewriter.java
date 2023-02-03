@@ -988,20 +988,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           }
         }
 
-        //        for (String childColumn : childrenOutputColumns) {
-        //          // If this condition matched, the childColumn should come from GroupByLevelNode
-        //          if (isAggColumnMatchExpression(childColumn,
-        // originalDescriptor.getOutputExpression())) {
-        //            descriptorExpressions.add(originalDescriptor.getOutputExpression());
-        //            continue;
-        //          }
-        //          for (Expression exp : originalDescriptor.getInputExpressions()) {
-        //            if (isAggColumnMatchExpression(childColumn, exp)) {
-        //              descriptorExpressions.add(exp);
-        //            }
-        //          }
-        //        }
-
         if (descriptorExpressions.isEmpty()) {
           continue;
         }
