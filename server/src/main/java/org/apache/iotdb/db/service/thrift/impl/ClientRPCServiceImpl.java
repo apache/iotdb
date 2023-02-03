@@ -1920,7 +1920,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         .timer(
             costTime,
             TimeUnit.MILLISECONDS,
-            Metric.STATEMENT_EXECUTION.toString(),
+            Metric.PERFORMANCE_OVERVIEW.toString(),
             MetricLevel.IMPORTANT,
             Tag.INTERFACE.toString(),
             operation.toString(),
