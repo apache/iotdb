@@ -2446,9 +2446,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseAttributeKey(IoTDBSqlParser.AttributeKeyContext ctx) {
-    if (ctx.constant() != null) {
-      return parseStringLiteral(ctx.getText());
-    }
     return parseIdentifier(ctx.getText());
   }
 

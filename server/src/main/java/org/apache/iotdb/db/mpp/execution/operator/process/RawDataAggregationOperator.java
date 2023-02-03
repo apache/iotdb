@@ -52,6 +52,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   // points out of current window.
   private boolean needSkip = false;
 
+  // child.hasNext() may return true even there is no more data, the operator may exit without
+  // updating the cached data in aggregator.
+  // We need hasCachedDataInAggregator to prevent operator exit when there is cached data in
+  // aggregators.
   private boolean hasCachedDataInAggregator = false;
 
   public RawDataAggregationOperator(
@@ -122,6 +126,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     updateResultTsBlock();
+    // After updating, the data in aggregators is consumed.
     hasCachedDataInAggregator = false;
 
     return true;
@@ -152,6 +157,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
                 lastReadRowIndex,
                 aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
       }
+      // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
+      // aggregators.
       if (lastReadRowIndex != 0) {
         hasCachedDataInAggregator = true;
       }
