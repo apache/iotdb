@@ -470,7 +470,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   otherTask.lock();
                   try {
                     if (otherTask.isEndState()) {
-                      return;
+                      continue;
                     }
                     otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
                     clearDriverTask(otherTask);
