@@ -36,8 +36,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
   }
 
   /**
-   * Get and remove the first element of the queue. If the queue is empty, this call will be blocked
-   * until an element has been pushed.
+   * Get and remove the first element of the queue. Reserve space for this polled element.
    *
    * @return the queue head element.
    */
@@ -59,7 +58,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
         !contains(element),
         "The queue has already contained the element: " + element.getDriverTaskId());
     Preconditions.checkState(
-        size + reservedSize < MAX_CAPACITY, "The system can't allow more queries.");
+        size + reservedSize < MAX_CAPACITY, "The system can't allow more query tasks.");
     pushToQueue(element);
     size++;
     this.notifyAll();
