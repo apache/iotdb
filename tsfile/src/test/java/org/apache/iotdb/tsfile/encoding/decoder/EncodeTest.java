@@ -21,74 +21,45 @@ public class EncodeTest {
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
-    ArrayList<Integer> dataset_map_td = new ArrayList<>();
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\Metro-Traffic_ratio.csv");
-    dataset_map_td.add(3600);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\Nifty-Stocks_ratio.csv");
-    dataset_map_td.add(86400);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\USGS-Earthquakes_ratio.csv");
-    dataset_map_td.add(50);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\Cyber-Vehicle_ratio.csv");
-    dataset_map_td.add(10);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\TH-Climate_ratio.csv");
-    dataset_map_td.add(3);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\TY-Transport_ratio.csv");
-    dataset_map_td.add(5);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\TY-Fuel_ratio.csv");
-    dataset_map_td.add(60);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    output_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\compression_ratio\\java_ratio\\GW-Magnetic_ratio.csv");
-    dataset_map_td.add(100);
 
-    //    for(int file_i=7;file_i<8;file_i++){
+    input_path_list.add("reorder\\iotdb_test\\Metro-Traffic");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add(
+        "reorder\\result_evaluation\\vary_parameter\\rr_int_ratio\\GW-Magnetic_ratio.csv");
+
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
-      //      String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio_ts_2diff.csv";
 
       // speed
       int repeatTime = 10; // set repeat time
       String dataTypeName = "int"; // set dataType
-      //    if (args.length >= 2) inputPath = args[1];
-      //    if (args.length >= 3) Output = args[2];
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
 
       // select encoding algorithms
       TSEncoding[] encodingList = {
-        //            TSEncoding.PLAIN ,
         TSEncoding.TS_2DIFF,
         TSEncoding.RLE,
         TSEncoding.SPRINTZ,
@@ -99,9 +70,6 @@ public class EncodeTest {
       // select compression algorithms
       CompressionType[] compressList = {
         CompressionType.UNCOMPRESSED,
-        //            CompressionType.LZ4,
-        //            CompressionType.GZIP,
-        //            CompressionType.SNAPPY
       };
       CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
@@ -181,7 +149,6 @@ public class EncodeTest {
                         encoder.encode(val, buffer);
                       }
 
-                      //                    byte[] elems = buffer.toByteArray();
                       encoder.flush(buffer);
                       long e = System.nanoTime();
                       encodeTime += (e - s);
@@ -208,13 +175,8 @@ public class EncodeTest {
                       // test decode time
                       ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
                       s = System.nanoTime();
-                      //                    int i_tmp = 0;
                       while (decoder.hasNext(ebuffer)) {
-                        //                      decoder.readInt(ebuffer);
                         int tmp_tmp = decoder.readInt(ebuffer);
-                        //                      if(tmp.get(i_tmp) == tmp_tmp)
-                        //                        System.out.println("equal");
-                        //                      i_tmp += 1;
                       }
                       e = System.nanoTime();
                       decodeTime += (e - s);
@@ -242,7 +204,6 @@ public class EncodeTest {
                       String.valueOf(compressed_size),
                       String.valueOf(ratio)
                     };
-                    System.out.println(ratio);
                     writer.writeRecord(record);
                   }
                 }
@@ -526,8 +487,6 @@ public class EncodeTest {
           inputStream = Files.newInputStream(f.toPath());
           loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         }
-        //        if (fileRepeat > repeatTime) break;
-        //      break;
       }
       writer.close();
     }

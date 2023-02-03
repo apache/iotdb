@@ -1453,87 +1453,30 @@ public class Reger64DoubleBlocksizeTest {
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
-    //
-    // input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
-    //
-    // input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
-    //
-    // input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
-    //
-    // input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
-    //    input_path_list.add(
-    // "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
-    //
-    // input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
-    //    input_path_list.add(
-    // "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
-    //    input_path_list.add(
-    // "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    //
-    // output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-    //            "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
 
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    input_path_list.add("reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TH-Climate");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TY-Transport");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add("reorder\\result_evaluation\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
+    input_path_list.add("reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
-    input_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-    output_path_list.add(
-        "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation"
-            + "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
+        "reorder\\result_evaluation\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
