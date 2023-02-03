@@ -47,7 +47,9 @@ public class AuthorityChecker {
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
-  private AuthorityChecker() {}
+  private AuthorityChecker() {
+    // empty constructor
+  }
 
   /**
    * check permission(datanode to confignode).
