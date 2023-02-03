@@ -160,9 +160,7 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            String.format(
-                "Input series of Aggregation function [%s] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]",
-                aggrFuncName));
+            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       case SqlConstant.COUNT:
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
