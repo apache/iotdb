@@ -14,26 +14,6 @@ import java.util.Objects;
 import static java.lang.Math.abs;
 
 public class Reger {
-
-  static int DeviationOutlierThreshold = 8;
-  static int OutlierThreshold = 0;
-  public static int zigzag(int num){
-    if(num<0){
-      return 2*(-num)-1;
-    }else{
-      return 2*num;
-    }
-  }
-
-  public static int max3(int a,int b,int c){
-    if(a>=b && a >=c){
-      return a;
-    }else if(b >= a && b >= c){
-      return b;
-    }else{
-      return c;
-    }
-  }
   public static int getBitWith(int num){
     return 32 - Integer.numberOfLeadingZeros(num);
   }
@@ -149,30 +129,6 @@ public class Reger {
     if (r < high) {
       quickSort2(ts_block,r + 1, high);
     }
-  }
-
-  public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-
-    int max_deviation = Integer.MIN_VALUE;
-
-    int t0 = ts_block.get(0).get(0);
-    for(int i=0;i<ts_block.size();i++){
-      ArrayList<Integer> tmp = new ArrayList<>();
-      int interval_i = (ts_block.get(i).get(0) - t0) / td;
-      int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
-      tmp.add(t0 + interval_i);
-      tmp.add(ts_block.get(i).get(1));
-      ts_block.set(i,tmp);
-
-      deviation_list.add(zigzag(deviation_i));
-      if(zigzag(deviation_i)>max_deviation){
-        max_deviation = zigzag(deviation_i);
-      }
-    }
-
-    int max_bit_width_deviation = getBitWith(max_deviation);
-    result.add(max_bit_width_deviation);
   }
 
   public static int getCommon(int m,int n){
@@ -1245,17 +1201,6 @@ public class Reger {
     return value;
   }
 
-  public static int reverseZigzag(int num) {
-    int value;
-    if(num%2==0){
-      value = num / 2;
-    }
-    else{
-      value = -(num + 1) / 2;
-    }
-    return value;
-  }
-
   public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded,int td){
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
@@ -1571,23 +1516,23 @@ public class Reger {
         long decodeTime = 0;
         double ratio = 0;
         double compressed_size = 0;
+        int repeatTime2 = 100;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
           ArrayList<Byte> buffer = new ArrayList<>();
-          for(int repeat=0;repeat<10;repeat++)
+          for(int repeat=0;repeat<repeatTime2;repeat++)
             buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_map_td.get(file_i));
-
           long e = System.nanoTime();
-          encodeTime += ((e - s)/10);
+          encodeTime += ((e - s)/repeatTime2);
           compressed_size += buffer.size();
           double ratioTmp =
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          for(int repeat=0;repeat<10;repeat++)
-              data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+          for(int repeat=0;repeat<repeatTime2;repeat++)
+            data_decoded = ReorderingRegressionDecoder(buffer, dataset_map_td.get(file_i));
           e = System.nanoTime();
-          decodeTime += ((e-s)/10);
+          decodeTime += ((e-s)/repeatTime2);
         }
 
         ratio /= repeatTime;
