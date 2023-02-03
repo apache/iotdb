@@ -169,13 +169,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             Math.max(
                 currentSchema.getMinSchemaRegionGroupNum(),
                 currentSchema.getMaxSchemaRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinSchemaRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxSchemaRegionGroupNum());
       }
-      if (alterSchema.isSetMaxDataRegionGroupNum()) {
-        currentSchema.setMaxDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
+      if (alterSchema.isSetMinDataRegionGroupNum()) {
+        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
         currentSchema.setMaxDataRegionGroupNum(
             Math.max(
                 currentSchema.getMinDataRegionGroupNum(),
                 currentSchema.getMaxDataRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinDataRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxDataRegionGroupNum());
       }
 
       mTree

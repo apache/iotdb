@@ -333,7 +333,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetStorageGroupRequest {} with result {}", databaseSchema, errorResp);
+      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -381,7 +381,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetStorageGroupRequest {} with result {}", databaseSchema, errorResp);
+      LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -390,7 +390,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
-    LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
+    LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
 
     return resp;
   }

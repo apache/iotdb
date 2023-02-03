@@ -418,12 +418,12 @@ public class PartitionManager {
       float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
-      // 1. The number of current RegionGroup of the StorageGroup is less than the least number
+      // 1. The number of current RegionGroup of the StorageGroup is less than the minimum number
       int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
       if (allocatedRegionGroupCount < minRegionGroupNum) {
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
-        // no less than the leastRegionGroupNum
+        // no less than the minRegionGroupNum
         int delta =
             (int)
                 Math.min(
