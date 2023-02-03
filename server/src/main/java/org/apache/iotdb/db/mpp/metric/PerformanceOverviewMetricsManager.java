@@ -96,7 +96,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.CONSENSUS);
+        PerformanceOverviewScheduleDetailMetrics.TRIGGER);
   }
 
   public void recordScheduleConsensusCost(long costTimeInNanos) {
