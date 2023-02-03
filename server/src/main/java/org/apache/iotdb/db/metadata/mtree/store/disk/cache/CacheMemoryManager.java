@@ -31,6 +31,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * CacheMemoryManager is used to register the CachedMTreeStore and create the CacheManager.
+ * CacheMemoryManager provides the {@link CacheMemoryManager#ensureMemoryStatus} interface, which
+ * starts asynchronous threads to free and flush the disk when memory usage exceeds a threshold.
+ */
 public class CacheMemoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CacheMemoryManager.class);

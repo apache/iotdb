@@ -3164,7 +3164,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForSchemaRegion(long allocateMemoryForSchemaRegion) {
     this.allocateMemoryForSchemaRegion = allocateMemoryForSchemaRegion;
-    //    this.allocateMemoryForSchemaRegion = 1287;
   }
 
   public long getAllocateMemoryForSchemaCache() {
