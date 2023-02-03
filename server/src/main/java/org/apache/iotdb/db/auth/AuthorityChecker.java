@@ -121,9 +121,9 @@ public class AuthorityChecker {
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
-    // TODO @spricoder add error cases statistics
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
