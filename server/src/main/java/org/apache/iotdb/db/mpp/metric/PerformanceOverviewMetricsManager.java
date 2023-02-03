@@ -39,6 +39,26 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewDetailMetrics.AUTHORITY);
   }
 
+  public void recordParserCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewDetailMetrics.PARSER);
+  }
+
+  public void recordAnalyzerCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewDetailMetrics.ANALYZER);
+  }
+
   public static PerformanceOverviewMetricsManager getInstance() {
     return PerformanceOverviewMetricsManager.PerformanceOverviewMetricsManagerHolder.INSTANCE;
   }

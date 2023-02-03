@@ -115,7 +115,7 @@ public class StatementGenerator {
   public static Statement createStatement(String sql, ZoneId zoneId) {
     long startTime = System.nanoTime();
     Statement statement = invokeParser(sql, zoneId);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -152,7 +152,7 @@ public class StatementGenerator {
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
     queryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
@@ -186,7 +186,7 @@ public class StatementGenerator {
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return lastQueryStatement;
   }
 
@@ -241,7 +241,7 @@ public class StatementGenerator {
       whereCondition.setPredicate(predicate);
       queryStatement.setWhereCondition(whereCondition);
     }
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
@@ -255,7 +255,7 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -271,7 +271,7 @@ public class StatementGenerator {
     insertStatement.setValues(insertRecordReq.getValues().toArray(new Object[0]));
     insertStatement.setNeedInferType(true);
     insertStatement.setAligned(insertRecordReq.isAligned);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -300,7 +300,7 @@ public class StatementGenerator {
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -339,7 +339,7 @@ public class StatementGenerator {
       insertTabletStatementList.add(insertTabletStatement);
     }
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -363,7 +363,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -389,7 +389,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -414,7 +414,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -441,7 +441,7 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
@@ -451,7 +451,7 @@ public class StatementGenerator {
     // construct create database statement
     SetStorageGroupStatement statement = new SetStorageGroupStatement();
     statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -468,7 +468,7 @@ public class StatementGenerator {
     statement.setTags(req.tags);
     statement.setAttributes(req.attributes);
     statement.setAlias(req.measurementAlias);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -497,7 +497,7 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAlias);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -530,7 +530,7 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAliasList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -542,7 +542,7 @@ public class StatementGenerator {
       parseStorageGroupRawString(path);
     }
     statement.setPrefixPath(storageGroups);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -557,7 +557,7 @@ public class StatementGenerator {
     statement.setPathList(pathList);
     statement.setDeleteStartTime(req.getStartTime());
     statement.setDeleteEndTime(req.getEndTime());
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -648,7 +648,7 @@ public class StatementGenerator {
     CreateSchemaTemplateStatement statement =
         new CreateSchemaTemplateStatement(
             templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -673,7 +673,7 @@ public class StatementGenerator {
       default:
         break;
     }
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return result;
   }
 
@@ -682,7 +682,7 @@ public class StatementGenerator {
     long startTime = System.nanoTime();
     SetSchemaTemplateStatement statement =
         new SetSchemaTemplateStatement(req.getTemplateName(), new PartialPath(req.getPrefixPath()));
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -692,14 +692,14 @@ public class StatementGenerator {
     UnsetSchemaTemplateStatement statement =
         new UnsetSchemaTemplateStatement(
             req.getTemplateName(), new PartialPath(req.getPrefixPath()));
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
   public static DropSchemaTemplateStatement createStatement(TSDropSchemaTemplateReq req) {
     final long startTime = System.nanoTime();
     DropSchemaTemplateStatement statement = new DropSchemaTemplateStatement(req.getTemplateName());
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 
@@ -711,7 +711,7 @@ public class StatementGenerator {
       pathPatternList.add(new PartialPath(pathPatternString));
     }
     DeleteTimeSeriesStatement statement = new DeleteTimeSeriesStatement(pathPatternList);
-    PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.getInstance().recordParserCost(System.nanoTime() - startTime);
     return statement;
   }
 

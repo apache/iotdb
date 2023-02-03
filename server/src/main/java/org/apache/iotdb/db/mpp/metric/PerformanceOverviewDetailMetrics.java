@@ -35,10 +35,16 @@ public class PerformanceOverviewDetailMetrics implements IMetricSet {
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
   public static final String AUTHORITY = "authority";
+  public static final String PARSER = "parser";
+  public static final String ANALYZER = "analyzer";
 
   static {
     metricInfoMap.put(
         AUTHORITY, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), AUTHORITY));
+    metricInfoMap.put(
+        PARSER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), PARSER));
+    metricInfoMap.put(
+        ANALYZER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), ANALYZER));
   }
 
   @Override

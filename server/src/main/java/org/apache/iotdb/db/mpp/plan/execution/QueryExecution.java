@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
@@ -260,7 +261,11 @@ public class QueryExecution implements IQueryExecution {
       MPPQueryContext context,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+    final long startTime = System.nanoTime();
+    Analysis analysis = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordAnalyzerCost(System.nanoTime() - startTime);
+    return analysis;
   }
 
   private void schedule() {
