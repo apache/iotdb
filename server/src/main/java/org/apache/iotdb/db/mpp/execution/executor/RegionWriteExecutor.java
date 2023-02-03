@@ -116,10 +116,8 @@ public class RegionWriteExecutor {
       boolean hasFailedTriggerBeforeInsertion =
           result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
 
-      startTime = System.nanoTime();
+      planNode.setMetricTime(System.nanoTime());
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleConsensusCost(System.nanoTime() - startTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
