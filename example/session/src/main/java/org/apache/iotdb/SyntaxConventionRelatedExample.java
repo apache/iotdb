@@ -76,7 +76,7 @@ public class SyntaxConventionRelatedExample {
             .port(6667)
             .username("root")
             .password("root")
-            .version(Version.V_0_13)
+            .version(Version.V_1_0)
             .build();
     session.open(false);
 
