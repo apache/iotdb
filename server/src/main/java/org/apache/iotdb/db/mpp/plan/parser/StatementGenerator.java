@@ -63,136 +63,142 @@ import java.util.*;
 public class StatementGenerator {
   // TODO @spricoder optimize the method adding metrics
   public static Statement createStatement(String sql, ZoneId zoneId) {
-    long startTime = System.nanoTime();
-    Statement statement = invokeParser(sql, zoneId);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
-    return statement;
+    return invokeParser(sql, zoneId);
   }
 
   public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct query statement
-    SelectComponent selectComponent = new SelectComponent(zoneId);
-    FromComponent fromComponent = new FromComponent();
-    WhereCondition whereCondition = new WhereCondition();
+    try {
+      // construct query statement
+      SelectComponent selectComponent = new SelectComponent(zoneId);
+      FromComponent fromComponent = new FromComponent();
+      WhereCondition whereCondition = new WhereCondition();
 
-    // iterate the path list and add it to from operator
-    for (String pathStr : rawDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
-      fromComponent.addPrefixPath(path);
+      // iterate the path list and add it to from operator
+      for (String pathStr : rawDataQueryReq.getPaths()) {
+        PartialPath path = new PartialPath(pathStr);
+        fromComponent.addPrefixPath(path);
+      }
+      selectComponent.addResultColumn(
+              new ResultColumn(
+                      new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+
+      // set query filter
+      GreaterEqualExpression leftPredicate =
+              new GreaterEqualExpression(
+                      new TimestampOperand(),
+                      new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getStartTime())));
+      LessThanExpression rightPredicate =
+              new LessThanExpression(
+                      new TimestampOperand(),
+                      new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getEndTime())));
+      LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
+      whereCondition.setPredicate(predicate);
+
+      QueryStatement queryStatement = new QueryStatement();
+      queryStatement.setSelectComponent(selectComponent);
+      queryStatement.setFromComponent(fromComponent);
+      queryStatement.setWhereCondition(whereCondition);
+      return queryStatement;
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     }
-    selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
-
-    // set query filter
-    GreaterEqualExpression leftPredicate =
-        new GreaterEqualExpression(
-            new TimestampOperand(),
-            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getStartTime())));
-    LessThanExpression rightPredicate =
-        new LessThanExpression(
-            new TimestampOperand(),
-            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getEndTime())));
-    LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
-    whereCondition.setPredicate(predicate);
-
-    QueryStatement queryStatement = new QueryStatement();
-    queryStatement.setSelectComponent(selectComponent);
-    queryStatement.setFromComponent(fromComponent);
-    queryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
-    return queryStatement;
   }
 
   public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct query statement
-    SelectComponent selectComponent = new SelectComponent(zoneId);
-    FromComponent fromComponent = new FromComponent();
+    try {
+      // construct query statement
+      SelectComponent selectComponent = new SelectComponent(zoneId);
+      FromComponent fromComponent = new FromComponent();
 
-    selectComponent.setHasLast(true);
+      selectComponent.setHasLast(true);
 
-    // iterate the path list and add it to from operator
-    for (String pathStr : lastDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
-      fromComponent.addPrefixPath(path);
+      // iterate the path list and add it to from operator
+      for (String pathStr : lastDataQueryReq.getPaths()) {
+        PartialPath path = new PartialPath(pathStr);
+        fromComponent.addPrefixPath(path);
+      }
+      selectComponent.addResultColumn(
+              new ResultColumn(
+                      new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+
+      // set query filter
+      WhereCondition whereCondition = new WhereCondition();
+      GreaterEqualExpression predicate =
+              new GreaterEqualExpression(
+                      new TimestampOperand(),
+                      new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
+      whereCondition.setPredicate(predicate);
+
+      QueryStatement lastQueryStatement = new QueryStatement();
+      lastQueryStatement.setSelectComponent(selectComponent);
+      lastQueryStatement.setFromComponent(fromComponent);
+      lastQueryStatement.setWhereCondition(whereCondition);
+      return lastQueryStatement;
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     }
-    selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
-
-    // set query filter
-    WhereCondition whereCondition = new WhereCondition();
-    GreaterEqualExpression predicate =
-        new GreaterEqualExpression(
-            new TimestampOperand(),
-            new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
-    whereCondition.setPredicate(predicate);
-
-    QueryStatement lastQueryStatement = new QueryStatement();
-    lastQueryStatement.setSelectComponent(selectComponent);
-    lastQueryStatement.setFromComponent(fromComponent);
-    lastQueryStatement.setWhereCondition(whereCondition);
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
-    return lastQueryStatement;
   }
 
   public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId)
       throws IllegalPathException {
-    long startTime = System.nanoTime();
-    QueryStatement queryStatement = new QueryStatement();
+    final long startTime = System.nanoTime();
+    try {
+      QueryStatement queryStatement = new QueryStatement();
 
-    FromComponent fromComponent = new FromComponent();
-    fromComponent.addPrefixPath(new PartialPath("", false));
-    queryStatement.setFromComponent(fromComponent);
+      FromComponent fromComponent = new FromComponent();
+      fromComponent.addPrefixPath(new PartialPath("", false));
+      queryStatement.setFromComponent(fromComponent);
 
-    SelectComponent selectComponent = new SelectComponent(zoneId);
-    List<PartialPath> selectPaths = new ArrayList<>();
-    for (String pathStr : req.getPaths()) {
-      selectPaths.add(new PartialPath(pathStr));
-    }
-    List<TAggregationType> aggregations = req.getAggregations();
-    for (int i = 0; i < aggregations.size(); i++) {
-      selectComponent.addResultColumn(
-          new ResultColumn(
-              new FunctionExpression(
-                  aggregations.get(i).toString(),
-                  new LinkedHashMap<>(),
-                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
-              ResultColumn.ColumnType.AGGREGATION));
-    }
-    queryStatement.setSelectComponent(selectComponent);
-
-    if (req.isSetInterval()) {
-      GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
-      groupByTimeComponent.setStartTime(req.getStartTime());
-      groupByTimeComponent.setEndTime(req.getEndTime());
-      groupByTimeComponent.setInterval(req.getInterval());
-      if (req.isSetSlidingStep()) {
-        groupByTimeComponent.setSlidingStep(req.getSlidingStep());
-      } else {
-        groupByTimeComponent.setSlidingStep(req.getInterval());
+      SelectComponent selectComponent = new SelectComponent(zoneId);
+      List<PartialPath> selectPaths = new ArrayList<>();
+      for (String pathStr : req.getPaths()) {
+        selectPaths.add(new PartialPath(pathStr));
       }
-      queryStatement.setGroupByTimeComponent(groupByTimeComponent);
-    } else if (req.isSetStartTime()) {
-      WhereCondition whereCondition = new WhereCondition();
-      GreaterEqualExpression leftPredicate =
-          new GreaterEqualExpression(
-              new TimestampOperand(),
-              new ConstantOperand(TSDataType.INT64, Long.toString(req.getStartTime())));
-      LessThanExpression rightPredicate =
-          new LessThanExpression(
-              new TimestampOperand(),
-              new ConstantOperand(TSDataType.INT64, Long.toString(req.getEndTime())));
-      LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
-      whereCondition.setPredicate(predicate);
-      queryStatement.setWhereCondition(whereCondition);
+      List<TAggregationType> aggregations = req.getAggregations();
+      for (int i = 0; i < aggregations.size(); i++) {
+        selectComponent.addResultColumn(
+                new ResultColumn(
+                        new FunctionExpression(
+                                aggregations.get(i).toString(),
+                                new LinkedHashMap<>(),
+                                Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
+                        ResultColumn.ColumnType.AGGREGATION));
+      }
+      queryStatement.setSelectComponent(selectComponent);
+
+      if (req.isSetInterval()) {
+        GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+        groupByTimeComponent.setStartTime(req.getStartTime());
+        groupByTimeComponent.setEndTime(req.getEndTime());
+        groupByTimeComponent.setInterval(req.getInterval());
+        if (req.isSetSlidingStep()) {
+          groupByTimeComponent.setSlidingStep(req.getSlidingStep());
+        } else {
+          groupByTimeComponent.setSlidingStep(req.getInterval());
+        }
+        queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+      } else if (req.isSetStartTime()) {
+        WhereCondition whereCondition = new WhereCondition();
+        GreaterEqualExpression leftPredicate =
+                new GreaterEqualExpression(
+                        new TimestampOperand(),
+                        new ConstantOperand(TSDataType.INT64, Long.toString(req.getStartTime())));
+        LessThanExpression rightPredicate =
+                new LessThanExpression(
+                        new TimestampOperand(),
+                        new ConstantOperand(TSDataType.INT64, Long.toString(req.getEndTime())));
+        LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
+        whereCondition.setPredicate(predicate);
+        queryStatement.setWhereCondition(whereCondition);
+      }
+      return queryStatement;
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     }
-    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
-    return queryStatement;
   }
 
   public static InsertRowStatement createStatement(TSInsertRecordReq insertRecordReq)
