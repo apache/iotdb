@@ -372,7 +372,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
         task.setLastEnterReadyQueueTime(System.nanoTime());
         task.resetLevelScheduledTime();
-        readyQueue.rePush(task);
+        readyQueue.repush(task);
         blockedTasks.remove(task);
       } finally {
         task.unlock();
@@ -406,7 +406,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.READY);
         task.setLastEnterReadyQueueTime(System.nanoTime());
-        readyQueue.rePush(task);
+        readyQueue.repush(task);
       } finally {
         task.unlock();
       }

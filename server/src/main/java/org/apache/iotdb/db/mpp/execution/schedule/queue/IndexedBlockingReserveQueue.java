@@ -68,11 +68,12 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
    * RePush an element which is polled out for running or blocked before to the queue. In this case,
    * we don't increase the current size of queue, since we have reserved a place for it.
    */
-  public synchronized void rePush(E element) {
+  public synchronized void repush(E element) {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
     pushToQueue(element);
+    reservedSize--;
     this.notifyAll();
   }
 
