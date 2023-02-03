@@ -345,6 +345,14 @@ public class QueryStatement extends Statement {
       if (isGroupByTag() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY TAGS does not support align by device now.");
       }
+      if (isGroupByLevel() || isGroupByTag()) {
+        for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+          ExpressionAnalyzer.checkCanUseInMultiPhaseAggregation(resultColumn.getExpression());
+        }
+        if (hasHaving()) {
+          ExpressionAnalyzer.checkCanUseInMultiPhaseAggregation(havingCondition.getPredicate());
+        }
+      }
       Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
