@@ -36,19 +36,7 @@ public class Reger32FloatBlocksizeTest {
     return bytes;
   }
 
-  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
-    if (num > 8) {
-      System.out.println("bytes2Doubleerror");
-      return 0;
-    }
-    long value = 0;
-    for (int i = 0; i < 8; i++) {
-      value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
-    }
-    return Double.longBitsToDouble(value);
-  }
-
-  public static byte[] float2bytes(float f) {
+  public static byte[] float2Bytes(float f) {
     int fbit = Float.floatToIntBits(f);
     byte[] b = new byte[4];
     for (int i = 0; i < 4; i++) {
@@ -66,18 +54,6 @@ public class Reger32FloatBlocksizeTest {
     return dest;
   }
 
-  public static float bytes2float(ArrayList<Byte> b, int index) {
-    int l;
-    l = b.get(index);
-    l &= 0xff;
-    l |= ((long) b.get(index + 1) << 8);
-    l &= 0xffff;
-    l |= ((long) b.get(index + 2) << 16);
-    l &= 0xffffff;
-    l |= ((long) b.get(index + 3) << 24);
-    return Float.intBitsToFloat(l);
-  }
-
   public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
     int value = 0;
     if (num > 4) {
@@ -92,19 +68,28 @@ public class Reger32FloatBlocksizeTest {
     return value;
   }
 
-  public static byte[] bitPacking(ArrayList<Integer> numbers, int bit_width) {
-    int block_num = numbers.size() / 8;
-    byte[] result = new byte[bit_width * block_num];
-    for (int i = 0; i < block_num; i++) {
-      for (int j = 0; j < bit_width; j++) {
-        int tmp_int = 0;
-        for (int k = 0; k < 8; k++) {
-          tmp_int += (((numbers.get(i * 8 + k) >> j) % 2) << k);
-        }
-        result[i * bit_width + j] = (byte) tmp_int;
-      }
+  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
+    if (num > 8) {
+      System.out.println("bytes2Doubleerror");
+      return 0;
     }
-    return result;
+    long value = 0;
+    for (int i = 0; i < 8; i++) {
+      value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
+    }
+    return Double.longBitsToDouble(value);
+  }
+  
+  public static float bytes2Float(ArrayList<Byte> b, int index) {
+    int l;
+    l = b.get(index);
+    l &= 0xff;
+    l |= ((long) b.get(index + 1) << 8);
+    l &= 0xffff;
+    l |= ((long) b.get(index + 2) << 16);
+    l &= 0xffffff;
+    l |= ((long) b.get(index + 3) << 24);
+    return Float.intBitsToFloat(l);
   }
 
   public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int bit_width) {
@@ -1089,13 +1074,13 @@ public class Reger32FloatBlocksizeTest {
     ts_block.set(0, tmp0);
 
     // encode theta
-    byte[] theta0_r_byte = float2bytes(theta.get(0) + raw_length.get(3));
+    byte[] theta0_r_byte = float2Bytes(theta.get(0) + raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = float2bytes(theta.get(1));
+    byte[] theta1_r_byte = float2Bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = float2bytes(theta.get(2) + raw_length.get(4));
+    byte[] theta0_v_byte = float2Bytes(theta.get(2) + raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = float2bytes(theta.get(3));
+    byte[] theta1_v_byte = float2Bytes(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
 
     // encode interval
@@ -1314,13 +1299,13 @@ public class Reger32FloatBlocksizeTest {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2float(encoded, decode_pos);
+      float theta0_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2float(encoded, decode_pos);
+      float theta1_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2float(encoded, decode_pos);
+      float theta0_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2float(encoded, decode_pos);
+      float theta1_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1383,13 +1368,13 @@ public class Reger32FloatBlocksizeTest {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = bytes2float(encoded, decode_pos);
+      float theta0_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = bytes2float(encoded, decode_pos);
+      float theta1_r = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = bytes2float(encoded, decode_pos);
+      float theta0_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = bytes2float(encoded, decode_pos);
+      float theta1_v = bytes2Float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);

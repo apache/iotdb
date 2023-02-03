@@ -37,19 +37,7 @@ public class Reger32IntBlocksizeTest {
     return bytes;
   }
 
-  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
-    if (num > 8) {
-      System.out.println("bytes2Doubleerror");
-      return 0;
-    }
-    long value = 0;
-    for (int i = 0; i < 8; i++) {
-      value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
-    }
-    return Double.longBitsToDouble(value);
-  }
-
-  public static byte[] float2bytes(float f) {
+  public static byte[] float2Bytes(float f) {
     int fbit = Float.floatToIntBits(f);
     byte[] b = new byte[4];
     for (int i = 0; i < 4; i++) {
@@ -67,7 +55,33 @@ public class Reger32IntBlocksizeTest {
     return dest;
   }
 
-  public static float bytes2float(ArrayList<Byte> b, int index) {
+  public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
+    int value = 0;
+    if (num > 4) {
+      System.out.println("bytes2Integer error");
+      return 0;
+    }
+    for (int i = 0; i < num; i++) {
+      value <<= 8;
+      int b = encoded.get(i + start) & 0xFF;
+      value |= b;
+    }
+    return value;
+  }
+
+  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
+    if (num > 8) {
+      System.out.println("bytes2Doubleerror");
+      return 0;
+    }
+    long value = 0;
+    for (int i = 0; i < 8; i++) {
+      value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
+    }
+    return Double.longBitsToDouble(value);
+  }
+
+  public static float bytes2Float(ArrayList<Byte> b, int index) {
     int l;
     l = b.get(index);
     l &= 0xff;
@@ -77,21 +91,6 @@ public class Reger32IntBlocksizeTest {
     l &= 0xffffff;
     l |= ((long) b.get(index + 3) << 24);
     return Float.intBitsToFloat(l);
-  }
-
-  public static byte[] bitPacking(ArrayList<Integer> numbers, int bit_width) {
-    int block_num = numbers.size() / 8;
-    byte[] result = new byte[bit_width * block_num];
-    for (int i = 0; i < block_num; i++) {
-      for (int j = 0; j < bit_width; j++) {
-        int tmp_int = 0;
-        for (int k = 0; k < 8; k++) {
-          tmp_int += (((numbers.get(i * 8 + k) >> j) % 2) << k);
-        }
-        result[i * bit_width + j] = (byte) tmp_int;
-      }
-    }
-    return result;
   }
 
   public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int bit_width) {
@@ -1250,20 +1249,6 @@ public class Reger32IntBlocksizeTest {
       encoded_result.addAll(cur_encoded_result);
     }
     return encoded_result;
-  }
-
-  public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
-    int value = 0;
-    if (num > 4) {
-      System.out.println("bytes2Integer error");
-      return 0;
-    }
-    for (int i = 0; i < num; i++) {
-      value <<= 8;
-      int b = encoded.get(i + start) & 0xFF;
-      value |= b;
-    }
-    return value;
   }
 
   public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
