@@ -182,21 +182,28 @@ public class DriverScheduler implements IDriverScheduler, IService {
                         DriverTaskStatus.READY,
                         driverTaskHandle))
             .collect(Collectors.toList());
+    // If query has not been registered by other fragment instances,
+    // add the first task as timeout checking task to timeoutQueue.
     for (DriverTask driverTask : tasks) {
       queryMap
-          .computeIfAbsent(queryId, v -> new ConcurrentHashMap<>())
+          .computeIfAbsent(
+              queryId,
+              v -> {
+                timeoutQueue.push(tasks.get(0));
+                return new ConcurrentHashMap<>();
+              })
           .computeIfAbsent(
               driverTask.getDriverTaskId().getFragmentInstanceId(),
               v -> Collections.synchronizedSet(new HashSet<>()))
           .add(driverTask);
     }
+
     for (DriverTask task : tasks) {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
           continue;
         }
-        timeoutQueue.push(task);
         readyQueue.push(task);
         task.setLastEnterReadyQueueTime(System.nanoTime());
       } finally {
