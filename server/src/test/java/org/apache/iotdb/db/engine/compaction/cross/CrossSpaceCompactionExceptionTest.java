@@ -145,8 +145,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
                       + TsFileResource.RESOURCE_SUFFIX)
               .exists());
     }
-    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(5, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertEquals(4, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(5, tsFileManager.getOrCreateUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
   }
 
@@ -220,8 +220,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
                       + TsFileResource.RESOURCE_SUFFIX)
               .exists());
     }
-    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(5, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertEquals(4, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(5, tsFileManager.getOrCreateUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
   }
 
@@ -253,13 +253,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
+      tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
     for (TsFileResource resource : unseqResources) {
-      tsFileManager.getUnsequenceListByTimePartition(0).remove(resource);
+      tsFileManager.getOrCreateUnsequenceListByTimePartition(0).remove(resource);
     }
     for (TsFileResource resource : targetResources) {
-      tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(resource);
+      tsFileManager.getOrCreateSequenceListByTimePartition(0).keepOrderInsert(resource);
     }
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
@@ -301,8 +301,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     }
-    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(0, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertEquals(4, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(0, tsFileManager.getOrCreateUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
   }
 
@@ -356,13 +356,13 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     }
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
+      tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
     for (TsFileResource resource : unseqResources) {
-      tsFileManager.getUnsequenceListByTimePartition(0).remove(resource);
+      tsFileManager.getOrCreateUnsequenceListByTimePartition(0).remove(resource);
     }
     for (TsFileResource resource : targetResources) {
-      tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(resource);
+      tsFileManager.getOrCreateSequenceListByTimePartition(0).keepOrderInsert(resource);
     }
     seqResources.get(0).remove();
 
@@ -418,8 +418,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     // compaction log file should not exist
     Assert.assertFalse(compactionLogFile.exists());
 
-    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(0, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertEquals(4, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(0, tsFileManager.getOrCreateUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
   }
 
@@ -541,8 +541,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     // compaction log file should not exist
     Assert.assertFalse(compactionLogFile.exists());
 
-    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(5, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertEquals(4, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(5, tsFileManager.getOrCreateUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
   }
 

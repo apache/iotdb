@@ -106,8 +106,8 @@ public class CompactionScheduler {
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
             sequence
-                ? tsFileManager.getSequenceListByTimePartition(timePartition)
-                : tsFileManager.getUnsequenceListByTimePartition(timePartition));
+                ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
+                : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     for (List<TsFileResource> task : taskList) {
       ICompactionPerformer performer =
           sequence
@@ -147,8 +147,8 @@ public class CompactionScheduler {
             .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
-            tsFileManager.getSequenceListByTimePartition(timePartition),
-            tsFileManager.getUnsequenceListByTimePartition(timePartition));
+            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     List<Long> memoryCost = crossSpaceCompactionSelector.getCompactionMemoryCost();
     for (int i = 0, size = taskList.size(); i < size; ++i) {
       CompactionTaskManager.getInstance()
