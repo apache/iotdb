@@ -124,7 +124,7 @@ public class CompactionMetricsRecorder {
         MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.CORE,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -135,7 +135,7 @@ public class CompactionMetricsRecorder {
         MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.CORE,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),
@@ -146,7 +146,7 @@ public class CompactionMetricsRecorder {
         MetricService.getInstance()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
-                MetricLevel.IMPORTANT,
+                MetricLevel.CORE,
                 Tag.NAME.toString(),
                 "compaction_" + taskType,
                 Tag.STATUS.toString(),

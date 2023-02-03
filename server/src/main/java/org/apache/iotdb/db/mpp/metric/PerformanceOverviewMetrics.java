@@ -129,7 +129,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.getOrCreateTimer(
-          metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
+          metricInfo.getName(), MetricLevel.CORE, metricInfo.getTagsInArray());
     }
   }
 
