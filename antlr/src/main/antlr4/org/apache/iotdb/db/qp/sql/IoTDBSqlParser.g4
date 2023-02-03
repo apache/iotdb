@@ -993,6 +993,7 @@ attributePair
 
 attributeKey
     : identifier
+    | constant
     ;
 
 attributeValue

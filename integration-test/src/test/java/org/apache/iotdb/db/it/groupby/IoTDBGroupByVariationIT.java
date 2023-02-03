@@ -489,4 +489,21 @@ public class IoTDBGroupByVariationIT {
         "select avg(temperature) from root.ln.wf01.wt01 group by variation(avg(temperature))",
         "701: Aggregation expression shouldn't exist in group by clause");
   }
+
+  @Test
+  public void groupByVariationWithDoubleTest() {
+    String[][] res =
+        new String[][] {
+          {"1", "4", "4", "35.825", "110"},
+          {"5", "10", "2", "36.8", "165"},
+          {"20", "100", "5", "37.72", "1650"},
+          {"150", "500", "5", "38.46", "1650"},
+          {"510", "610", "8", "37.4875", "2640"},
+          {"620", "620", "1", "39.2", "550"},
+          {"1500", "1550", "2", "10", "1554"}
+        };
+    String sql =
+        "select __endTime,count(status),avg(temperature),sum(hardware) from root.** group by variation(temperature,0.8) align by device";
+    normalTestWithEndTimeAlignByDevice(res, sql);
+  }
 }
