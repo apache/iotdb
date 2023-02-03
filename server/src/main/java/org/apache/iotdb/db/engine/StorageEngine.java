@@ -168,22 +168,26 @@ public class StorageEngine implements IService {
   public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
-        break;
-      }
-      try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException(
-              "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+    try {
+      while (SystemInfo.getInstance().isRejected()) {
+        if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+          break;
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        try {
+          TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+          if (System.currentTimeMillis() - startTime
+              > config.getMaxWaitingTimeWhenInsertBlocked()) {
+            throw new WriteProcessRejectException(
+                "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
       }
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     }
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
   }
 
   public void updateTTLInfo(byte[] allTTLInformation) {

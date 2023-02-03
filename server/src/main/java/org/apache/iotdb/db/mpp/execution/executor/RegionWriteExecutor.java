@@ -225,6 +225,9 @@ public class RegionWriteExecutor {
             response.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
           }
           return response;
+        } finally {
+          PerformanceOverviewMetricsManager.getInstance()
+              .recordScheduleSchemaValidateCost(System.currentTimeMillis() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;
@@ -235,8 +238,6 @@ public class RegionWriteExecutor {
                   insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
           LOGGER.warn(partialInsertMessage);
         }
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleSchemaValidateCost(System.currentTimeMillis() - startTime);
 
         ConsensusWriteResponse writeResponse =
             fireTriggerAndInsert(context.getRegionId(), insertNode);

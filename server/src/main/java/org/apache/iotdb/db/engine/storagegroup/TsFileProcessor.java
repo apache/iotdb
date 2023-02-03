@@ -259,9 +259,10 @@ public class TsFileProcessor {
               "%s: %s write WAL failed",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleWalCost(System.nanoTime() - startTime);
     }
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleWalCost(System.nanoTime() - startTime);
     startTime = System.nanoTime();
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
