@@ -49,6 +49,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
@@ -181,6 +182,8 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
       }
     }
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
   }
 
   public void updateTTLInfo(byte[] allTTLInformation) {

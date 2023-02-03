@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -243,6 +244,7 @@ public class TsFileProcessor {
       }
     }
 
+    long startTime = System.nanoTime();
     try {
       WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -258,7 +260,9 @@ public class TsFileProcessor {
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
     }
-
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleWalCost(System.nanoTime() - startTime);
+    startTime = System.nanoTime();
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
     } else {
@@ -274,6 +278,8 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleMemoryTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {

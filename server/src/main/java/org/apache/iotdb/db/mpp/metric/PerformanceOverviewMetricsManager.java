@@ -79,6 +79,86 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewDetailMetrics.SCHEDULER);
   }
 
+  public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.SCHEMA_VALIDATE);
+  }
+
+  public void recordScheduleTriggerCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.CONSENSUS);
+  }
+
+  public void recordScheduleConsensusCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.CONSENSUS);
+  }
+
+  public void recordScheduleLockCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.LOCK);
+  }
+
+  public void recordScheduleMemoryBlockCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.MEMORY_BLOCK);
+  }
+
+  public void recordScheduleWalCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.WAL);
+  }
+
+  public void recordScheduleMemoryTableCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.MEMTABLE);
+  }
+
+  public void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewScheduleDetailMetrics.LAST_CACHE);
+  }
+
   public static PerformanceOverviewMetricsManager getInstance() {
     return PerformanceOverviewMetricsManager.PerformanceOverviewMetricsManagerHolder.INSTANCE;
   }

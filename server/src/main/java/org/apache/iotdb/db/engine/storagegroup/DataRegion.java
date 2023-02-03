@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -1154,7 +1155,10 @@ public class DataRegion implements IDataRegionForQuery {
     long globalLatestFlushTime =
         lastFlushTimeMap.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
 
+    long startTime = System.nanoTime();
     tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -1727,8 +1731,11 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** lock the write lock of the insert lock */
   public void writeLock(String holder) {
+    final long startTime = System.nanoTime();
     insertLock.writeLock().lock();
     insertWriteLockHolder = holder;
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
   }
 
   /** unlock the write lock of the insert lock */

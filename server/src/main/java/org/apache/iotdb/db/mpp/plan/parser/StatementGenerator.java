@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -28,7 +33,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -37,77 +41,23 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.component.*;
+import org.apache.iotdb.db.mpp.plan.statement.crud.*;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.*;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.*;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.atn.PredictionMode;
-import org.antlr.v4.runtime.tree.ParseTree;
-
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.SQL_PARSER;
+import java.util.*;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -761,7 +711,7 @@ public class StatementGenerator {
       }
       return astVisitor.visit(tree);
     } finally {
-      QueryMetricsManager.getInstance().recordPlanCost(SQL_PARSER, System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     }
   }
 
