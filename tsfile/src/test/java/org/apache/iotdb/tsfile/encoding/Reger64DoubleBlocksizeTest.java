@@ -200,7 +200,7 @@ public class Reger64DoubleBlocksizeTest {
     return n;
   }
 
-  public static void splitTimeStamp3(ArrayList<ArrayList<Integer>> ts_block, int td,ArrayList<Integer> result){
+  public static void splitTimeStamp3(ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result){
     int td_common = 0;
     for(int i=1;i<ts_block.size();i++){
       int time_diffi = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
@@ -223,12 +223,11 @@ public class Reger64DoubleBlocksizeTest {
     if(td_common==0){
       td_common = 1;
     }
-    td = td_common;
 
     int t0 = ts_block.get(0).get(0);
     for(int i=0;i<ts_block.size();i++){
       ArrayList<Integer> tmp = new ArrayList<>();
-      int interval_i = (ts_block.get(i).get(0) - t0) / td;
+      int interval_i = (ts_block.get(i).get(0) - t0) / td_common;
       tmp.add(t0 + interval_i);
       tmp.add(ts_block.get(i).get(1));
       ts_block.set(i,tmp);
@@ -1002,7 +1001,7 @@ public class Reger64DoubleBlocksizeTest {
     return encoded_result;
   }
 
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     int length_all = data.size();
     byte[] length_all_bytes = int2Bytes(length_all);
@@ -1025,7 +1024,7 @@ public class Reger64DoubleBlocksizeTest {
       }
 
       ArrayList<Integer> result2 = new ArrayList<>();
-      splitTimeStamp3(ts_block,td,result2);
+      splitTimeStamp3(ts_block,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 
@@ -1117,7 +1116,7 @@ public class Reger64DoubleBlocksizeTest {
         ts_block_reorder.add(data.get(j));
       }
       ArrayList<Integer> result2 = new ArrayList<>();
-      splitTimeStamp3(ts_block,td,result2);
+      splitTimeStamp3(ts_block,result2);
 
       quickSort(ts_block,0,0,remaining_length-1);
 
@@ -1167,7 +1166,7 @@ public class Reger64DoubleBlocksizeTest {
     return encoded_result;
   }
 
-  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded,int td){
+  public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded){
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
     int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -1312,72 +1311,55 @@ public class Reger64DoubleBlocksizeTest {
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
-    ArrayList<Integer> dataset_map_td = new ArrayList<>();
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
-//    dataset_map_td.add(3600);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
-//    dataset_map_td.add(86400);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
-//    dataset_map_td.add(50);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
-//    dataset_map_td.add(10);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
-//    dataset_map_td.add(3);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
-//    dataset_map_td.add(5);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
-//    dataset_map_td.add(60);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
-//    dataset_map_td.add(100);
 
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
-    dataset_map_td.add(3600);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
-    dataset_map_td.add(86400);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
-    dataset_map_td.add(50);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
-    dataset_map_td.add(10);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
-    dataset_map_td.add(3);
     input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
-    dataset_map_td.add(5);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
-    dataset_map_td.add(60);
     input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\vary_parameter\\rr_ratio\\GW-Magnetic_ratio.csv");
-    dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
       String inputPath = input_path_list.get(file_i);
@@ -1431,7 +1413,7 @@ public class Reger64DoubleBlocksizeTest {
             ArrayList<Byte> buffer = new ArrayList<>();
             long s = System.nanoTime();
             for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
-              buffer = ReorderingRegressionEncoder(data, block_size,dataset_map_td.get(file_i));
+              buffer = ReorderingRegressionEncoder(data, block_size);
             long e = System.nanoTime();
             encodeTime += ((e - s)/repeatTime2);
             compressed_size += buffer.size();
@@ -1440,7 +1422,7 @@ public class Reger64DoubleBlocksizeTest {
             ratio += ratioTmp;
             s = System.nanoTime();
             for(int repeat_i=0;repeat_i<repeatTime2;repeat_i++)
-              data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+              data_decoded = ReorderingRegressionDecoder(buffer);
             e = System.nanoTime();
             decodeTime += ((e - s)/repeatTime2);
           }
