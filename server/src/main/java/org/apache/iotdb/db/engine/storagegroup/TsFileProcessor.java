@@ -231,6 +231,7 @@ public class TsFileProcessor {
 
     long[] memIncrements = null;
     if (enableMemControl) {
+      long startTime = System.nanoTime();
       if (insertRowNode.isAligned()) {
         memIncrements =
             checkAlignedMemCostAndAddToTspInfo(
@@ -242,6 +243,8 @@ public class TsFileProcessor {
                 insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
                 insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     }
 
     long startTime = System.nanoTime();
@@ -309,6 +312,7 @@ public class TsFileProcessor {
     long[] memIncrements = null;
     try {
       if (enableMemControl) {
+        long startTime = System.nanoTime();
         if (insertTabletNode.isAligned()) {
           memIncrements =
               checkAlignedMemCostAndAddToTsp(
@@ -328,6 +332,8 @@ public class TsFileProcessor {
                   start,
                   end);
         }
+        PerformanceOverviewMetricsManager.getInstance()
+            .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {

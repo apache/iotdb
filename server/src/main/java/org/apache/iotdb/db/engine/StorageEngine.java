@@ -49,7 +49,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
@@ -167,26 +166,19 @@ public class StorageEngine implements IService {
   /** block insertion if the insertion is rejected by memory control */
   public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
-    long startTime = System.currentTimeMillis();
-    try {
-      while (SystemInfo.getInstance().isRejected()) {
-        if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
-          break;
-        }
-        try {
-          TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-          if (System.currentTimeMillis() - startTime
-              > config.getMaxWaitingTimeWhenInsertBlocked()) {
-            throw new WriteProcessRejectException(
-                "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
+    while (SystemInfo.getInstance().isRejected()) {
+      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+        break;
       }
-    } finally {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessRejectException(
+              "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
