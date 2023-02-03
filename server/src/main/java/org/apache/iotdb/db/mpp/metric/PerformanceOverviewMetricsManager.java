@@ -37,7 +37,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewDetailMetrics.AUTHORITY);
+        PerformanceOverviewMetrics.AUTHORITY);
   }
 
   /** Record the time cost in parse stage */
@@ -48,7 +48,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewDetailMetrics.PARSER);
+        PerformanceOverviewMetrics.PARSER);
   }
 
   public void recordAnalyzeCost(long costTimeInNanos) {
@@ -58,7 +58,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewDetailMetrics.ANALYZER);
+        PerformanceOverviewMetrics.ANALYZER);
   }
 
   public void recordPlanCost(long costTimeInNanos) {
@@ -68,7 +68,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewDetailMetrics.PLANNER);
+        PerformanceOverviewMetrics.PLANNER);
   }
 
   public void recordScheduleCost(long costTimeInNanos) {
@@ -78,7 +78,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewDetailMetrics.SCHEDULER);
+        PerformanceOverviewMetrics.SCHEDULER);
   }
 
   public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
@@ -88,7 +88,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.SCHEMA_VALIDATE);
+        PerformanceOverviewMetrics.SCHEMA_VALIDATE);
   }
 
   public void recordScheduleTriggerCost(long costTimeInNanos) {
@@ -98,7 +98,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.TRIGGER);
+        PerformanceOverviewMetrics.TRIGGER);
   }
 
   public void recordScheduleConsensusCost(long costTimeInNanos) {
@@ -108,7 +108,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.CONSENSUS);
+        PerformanceOverviewMetrics.CONSENSUS);
   }
 
   public void recordScheduleLockCost(long costTimeInNanos) {
@@ -118,7 +118,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.LOCK);
+        PerformanceOverviewMetrics.LOCK);
   }
 
   public void recordScheduleMemoryBlockCost(long costTimeInNanos) {
@@ -128,7 +128,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.MEMORY_BLOCK);
+        PerformanceOverviewMetrics.MEMORY_BLOCK);
   }
 
   public void recordScheduleWalCost(long costTimeInNanos) {
@@ -138,7 +138,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.WAL);
+        PerformanceOverviewMetrics.WAL);
   }
 
   public void recordScheduleMemoryTableCost(long costTimeInNanos) {
@@ -148,7 +148,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.MEMTABLE);
+        PerformanceOverviewMetrics.MEMTABLE);
   }
 
   public void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
@@ -158,7 +158,7 @@ public class PerformanceOverviewMetricsManager {
         Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewScheduleDetailMetrics.LAST_CACHE);
+        PerformanceOverviewMetrics.LAST_CACHE);
   }
 
   public static PerformanceOverviewMetricsManager getInstance() {
