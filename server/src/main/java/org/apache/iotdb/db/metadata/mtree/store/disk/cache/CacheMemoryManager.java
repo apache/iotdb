@@ -18,33 +18,51 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 public class CacheMemoryManager {
+
+  private static final Logger logger = LoggerFactory.getLogger(CacheMemoryManager.class);
 
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
   private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
-  private final MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
+  private ExecutorService flushTaskExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.MTREE_FLUSH_THREAD_POOL.getName());
+  private ExecutorService releaseTaskExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+          ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName());
   private int flushCount = 0;
   private volatile boolean hasFlushTask;
 
-  private final MTreeReleaseTaskManager releaseTaskManager = MTreeReleaseTaskManager.getInstance();
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store) {
+  public synchronized ICacheManager createLRUCacheManager(CachedMTreeStore store) {
     ICacheManager cacheManager = new LRUCacheManager();
     storeList.add(store);
     return cacheManager;
+  }
+
+  public void init() {
+    flushTaskExecutor =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+            ThreadName.MTREE_FLUSH_THREAD_POOL.getName());
+    releaseTaskExecutor =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+            ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName());
   }
 
   public void ensureMemoryStatus() {
@@ -58,7 +76,16 @@ public class CacheMemoryManager {
       return;
     }
     hasReleaseTask = true;
-    releaseTaskManager.submit(this::tryExecuteMemoryRelease);
+    releaseTaskExecutor.submit(
+        () -> {
+          try {
+            tryExecuteMemoryRelease();
+          } catch (Throwable throwable) {
+            logger.error("Something wrong happened during MTree release.", throwable);
+            throwable.printStackTrace();
+            throw throwable;
+          }
+        });
   }
 
   /**
@@ -90,7 +117,16 @@ public class CacheMemoryManager {
       return;
     }
     hasFlushTask = true;
-    flushTaskManager.submit(this::tryFlushVolatileNodes);
+    flushTaskExecutor.submit(
+        () -> {
+          try {
+            tryFlushVolatileNodes();
+          } catch (Throwable throwable) {
+            logger.error("Something wrong happened during MTree flush.", throwable);
+            throwable.printStackTrace();
+            throw throwable;
+          }
+        });
   }
 
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
@@ -109,6 +145,20 @@ public class CacheMemoryManager {
     }
     hasFlushTask = false;
     flushCount++;
+  }
+
+  public void clear() {
+    if (releaseTaskExecutor != null) {
+      releaseTaskExecutor.shutdown();
+      while (!releaseTaskExecutor.isTerminated()) ;
+      releaseTaskExecutor = null;
+    }
+    // the release task may submit flush task, thus must be shut down and clear first
+    if (flushTaskExecutor != null) {
+      flushTaskExecutor.shutdown();
+      while (!flushTaskExecutor.isTerminated()) ;
+      flushTaskExecutor = null;
+    }
   }
 
   private CacheMemoryManager() {}
