@@ -112,26 +112,64 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.1.1. Cluster
 
-| Metric      | Tags                                            | Type      | Description                                         |
-|-------------|-------------------------------------------------|-----------|-----------------------------------------------------|
-| config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
-| data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
-| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable           |
+| Metric                    | Tags                                              | Type      | Description                                         |
+| ------------------------- | ------------------------------------------------- | --------- | --------------------------------------------------- |
+| config_node               | name="total",status="Registered/Online/Unknown"   | AutoGauge | The number of registered/online/unknown confignodes |
+| data_node                 | name="total",status="Registered/Online/Unknown"   | AutoGauge | The number of registered/online/unknown datanodes   |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge     | The count of consensus group leader on each node    |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge     | The current node status, 0=Unkonwn 1=online         |
+| entry                     | name="{{interface}}"                              | Timer     | The time consumed of thrift operations              |
+| mem                       | name="IoTConsensus"                               | AutoGauge | The memory usage of IoTConsensus, Unit: byte        |
 
-#### 4.1.2. IoTDB process
+#### 4.1.2. Node Statistics
+| Metric   | Tags                                  | Type      | Description                               |
+| -------- | ------------------------------------- | --------- | ----------------------------------------- |
+| quantity | name="database"                       | AutoGauge | The number of database                    |
+| quantity | name="timeSeries"                     | AutoGauge | The number of timeseries                  |
+| quantity | name="pointsIn"                       | Counter   | The number of write points                |
+| points   | database="{{database}}", type="flush" | Gauge     | The point number of last flushed memtable |
+
+#### 4.1.3. Cluster Tracing
+| Metric                               | Tags                                                 | Type  | Description                                      |
+| ------------------------------------ | ---------------------------------------------------- | ----- | ------------------------------------------------ |
+| performance_overview                 | interface="{{interface}}", type="{{statement_type}}" | Timer | The time consumed of operations in client        |
+| performance_overview_detail          | stage="authority"                                    | Timer | The time consumed on authority authentication    |
+| performance_overview_detail          | stage="parser"                                       | Timer | The time consumed on parsing statement           |
+| performance_overview_detail          | stage="analyzer"                                     | Timer | The time consumed on analyzing statement         |
+| performance_overview_detail          | stage="planner"                                      | Timer | The time consumed on planning                    |
+| performance_overview_detail          | stage="scheduler"                                    | Timer | The time consumed on scheduling                  |
+| performance_overview_schedule_detail | stage="schema_validate"                              | Timer | The time consumed on schema validation           |
+| performance_overview_schedule_detail | stage="trigger"                                      | Timer | The time consumed on trigger                     |
+| performance_overview_schedule_detail | stage="consensus"                                    | Timer | The time consumed on consensus                   |
+| performance_overview_schedule_detail | stage="lock"                                         | Timer | The time consumed on grabbing lock in DataRegion |
+| performance_overview_schedule_detail | stage="memory_block"                                 | Timer | The time consumed on insert memory control       |
+| performance_overview_schedule_detail | stage="wal"                                          | Timer | The time consumed on writing wal                 |
+| performance_overview_schedule_detail | stage="memtable"                                     | Timer | The time consumed on writing memtable            |
+| performance_overview_schedule_detail | stage="last_cache"                                   | Timer | The time consumed on updating last cache         |
+
+#### 4.1.4. Task Statistics
+
+| Metric    | Tags                                              | Type      | Description                           |
+| --------- | ------------------------------------------------- | --------- | ------------------------------------- |
+| queue     | name="compaction_inner", status="running/waiting" | Gauge     | The number of inner compaction tasks  |
+| queue     | name="compaction_cross", status="running/waiting" | Gauge     | The number of cross compatcion tasks  |
+| queue     | name="flush",status="running/waiting"             | AutoGauge | The number of flush tasks             |
+| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | The time consumed of compaction tasks |
+
+#### 4.1.5. IoTDB process
 
 | Metric            | Tags           | Type      | Description                                            |
-|-------------------|----------------|-----------|--------------------------------------------------------|
+| ----------------- | -------------- | --------- | ------------------------------------------------------ |
 | process_cpu_load  | name="process" | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
 | process_cpu_time  | name="process" | AutoGauge | The total CPU time occupied of IoTDB process, Unit: ns |
 | process_max_mem   | name="memory"  | AutoGauge | The maximum available memory of IoTDB process          |
 | process_total_mem | name="memory"  | AutoGauge | The current requested memory for IoTDB process         |
 | process_free_mem  | name="memory"  | AutoGauge | The free available memory of IoTDB process             |
 
-#### 4.1.3. System
+#### 4.1.6. System
 
 | Metric                         | Tags          | Type      | Description                                                |
-|--------------------------------|---------------|-----------|------------------------------------------------------------|
+| ------------------------------ | ------------- | --------- | ---------------------------------------------------------- |
 | sys_cpu_load                   | name="system" | AutoGauge | The current CPU usage of system, Unit: %                   |
 | sys_cpu_cores                  | name="system" | Gauge     | The available number of CPU cores                          |
 | sys_total_physical_memory_size | name="memory" | Gauge     | The maximum physical memory of system                      |
@@ -142,31 +180,28 @@ carefully evaluated. The current Core-level metrics are as follows:
 | sys_disk_total_space           | name="disk"   | AutoGauge | The total disk space                                       |
 | sys_disk_free_space            | name="disk"   | AutoGauge | The available disk space                                   |
 
+#### 4.1.7. Log
+
+| Metric         | Tags                                | Type    | Description              |
+| -------------- | ----------------------------------- | ------- | ------------------------ |
+| logback_events | level="trace/debug/info/warn/error" | Counter | The number of log events |
+
+
 ### 4.2. Important level metrics
 
-#### 4.2.1. Cluster
+#### 4.2.1. Node
 
-| Metric                    | Tags                                              | Type  | Description                                      |
-|---------------------------|---------------------------------------------------|-------|--------------------------------------------------|
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | The count of consensus group leader on each node |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | The current node status, 0=Unkonwn 1=online      |
+| Metric | Tags                                       | Type      | Description                                                   |
+| ------ | ------------------------------------------ | --------- | ------------------------------------------------------------- |
+| region | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
+| region | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
+| region | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
+| region | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
 
-#### 4.2.2. Node
-
-| Metric   | Tags                                       | Type      | Description                                                   |
-|----------|--------------------------------------------|-----------|---------------------------------------------------------------|
-| quantity | name="database"                            | AutoGauge | The number of database                                        |
-| quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
-| quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
-| region   | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
-| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
-| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
-
-#### 4.2.3. IoTConsensus
+#### 4.2.2. IoTConsensus
 
 | Metric       | Tags                                                                                         | Type      | Description                                                           |
-|--------------|----------------------------------------------------------------------------------------------|-----------|-----------------------------------------------------------------------|
+| ------------ | -------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | The write process of main process in replica group                    |
@@ -179,10 +214,10 @@ carefully evaluated. The current Core-level metrics are as follows:
 | stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | The time consumed to construct batch in synchronization thread        |
 | stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | The time consumed to sync log in asynchronous callback process        |
 
-#### 4.2.4. Cache
+#### 4.2.3. Cache
 
 | Metric    | Tags                               | Type      | Description                                                              |
-|-----------|------------------------------------|-----------|--------------------------------------------------------------------------|
+| --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
 | cache_hit | name="schema"                      | AutoGauge | The cache hit ratio of SchemaCache, Unit: %                              |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | The cache hit ratio of TimeseriesMetadataCache, Unit: %                  |
@@ -194,98 +229,60 @@ carefully evaluated. The current Core-level metrics are as follows:
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
 | cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
 
-#### 4.2.5. Interface
+#### 4.2.4. Interface
 
-| Metric                | Tags                                                 | Type      | Description                                                    |
-|-----------------------|------------------------------------------------------|-----------|----------------------------------------------------------------|
-| statement_execution   | interface="{{interface}}", type="{{statement_type}}" | Timer     | The time consumed of operations in client                      |
-| entry                 | name="{{interface}}"                                 | Timer     | The time consumed of thrift operations                         |
-| thrift_connections    | name="ConfigNodeRPC"                                 | AutoGauge | The number of thrift internal connections in ConfigNode        |
-| thrift_connections    | name="Internal"                                      | AutoGauge | The number of thrift internal connections in DataNode          |
-| thrift_connections    | name="MPPDataExchange"                               | AutoGauge | The number of thrift internal connections in MPP               |
-| thrift_connections    | name="RPC"                                           | AutoGauge | The number of thrift connections of Client                     |
-| thrift_active_threads | name="ConfigNodeRPC-Service"                         | AutoGauge | The number of thrift active internal connections in ConfigNode |
-| thrift_active_threads | name="DataNodeInternalRPC-Service"                   | AutoGauge | The number of thrift active internal connections in DataNode   |
-| thrift_active_threads | name="MPPDataExchangeRPC-Service"                    | AutoGauge | The number of thrift active internal connections in MPP        |
-| thrift_active_threads | name="ClientRPC-Service"                             | AutoGauge | The number of thrift active connections of client              |
+| Metric                | Tags                               | Type      | Description                                                    |
+| --------------------- | ---------------------------------- | --------- | -------------------------------------------------------------- |
+| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | The number of thrift internal connections in ConfigNode        |
+| thrift_connections    | name="Internal"                    | AutoGauge | The number of thrift internal connections in DataNode          |
+| thrift_connections    | name="MPPDataExchange"             | AutoGauge | The number of thrift internal connections in MPP               |
+| thrift_connections    | name="RPC"                         | AutoGauge | The number of thrift connections of Client                     |
+| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | The number of thrift active internal connections in ConfigNode |
+| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | The number of thrift active internal connections in DataNode   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | The number of thrift active internal connections in MPP        |
+| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
 
-#### 4.2.6. Memory
+#### 4.2.5. Memory
 
 | Metric | Tags                                 | Type      | Description                                                        |
-|--------|--------------------------------------|-----------|--------------------------------------------------------------------|
+| ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
 | mem    | name="database_{{name}}"             | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}"        | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"                  | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
 | mem    | name="schema_region_total_usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
 | mem    | name="schema_region_total_remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
-#### 4.2.7. Task
-
-| Metric    | Tags                                              | Type      | Description                           |
-|-----------|---------------------------------------------------|-----------|---------------------------------------|
-| queue     | name="compaction_inner", status="running/waiting" | Gauge     | The number of inner compaction tasks  |
-| queue     | name="compaction_cross", status="running/waiting" | Gauge     | The number of cross compatcion tasks  |
-| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | The time consumed of compaction tasks |
-| queue     | name="flush",status="running/waiting"             | AutoGauge | The number of flush tasks             |
-
-#### 4.2.8. Compaction
+#### 4.2.6. Compaction
 
 | Metric                | Tags                                                | Type    | Description                            |
-|-----------------------|-----------------------------------------------------|---------|----------------------------------------|
+| --------------------- | --------------------------------------------------- | ------- | -------------------------------------- |
 | data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | The written size of compaction         |
 | data_read             | name="compaction"                                   | Counter | The read size of compaction            |
 | compaction_task_count | name = "inner_compaction", type="sequence"          | Counter | The number of inner sequence compction |
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | The number of inner sequence compction |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | The number of corss compction          |
 
-#### 4.2.9. File
-
-| Metric     | Tags                      | Type      | Description                                                                 |
-|------------|---------------------------|-----------|-----------------------------------------------------------------------------|
-| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
-| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                                     |
-| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                                   |
-| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file                   |
-| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file                 |
-| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                           |
-| file_size  | name="mods                | AutoGauge | The size of modification files                                              |
-| file_count | name="wal"                | AutoGauge | The count of WAL file                                                       |
-| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                                |
-| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                              |
-| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file                  |
-| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file                |
-| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                           |
-| file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
-| file_count | name="mods                | AutoGauge | The count of modification file                                              |
-
-#### 4.2.10. IoTDB Process
+#### 4.2.7. IoTDB Process
 
 | Metric                | Tags           | Type      | Description                                 |
-|-----------------------|----------------|-----------|---------------------------------------------|
+| --------------------- | -------------- | --------- | ------------------------------------------- |
 | process_used_mem      | name="memory"  | AutoGauge | The used memory of IoTDB process            |
 | process_mem_ratio     | name="memory"  | AutoGauge | The used memory ratio of IoTDB process      |
 | process_threads_count | name="process" | AutoGauge | The number of thread of IoTDB process       |
 | process_status        | name="process" | AutoGauge | The status of IoTDB process, 1=live, 0=dead |
 
-#### 4.2.11. Log
-
-| Metric         | Tags                                | Type    | Description              |
-|----------------|-------------------------------------|---------|--------------------------|
-| logback_events | level="trace/debug/info/warn/error" | Counter | The number of log events |
-
-#### 4.2.12. JVM Thread
+#### 4.2.8. JVM Thread
 
 | Metric                     | Tags                                                          | Type      | Description                              |
-|----------------------------|---------------------------------------------------------------|-----------|------------------------------------------|
+| -------------------------- | ------------------------------------------------------------- | --------- | ---------------------------------------- |
 | jvm_threads_live_threads   |                                                               | AutoGauge | The number of live thread                |
 | jvm_threads_daemon_threads |                                                               | AutoGauge | The number of daemon thread              |
 | jvm_threads_peak_threads   |                                                               | AutoGauge | The number of peak thread                |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | The number of thread in different states |
 
-#### 4.2.13. JVM GC
+#### 4.2.9. JVM GC
 
 | Metric                        | Tags                                                  | Type      | Description                                                                 |
-|-------------------------------|-------------------------------------------------------|-----------|-----------------------------------------------------------------------------|
+| ----------------------------- | ----------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
 | jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | The number and time consumed of Young GC/Full Gc caused by different reason |
 |                               |
 | jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | The number and time consumed of Young GC/Full Gc caused by different        |
@@ -295,10 +292,10 @@ carefully evaluated. The current Core-level metrics are as follows:
 | jvm_gc_memory_promoted_bytes  |                                                       | Counter   | The accumulative value of positive memory growth of old memory              |
 | jvm_gc_memory_allocated_bytes |                                                       | Counter   | The accumulative value of positive memory growth of allocated memory        |
 
-#### 4.2.14. JVM Memory
+#### 4.2.10. JVM Memory
 
 | Metric                          | Tags                            | Type      | Description                 |
-|---------------------------------|---------------------------------|-----------|-----------------------------|
+| ------------------------------- | ------------------------------- | --------- | --------------------------- |
 | jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | The used size of buffer     |
 | jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | The max size of buffer      |
 | jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | The number of buffer        |
@@ -306,50 +303,49 @@ carefully evaluated. The current Core-level metrics are as follows:
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | The max memory of JVM       |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | The used memory of JVM      |
 
-#### 4.2.15. JVM Class
+#### 4.2.11. JVM Class
 
 | Metric                       | Tags | Type      | Description                  |
-|------------------------------|------|-----------|------------------------------|
+| ---------------------------- | ---- | --------- | ---------------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | The number of unloaded class |
 | jvm_classes_loaded_classes   |      | AutoGauge | The number of loaded class   |
 
-#### 4.2.16. JVM Compilation
+#### 4.2.12. JVM Compilation
 
 | Metric                  | Tags                                          | Type      | Description                      |
-|-------------------------|-----------------------------------------------|-----------|----------------------------------|
+| ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
 
-#### 4.2.17. Query Planning
+#### 4.2.13. Query Planning
 
 | Metric          | Tags                         | Type  | Description                                         |
-|-----------------|------------------------------|-------|-----------------------------------------------------|
-| query_plan_cost | stage="sql_parser"           | Timer | The SQL parsing time-consuming                      |
+| --------------- | ---------------------------- | ----- | --------------------------------------------------- |
 | query_plan_cost | stage="analyzer"             | Timer | The query statement analysis time-consuming         |
 | query_plan_cost | stage="logical_planner"      | Timer | The query logical plan planning time-consuming      |
 | query_plan_cost | stage="distribution_planner" | Timer | The query distribution plan planning time-consuming |
 | query_plan_cost | stage="partition_fetcher"    | Timer | The partition information fetching time-consuming   |
 | query_plan_cost | stage="schema_fetcher"       | Timer | The schema information fetching time-consuming      |
 
-#### 4.2.18. Plan Dispatcher
+#### 4.2.14. Plan Dispatcher
 
 | Metric     | Tags                      | Type  | Description                                                  |
-|------------|---------------------------|-------|--------------------------------------------------------------|
+| ---------- | ------------------------- | ----- | ------------------------------------------------------------ |
 | dispatcher | stage="wait_for_dispatch" | Timer | The distribution plan dispatcher time-consuming              |
 | dispatcher | stage="dispatch_read"     | Timer | The distribution plan dispatcher time-consuming (only query) |
 
-#### 4.2.19. Query Resource
+#### 4.2.15. Query Resource
 
 | Metric         | Tags                     | Type | Description                                |
-|----------------|--------------------------|------|--------------------------------------------|
+| -------------- | ------------------------ | ---- | ------------------------------------------ |
 | query_resource | type="sequence_tsfile"   | Rate | The access frequency of sequence tsfiles   |
 | query_resource | type="unsequence_tsfile" | Rate | The access frequency of unsequence tsfiles |
 | query_resource | type="flushing_memtable" | Rate | The access frequency of flushing memtables |
 | query_resource | type="working_memtable"  | Rate | The access frequency of working memtables  |
 
-#### 4.2.20. Data Exchange
+#### 4.2.16. Data Exchange
 
 | Metric              | Tags                                                                   | Type      | Description                                                     |
-|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------------------------------------|
+| ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
 | data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | The time-consuming that source handles receive TsBlock          |
 | data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | The time-consuming that source handles deserialize TsBlock      |
 | data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | The time-consuming that sink handles send TsBlock               |
@@ -360,19 +356,19 @@ carefully evaluated. The current Core-level metrics are as follows:
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
 
-#### 4.2.21. Query Task Schedule
+#### 4.2.17. Query Task Schedule
 
 | Metric           | Tags                           | Type      | Description                                      |
-|------------------|--------------------------------|-----------|--------------------------------------------------|
+| ---------------- | ------------------------------ | --------- | ------------------------------------------------ |
 | driver_scheduler | name="ready_queued_time"       | Timer     | The queuing time of ready queue                  |
 | driver_scheduler | name="block_queued_time"       | Timer     | The queuing time of blocking queue               |
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
 
-#### 4.2.22. Query Execution
+#### 4.2.18. Query Execution
 
 | Metric                   | Tags                                                                                | Type    | Description                                                                             |
-|--------------------------|-------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------|
+| ------------------------ | ----------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------- |
 | query_execution          | stage="local_execution_planner"                                                     | Timer   | The time-consuming of operator tree construction                                        |
 | query_execution          | stage="query_resource_init"                                                         | Timer   | The time-consuming of query resource initialization                                     |
 | query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | The time-consuming of query resource memory query and construction                      |
@@ -399,7 +395,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.3.1. Cluster
 
 | Metric | Tags                                                           | Type      | Description                                                        |
-|--------|----------------------------------------------------------------|-----------|--------------------------------------------------------------------|
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
 | region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
 | slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
@@ -444,13 +440,13 @@ the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, where value is a
 > specific value
 
-| Metric Type     | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Counter         | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Histogram       | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
-| Rate            | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
-| Timer           | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
+| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
+| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
+| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
 
 #### 5.2.2. Config File
 
@@ -702,6 +698,41 @@ data source for Apache IoTDB Dashboard.
     - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
     - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
+##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
+
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring
+> framework at the Core levels.
+
+- `Overview`: system overview
+    - `CPU Core`: the number of CPU cores in the system.
+    - `Total Disk Space`: The total size of the disk mounted in the system data directory
+    - `System Memory`: total system memory size
+    - `Swap Memory`: System swap area memory size
+    - `Total Timeseries`: the total number of current time series in the system
+    - `Total File Number`: total number of system files
+    - `CPU Load`: System CPU load rate in %
+    - `Disk`: the proportion of the system Disk, in %
+    - `Process Memory`: Process memory usage in %
+    - `System Memory`: System memory usage in %
+    - `Write Point Per Second`: the number of points written by the system per second
+- `Performance`: system performance
+    - `Memory`: memory usage of each part of the system
+    - `QPS`: system interface and RPC visits per second
+    - `QPS Of Schedule`: system interface and RPC visits per second
+    - `Time Consumed Of Operation`: the time consumption of different operations
+    - `Time Consumed of Interface`: Time consumption of different interfaces
+    - `Time Consumed of Stage`: the time consumption of different stages
+    - `Time Consumed of Schedule Stage`: the time consumption of different Schedule stages
+    - `Task Number`: the number of tasks
+    - `Time Consumed of Task`: Task time consumption
+- `System`: system
+    - `CPU Load`: CPU load changes
+    - `CPU Time Per Minute`: The average CPU time spent per minute
+    - `GC Time Per Minute`: GC average time spent per minute
+    - `File Count`: Changes in the number of files
+    - `File Size`: file size changes
+    - `Log Number Per Minute`: Log changes per minute
+
 ### 5.3. IoTDB
 
 #### 5.3.1. IoTDB mapping relationship of metrics
@@ -709,13 +740,13 @@ data source for Apache IoTDB Dashboard.
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__
 > system.metric.`ip:port` as an example by default
 
-| Metric Type     | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Counter         | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Histogram       | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
-| Rate            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Timer           | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. Obtain metrics
 

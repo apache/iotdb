@@ -59,42 +59,42 @@ public class FileMetrics implements IMetricSet {
   private void bindTsFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileSize(true),
         Tag.NAME.toString(),
         "seq");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileSize(false),
         Tag.NAME.toString(),
         "unseq");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getModFileSize,
         Tag.NAME.toString(),
         "mods");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileNum(true),
         Tag.NAME.toString(),
         "seq");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getFileNum(false),
         Tag.NAME.toString(),
         "unseq");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getModFileNum,
         Tag.NAME.toString(),
@@ -104,14 +104,14 @@ public class FileMetrics implements IMetricSet {
   private void bindWalFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         WAL_MANAGER,
         WALManager::getTotalDiskUsage,
         Tag.NAME.toString(),
         "wal");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         WAL_MANAGER,
         WALManager::getTotalFileNum,
         Tag.NAME.toString(),
@@ -121,42 +121,42 @@ public class FileMetrics implements IMetricSet {
   private void bindCompactionFileMetrics(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileSize(true),
         Tag.NAME.toString(),
         "inner-seq-temp");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileSize(false),
         Tag.NAME.toString(),
         "inner-unseq-temp");
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getCrossCompactionTempFileSize,
         Tag.NAME.toString(),
         "cross-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileNum(true),
         Tag.NAME.toString(),
         "inner-seq-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         o -> o.getInnerCompactionTempFileNum(false),
         Tag.NAME.toString(),
         "inner-unseq-temp");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         TS_FILE_METRIC_MANAGER,
         TsFileMetricManager::getCrossCompactionTempFileNum,
         Tag.NAME.toString(),
@@ -173,7 +173,7 @@ public class FileMetrics implements IMetricSet {
           };
       metricService.createAutoGauge(
           Metric.FILE_COUNT.toString(),
-          MetricLevel.IMPORTANT,
+          MetricLevel.CORE,
           this,
           FileMetrics::getOpenFileHandlersNumber,
           Tag.NAME.toString(),

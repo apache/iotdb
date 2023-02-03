@@ -42,7 +42,7 @@ public class PartitionInfoMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         partitionInfo,
         PartitionInfo::getStorageGroupPartitionTableSize,
         Tag.NAME.toString(),

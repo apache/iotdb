@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -230,6 +231,7 @@ public class TsFileProcessor {
 
     long[] memIncrements = null;
     if (enableMemControl) {
+      long startTime = System.nanoTime();
       if (insertRowNode.isAligned()) {
         memIncrements =
             checkAlignedMemCostAndAddToTspInfo(
@@ -241,8 +243,11 @@ public class TsFileProcessor {
                 insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
                 insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     }
 
+    long startTime = System.nanoTime();
     try {
       WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -257,8 +262,12 @@ public class TsFileProcessor {
               "%s: %s write WAL failed",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
+    startTime = System.nanoTime();
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
     } else {
@@ -274,6 +283,8 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -302,6 +313,7 @@ public class TsFileProcessor {
     long[] memIncrements = null;
     try {
       if (enableMemControl) {
+        long startTime = System.nanoTime();
         if (insertTabletNode.isAligned()) {
           memIncrements =
               checkAlignedMemCostAndAddToTsp(
@@ -321,6 +333,8 @@ public class TsFileProcessor {
                   start,
                   end);
         }
+        PerformanceOverviewMetricsManager.getInstance()
+            .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -329,6 +343,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
+    long startTime = System.nanoTime();
     try {
       WALFlushListener walFlushListener =
           walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
@@ -343,8 +358,12 @@ public class TsFileProcessor {
         rollbackMemoryInfo(memIncrements);
       }
       throw new WriteProcessException(e);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
+    startTime = System.nanoTime();
     try {
       if (insertTabletNode.isAligned()) {
         workMemTable.insertAlignedTablet(insertTabletNode, start, end);
@@ -370,6 +389,8 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity

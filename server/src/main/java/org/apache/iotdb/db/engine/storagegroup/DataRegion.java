@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -911,7 +912,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRow");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -960,7 +964,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("insertTablet");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -1051,7 +1058,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long globalLatestFlushedTime =
           lastFlushTimeMap.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
+      startTime = System.nanoTime();
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1154,7 +1164,10 @@ public class DataRegion implements IDataRegionForQuery {
     long globalLatestFlushTime =
         lastFlushTimeMap.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
 
+    long startTime = System.nanoTime();
     tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -3074,7 +3087,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;

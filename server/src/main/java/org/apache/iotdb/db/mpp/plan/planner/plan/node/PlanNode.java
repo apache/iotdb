@@ -45,6 +45,8 @@ public abstract class PlanNode implements IConsensusRequest {
 
   private PlanNodeId id;
 
+  private volatile long metricTime = 0L;
+
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
@@ -61,6 +63,14 @@ public abstract class PlanNode implements IConsensusRequest {
   public abstract List<PlanNode> getChildren();
 
   public abstract void addChild(PlanNode child);
+
+  public long getMetricTime() {
+    return metricTime;
+  }
+
+  public void setMetricTime(long metricTime) {
+    this.metricTime = metricTime;
+  }
 
   @Override
   public abstract PlanNode clone();
