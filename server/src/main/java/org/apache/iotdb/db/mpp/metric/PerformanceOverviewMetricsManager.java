@@ -39,7 +39,7 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewDetailMetrics.AUTHORITY);
   }
 
-  public void recordParserCost(long costTimeInNanos) {
+  public void recordParseCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
@@ -49,7 +49,7 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewDetailMetrics.PARSER);
   }
 
-  public void recordAnalyzerCost(long costTimeInNanos) {
+  public void recordAnalyzeCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
@@ -57,6 +57,26 @@ public class PerformanceOverviewMetricsManager {
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewDetailMetrics.ANALYZER);
+  }
+
+  public void recordPlanCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewDetailMetrics.PLANNER);
+  }
+
+  public void recordScheduleCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewDetailMetrics.SCHEDULER);
   }
 
   public static PerformanceOverviewMetricsManager getInstance() {

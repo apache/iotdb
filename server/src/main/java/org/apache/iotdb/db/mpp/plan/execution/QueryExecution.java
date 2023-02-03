@@ -180,6 +180,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   public void start() {
+    final long startTime = System.nanoTime();
     if (skipExecute()) {
       logger.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
@@ -209,6 +210,7 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
+    PerformanceOverviewMetricsManager.getInstance().recordPlanCost(System.nanoTime() - startTime);
     schedule();
   }
 
@@ -264,31 +266,32 @@ public class QueryExecution implements IQueryExecution {
     final long startTime = System.nanoTime();
     Analysis analysis = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     PerformanceOverviewMetricsManager.getInstance()
-        .recordAnalyzerCost(System.nanoTime() - startTime);
+        .recordAnalyzeCost(System.nanoTime() - startTime);
     return analysis;
   }
 
   private void schedule() {
+    final long startTime = System.nanoTime();
     if (rawStatement instanceof LoadTsFileStatement) {
       this.scheduler =
           new LoadTsFileScheduler(
               distributedPlan, context, stateMachine, internalServiceClientManager);
-      this.scheduler.start();
-      return;
+    } else {
+      // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+      this.scheduler =
+          new ClusterScheduler(
+              context,
+              stateMachine,
+              distributedPlan.getInstances(),
+              context.getQueryType(),
+              executor,
+              writeOperationExecutor,
+              scheduledExecutor,
+              internalServiceClientManager);
     }
-
-    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    this.scheduler =
-        new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            writeOperationExecutor,
-            scheduledExecutor,
-            internalServiceClientManager);
     this.scheduler.start();
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleCost(System.nanoTime() - startTime);
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization

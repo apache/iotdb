@@ -37,6 +37,8 @@ public class PerformanceOverviewDetailMetrics implements IMetricSet {
   public static final String AUTHORITY = "authority";
   public static final String PARSER = "parser";
   public static final String ANALYZER = "analyzer";
+  public static final String PLANNER = "planner";
+  public static final String SCHEDULER = "scheduler";
 
   static {
     metricInfoMap.put(
@@ -45,6 +47,10 @@ public class PerformanceOverviewDetailMetrics implements IMetricSet {
         PARSER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), PARSER));
     metricInfoMap.put(
         ANALYZER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), ANALYZER));
+    metricInfoMap.put(
+        PLANNER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), PLANNER));
+    metricInfoMap.put(
+        SCHEDULER, new MetricInfo(MetricType.TIMER, metric, Tag.STAGE.toString(), SCHEDULER));
   }
 
   @Override
