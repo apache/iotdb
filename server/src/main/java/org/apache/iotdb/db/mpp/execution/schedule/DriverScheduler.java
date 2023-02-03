@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
@@ -70,7 +71,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return InstanceHolder.instance;
   }
 
-  private final IndexedBlockingQueue<DriverTask> readyQueue;
+  private final IndexedBlockingReserveQueue<DriverTask> readyQueue;
   private final IndexedBlockingQueue<DriverTask> timeoutQueue;
   private final Set<DriverTask> blockedTasks;
   private final Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> queryMap;
