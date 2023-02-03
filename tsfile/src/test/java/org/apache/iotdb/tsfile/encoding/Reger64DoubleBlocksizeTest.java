@@ -1300,6 +1300,7 @@ public class Reger64DoubleBlocksizeTest {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
+      ArrayList<ArrayList<Integer>> ts_block_raw = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
       int time0 = bytes2Integer(encoded, decode_pos, 4);
@@ -1329,6 +1330,10 @@ public class Reger64DoubleBlocksizeTest {
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
+      ArrayList<Integer> raw_tmp0 = new ArrayList<>();
+      raw_tmp0.add(time0);
+      raw_tmp0.add(value0);
+      ts_block_raw.add(raw_tmp0);
       int ti_pre = time0;
       int vi_pre = value0;
       for (int i = 1; i < block_size; i++) {
@@ -1338,17 +1343,26 @@ public class Reger64DoubleBlocksizeTest {
         int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i, vi);
         vi_pre = vi;
-      }
 
-      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-      ts_block_tmp0.add(time0);
-      ts_block_tmp0.add(value0);
-      ts_block.add(ts_block_tmp0);
-      for (int i = 1; i < block_size; i++) {
-        int ti = (time_list.get(i) - time0) * td_common + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
-        ts_block_tmp.add(value_list.get(i));
+        ts_block_tmp.add(vi);
+        ts_block_raw.add(ts_block_tmp);
+      }
+
+      quickSort(ts_block_raw, 0, 0, block_size - 1);
+
+      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+      int t0 = ts_block_raw.get(0).get(0);
+      int v0 = ts_block_raw.get(0).get(1);
+      ts_block_tmp0.add(t0);
+      ts_block_tmp0.add(v0);
+      ts_block.add(ts_block_tmp0);
+      for (int i = 1; i < block_size; i++) {
+        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+        int ti = (ts_block_raw.get(i).get(0) - t0) * td_common + t0;
+        ts_block_tmp.add(ti);
+        ts_block_tmp.add(ts_block_raw.get(i).get(1));
         ts_block.add(ts_block_tmp);
       }
       quickSort(ts_block, 0, 0, block_size - 1);
@@ -1359,6 +1373,7 @@ public class Reger64DoubleBlocksizeTest {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
 
+      ArrayList<ArrayList<Integer>> ts_block_raw = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
       int time0 = bytes2Integer(encoded, decode_pos, 4);
@@ -1391,32 +1406,44 @@ public class Reger64DoubleBlocksizeTest {
       int td_common = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      int ti_pre = 0;
-      int vi_pre = 0;
-      for (int i = 1; i < remain_length + zero_number; i++) {
+      ArrayList<Integer> raw_tmp0 = new ArrayList<>();
+      raw_tmp0.add(time0);
+      raw_tmp0.add(value0);
+      ts_block_raw.add(raw_tmp0);
+      int ti_pre = time0;
+      int vi_pre = value0;
+      for (int i = 1; i < remain_length; i++) {
         int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
         time_list.set(i, ti);
         ti_pre = ti;
         int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
         value_list.set(i, vi);
         vi_pre = vi;
-      }
 
-      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-      ts_block_tmp0.add(time0);
-      ts_block_tmp0.add(value0);
-      ts_block.add(ts_block_tmp0);
-      for (int i = 1; i < remain_length + zero_number; i++) {
-        int ti = (time_list.get(i) - time0) * td_common + time0;
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(ti);
-        ts_block_tmp.add(value_list.get(i));
+        ts_block_tmp.add(vi);
+        ts_block_raw.add(ts_block_tmp);
+      }
+
+      quickSort(ts_block_raw, 0, 0, remain_length - 1);
+
+      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+      int t0 = ts_block_raw.get(0).get(0);
+      int v0 = ts_block_raw.get(0).get(1);
+      ts_block_tmp0.add(t0);
+      ts_block_tmp0.add(v0);
+      ts_block.add(ts_block_tmp0);
+      for (int i = 1; i < remain_length; i++) {
+        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+        int ti = (ts_block_raw.get(i).get(0) - t0) * td_common + t0;
+        ts_block_tmp.add(ti);
+        ts_block_tmp.add(ts_block_raw.get(i).get(1));
         ts_block.add(ts_block_tmp);
       }
 
-      quickSort(ts_block, 0, 0, remain_length + zero_number - 1);
-
-      for (int i = zero_number; i < remain_length + zero_number; i++) {
+      quickSort(ts_block, 0, 0, remain_length - 1);
+      for (int i = 0; i < remain_length; i++) {
         data.add(ts_block.get(i));
       }
     }
@@ -1555,7 +1582,7 @@ public class Reger64DoubleBlocksizeTest {
           long decodeTime = 0;
           double ratio = 0;
           double compressed_size = 0;
-          int repeatTime2 = 100;
+          int repeatTime2 = 150;
           for (int i = 0; i < repeatTime; i++) {
             ArrayList<Byte> buffer = new ArrayList<>();
             long s = System.nanoTime();
