@@ -42,11 +42,7 @@ public class QueryPlanCostMetricSet implements IMetricSet {
 
   private static final List<String> stages =
       Arrays.asList(
-          ANALYZER,
-          LOGICAL_PLANNER,
-          DISTRIBUTION_PLANNER,
-          PARTITION_FETCHER,
-          SCHEMA_FETCHER);
+          ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER);
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
