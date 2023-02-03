@@ -79,10 +79,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final AtomicInteger nextDriverTaskHandleId = new AtomicInteger(0);
   private IMPPDataExchangeManager blockManager;
 
-  private static final int MAX_CAPACITY =
+  private static final int QUERY_MAX_CAPACITY =
       IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM =
       IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
+  private static final int TASK_MAX_CAPACITY = QUERY_MAX_CAPACITY * WORKER_THREAD_NUM * 2;
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
@@ -90,9 +91,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private DriverScheduler() {
     this.readyQueue =
-        new MultilevelPriorityQueue(LEVEL_TIME_MULTIPLIER, MAX_CAPACITY, new DriverTask());
+        new MultilevelPriorityQueue(LEVEL_TIME_MULTIPLIER, TASK_MAX_CAPACITY, new DriverTask());
     this.timeoutQueue =
-        new L1PriorityQueue<>(MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(
+            QUERY_MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -366,7 +368,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
         task.setLastEnterReadyQueueTime(System.nanoTime());
         task.resetLevelScheduledTime();
-        readyQueue.push(task);
+        readyQueue.rePush(task);
         blockedTasks.remove(task);
       } finally {
         task.unlock();
@@ -400,7 +402,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.READY);
         task.setLastEnterReadyQueueTime(System.nanoTime());
-        readyQueue.push(task);
+        readyQueue.rePush(task);
       } finally {
         task.unlock();
       }
@@ -467,6 +469,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
                   }
                   otherTask.lock();
                   try {
+                    if (otherTask.isEndState()) {
+                      return;
+                    }
                     otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
                     clearDriverTask(otherTask);
                   } finally {

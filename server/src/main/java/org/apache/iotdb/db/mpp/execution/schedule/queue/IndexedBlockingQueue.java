@@ -40,6 +40,8 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
   private final int MAX_CAPACITY;
   private final E queryHolder;
   private int size;
+  // To avoid some elements can't join the queue again that are polled out for running or blocked
+  private int reservedSize;
 
   /**
    * Init the queue with a max capacity. The queryHolder is just a simple reused object in query to
@@ -67,6 +69,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     }
     E output = pollFirst();
     size--;
+    reservedSize++;
     return output;
   }
 
@@ -88,9 +91,23 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     Preconditions.checkState(
         !contains(element),
         "The queue has already contained the element: " + element.getDriverTaskId());
-    Preconditions.checkState(size < MAX_CAPACITY, "The queue is full");
+    Preconditions.checkState(
+        size + reservedSize < MAX_CAPACITY, "The system can't allow more queries.");
     pushToQueue(element);
     size++;
+    this.notifyAll();
+  }
+
+  /**
+   * RePush an element which is polled out for running or blocked before to the queue. In this case,
+   * we don't increase the current size of queue, since we have reserved a place for it.
+   */
+  public synchronized void rePush(E element) {
+    if (element == null) {
+      throw new NullPointerException("pushed element is null");
+    }
+    pushToQueue(element);
+    reservedSize--;
     this.notifyAll();
   }
 
@@ -103,7 +120,10 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
   public synchronized E remove(ID id) {
     queryHolder.setId(id);
     E output = remove(queryHolder);
+    // Make sure one element is only removed once
     if (output == null) {
+      this.reservedSize--;
+      Preconditions.checkState(reservedSize >= 0, "One task is removed twice or more.");
       return null;
     }
     size--;
