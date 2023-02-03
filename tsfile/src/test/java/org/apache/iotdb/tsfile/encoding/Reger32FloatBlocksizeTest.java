@@ -27,14 +27,6 @@ public class Reger32FloatBlocksizeTest {
     bytes[3] = (byte) integer;
     return bytes;
   }
-  public static byte[] float2Bytes(float f){
-    int value = Float.floatToIntBits(f);
-    byte[] bytes= new byte[4];
-    for(int i=0;i<4;i++){
-      bytes[i] = (byte) ((value >>8*i)& 0xff);
-    }
-    return bytes;
-  }
   public static byte[] double2Bytes(double dou){
     long value = Double.doubleToRawLongBits(dou);
     byte[] bytes= new byte[8];
@@ -43,6 +35,63 @@ public class Reger32FloatBlocksizeTest {
     }
     return bytes;
   }
+
+  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
+    if(num > 8){
+      System.out.println("bytes2Doubleerror");
+      return 0;
+    }
+    long value = 0;
+    for (int i = 0; i < 8; i++) {
+      value |= ((long) (encoded.get(i+start) & 0xff)) << (8 * i);
+    }
+    return Double.longBitsToDouble(value);
+  }
+
+  public static byte[] float2bytes(float f) {
+    int fbit = Float.floatToIntBits(f);
+    byte[] b = new byte[4];
+    for (int i = 0; i < 4; i++) {
+      b[i] = (byte) (fbit >> (24 - i * 8));
+    }
+    int len = b.length;
+    byte[] dest = new byte[len];
+    System.arraycopy(b, 0, dest, 0, len);
+    byte temp;
+    for (int i = 0; i < len / 2; ++i) {
+      temp = dest[i];
+      dest[i] = dest[len - i - 1];
+      dest[len - i - 1] = temp;
+    }
+    return dest;
+  }
+
+  public static float bytes2float(ArrayList<Byte> b, int index) {
+    int l;
+    l = b.get(index);
+    l &= 0xff;
+    l |= ((long) b.get(index + 1) << 8);
+    l &= 0xffff;
+    l |= ((long) b.get(index + 2) << 16);
+    l &= 0xffffff;
+    l |= ((long) b.get(index + 3) << 24);
+    return Float.intBitsToFloat(l);
+  }
+
+  public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
+    int value = 0;
+    if(num > 4){
+      System.out.println("bytes2Integer error");
+      return 0;
+    }
+    for (int i = 0; i < num; i++) {
+      value <<= 8;
+      int b = encoded.get(i+start) & 0xFF;
+      value |= b;
+    }
+    return value;
+  }
+  
   public static byte[] bitPacking(ArrayList<Integer> numbers,int bit_width){
     int block_num = numbers.size()/8;
     byte[] result = new byte[bit_width*block_num];
@@ -70,6 +119,32 @@ public class Reger32FloatBlocksizeTest {
       }
     }
     return result;
+  }
+
+  public static ArrayList<Integer> decodebitPacking(ArrayList<Byte> encoded,int decode_pos,int bit_width,int min_delta,int block_size){
+    ArrayList<Integer> result_list = new ArrayList<>();
+    for (int i = 0; i < (block_size) / 8; i++) { //bitpacking  纵向8个，bit width是多少列
+      int[] val8 = new int[8];
+      for (int j = 0; j < 8; j++) {
+        val8[j] = 0;
+      }
+      for (int j = 0; j < bit_width; j++) {
+        byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
+        byte[] bit8 = new byte[8];
+        for (int k = 0; k <8 ; k++) {
+          bit8[k] = (byte) (tmp_byte & 1);
+          tmp_byte = (byte) (tmp_byte >> 1);
+        }
+        for (int k = 0; k < 8; k++) {
+          val8[k] = val8[k] * 2 + bit8[k];
+        }
+      }
+      for (int j = 0; j < 8; j++) {
+        result_list.add(val8[j] + min_delta);
+      }
+      decode_pos += bit_width;
+    }
+    return result_list;
   }
 
   public static int part(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
@@ -111,68 +186,6 @@ public class Reger32FloatBlocksizeTest {
         stack.push(low);
         stack.push(mid - 1);
       }
-    }
-  }
-  public static void quickSort0(ArrayList<ArrayList<Integer>> ts_block, int index, int low, int high) {
-    if(low>=high)
-      return;
-    ArrayList<Integer> pivot = ts_block.get(low);
-    int l = low;
-    int r = high;
-    ArrayList<Integer> temp = new ArrayList<>();
-    while(l<r){
-      while (l < r && ts_block.get(r).get(index) >= pivot.get(index)) {
-        r--;
-      }
-      while (l < r && ts_block.get(l).get(index) <= pivot.get(index)) {
-        l++;
-      }
-      if (l < r) {
-        temp = ts_block.get(l);
-        ts_block.set(l, ts_block.get(r));
-        ts_block.set(r, temp);
-      }
-    }
-    ts_block.set(low, ts_block.get(l));
-    ts_block.set(l, pivot);
-    if (low < l) {
-      quickSort(ts_block,index, low, l-1);
-    }
-    if (r < high) {
-      quickSort(ts_block,index, r+1, high);
-    }
-    pivot.clear();
-    temp.clear();
-  }
-  public static void quickSort2(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
-    if(low>=high)
-      return;
-    ArrayList<Integer> pivot = ts_block.get(low);
-    int l = low;
-    int r = high;
-    ArrayList<Integer> temp;
-    while(l<r){
-      while (l < r && (ts_block.get(r).get(2) > pivot.get(2)||
-              (Objects.equals(ts_block.get(r).get(2), pivot.get(2)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
-        r--;
-      }
-      while (l < r && ts_block.get(l).get(2) < pivot.get(2)||
-              (Objects.equals(ts_block.get(l).get(2), pivot.get(2)) &&ts_block.get(l).get(1) < pivot.get(1))) {
-        l++;
-      }
-      if (l < r) {
-        temp = ts_block.get(l);
-        ts_block.set(l, ts_block.get(r));
-        ts_block.set(r, temp);
-      }
-    }
-    ts_block.set(low, ts_block.get(l));
-    ts_block.set(l, pivot);
-    if (low < l) {
-      quickSort2(ts_block, low, l - 1);
-    }
-    if (r < high) {
-      quickSort2(ts_block,r + 1, high);
     }
   }
 
@@ -970,13 +983,13 @@ public class Reger32FloatBlocksizeTest {
     ts_block.set(0,tmp0);
 
     // encode theta
-    byte[] theta0_r_byte = float2byte2(theta.get(0)+raw_length.get(3));
+    byte[] theta0_r_byte = float2bytes(theta.get(0)+raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = float2byte2(theta.get(1));
+    byte[] theta1_r_byte = float2bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = float2byte2(theta.get(2)+raw_length.get(4));
+    byte[] theta0_v_byte = float2bytes(theta.get(2)+raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = float2byte2(theta.get(3));
+    byte[] theta1_v_byte = float2bytes(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
 
     // encode interval
@@ -1160,94 +1173,6 @@ public class Reger32FloatBlocksizeTest {
     return encoded_result;
   }
 
-  public static void quickSort22(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
-    if(low>=high)
-      return;
-    ArrayList<Integer> pivot = ts_block.get(low);
-    int l = low;
-    int r = high;
-    ArrayList<Integer> temp;
-    while(l<r){
-      while (l < r && (ts_block.get(r).get(0) > pivot.get(0)||
-              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
-        r--;
-      }
-      while (l < r && ts_block.get(l).get(0) < pivot.get(0)||
-              (Objects.equals(ts_block.get(l).get(0), pivot.get(0)) &&ts_block.get(l).get(1) < pivot.get(1))) {
-        l++;
-      }
-      if (l < r) {
-        temp = ts_block.get(l);
-        ts_block.set(l, ts_block.get(r));
-        ts_block.set(r, temp);
-      }
-    }
-    ts_block.set(low, ts_block.get(l));
-    ts_block.set(l, pivot);
-    if (low < l) {
-      quickSort22(ts_block, low, l - 1);
-    }
-    if (r < high) {
-      quickSort22(ts_block,r + 1, high);
-    }
-  }
-
-  public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
-    if(num > 8){
-      System.out.println("bytes2Doubleerror");
-      return 0;
-    }
-    long value = 0;
-    for (int i = 0; i < 8; i++) {
-      value |= ((long) (encoded.get(i+start) & 0xff)) << (8 * i);
-    }
-    return Double.longBitsToDouble(value);
-  }
-
-  public static byte[] float2byte2(float f) {
-    int fbit = Float.floatToIntBits(f);
-    byte[] b = new byte[4];
-    for (int i = 0; i < 4; i++) {
-      b[i] = (byte) (fbit >> (24 - i * 8));
-    }
-    int len = b.length;
-    byte[] dest = new byte[len];
-    System.arraycopy(b, 0, dest, 0, len);
-    byte temp;
-    for (int i = 0; i < len / 2; ++i) {
-      temp = dest[i];
-      dest[i] = dest[len - i - 1];
-      dest[len - i - 1] = temp;
-    }
-    return dest;
-  }
-
-  public static float byte2float2(ArrayList<Byte> b, int index) {
-    int l;
-    l = b.get(index);
-    l &= 0xff;
-    l |= ((long) b.get(index + 1) << 8);
-    l &= 0xffff;
-    l |= ((long) b.get(index + 2) << 16);
-    l &= 0xffffff;
-    l |= ((long) b.get(index + 3) << 24);
-    return Float.intBitsToFloat(l);
-  }
-
-  public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
-    int value = 0;
-    if(num > 4){
-      System.out.println("bytes2Integer error");
-      return 0;
-    }
-    for (int i = 0; i < num; i++) {
-      value <<= 8;
-      int b = encoded.get(i+start) & 0xFF;
-      value |= b;
-    }
-    return value;
-  }
-
   public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded,int td){
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
@@ -1277,13 +1202,13 @@ public class Reger32FloatBlocksizeTest {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = byte2float2(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = byte2float2(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = byte2float2(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = byte2float2(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1346,13 +1271,13 @@ public class Reger32FloatBlocksizeTest {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      float theta0_r = byte2float2(encoded, decode_pos);
+      float theta0_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_r = byte2float2(encoded, decode_pos);
+      float theta1_r = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta0_v = byte2float2(encoded, decode_pos);
+      float theta0_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
-      float theta1_v = byte2float2(encoded, decode_pos);
+      float theta1_v = bytes2float(encoded, decode_pos);
       decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
@@ -1397,32 +1322,6 @@ public class Reger32FloatBlocksizeTest {
     }
 
     return data;
-  }
-
-  public static ArrayList<Integer> decodebitPacking(ArrayList<Byte> encoded,int decode_pos,int bit_width,int min_delta,int block_size){
-    ArrayList<Integer> result_list = new ArrayList<>();
-    for (int i = 0; i < (block_size) / 8; i++) { //bitpacking  纵向8个，bit width是多少列
-      int[] val8 = new int[8];
-      for (int j = 0; j < 8; j++) {
-        val8[j] = 0;
-      }
-      for (int j = 0; j < bit_width; j++) {
-        byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
-        byte[] bit8 = new byte[8];
-        for (int k = 0; k <8 ; k++) {
-          bit8[k] = (byte) (tmp_byte & 1);
-          tmp_byte = (byte) (tmp_byte >> 1);
-        }
-        for (int k = 0; k < 8; k++) {
-          val8[k] = val8[k] * 2 + bit8[k];
-        }
-      }
-      for (int j = 0; j < 8; j++) {
-        result_list.add(val8[j] + min_delta);
-      }
-      decode_pos += bit_width;
-    }
-    return result_list;
   }
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
