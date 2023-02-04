@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1675493251773,
+  "iteration": 1675493251779,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -775,7 +775,7 @@
           "refId": "A"
         }
       ],
-      "title": "Database Used Memory",
+      "title": "Memory",
       "type": "timeseries"
     },
     {
@@ -2496,7 +2496,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -2516,6 +2516,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Performance Overview Dashboard",
   "uid": "ZRfEph04k",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

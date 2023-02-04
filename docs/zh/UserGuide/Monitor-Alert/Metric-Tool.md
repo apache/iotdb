@@ -520,6 +520,7 @@ static_configs:
        Apache IoTDB ConfigNode Dashboard</a>
     2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">
        Apache IoTDB DataNode Dashboard</a>
+    3. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-Performance-Overview-Dashboard.json">Apache IoTDB Performance Overview Dashboard</a>
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
@@ -643,6 +644,40 @@ static_configs:
     - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
     - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
     - `The Number Of Class`：JVM 加载和卸载的类数量
+
+##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
+
+> 除特殊说明的监控项以外，以下监控项均保证在Core级别的监控框架中可用。
+
+- `Overview`：系统概述
+    - `CPU Core`：系统 CPU 核数情况。
+    - `Total Disk Space`：系统 data 目录挂载的磁盘总大小
+    - `System Memory`：系统内存总大小
+    - `Swap Memory`：系统交换区内存大小
+    - `Total Timeseries`：系统当前时间序列总数量
+    - `Total File Number`：系统文件总数量
+    - `CPU Load`：系统 CPU 负载率，单位为%
+    - `Disk`：系统 Disk 占比率，单位为%
+    - `Process Memory`：进程内存使用率，单位为%
+    - `System Memory`： 系统内存使用率，单位为%
+    - `Write Point Per Second`：系统每秒中写入点数
+- `Performance`：系统性能
+    - `Memory`：系统各部分内存使用情况
+    - `QPS`：系统接口和RPC每秒钟访问次数
+    - `QPS Of Schedule`：系统接口和RPC每秒钟访问次数
+    - `Time Consumed Of Operation`：不同操作的耗时情况
+    - `Time Consumed of Interface`：不同接口的耗时情况
+    - `Time Consumed of Stage`：不同阶段的耗时情况
+    - `Time Consumed of Schedule Stage`：不同 Schedule 阶段的耗时情况
+    - `Task Number`：任务个数
+    - `Time Consumed of Task`：任务耗时情况
+- `System`：系统
+    - `CPU Load`：CPU 负载变化情况
+    - `CPU Time Per Minute`：CPU 平均每分钟的耗时
+    - `GC Time Per Minute`：GC 平均每分钟的耗时
+    - `File Count`：文件数量变化情况
+    - `File Size`：文件大小变化情况
+    - `Log Number Per Minute`：日志每分钟变化情况
 
 ### 5.3. 使用 IoTDB 方式
 

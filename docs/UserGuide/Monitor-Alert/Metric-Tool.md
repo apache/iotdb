@@ -698,6 +698,41 @@ data source for Apache IoTDB Dashboard.
     - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
     - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
+##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
+
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring
+> framework at the Core levels.
+
+- `Overview`: system overview
+    - `CPU Core`: the number of CPU cores in the system.
+    - `Total Disk Space`: The total size of the disk mounted in the system data directory
+    - `System Memory`: total system memory size
+    - `Swap Memory`: System swap area memory size
+    - `Total Timeseries`: the total number of current time series in the system
+    - `Total File Number`: total number of system files
+    - `CPU Load`: System CPU load rate in %
+    - `Disk`: the proportion of the system Disk, in %
+    - `Process Memory`: Process memory usage in %
+    - `System Memory`: System memory usage in %
+    - `Write Point Per Second`: the number of points written by the system per second
+- `Performance`: system performance
+    - `Memory`: memory usage of each part of the system
+    - `QPS`: system interface and RPC visits per second
+    - `QPS Of Schedule`: system interface and RPC visits per second
+    - `Time Consumed Of Operation`: the time consumption of different operations
+    - `Time Consumed of Interface`: Time consumption of different interfaces
+    - `Time Consumed of Stage`: the time consumption of different stages
+    - `Time Consumed of Schedule Stage`: the time consumption of different Schedule stages
+    - `Task Number`: the number of tasks
+    - `Time Consumed of Task`: Task time consumption
+- `System`: system
+    - `CPU Load`: CPU load changes
+    - `CPU Time Per Minute`: The average CPU time spent per minute
+    - `GC Time Per Minute`: GC average time spent per minute
+    - `File Count`: Changes in the number of files
+    - `File Size`: file size changes
+    - `Log Number Per Minute`: Log changes per minute
+
 ### 5.3. IoTDB
 
 #### 5.3.1. IoTDB mapping relationship of metrics
