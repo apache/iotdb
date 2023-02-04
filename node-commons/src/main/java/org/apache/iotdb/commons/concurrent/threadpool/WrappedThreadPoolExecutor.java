@@ -63,7 +63,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       BlockingQueue<Runnable> workQueue,
       IoTThreadFactory ioTThreadFactory,
       String mbeanName) {
-    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory);
+    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
     this.mbeanName =
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
