@@ -259,7 +259,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   /**
-   * The iterated result shall be consumed before calling reader.haxNext() or read.next(). Its
+   * The iterated result shall be consumed before calling reader.hasNext() or reader.next(). Its
    * implementation is based on the reader's process context.
    */
   ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
