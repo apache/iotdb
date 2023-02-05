@@ -912,7 +912,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRow");
+    PerformanceOverviewMetricsManager.getInstance()
+            .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -961,7 +964,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("insertTablet");
+    PerformanceOverviewMetricsManager.getInstance()
+            .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -1731,11 +1737,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** lock the write lock of the insert lock */
   public void writeLock(String holder) {
-    final long startTime = System.nanoTime();
     insertLock.writeLock().lock();
     insertWriteLockHolder = holder;
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleLockCost(System.nanoTime() - startTime);
   }
 
   /** unlock the write lock of the insert lock */
@@ -3081,7 +3084,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
+    PerformanceOverviewMetricsManager.getInstance()
+            .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
