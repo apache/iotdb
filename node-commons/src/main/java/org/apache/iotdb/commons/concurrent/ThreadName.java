@@ -62,8 +62,8 @@ public enum ThreadName {
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
-  MTREE_FLUSH_THREAD_POOL("MTree-flush-task"),
-  MTREE_RELEASE_THREAD_POOL_NAME("MTree-release-task");
+  SCHEMA_REGION_RELEASE_POOL("SchemaRegion-Release-Task"),
+  SCHEMA_REGION_FLUSH_POOL("SchemaRegion-Flush-Task");
 
   private final String name;
 

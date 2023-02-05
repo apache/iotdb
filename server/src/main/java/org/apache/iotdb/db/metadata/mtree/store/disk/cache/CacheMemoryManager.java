@@ -47,18 +47,8 @@ public class CacheMemoryManager {
 
   private static final int CONCURRENT_NUM = 10;
 
-  private ExecutorService flushTaskExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.MTREE_FLUSH_THREAD_POOL.getName());
-  private ExecutorService releaseTaskExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName());
-  private ExecutorService flushTaskExecutor1 =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          CONCURRENT_NUM, ThreadName.MTREE_FLUSH_THREAD_POOL.getName() + "1");
-  private ExecutorService releaseTaskExecutor1 =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          CONCURRENT_NUM, ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName() + "1");
+  private ExecutorService flushTaskExecutor;
+  private ExecutorService releaseTaskExecutor;
 
   private volatile boolean hasFlushTask;
   private int flushCount = 0;
@@ -76,11 +66,11 @@ public class CacheMemoryManager {
 
   public void init() {
     flushTaskExecutor =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.MTREE_FLUSH_THREAD_POOL.getName());
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
     releaseTaskExecutor =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName());
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            CONCURRENT_NUM, ThreadName.SCHEMA_REGION_RELEASE_POOL.getName());
   }
 
   public void ensureMemoryStatus() {
@@ -126,7 +116,7 @@ public class CacheMemoryManager {
                                   store.getLock().threadReadUnlock();
                                 }
                               },
-                              releaseTaskExecutor1))
+                              releaseTaskExecutor))
                   .toArray(CompletableFuture[]::new))
           .join();
       releaseCount++;
@@ -171,7 +161,7 @@ public class CacheMemoryManager {
                                   store.getLock().unlockWrite();
                                 }
                               },
-                              flushTaskExecutor1))
+                              flushTaskExecutor))
                   .toArray(CompletableFuture[]::new))
           .join();
       hasFlushTask = false;
@@ -181,14 +171,24 @@ public class CacheMemoryManager {
 
   public void clear() {
     if (releaseTaskExecutor != null) {
+      while (true) {
+        if (!hasReleaseTask) break;
+      }
       releaseTaskExecutor.shutdown();
-      while (!releaseTaskExecutor.isTerminated()) ;
+      while (true) {
+        if (releaseTaskExecutor.isTerminated()) break;
+      }
       releaseTaskExecutor = null;
     }
     // the release task may submit flush task, thus must be shut down and clear first
     if (flushTaskExecutor != null) {
+      while (true) {
+        if (!hasFlushTask) break;
+      }
       flushTaskExecutor.shutdown();
-      while (!flushTaskExecutor.isTerminated()) ;
+      while (true) {
+        if (flushTaskExecutor.isTerminated()) break;
+      }
       flushTaskExecutor = null;
     }
   }
