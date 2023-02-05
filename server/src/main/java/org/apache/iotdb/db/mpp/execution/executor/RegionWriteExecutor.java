@@ -207,9 +207,9 @@ public class RegionWriteExecutor {
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
       // data insertion should be blocked by data deletion, especially when deleting timeseries
+      final long startTime = System.nanoTime();
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
-        final long startTime = System.nanoTime();
         try {
           SchemaValidator.validate(insertNode);
         } catch (SemanticException e) {

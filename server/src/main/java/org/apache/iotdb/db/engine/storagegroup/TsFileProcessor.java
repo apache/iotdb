@@ -266,6 +266,7 @@ public class TsFileProcessor {
       PerformanceOverviewMetricsManager.getInstance()
           .recordScheduleWalCost(System.nanoTime() - startTime);
     }
+
     startTime = System.nanoTime();
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
@@ -342,6 +343,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
+    long startTime = System.nanoTime();
     try {
       WALFlushListener walFlushListener =
           walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
@@ -356,8 +358,12 @@ public class TsFileProcessor {
         rollbackMemoryInfo(memIncrements);
       }
       throw new WriteProcessException(e);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
+    startTime = System.nanoTime();
     try {
       if (insertTabletNode.isAligned()) {
         workMemTable.insertAlignedTablet(insertTabletNode, start, end);
@@ -383,6 +389,8 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleMemoryTableCost(System.nanoTime() - startTime);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
