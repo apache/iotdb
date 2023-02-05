@@ -130,7 +130,7 @@ public class RegionWriteExecutor {
           writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
         }
         PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleConsensusCost(System.nanoTime() - startTime);
+            .recordScheduleTriggerCost(System.nanoTime() - startTime);
       }
     }
     return writeResponse;
