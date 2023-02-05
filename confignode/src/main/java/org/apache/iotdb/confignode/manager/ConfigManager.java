@@ -217,6 +217,8 @@ public class ConfigManager implements IManager {
 
   private final RetryFailedTasksThread retryFailedTasksThread;
 
+  private static int dataPartitionCount = 0;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -722,6 +724,11 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
     resp = queryResult.convertToTDataPartitionTableResp();
+
+    dataPartitionCount++;
+    if (dataPartitionCount % 100 == 0) {
+      LOGGER.info("dataPartition req count: {}", dataPartitionCount);
+    }
 
     LOGGER.debug(
         "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",

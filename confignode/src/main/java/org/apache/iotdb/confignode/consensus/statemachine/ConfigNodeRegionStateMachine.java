@@ -51,6 +51,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for ConfigNodeRegion */
@@ -68,6 +69,7 @@ public class ConfigNodeRegionStateMachine
   private File logFile;
   private int startIndex;
   private int endIndex;
+  private ScheduledExecutorService executorService;
 
   private static final String CURRENT_FILE_DIR =
       CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
@@ -302,15 +304,10 @@ public class ConfigNodeRegionStateMachine
 
     try {
       ByteBuffer buffer = plan.serializeToByteBuffer();
-      // The method logWriter.write will execute flip() firstly, so we must make position==limit
       buffer.position(buffer.limit());
       logWriter.write(buffer);
-      logWriter.close();
+
       endIndex = endIndex + 1;
-      File tmpLogFile = new File(PROGRESS_FILE_PATH + endIndex);
-      Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
-      logFile = tmpLogFile;
-      logWriter = new LogWriter(logFile, false);
     } catch (Exception e) {
       LOGGER.error(
           "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode", e);
@@ -323,14 +320,6 @@ public class ConfigNodeRegionStateMachine
     String[] list = new File(CURRENT_FILE_DIR).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
-        int tmp = Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_") + 1));
-        if (logFileName.startsWith("log_inprogress")) {
-          endIndex = tmp;
-        } else {
-          if (startIndex < tmp) {
-            startIndex = tmp;
-          }
-        }
         File logFile =
             SystemFileFactory.INSTANCE.getFile(CURRENT_FILE_DIR + File.separator + logFileName);
         SingleFileLogReader logReader;
@@ -343,7 +332,10 @@ public class ConfigNodeRegionStateMachine
               e);
           continue;
         }
+
+        startIndex = endIndex;
         while (logReader.hasNext()) {
+          endIndex++;
           // read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
