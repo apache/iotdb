@@ -817,7 +817,7 @@ public class IoTDBConfig {
 
   /** whether to use persistent schema mode */
   //  private String schemaEngineMode = "Schema_File";
-  private String schemaEngineMode = "Schema_File";
+  private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInSchemaFileMode = -1;

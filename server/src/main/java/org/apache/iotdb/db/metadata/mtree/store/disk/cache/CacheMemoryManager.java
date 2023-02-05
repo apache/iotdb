@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * CacheMemoryManager is used to register the CachedMTreeStore and create the CacheManager.
@@ -54,12 +53,12 @@ public class CacheMemoryManager {
   private ExecutorService releaseTaskExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName());
-  private ExecutorService flushTaskExecutor1 = Executors.newFixedThreadPool(CONCURRENT_NUM);
-  //      IoTDBThreadPoolFactory.newFixedThreadPool(
-  //          CONCURRENT_NUM, ThreadName.MTREE_FLUSH_THREAD_POOL.getName() + "1");
-  private ExecutorService releaseTaskExecutor1 = Executors.newFixedThreadPool(CONCURRENT_NUM);
-  //      IoTDBThreadPoolFactory.newFixedThreadPool(
-  //          CONCURRENT_NUM, ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName() + "1");
+  private ExecutorService flushTaskExecutor1 =
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          CONCURRENT_NUM, ThreadName.MTREE_FLUSH_THREAD_POOL.getName() + "1");
+  private ExecutorService releaseTaskExecutor1 =
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          CONCURRENT_NUM, ThreadName.MTREE_RELEASE_THREAD_POOL_NAME.getName() + "1");
 
   private volatile boolean hasFlushTask;
   private int flushCount = 0;
@@ -114,28 +113,22 @@ public class CacheMemoryManager {
    */
   private void tryExecuteMemoryRelease() {
     synchronized (storeList) {
-      for (int i = 0; i * CONCURRENT_NUM < storeList.size(); i++) {
-        CompletableFuture<Void>[] completableFutures =
-            new CompletableFuture[storeList.size() - i * CONCURRENT_NUM];
-        for (int j = 0; j < completableFutures.length; j++) {
-          CachedMTreeStore store = storeList.get(i * CONCURRENT_NUM + j);
-          completableFutures[j] =
-              CompletableFuture.runAsync(
-                  () -> {
-                    store.getLock().threadReadLock();
-                    try {
-                      store.executeMemoryRelease();
-                    } finally {
-                      store.getLock().threadReadUnlock();
-                    }
-                  },
-                  releaseTaskExecutor1);
-        }
-        CompletableFuture.allOf(completableFutures).join();
-        if (!memManager.isExceedReleaseThreshold() || memManager.isEmpty()) {
-          break;
-        }
-      }
+      CompletableFuture.allOf(
+              storeList.stream()
+                  .map(
+                      store ->
+                          CompletableFuture.runAsync(
+                              () -> {
+                                store.getLock().threadReadLock();
+                                try {
+                                  store.executeMemoryRelease();
+                                } finally {
+                                  store.getLock().threadReadUnlock();
+                                }
+                              },
+                              releaseTaskExecutor1))
+                  .toArray(CompletableFuture[]::new))
+          .join();
       releaseCount++;
       hasReleaseTask = false;
       if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
@@ -164,26 +157,23 @@ public class CacheMemoryManager {
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void tryFlushVolatileNodes() {
     synchronized (storeList) {
-      for (int i = 0; i * CONCURRENT_NUM < storeList.size(); i++) {
-        CompletableFuture<Void>[] completableFutures =
-            new CompletableFuture[storeList.size() - i * CONCURRENT_NUM];
-        for (int j = 0; j < completableFutures.length; j++) {
-          CachedMTreeStore store = storeList.get(i * CONCURRENT_NUM + j);
-          completableFutures[j] =
-              CompletableFuture.runAsync(
-                  () -> {
-                    store.getLock().writeLock();
-                    try {
-                      store.flushVolatileNodes();
-                      store.executeMemoryRelease();
-                    } finally {
-                      store.getLock().unlockWrite();
-                    }
-                  },
-                  flushTaskExecutor1);
-        }
-        CompletableFuture.allOf(completableFutures).join();
-      }
+      CompletableFuture.allOf(
+              storeList.stream()
+                  .map(
+                      store ->
+                          CompletableFuture.runAsync(
+                              () -> {
+                                store.getLock().writeLock();
+                                try {
+                                  store.flushVolatileNodes();
+                                  store.executeMemoryRelease();
+                                } finally {
+                                  store.getLock().unlockWrite();
+                                }
+                              },
+                              flushTaskExecutor1))
+                  .toArray(CompletableFuture[]::new))
+          .join();
       hasFlushTask = false;
       flushCount++;
     }
