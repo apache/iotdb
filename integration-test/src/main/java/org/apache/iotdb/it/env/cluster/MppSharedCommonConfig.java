@@ -194,9 +194,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    cnConfig.setSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
-    dnConfig.setSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    cnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
+    dnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
     return this;
   }
 
@@ -208,9 +208,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    cnConfig.setDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
-    dnConfig.setDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    cnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
+    dnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
     return this;
   }
 
@@ -313,13 +313,6 @@ public class MppSharedCommonConfig implements CommonConfig {
       boolean enableAutoLeaderBalanceForIoTConsensus) {
     cnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
     dnConfig.setEnableAutoLeaderBalanceForIoTConsensus(enableAutoLeaderBalanceForIoTConsensus);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    cnConfig.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
-    dnConfig.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
     return this;
   }
 

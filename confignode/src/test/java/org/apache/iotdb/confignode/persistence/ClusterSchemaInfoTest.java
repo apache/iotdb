@@ -97,8 +97,7 @@ public class ClusterSchemaInfoTest {
     clusterSchemaInfo.clear();
     clusterSchemaInfo.processLoadSnapshot(snapshotDir);
 
-    Assert.assertEquals(
-        storageGroupPathList.size(), clusterSchemaInfo.getStorageGroupNames().size());
+    Assert.assertEquals(storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames().size());
 
     GetStorageGroupPlan getStorageGroupReq =
         new GetStorageGroupPlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));

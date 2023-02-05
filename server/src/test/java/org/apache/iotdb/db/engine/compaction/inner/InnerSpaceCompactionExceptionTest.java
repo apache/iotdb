@@ -181,9 +181,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
+      tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
-    tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(targetResource);
+    tsFileManager.getOrCreateSequenceListByTimePartition(0).keepOrderInsert(targetResource);
     FileUtils.delete(seqResources.get(0).getTsFile().getPath());
     seqResources.get(0).remove();
     compactionLogger.close();
@@ -209,8 +209,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
 
     Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(1, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(targetResource, tsFileManager.getSequenceListByTimePartition(0).get(0));
+    Assert.assertEquals(1, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(
+        targetResource, tsFileManager.getOrCreateSequenceListByTimePartition(0).get(0));
   }
 
   /**
