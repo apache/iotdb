@@ -205,6 +205,7 @@ public class TypeInferenceUtils {
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);
         if (keepExpression instanceof ConstantOperand) {
+          outputExpressionLists.add(Collections.singletonList(keepExpression));
           return;
         } else if (keepExpression instanceof CompareBinaryExpression) {
           Expression leftExpression =

@@ -43,6 +43,8 @@ public class CountIfAccumulator implements Accumulator {
 
   private final boolean ignoreNull;
 
+  private boolean lastPointIsSatisfy;
+
   @FunctionalInterface
   private interface Evaluator {
     boolean evaluate();
@@ -106,10 +108,14 @@ public class CountIfAccumulator implements Accumulator {
       } else {
         if (column[2].getBoolean(i)) {
           keep++;
-          if (keepEvaluator.evaluate()) {
+          lastPointIsSatisfy = true;
+        } else {
+          // data point segment was over, judge whether to count
+          if (lastPointIsSatisfy && keepEvaluator.evaluate()) {
             countValue++;
-            keep = 0;
           }
+          keep = 0;
+          lastPointIsSatisfy = false;
         }
       }
     }
@@ -143,6 +149,10 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    // judge whether the last data point segment need to count
+    if (lastPointIsSatisfy && keepEvaluator.evaluate()) {
+      countValue++;
+    }
     columnBuilder.writeLong(countValue);
   }
 
