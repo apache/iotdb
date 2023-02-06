@@ -275,27 +275,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                       return dataTypes;
                     })
                 .collect(Collectors.toList()),
-            schemaComputationWithAutoCreationList.stream()
-                .map(
-                    o -> {
-                      TSEncoding[] encodings = new TSEncoding[o.getMeasurements().length];
-                      for (int i = 0, length = encodings.length; i < length; i++) {
-                        encodings[i] = o.getEncoding(i);
-                      }
-                      return encodings;
-                    })
-                .collect(Collectors.toList()),
-            schemaComputationWithAutoCreationList.stream()
-                .map(
-                    o -> {
-                      CompressionType[] compressionTypes =
-                          new CompressionType[o.getMeasurements().length];
-                      for (int i = 0, length = compressionTypes.length; i < length; i++) {
-                        compressionTypes[i] = o.getCompressionType(i);
-                      }
-                      return compressionTypes;
-                    })
-                .collect(Collectors.toList()),
+            null,
+            null,
             schemaComputationWithAutoCreationList.stream()
                 .map(ISchemaComputationWithAutoCreation::isAligned)
                 .collect(Collectors.toList()));
