@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.db.mpp.execution.exchange.source;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -273,7 +273,7 @@ public class SourceHandle implements ISourceHandle {
     return nonCancellationPropagating(blocked);
   }
 
-  synchronized void setNoMoreTsBlocks(int lastSequenceId) {
+  public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     logger.debug("[ReceiveNoMoreTsBlockEvent]");
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
@@ -284,7 +284,8 @@ public class SourceHandle implements ISourceHandle {
     }
   }
 
-  synchronized void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes) {
+  public synchronized void updatePendingDataBlockInfo(
+      int startSequenceId, List<Long> dataBlockSizes) {
     logger.debug(
         "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
         startSequenceId,

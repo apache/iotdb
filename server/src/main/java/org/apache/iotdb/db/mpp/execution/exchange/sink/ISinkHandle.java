@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -51,10 +51,18 @@ public interface ISinkHandle {
   void send(int partition, List<TsBlock> tsBlocks);
 
   /**
-   * Notify the handle that there are no more tsblocks. Any future calls to send a tsblock should be
+   * Notify the handle that there are no more TsBlocks. Any future calls to send a TsBlock should be
    * ignored.
    */
   void setNoMoreTsBlocks();
+
+  /**
+   * Notify the handle that there are no more TsBlocks for the specified channel. Any future calls
+   * to send a TsBlock to the specified channel should be ignored.
+   *
+   * @param channelIndex index of the channel that should be closed
+   */
+  void setNoMoreTsBlocksOfOneChannel(int channelIndex);
 
   /** If the handle is aborted. */
   boolean isAborted();

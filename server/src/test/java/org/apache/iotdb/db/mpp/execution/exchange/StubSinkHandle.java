@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -75,6 +76,11 @@ public class StubSinkHandle implements ISinkHandle {
     }
     closed = true;
     instanceContext.transitionToFlushing();
+  }
+
+  @Override
+  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+    throw new UnsupportedOperationException("Unsupported for now.");
   }
 
   @Override

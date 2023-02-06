@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -152,6 +153,11 @@ public class LocalSinkHandle implements ISinkHandle {
     }
     checkAndInvokeOnFinished();
     logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
+  }
+
+  @Override
+  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+    throw new UnsupportedOperationException("not supported now.");
   }
 
   @Override
