@@ -152,6 +152,56 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
+  public void computeSchemaWithAutoCreate(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
+    schemaCache.takeReadLock();
+    try {
+      PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
+      String[] measurements = schemaComputationWithAutoCreation.getMeasurements();
+
+      List<Integer> indexOfMissingMeasurements =
+          schemaCache.compute(schemaComputationWithAutoCreation);
+      // all schema can be taken from cache
+      if (indexOfMissingMeasurements.isEmpty()) {
+        return;
+      }
+
+      // try fetch the missing schema from remote and cache fetched schema
+      ClusterSchemaTree remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+              devicePath, measurements, indexOfMissingMeasurements);
+      indexOfMissingMeasurements =
+          remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+      if (indexOfMissingMeasurements.isEmpty()) {
+        return;
+      }
+
+      if (config.isAutoCreateSchemaEnabled()) {
+        ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+            schemaTree,
+            devicePath,
+            indexOfMissingMeasurements,
+            measurements,
+            ((ISchemaAutoCreation) schemaComputationWithAutoCreation)::getDataType,
+            schemaComputationWithAutoCreation.isAligned());
+        indexOfMissingMeasurements =
+            schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+      }
+
+      if (!indexOfMissingMeasurements.isEmpty()) {
+        for (int index : indexOfMissingMeasurements) {
+          schemaComputationWithAutoCreation.computeMeasurement(index, null);
+        }
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+    }
+  }
+
+  @Override
   public ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,

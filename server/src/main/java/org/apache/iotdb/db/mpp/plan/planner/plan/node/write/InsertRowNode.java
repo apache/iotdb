@@ -26,11 +26,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -44,7 +48,9 @@ import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -65,7 +71,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode
+    implements WALEntryValue, ISchemaComputationWithAutoCreation {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
@@ -150,6 +157,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     } else {
       return dataTypes[index];
     }
+  }
+
+  @Override
+  public TSEncoding getEncoding(int index) {
+    return null;
+  }
+
+  @Override
+  public CompressionType getCompressionType(int index) {
+    return null;
   }
 
   public Object[] getValues() {
@@ -826,5 +843,78 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+  }
+
+  @Override
+  public void computeDevice(boolean isAligned) {
+    if (this.isAligned != isAligned) {
+      throw new SemanticException(
+          new AlignedTimeseriesException(
+              String.format(
+                  "timeseries under this device are%s aligned, " + "please use %s interface",
+                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
+              devicePath.getFullPath()));
+    }
+  }
+
+  @Override
+  public ISchemaComputationWithAutoCreation getSchemaComputationWithAutoCreation() {
+    return this;
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    transferType();
+  }
+
+  @Override
+  public void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    if (measurementSchemaInfo == null) {
+      measurementSchemas[index] = null;
+    } else {
+      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+    }
+    if (isNeedInferType) {
+      return;
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      // if enable partial insert, mark failed measurements with exception
+      if (measurementSchemas[index] == null) {
+        markFailedMeasurement(
+            index,
+            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
+      } else if ((dataTypes[index] != measurementSchemas[index].getType()
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+        markFailedMeasurement(
+            index,
+            new DataTypeMismatchException(
+                devicePath.getFullPath(),
+                measurements[index],
+                dataTypes[index],
+                measurementSchemas[index].getType(),
+                getMinTime(),
+                getFirstValueOfIndex(index)));
+      }
+    } else {
+      // if not enable partial insert, throw the exception directly
+      if (measurementSchemas[index] == null) {
+        throw new SemanticException(
+            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
+      } else if ((dataTypes[index] != measurementSchemas[index].getType()
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+        throw new SemanticException(
+            new DataTypeMismatchException(
+                devicePath.getFullPath(),
+                measurements[index],
+                dataTypes[index],
+                measurementSchemas[index].getType(),
+                getMinTime(),
+                getFirstValueOfIndex(index)));
+      }
+    }
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -245,6 +246,12 @@ public abstract class InsertNode extends WritePlanNode {
 
   public abstract void validateAndSetSchema(ISchemaTree schemaTree)
       throws QueryProcessException, MetadataException;
+
+  public ISchemaComputationWithAutoCreation getSchemaComputationWithAutoCreation() {
+    return null;
+  }
+
+  public void updateAfterSchemaValidation() throws QueryProcessException {}
 
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes() throws DataTypeMismatchException, PathNotExistException {

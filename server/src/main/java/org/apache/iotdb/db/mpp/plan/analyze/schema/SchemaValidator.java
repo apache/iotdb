@@ -36,33 +36,25 @@ public class SchemaValidator {
 
   private static final ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  public static ISchemaTree validate(InsertNode insertNode) {
-
-    ISchemaTree schemaTree;
-    if (insertNode instanceof BatchInsertNode) {
-      BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
-      schemaTree =
-          SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
-              batchInsertNode.getDevicePaths(),
-              batchInsertNode.getMeasurementsList(),
-              batchInsertNode.getDataTypesList(),
-              batchInsertNode.getAlignedList());
-    } else {
-      schemaTree =
-          SCHEMA_FETCHER.fetchSchemaWithAutoCreate(
-              insertNode.getDevicePath(),
-              insertNode.getMeasurements(),
-              insertNode::getDataType,
-              insertNode.isAligned());
-    }
-
+  public static void validate(InsertNode insertNode) {
     try {
-      insertNode.validateAndSetSchema(schemaTree);
+      if (insertNode instanceof BatchInsertNode) {
+        BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
+        ISchemaTree schemaTree =
+            SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
+                batchInsertNode.getDevicePaths(),
+                batchInsertNode.getMeasurementsList(),
+                batchInsertNode.getDataTypesList(),
+                batchInsertNode.getAlignedList());
+        insertNode.validateAndSetSchema(schemaTree);
+      } else {
+        SCHEMA_FETCHER.computeSchemaWithAutoCreate(
+            insertNode.getSchemaComputationWithAutoCreation());
+      }
+      insertNode.updateAfterSchemaValidation();
     } catch (QueryProcessException | MetadataException e) {
       throw new SemanticException(e);
     }
-
-    return schemaTree;
   }
 
   public static ISchemaTree validate(
