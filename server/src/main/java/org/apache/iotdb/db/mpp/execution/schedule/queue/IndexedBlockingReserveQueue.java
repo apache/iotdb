@@ -55,25 +55,20 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
       throw new NullPointerException("pushed element is null");
     }
     Preconditions.checkState(
-        !contains(element),
-        "The queue has already contained the element: " + element.getDriverTaskId());
-    Preconditions.checkState(
         size + reservedSize < MAX_CAPACITY, "The system can't allow more query tasks.");
     pushToQueue(element);
     size++;
     this.notifyAll();
   }
 
-  /**
-   * RePush an element which is polled out for running or blocked before to the queue. In this case,
-   * we don't increase the current size of queue, since we have reserved a place for it.
-   */
+  /** RePush an element which is polled out for running or blocked before to the queue. */
   public synchronized void repush(E element) {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
     pushToQueue(element);
     reservedSize--;
+    size++;
     this.notifyAll();
   }
 
