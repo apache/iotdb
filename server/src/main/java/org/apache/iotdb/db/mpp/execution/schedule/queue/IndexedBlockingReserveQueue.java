@@ -77,16 +77,10 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     this.notifyAll();
   }
 
-  public synchronized E remove(ID id) {
-    queryHolder.setId(id);
-    E output = remove(queryHolder);
-    // Make sure one element is only removed once
-    if (output == null) {
-      this.reservedSize--;
-      Preconditions.checkState(reservedSize >= 0, "One task is removed twice or more.");
-      return null;
-    }
-    size--;
-    return output;
+  /**
+   * For task that is not in readyQueue when it's cleared, it won't be added into the queue again.
+   */
+  public synchronized void decreaseReservedSize() {
+    this.reservedSize--;
   }
 }

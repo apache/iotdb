@@ -262,15 +262,30 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private void clearDriverTask(DriverTask task) {
     try (SetThreadName driverTaskName =
         new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
-      // If it has been aborted, return directly
-      if (task.getStatus() == DriverTaskStatus.ABORTED) {
-        return;
-      } else if (task.getStatus() != DriverTaskStatus.FINISHED) {
-        task.setStatus(DriverTaskStatus.ABORTED);
+      DriverTaskStatus status = task.getStatus();
+      switch (status) {
+          // If it has been aborted, return directly
+        case ABORTED:
+          return;
+        case READY:
+          task.setStatus(DriverTaskStatus.ABORTED);
+          readyQueue.remove(task.getDriverTaskId());
+          break;
+        case BLOCKED:
+          task.setStatus(DriverTaskStatus.ABORTED);
+          blockedTasks.remove(task);
+          readyQueue.decreaseReservedSize();
+          break;
+        case RUNNING:
+          task.setStatus(DriverTaskStatus.ABORTED);
+          readyQueue.decreaseReservedSize();
+          break;
+        case FINISHED:
+          readyQueue.decreaseReservedSize();
+          break;
       }
-      readyQueue.remove(task.getDriverTaskId());
+
       timeoutQueue.remove(task.getDriverTaskId());
-      blockedTasks.remove(task);
       Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
           queryMap.get(task.getDriverTaskId().getQueryId());
       if (queryRelatedTasks != null) {
