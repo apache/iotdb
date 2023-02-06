@@ -487,6 +487,26 @@ public class IoTDBSchemaTemplateIT {
   }
 
   @Test
+  public void testInsertDataWithMeasurementsBeyondTemplate() throws Exception {
+    // set schema template
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+    // insert data and auto activate schema template
+    statement.execute("INSERT INTO root.sg1.d1(time,s1,s2) VALUES (1,1,1)");
+    // insert twice to make sure the timeseries in template has been cached
+    statement.execute("INSERT INTO root.sg1.d1(time,s1,s2) VALUES (2,1,1)");
+
+    // insert data with extra measurement s3 which should be checked by schema fetch and auto
+    // created
+    statement.execute("INSERT INTO root.sg1.d1(time,s1,s2,s3) VALUES (2,1,1,1)");
+
+    try (ResultSet resultSet = statement.executeQuery("count timeseries")) {
+      Assert.assertTrue(resultSet.next());
+      long resultRecord = resultSet.getLong(1);
+      Assert.assertEquals(3, resultRecord);
+    }
+  }
+
+  @Test
   public void testUnsetTemplate() throws SQLException {
     // set schema template
     statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");

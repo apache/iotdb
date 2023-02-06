@@ -178,8 +178,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    setProperty("schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    setProperty(
+        "default_schema_region_group_num_per_database",
+        String.valueOf(schemaRegionGroupPerDatabase));
     return this;
   }
 
@@ -190,8 +192,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    setProperty("data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    setProperty(
+        "default_data_region_group_num_per_database", String.valueOf(dataRegionGroupPerDatabase));
     return this;
   }
 
@@ -302,12 +305,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty(
         "enable_auto_leader_balance_for_iot_consensus",
         String.valueOf(enableAutoLeaderBalanceForIoTConsensus));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    setProperty("least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
     return this;
   }
 

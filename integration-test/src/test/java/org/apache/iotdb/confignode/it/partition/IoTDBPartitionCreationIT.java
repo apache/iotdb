@@ -68,7 +68,7 @@ public class IoTDBPartitionCreationIT {
   private static final String sg = "root.sg";
   private static final int testSeriesPartitionBatchSize = 1;
   private static final int testTimePartitionBatchSize = 1;
-  private static final int testLeastDataRegionGroupNum = 4;
+  private static final int testDataRegionGroupPerDatabase = 4;
   private static final TEndPoint defaultEndPoint = new TEndPoint("-1", -1);
   private static final TDataNodeLocation defaultDataNode =
       new TDataNodeLocation(
@@ -90,7 +90,7 @@ public class IoTDBPartitionCreationIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
