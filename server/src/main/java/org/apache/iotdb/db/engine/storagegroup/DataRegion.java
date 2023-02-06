@@ -2299,7 +2299,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("loadNewTsFile");
     try {
       List<TsFileResource> sequenceList =
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId);
+          tsFileManager.getOrCreateSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       LoadTsFileType tsFileType = getLoadingTsFileType(insertPos, sequenceList);

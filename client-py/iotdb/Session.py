@@ -123,7 +123,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_0_13"},
+            configuration={"version": "V_1_0"},
         )
 
         try:
