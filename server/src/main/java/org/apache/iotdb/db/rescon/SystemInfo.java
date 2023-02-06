@@ -129,6 +129,8 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
+      // report after reset sg status, because slow write may not reach the report threshold
+      storageGroupInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
     }
 
