@@ -381,12 +381,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
-    List<IMeasurementMNode> leafMNodes = mtree.getAllMeasurementMNode();
-
-    int seriesCount = leafMNodes.size();
+    long seriesCount = mtree.countAllMeasurement();
     schemaStatisticsManager.deleteTimeseries(seriesCount);
     if (seriesNumerMonitor != null) {
-      seriesNumerMonitor.deleteTimeSeries(seriesCount);
+      seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
     }
 
     // clear all the components and release all the file handlers
@@ -550,7 +548,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
       // update statistics and schemaDataTypeNumMap
-      schemaStatisticsManager.addTimeseries(1);
+      schemaStatisticsManager.addTimeseries(1L);
 
       // update tag index
       if (offset != -1 && isRecovering) {
@@ -774,7 +772,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
 
-    schemaStatisticsManager.deleteTimeseries(1);
+    schemaStatisticsManager.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
@@ -798,7 +796,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
-    schemaStatisticsManager.deleteTimeseries(1);
+    schemaStatisticsManager.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }

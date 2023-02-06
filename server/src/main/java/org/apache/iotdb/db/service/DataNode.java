@@ -141,6 +141,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
+    logger.info("IoTDB-DataNode environment variables: " + IoTDBConfig.getEnvironmentVariables());
     new DataNodeServerCommandLine().doMain(args);
   }
 

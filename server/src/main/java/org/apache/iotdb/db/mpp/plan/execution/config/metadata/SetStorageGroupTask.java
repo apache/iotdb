@@ -62,6 +62,13 @@ public class SetStorageGroupTask implements IConfigTask {
       storageGroupSchema.setTimePartitionInterval(
           setStorageGroupStatement.getTimePartitionInterval());
     }
+    if (setStorageGroupStatement.getSchemaRegionGroupNum() != null) {
+      storageGroupSchema.setMinSchemaRegionGroupNum(
+          setStorageGroupStatement.getSchemaRegionGroupNum());
+    }
+    if (setStorageGroupStatement.getDataRegionGroupNum() != null) {
+      storageGroupSchema.setMinDataRegionGroupNum(setStorageGroupStatement.getDataRegionGroupNum());
+    }
     return storageGroupSchema;
   }
 }

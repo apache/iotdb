@@ -270,7 +270,13 @@ Total line number = 10
 It costs 0.016s
 ```
 
-## 使用方式
+## 查询执行接口
+
+在 IoTDB 中，提供两种方式执行数据查询操作：
+- 使用 IoTDB-SQL 执行查询。
+- 常用查询的高效执行接口，包括时间序列原始数据范围查询、最新点查询、简单聚合查询。
+
+### 使用 IoTDB-SQL 执行查询
 
 数据查询语句支持在 SQL 命令行终端、JDBC、JAVA / C++ / Python / Go 等编程语言 API、RESTful API 中使用。
 
@@ -285,3 +291,47 @@ It costs 0.016s
   ```
 
 - 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。
+
+### 常用查询的高效执行接口
+
+各编程语言的 API 为常用的查询提供了高效执行接口，可以省去 SQL 解析等操作的耗时。包括：
+
+* 时间序列原始数据范围查询：
+  - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+
+```java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
+```
+
+* 最新点查询：
+  - 查询最后一条时间戳大于等于某个时间点的数据。
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
+```
+
+* 聚合查询：
+  - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+  - 支持按照时间区间分段查询。
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
+```

@@ -162,7 +162,7 @@ public interface IMTreeBelowSG {
 
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
-  List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
+  long countAllMeasurement() throws MetadataException;
 
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
 

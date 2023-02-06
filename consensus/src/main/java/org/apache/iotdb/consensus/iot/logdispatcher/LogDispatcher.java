@@ -234,7 +234,7 @@ public class LogDispatcher {
       return bufferedEntries.size();
     }
 
-    /** try to offer a request into queue with memory control */
+    /** try to offer a request into queue with memory control. */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
       if (!iotConsensusMemoryManager.reserve(indexedConsensusRequest.getSerializedSize(), true)) {
         return false;
@@ -254,7 +254,7 @@ public class LogDispatcher {
       return success;
     }
 
-    /** try to remove a request from queue with memory control */
+    /** try to remove a request from queue with memory control. */
     private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
       iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
     }
