@@ -82,7 +82,6 @@ public class WALNodeRecoverTask implements Runnable {
         recoverPerformer.getRecoverListener().fail(e);
       }
     } finally {
-      allNodesRecoveredLatch.countDown();
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         try {
           if (!recoverPerformer.canWrite()) {
@@ -126,6 +125,7 @@ public class WALNodeRecoverTask implements Runnable {
           "Successfully recover WAL node in the directory {}, add this node to WALManger.",
           logDirectory);
     }
+    allNodesRecoveredLatch.countDown();
   }
 
   private long[] recoverLastFile() {
