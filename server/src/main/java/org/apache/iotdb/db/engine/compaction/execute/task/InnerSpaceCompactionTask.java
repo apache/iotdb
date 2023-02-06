@@ -90,9 +90,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       isHoldingReadLock[i] = false;
     }
     if (sequence) {
-      tsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
     } else {
-      tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     }
     this.hashCode = this.toString().hashCode();
     collectSelectedFilesInfo();

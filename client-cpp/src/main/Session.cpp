@@ -793,7 +793,7 @@ string Session::getVersionString(Version::Version version) {
             return "V_0_12";
         case Version::V_0_13:
             return "V_0_13";
-        case Version::V_1_0,
+        case Version::V_1_0:
             return "V_1_0";
         default:
             return "V_0_12";
