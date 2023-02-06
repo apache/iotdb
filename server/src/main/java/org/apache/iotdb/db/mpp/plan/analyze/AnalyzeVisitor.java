@@ -308,6 +308,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeGroupByTag(analysis, queryStatement, outputExpressions);
 
         Set<Expression> selectExpressions = new LinkedHashSet<>();
+        if (queryStatement.isOutputEndTime()) {
+          selectExpressions.add(endTimeExpression);
+        }
         for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
           selectExpressions.add(outputExpressionAndAlias.left);
         }
@@ -1022,6 +1025,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Set<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(deviceExpression);
+    if (queryStatement.isOutputEndTime()) {
+      selectExpressions.add(endTimeExpression);
+    }
     selectExpressions.addAll(
         outputExpressions.stream()
             .map(Pair::getLeft)
@@ -1168,13 +1174,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (aggregationExpression != null && aggregationExpression.size() != 0) {
           throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
         }
-        analyzeExpression(analysis, groupByExpressionOfOneDevice);
+        TSDataType tsDataType = analyzeExpression(analysis, groupByExpressionOfOneDevice);
+        if (!checkGroupByExpressionType(tsDataType, groupByComponent)) {
+          throw new SemanticException("Only support numeric type when delta != 0");
+        }
         deviceToGroupByExpression.put(device.getFullPath(), groupByExpressionOfOneDevice);
       }
 
       GroupByParameter groupByParameter =
           new GroupByVariationParameter(
-              windowType,
               groupByComponent.isIgnoringNull(),
               ((GroupByVariationComponent) groupByComponent).getDelta());
       analysis.setGroupByParameter(groupByParameter);
@@ -1208,10 +1216,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (aggregationExpression != null && aggregationExpression.size() != 0) {
         throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
       }
-      analyzeExpression(analysis, expressions.get(0));
+      TSDataType tsDataType = analyzeExpression(analysis, expressions.get(0));
+      if (!checkGroupByExpressionType(tsDataType, groupByComponent)) {
+        throw new SemanticException("Only support numeric type when delta != 0");
+      }
       GroupByParameter groupByParameter =
           new GroupByVariationParameter(
-              windowType,
               groupByComponent.isIgnoringNull(),
               ((GroupByVariationComponent) groupByComponent).getDelta());
       analysis.setGroupByExpression(expressions.get(0));
@@ -1219,6 +1229,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       throw new SemanticException("Unsupported window type");
     }
+  }
+
+  private boolean checkGroupByExpressionType(TSDataType type, GroupByComponent groupByComponent) {
+    if (groupByComponent.getWindowType() == WindowType.EVENT_WINDOW) {
+      double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
+      if (delta != 0) {
+        return type == TSDataType.INT32
+            || type == TSDataType.INT64
+            || type == TSDataType.DOUBLE
+            || type == TSDataType.FLOAT;
+      }
+    }
+    return true;
   }
 
   private void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {

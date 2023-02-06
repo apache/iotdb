@@ -31,8 +31,8 @@ public class GroupByVariationParameter extends GroupByParameter {
 
   double delta;
 
-  public GroupByVariationParameter(WindowType windowType, boolean ignoringNull, double delta) {
-    super(windowType, ignoringNull);
+  public GroupByVariationParameter(boolean ignoringNull, double delta) {
+    super(WindowType.EVENT_WINDOW, ignoringNull);
     this.delta = delta;
   }
 
@@ -57,7 +57,7 @@ public class GroupByVariationParameter extends GroupByParameter {
   public static GroupByParameter deserializeVariation(ByteBuffer buffer) {
     boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
     double delta = ReadWriteIOUtils.readDouble(buffer);
-    return new GroupByVariationParameter(WindowType.EVENT_WINDOW, ignoringNull, delta);
+    return new GroupByVariationParameter(ignoringNull, delta);
   }
 
   @Override

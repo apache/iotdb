@@ -1182,8 +1182,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (windowType == WindowType.EVENT_WINDOW) {
-      GroupByVariationComponent groupByVariationComponent =
-          new GroupByVariationComponent(windowType);
+      GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
       groupByVariationComponent.setControlColumnExpression(
           parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null));
       groupByVariationComponent.setDelta(

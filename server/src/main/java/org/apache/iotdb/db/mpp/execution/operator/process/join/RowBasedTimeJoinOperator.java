@@ -214,7 +214,6 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
       return false;
     }
     if (retainedTsBlock != null) {
-      LOGGER.info("Invalid true");
       return true;
     }
     for (int i = 0; i < inputOperatorsCount; i++) {

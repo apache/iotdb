@@ -24,8 +24,8 @@ import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 public class GroupByVariationComponent extends GroupByComponent {
   private double delta = 0;
 
-  public GroupByVariationComponent(WindowType windowType) {
-    super(windowType);
+  public GroupByVariationComponent() {
+    super(WindowType.EVENT_WINDOW);
   }
 
   public double getDelta() {

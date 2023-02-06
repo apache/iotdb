@@ -141,7 +141,13 @@ public class IoTDBGroupByVariationIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
     prepareData(SQLs2);
@@ -505,5 +511,31 @@ public class IoTDBGroupByVariationIT {
     String sql =
         "select __endTime,count(status),avg(temperature),sum(hardware) from root.** group by variation(temperature,0.8) align by device";
     normalTestWithEndTimeAlignByDevice(res, sql);
+  }
+
+  @Test
+  public void groupByVariationWithDoubleTest2() {
+    String[][] res =
+        new String[][] {
+          {"20", "100", "5", "37.72", "1650"},
+          {"150", "500", "5", "38.46", "1650"},
+          {"510", "610", "8", "37.4875", "2640"},
+        };
+    String sql =
+        "select __endTime,count(status),avg(temperature),sum(hardware) from root.** group by variation(temperature,0.8) having count(status)>=5 align by device";
+    normalTestWithEndTimeAlignByDevice(res, sql);
+  }
+
+  @Test
+  public void groupByVariationWithDoubleTest3() {
+    String[][] res =
+        new String[][] {
+          {"20", "100", "5", "37.72", "1650"},
+          {"150", "500", "5", "38.46", "1650"},
+          {"510", "610", "8", "37.4875", "2640"},
+        };
+    String sql =
+        "select __endTime,count(status),avg(temperature),sum(hardware) from root.ln.wf01.wt01 group by variation(temperature,0.8) having count(status)>=5";
+    normalTestWithEndTime(res, sql);
   }
 }

@@ -64,6 +64,7 @@ public abstract class GroupByParameter {
     serializeAttributes(stream);
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (!(obj instanceof GroupByParameter)) {
       return false;
@@ -72,6 +73,7 @@ public abstract class GroupByParameter {
     return this.windowType == other.windowType && this.ignoringNull == other.ignoringNull;
   }
 
+  @Override
   public int hashCode() {
     return Objects.hash(windowType, ignoringNull);
   }
