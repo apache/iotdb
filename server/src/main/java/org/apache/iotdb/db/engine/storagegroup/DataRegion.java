@@ -2299,7 +2299,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("loadNewTsFile");
     try {
       List<TsFileResource> sequenceList =
-          tsFileManager.getSequenceListByTimePartition(newFilePartitionId);
+          tsFileManager.getOrCreateSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       LoadTsFileType tsFileType = getLoadingTsFileType(insertPos, sequenceList);
@@ -3151,13 +3151,18 @@ public class DataRegion implements IDataRegionForQuery {
    * @param insertRowsNode batch of rows belongs to multiple devices
    */
   public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
-    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
-      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-      try {
-        insert(insertRowNode);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    writeLock("InsertRows");
+    try {
+      for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
+        InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+        try {
+          insert(insertRowNode);
+        } catch (WriteProcessException e) {
+          insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
+    } finally {
+      writeUnlock();
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
@@ -3172,15 +3177,20 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
       throws BatchProcessException {
-    for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
-      InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
-      try {
-        insertTablet(insertTabletNode);
-      } catch (WriteProcessException | BatchProcessException e) {
-        insertMultiTabletsNode
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    writeLock("InsertTablets");
+    try {
+      for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
+        InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+        try {
+          insertTablet(insertTabletNode);
+        } catch (WriteProcessException | BatchProcessException e) {
+          insertMultiTabletsNode
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
+    } finally {
+      writeUnlock();
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
