@@ -140,9 +140,9 @@ public class CompactionExceptionHandler {
       String fullStorageGroupName)
       throws IOException {
     TsFileResourceList unseqTsFileResourceList =
-        tsFileManager.getUnsequenceListByTimePartition(timePartition);
+        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     TsFileResourceList seqTsFileResourceList =
-        tsFileManager.getSequenceListByTimePartition(timePartition);
+        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
 
     // delete compaction mods files
     CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);

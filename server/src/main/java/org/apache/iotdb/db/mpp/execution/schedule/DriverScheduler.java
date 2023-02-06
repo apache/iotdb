@@ -32,9 +32,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
-import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
-import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -184,21 +182,28 @@ public class DriverScheduler implements IDriverScheduler, IService {
                         DriverTaskStatus.READY,
                         driverTaskHandle))
             .collect(Collectors.toList());
+    // If query has not been registered by other fragment instances,
+    // add the first task as timeout checking task to timeoutQueue.
     for (DriverTask driverTask : tasks) {
       queryMap
-          .computeIfAbsent(queryId, v -> new ConcurrentHashMap<>())
+          .computeIfAbsent(
+              queryId,
+              v -> {
+                timeoutQueue.push(tasks.get(0));
+                return new ConcurrentHashMap<>();
+              })
           .computeIfAbsent(
               driverTask.getDriverTaskId().getFragmentInstanceId(),
               v -> Collections.synchronizedSet(new HashSet<>()))
           .add(driverTask);
     }
+
     for (DriverTask task : tasks) {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
           continue;
         }
-        timeoutQueue.push(task);
         readyQueue.push(task);
         task.setLastEnterReadyQueueTime(System.nanoTime());
       } finally {
@@ -244,16 +249,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
       }
     }
-  }
-
-  @Override
-  public Priority getSchedulePriority(DriverTaskId driverTaskID) {
-    DriverTask task = timeoutQueue.get(driverTaskID);
-    if (task == null) {
-      throw new IllegalStateException(
-          "the fragmentInstance " + driverTaskID.getFullId() + " has been cleared");
-    }
-    return task.getPriority();
   }
 
   private void clearDriverTask(DriverTask task) {

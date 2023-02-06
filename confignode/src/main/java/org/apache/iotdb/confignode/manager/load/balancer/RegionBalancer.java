@@ -25,8 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionGroupAllocator;
@@ -67,11 +67,11 @@ public class RegionBalancer {
    * @param consensusGroupType TConsensusGroupType of the new RegionGroups
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
-   * @throws StorageGroupNotExistsException When some StorageGroups don't exist
+   * @throws DatabaseNotExistsException When some StorageGroups don't exist
    */
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // The new RegionGroups will occupy online DataNodes firstly
     List<TDataNodeConfiguration> onlineDataNodes =
