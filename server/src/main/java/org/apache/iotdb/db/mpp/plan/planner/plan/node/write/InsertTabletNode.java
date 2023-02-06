@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,9 +28,7 @@ import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -45,7 +42,6 @@ import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,7 +69,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class InsertTabletNode extends InsertNode
     implements WALEntryValue, ISchemaComputationWithAutoCreation {
@@ -182,31 +177,6 @@ public class InsertTabletNode extends InsertNode
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree) throws MetadataException {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    if (deviceSchemaInfo == null) {
-      throw new PathNotExistException(
-          Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
-              .collect(Collectors.toList()));
-    }
-    if (deviceSchemaInfo.isAligned() != isAligned) {
-      throw new AlignedTimeseriesException(
-          String.format(
-              "timeseries under this device are%s aligned, " + "please use %s interface",
-              deviceSchemaInfo.isAligned() ? "" : " not",
-              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
-          devicePath.getFullPath());
-    }
-    measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
-
-    // validate whether data types are matched
-    selfCheckDataTypes();
   }
 
   @Override

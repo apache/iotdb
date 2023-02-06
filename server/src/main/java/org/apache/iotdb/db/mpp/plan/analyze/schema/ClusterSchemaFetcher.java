@@ -202,6 +202,137 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
+  public void computeSchemaWithAutoCreate(
+      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
+    // operation executed by delete timeseries will be effective.
+    schemaCache.takeReadLock();
+    try {
+
+      List<List<Integer>> indexOfMissingMeasurementsList =
+          new ArrayList<>(schemaComputationWithAutoCreationList.size());
+      List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation;
+      List<Integer> indexOfMissingMeasurements;
+      for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
+        schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
+        indexOfMissingMeasurements = schemaCache.compute(schemaComputationWithAutoCreation);
+        if (!indexOfMissingMeasurements.isEmpty()) {
+          indexOfDevicesWithMissingMeasurements.add(i);
+          indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
+        }
+      }
+
+      // all schema can be taken from cache
+      if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
+        return;
+      }
+
+      // try fetch the missing schema from remote and cache fetched schema
+      ClusterSchemaTree remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
+              schemaComputationWithAutoCreationList.stream()
+                  .map(ISchemaComputationWithAutoCreation::getDevicePath)
+                  .collect(Collectors.toList()),
+              schemaComputationWithAutoCreationList.stream()
+                  .map(ISchemaComputationWithAutoCreation::getMeasurements)
+                  .collect(Collectors.toList()),
+              indexOfDevicesWithMissingMeasurements,
+              indexOfMissingMeasurementsList);
+      List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
+      List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
+      for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
+        schemaComputationWithAutoCreation =
+            schemaComputationWithAutoCreationList.get(indexOfDevicesWithMissingMeasurements.get(i));
+        indexOfMissingMeasurements =
+            remoteSchemaTree.compute(
+                schemaComputationWithAutoCreation, indexOfMissingMeasurementsList.get(i));
+        if (!indexOfMissingMeasurements.isEmpty()) {
+          indexOfDevicesNeedAutoCreateSchema.add(indexOfDevicesWithMissingMeasurements.get(i));
+          indexOfMeasurementsNeedAutoCreate.add(indexOfMissingMeasurements);
+        }
+      }
+
+      if (!indexOfDevicesNeedAutoCreateSchema.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+        ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+            schemaTree,
+            schemaComputationWithAutoCreationList.stream()
+                .map(ISchemaComputationWithAutoCreation::getDevicePath)
+                .collect(Collectors.toList()),
+            indexOfDevicesNeedAutoCreateSchema,
+            indexOfMeasurementsNeedAutoCreate,
+            schemaComputationWithAutoCreationList.stream()
+                .map(ISchemaComputationWithAutoCreation::getMeasurements)
+                .collect(Collectors.toList()),
+            schemaComputationWithAutoCreationList.stream()
+                .map(
+                    o -> {
+                      TSDataType[] dataTypes = new TSDataType[o.getMeasurements().length];
+                      for (int i = 0, length = dataTypes.length; i < length; i++) {
+                        dataTypes[i] = o.getDataType(i);
+                      }
+                      return dataTypes;
+                    })
+                .collect(Collectors.toList()),
+            schemaComputationWithAutoCreationList.stream()
+                .map(
+                    o -> {
+                      TSEncoding[] encodings = new TSEncoding[o.getMeasurements().length];
+                      for (int i = 0, length = encodings.length; i < length; i++) {
+                        encodings[i] = o.getEncoding(i);
+                      }
+                      return encodings;
+                    })
+                .collect(Collectors.toList()),
+            schemaComputationWithAutoCreationList.stream()
+                .map(
+                    o -> {
+                      CompressionType[] compressionTypes =
+                          new CompressionType[o.getMeasurements().length];
+                      for (int i = 0, length = compressionTypes.length; i < length; i++) {
+                        compressionTypes[i] = o.getCompressionType(i);
+                      }
+                      return compressionTypes;
+                    })
+                .collect(Collectors.toList()),
+            schemaComputationWithAutoCreationList.stream()
+                .map(ISchemaComputationWithAutoCreation::isAligned)
+                .collect(Collectors.toList()));
+        indexOfDevicesWithMissingMeasurements = new ArrayList<>();
+        indexOfMissingMeasurementsList = new ArrayList<>();
+        for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {
+          schemaComputationWithAutoCreation =
+              schemaComputationWithAutoCreationList.get(indexOfDevicesNeedAutoCreateSchema.get(i));
+          indexOfMissingMeasurements =
+              schemaTree.compute(
+                  schemaComputationWithAutoCreation, indexOfMeasurementsNeedAutoCreate.get(i));
+          if (!indexOfMissingMeasurements.isEmpty()) {
+            indexOfDevicesWithMissingMeasurements.add(indexOfDevicesNeedAutoCreateSchema.get(i));
+            indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
+          }
+        }
+      } else {
+        indexOfDevicesWithMissingMeasurements = indexOfDevicesNeedAutoCreateSchema;
+        indexOfMissingMeasurementsList = indexOfMeasurementsNeedAutoCreate;
+      }
+
+      if (!indexOfDevicesWithMissingMeasurements.isEmpty()) {
+        for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
+          schemaComputationWithAutoCreation =
+              schemaComputationWithAutoCreationList.get(
+                  indexOfDevicesWithMissingMeasurements.get(i));
+          for (int index : indexOfMissingMeasurementsList.get(i)) {
+            schemaComputationWithAutoCreation.computeMeasurement(index, null);
+          }
+        }
+      }
+    } finally {
+      schemaCache.releaseReadLock();
+    }
+  }
+
+  @Override
   public ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,

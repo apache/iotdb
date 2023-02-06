@@ -44,6 +44,9 @@ public interface ISchemaFetcher {
   default void computeSchemaWithAutoCreate(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
 
+  default void computeSchemaWithAutoCreate(
+      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
+
   ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,

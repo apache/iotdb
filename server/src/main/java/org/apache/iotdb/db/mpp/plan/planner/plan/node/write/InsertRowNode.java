@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,9 +29,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -46,7 +43,6 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -69,7 +65,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class InsertRowNode extends InsertNode
     implements WALEntryValue, ISchemaComputationWithAutoCreation {
@@ -196,38 +191,6 @@ public class InsertRowNode extends InsertNode
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
-  }
-
-  @Override
-  public void validateAndSetSchema(ISchemaTree schemaTree)
-      throws QueryProcessException, MetadataException {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    if (deviceSchemaInfo == null) {
-      throw new PathNotExistException(
-          Arrays.stream(measurements)
-              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
-              .collect(Collectors.toList()));
-    }
-    if (deviceSchemaInfo.isAligned() != isAligned) {
-      throw new AlignedTimeseriesException(
-          String.format(
-              "timeseries under this device are%s aligned, " + "please use %s interface",
-              deviceSchemaInfo.isAligned() ? "" : " not",
-              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
-          devicePath.getFullPath());
-    }
-    this.measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
-
-    // transfer data types from string values when necessary
-    if (isNeedInferType) {
-      transferType();
-      return;
-    }
-
-    // validate whether data types are matched
-    selfCheckDataTypes();
   }
 
   @Override

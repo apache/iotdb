@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,20 +38,14 @@ public class SchemaValidator {
   public static void validate(InsertNode insertNode) {
     try {
       if (insertNode instanceof BatchInsertNode) {
-        BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
-        ISchemaTree schemaTree =
-            SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
-                batchInsertNode.getDevicePaths(),
-                batchInsertNode.getMeasurementsList(),
-                batchInsertNode.getDataTypesList(),
-                batchInsertNode.getAlignedList());
-        insertNode.validateAndSetSchema(schemaTree);
+        SCHEMA_FETCHER.computeSchemaWithAutoCreate(
+            ((BatchInsertNode) insertNode).getSchemaComputationWithAutoCreationList());
       } else {
         SCHEMA_FETCHER.computeSchemaWithAutoCreate(
             insertNode.getSchemaComputationWithAutoCreation());
       }
       insertNode.updateAfterSchemaValidation();
-    } catch (QueryProcessException | MetadataException e) {
+    } catch (QueryProcessException e) {
       throw new SemanticException(e);
     }
   }
