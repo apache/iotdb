@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.exception;
 
-public class StorageGroupNotExistsException extends ConfigNodeException {
+public class DatabaseNotExistsException extends ConfigNodeException {
 
-  public StorageGroupNotExistsException(String storageGroup) {
-    super(String.format("StorageGroup: %s doesn't exist.", storageGroup));
+  public DatabaseNotExistsException(String database) {
+    super(String.format("Database: %s doesn't exist.", database));
   }
 }

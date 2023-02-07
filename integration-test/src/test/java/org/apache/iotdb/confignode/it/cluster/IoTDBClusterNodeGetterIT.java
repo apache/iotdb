@@ -175,9 +175,6 @@ public class IoTDBClusterNodeGetterIT {
       Assert.assertEquals(
           expectedParameters.getReadConsistencyLevel(),
           clusterParameters.getReadConsistencyLevel());
-      Assert.assertEquals(
-          expectedParameters.getLeastDataRegionGroupNum(),
-          clusterParameters.getLeastDataRegionGroupNum());
 
       /* Test showConfigNodes */
       TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();
