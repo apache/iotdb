@@ -34,8 +34,9 @@ public class CountAccumulator implements Accumulator {
   public CountAccumulator() {}
 
   // Column should be like: | ControlColumn | Time | Value |
+
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     if (!column[2].mayHaveNull() && curWindow.contains(column[0])) {
@@ -43,7 +44,7 @@ public class CountAccumulator implements Accumulator {
     } else {
       for (int i = 0; i < curPositionCount; i++) {
         // skip null value in control column
-        if (column[0].isNull(i)) {
+        if (ignoringNull && column[0].isNull(i)) {
           continue;
         }
         if (!curWindow.satisfy(column[0], i)) {

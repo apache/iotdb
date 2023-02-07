@@ -39,7 +39,7 @@ public class SyncStatus {
     this.config = config;
   }
 
-  /** we may block here if the synchronization pipeline is full */
+  /** we may block here if the synchronization pipeline is full. */
   public void addNextBatch(Batch batch) throws InterruptedException {
     synchronized (this) {
       while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
@@ -86,7 +86,7 @@ public class SyncStatus {
     iotConsensusMemoryManager.free(size);
   }
 
-  /** Gets the first index that is not currently synchronized */
+  /** Gets the first index that is not currently synchronized. */
   public long getNextSendingIndex() {
     // we do not use ReentrantReadWriteLock because there will be only one thread reading this field
     synchronized (this) {

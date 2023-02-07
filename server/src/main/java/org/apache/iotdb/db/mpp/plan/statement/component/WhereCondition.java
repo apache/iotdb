@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
@@ -29,8 +30,9 @@ public class WhereCondition extends StatementNode {
 
   public WhereCondition() {}
 
+  // cast functionName to lowercase in where predicate
   public WhereCondition(Expression predicate) {
-    this.predicate = predicate;
+    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
   }
 
   public Expression getPredicate() {
@@ -38,7 +40,7 @@ public class WhereCondition extends StatementNode {
   }
 
   public void setPredicate(Expression predicate) {
-    this.predicate = predicate;
+    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
   }
 
   public String toSQLString() {

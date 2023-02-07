@@ -29,6 +29,9 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Iterator;
 import java.util.Map;
 
@@ -46,6 +49,8 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  * </ol>
  */
 public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
+
+  private static final Logger logger = LoggerFactory.getLogger(Traverser.class);
 
   protected IMTreeStore store;
 
@@ -96,6 +101,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     }
     if (!isSuccess()) {
       Throwable e = getFailure();
+      logger.warn(e.getMessage(), e);
       throw new MetadataException(e.getMessage(), e);
     }
   }
@@ -106,8 +112,15 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
-      if (parent.getSchemaTemplateId() != NON_TEMPLATE) {
-        if (!skipPreDeletedSchema || !parent.getAsEntityMNode().isPreDeactivateTemplate()) {
+      if (parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+          && !(skipPreDeletedSchema
+              && parent
+                  .getAsEntityMNode()
+                  .isPreDeactivateTemplate())) { // the template should not skip
+        Template template = templateMap.get(parent.getSchemaTemplateId());
+        // if null, it means the template on this device is not covered in this query, refer to the
+        // mpp analyzing stage
+        if (template != null) {
           child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
         }
       }
