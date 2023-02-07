@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
@@ -41,23 +40,11 @@ public interface ISchemaFetcher {
 
   ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
 
-  default void computeSchemaWithAutoCreate(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
+  void computeSchemaWithAutoCreate(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation);
 
-  default void computeSchemaWithAutoCreate(
-      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
-
-  ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean aligned);
-
-  ISchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned);
+  void computeSchemaWithAutoCreate(
+      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList);
 
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,

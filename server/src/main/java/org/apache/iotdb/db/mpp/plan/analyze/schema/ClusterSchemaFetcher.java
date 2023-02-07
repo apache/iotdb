@@ -44,7 +44,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -311,67 +310,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     } finally {
       schemaCache.releaseReadLock();
     }
-  }
-
-  @Override
-  public ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean isAligned) {
-    // The schema cache R/W and fetch operation must be locked together thus the cache clean
-    // operation executed by delete timeseries will be effective.
-    schemaCache.takeReadLock();
-    try {
-      ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
-      List<Integer> indexOfMissingMeasurements =
-          checkMissingMeasurements(schemaTree, devicePath, measurements);
-
-      // all schema can be taken from cache
-      if (indexOfMissingMeasurements.isEmpty()) {
-        return schemaTree;
-      }
-
-      // try fetch the missing schema from remote and cache fetched schema
-      ClusterSchemaTree remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
-              devicePath, measurements, indexOfMissingMeasurements);
-      if (!remoteSchemaTree.isEmpty()) {
-        schemaTree.mergeSchemaTree(remoteSchemaTree);
-      }
-
-      if (!config.isAutoCreateSchemaEnabled()) {
-        return schemaTree;
-      }
-
-      // auto create the still missing schema and merge them into schemaTree
-      indexOfMissingMeasurements =
-          checkMissingMeasurementsAfterSchemaFetch(
-              schemaTree, devicePath, indexOfMissingMeasurements, measurements);
-      if (!indexOfMissingMeasurements.isEmpty()) {
-        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
-            schemaTree,
-            devicePath,
-            indexOfMissingMeasurements,
-            measurements,
-            getDataType,
-            isAligned);
-      }
-
-      return schemaTree;
-    } finally {
-      schemaCache.releaseReadLock();
-    }
-  }
-
-  @Override
-  public ISchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePathList,
-      List<String[]> measurementsList,
-      List<TSDataType[]> tsDataTypesList,
-      List<Boolean> isAlignedList) {
-    return fetchSchemaListWithAutoCreate(
-        devicePathList, measurementsList, tsDataTypesList, null, null, isAlignedList);
   }
 
   @Override
