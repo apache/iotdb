@@ -20,16 +20,12 @@
 package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
-import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 
 public class CountIfAccumulator implements Accumulator {
 
@@ -39,52 +35,15 @@ public class CountIfAccumulator implements Accumulator {
   // number of the continues data points satisfy IF expression
   private long keep;
 
-  private final Evaluator keepEvaluator;
+  private final Function<Long, Boolean> keepEvaluator;
 
   private final boolean ignoreNull;
 
   private boolean lastPointIsSatisfy;
 
-  @FunctionalInterface
-  private interface Evaluator {
-    boolean evaluate();
-  }
-
-  public CountIfAccumulator(
-      List<Expression> inputExpressions, Map<String, String> inputAttributes) {
-    this.keepEvaluator = initKeepEvaluator(inputExpressions.get(1));
-    this.ignoreNull = Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true"));
-  }
-
-  private Evaluator initKeepEvaluator(Expression keepExpression) {
-    // We have check semantic in FE,
-    // keep expression must be ConstantOperand or CompareBinaryExpression here
-    if (keepExpression instanceof ConstantOperand) {
-      return () -> keep >= Long.parseLong(keepExpression.toString());
-    } else {
-      long constant =
-          Long.parseLong(
-              ((CompareBinaryExpression) keepExpression)
-                  .getRightExpression()
-                  .getExpressionString());
-      switch (keepExpression.getExpressionType()) {
-        case LESS_THAN:
-          return () -> keep < constant;
-        case LESS_EQUAL:
-          return () -> keep <= constant;
-        case GREATER_THAN:
-          return () -> keep > constant;
-        case GREATER_EQUAL:
-          return () -> keep >= constant;
-        case EQUAL_TO:
-          return () -> keep == constant;
-        case NON_EQUAL:
-          return () -> keep != constant;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + keepExpression.getExpressionType());
-      }
-    }
+  public CountIfAccumulator(Function<Long, Boolean> keepEvaluator, boolean ignoreNull) {
+    this.keepEvaluator = keepEvaluator;
+    this.ignoreNull = ignoreNull;
   }
 
   // Column should be like: | ControlColumn | Time | Value |
@@ -113,7 +72,7 @@ public class CountIfAccumulator implements Accumulator {
           lastPointIsSatisfy = true;
         } else {
           // data point segment was over, judge whether to count
-          if (lastPointIsSatisfy && keepEvaluator.evaluate()) {
+          if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
             countValue++;
           }
           keep = 0;
@@ -152,7 +111,7 @@ public class CountIfAccumulator implements Accumulator {
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
     // judge whether the last data point segment need to count
-    if (lastPointIsSatisfy && keepEvaluator.evaluate()) {
+    if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
       countValue++;
     }
     columnBuilder.writeLong(countValue);

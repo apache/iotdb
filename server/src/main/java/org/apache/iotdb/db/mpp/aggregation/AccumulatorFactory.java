@@ -21,11 +21,14 @@ package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class AccumulatorFactory {
 
@@ -62,7 +65,9 @@ public class AccumulatorFactory {
             ? new FirstValueAccumulator(tsDataType)
             : new FirstValueDescAccumulator(tsDataType);
       case COUNT_IF:
-        return new CountIfAccumulator(inputExpressions, inputAttributes);
+        return new CountIfAccumulator(
+            initKeepEvaluator(inputExpressions.get(1)),
+            Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -81,5 +86,36 @@ public class AccumulatorFactory {
               aggregationType, tsDataType, inputExpressions, inputAttributes, ascending));
     }
     return accumulators;
+  }
+
+  private static Function<Long, Boolean> initKeepEvaluator(Expression keepExpression) {
+    // We have check semantic in FE,
+    // keep expression must be ConstantOperand or CompareBinaryExpression here
+    if (keepExpression instanceof ConstantOperand) {
+      return keep -> keep >= Long.parseLong(keepExpression.toString());
+    } else {
+      long constant =
+          Long.parseLong(
+              ((CompareBinaryExpression) keepExpression)
+                  .getRightExpression()
+                  .getExpressionString());
+      switch (keepExpression.getExpressionType()) {
+        case LESS_THAN:
+          return keep -> keep < constant;
+        case LESS_EQUAL:
+          return keep -> keep <= constant;
+        case GREATER_THAN:
+          return keep -> keep > constant;
+        case GREATER_EQUAL:
+          return keep -> keep >= constant;
+        case EQUAL_TO:
+          return keep -> keep == constant;
+        case NON_EQUAL:
+          return keep -> keep != constant;
+        default:
+          throw new IllegalArgumentException(
+              "unsupported expression type: " + keepExpression.getExpressionType());
+      }
+    }
   }
 }
