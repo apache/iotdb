@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -69,47 +68,17 @@ public class AccumulatorFactory {
     }
   }
 
-  // Old method to createAccumulator, please don't use it any more
-  // keep here for compatibility of old Test before introduce of count_if
-  @TestOnly
-  @Deprecated
-  public static Accumulator createAccumulator(
-      TAggregationType aggregationType, TSDataType tsDataType, boolean ascending) {
-    switch (aggregationType) {
-      case COUNT:
-        return new CountAccumulator();
-      case AVG:
-        return new AvgAccumulator(tsDataType);
-      case SUM:
-        return new SumAccumulator(tsDataType);
-      case EXTREME:
-        return new ExtremeAccumulator(tsDataType);
-      case MAX_TIME:
-        return ascending ? new MaxTimeAccumulator() : new MaxTimeDescAccumulator();
-      case MIN_TIME:
-        return ascending ? new MinTimeAccumulator() : new MinTimeDescAccumulator();
-      case MAX_VALUE:
-        return new MaxValueAccumulator(tsDataType);
-      case MIN_VALUE:
-        return new MinValueAccumulator(tsDataType);
-      case LAST_VALUE:
-        return ascending
-            ? new LastValueAccumulator(tsDataType)
-            : new LastValueDescAccumulator(tsDataType);
-      case FIRST_VALUE:
-        return ascending
-            ? new FirstValueAccumulator(tsDataType)
-            : new FirstValueDescAccumulator(tsDataType);
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
-    }
-  }
-
   public static List<Accumulator> createAccumulators(
-      List<TAggregationType> aggregationTypes, TSDataType tsDataType, boolean ascending) {
+      List<TAggregationType> aggregationTypes,
+      TSDataType tsDataType,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
     List<Accumulator> accumulators = new ArrayList<>();
     for (TAggregationType aggregationType : aggregationTypes) {
-      accumulators.add(createAccumulator(aggregationType, tsDataType, ascending));
+      accumulators.add(
+          createAccumulator(
+              aggregationType, tsDataType, inputExpressions, inputAttributes, ascending));
     }
     return accumulators;
   }
