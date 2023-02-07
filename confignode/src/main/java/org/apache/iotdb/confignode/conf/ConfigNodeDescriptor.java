@@ -764,6 +764,14 @@ public class ConfigNodeDescriptor {
                     "enable_printing_newly_created_partition",
                     String.valueOf(conf.isEnablePrintingNewlyCreatedPartition()))
                 .trim()));
+
+    conf.setForceWalPeriodForConfigNodeSimpleInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "force_wal_period_for_confignode_simple_in_ms",
+                    String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {
