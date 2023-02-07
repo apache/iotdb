@@ -32,8 +32,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,8 +78,6 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
   private boolean finished;
 
   private final TimeComparator comparator;
-
-  private Logger LOGGER = LoggerFactory.getLogger(RowBasedTimeJoinOperator.class);
 
   public RowBasedTimeJoinOperator(
       OperatorContext operatorContext,
