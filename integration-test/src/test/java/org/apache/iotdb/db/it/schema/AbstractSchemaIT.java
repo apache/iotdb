@@ -34,7 +34,7 @@ import java.util.Arrays;
  *
  * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link AbstractSchemaIT#setUp}
  * before test env initialization and call {@link AbstractSchemaIT#tearDown} after test env
- * cleaning. initialize
+ * cleaning.
  */
 @RunWith(Parameterized.class)
 @NotThreadSafe

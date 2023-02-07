@@ -56,7 +56,7 @@ public class CacheMemoryManager {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
-  public synchronized ICacheManager createLRUCacheManager(CachedMTreeStore store) {
+  public ICacheManager createLRUCacheManager(CachedMTreeStore store) {
     synchronized (storeList) {
       ICacheManager cacheManager = new LRUCacheManager();
       storeList.add(store);
