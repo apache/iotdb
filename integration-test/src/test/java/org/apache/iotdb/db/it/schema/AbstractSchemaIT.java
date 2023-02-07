@@ -62,7 +62,7 @@ public abstract class AbstractSchemaIT {
         EnvFactory.getEnv()
             .getConfig()
             .getCommonConfig()
-            .setSchemaMemoryAllocate("2:10000:5000:5000");
+            .setSchemaMemoryAllocate("3:10000:5000:5000");
         break;
     }
   }
