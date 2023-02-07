@@ -29,8 +29,10 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
@@ -725,6 +727,76 @@ public abstract class SchemaBasicTest {
           schemaProcessor.getMatchedDevices(new PartialPath("root.**"), false).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetMatchedDevicesWithPlan() {
+    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+
+    try {
+      schemaProcessor.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          Collections.emptyMap());
+      schemaProcessor.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          Collections.emptyMap());
+      schemaProcessor.createTimeseries(
+          new PartialPath("root.laptop.d2.s0"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          Collections.emptyMap());
+      schemaProcessor.createTimeseries(
+          new PartialPath("root.laptop.d3.s0"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          Collections.emptyMap());
+      schemaProcessor.createTimeseries(
+          new PartialPath("root.laptop.abc.d4.s0"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          Collections.emptyMap());
+
+      // CASE 01. show devices
+      List<ShowDevicesResult> result =
+          schemaProcessor.getMatchedDevices(new ShowDevicesPlan(new PartialPath("root.**")));
+      assertEquals(4, result.size());
+
+      // CASE 02. show devices limit 100 offset 1
+      result =
+          schemaProcessor.getMatchedDevices(
+              new ShowDevicesPlan(new PartialPath("root.**"), 100, 1, false));
+      assertEquals(3, result.size());
+
+      // CASE 03. show devices limit 2 offset 1
+      result =
+          schemaProcessor.getMatchedDevices(
+              new ShowDevicesPlan(new PartialPath("root.**"), 2, 1, false));
+      assertEquals(2, result.size());
+
+      // CASE 04. show devices limit 2 offset 3
+      result =
+          schemaProcessor.getMatchedDevices(
+              new ShowDevicesPlan(new PartialPath("root.**"), 2, 3, false));
+      assertEquals(1, result.size());
+
+      // CASE 04. show devices limit 2 offset 5
+      result =
+          schemaProcessor.getMatchedDevices(
+              new ShowDevicesPlan(new PartialPath("root.**"), 2, 5, false));
+      assertEquals(0, result.size());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

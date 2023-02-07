@@ -50,7 +50,7 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
       if (hasLimit) {
         curOffset += 1;
         if (curOffset < offset) {
-          return true;
+          return false;
         }
       }
       collectEntity(node.getAsEntityMNode());
