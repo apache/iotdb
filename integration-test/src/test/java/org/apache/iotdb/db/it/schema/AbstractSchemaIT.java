@@ -45,11 +45,7 @@ public abstract class AbstractSchemaIT {
 
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
-    return Arrays.asList(
-        SchemaTestMode.Memory,
-        SchemaTestMode.SchemaFileFullMemory,
-        SchemaTestMode.SchemaFilePartialMemory,
-        SchemaTestMode.SchemaFileNonMemory);
+    return Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.SchemaFile);
   }
 
   public AbstractSchemaIT(SchemaTestMode schemaTestMode) {
@@ -61,19 +57,12 @@ public abstract class AbstractSchemaIT {
       case Memory:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
         break;
-      case SchemaFileFullMemory:
-        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-        break;
-      case SchemaFilePartialMemory:
+      case SchemaFile:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
         EnvFactory.getEnv()
             .getConfig()
             .getCommonConfig()
             .setSchemaMemoryAllocate("2:10000:5000:5000");
-        break;
-      case SchemaFileNonMemory:
-        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-        EnvFactory.getEnv().getConfig().getCommonConfig().setCachedMNodeSizeInSchemaFileMode(0);
         break;
     }
   }
@@ -82,8 +71,6 @@ public abstract class AbstractSchemaIT {
 
   enum SchemaTestMode {
     Memory,
-    SchemaFileFullMemory,
-    SchemaFilePartialMemory,
-    SchemaFileNonMemory
+    SchemaFile
   }
 }

@@ -330,13 +330,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
-    setProperty(
-        "cached_mnode_size_in_schema_file_mode", String.valueOf(cachedMNodeSizeInSchemaFileMode));
-    return null;
-  }
-
-  @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
     return null;

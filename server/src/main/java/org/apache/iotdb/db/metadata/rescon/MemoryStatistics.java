@@ -75,7 +75,6 @@ public class MemoryStatistics {
   }
 
   public void requestMemory(long size) {
-    System.out.println("request " + size);
     memoryUsage.getAndUpdate(v -> v += size);
     if (memoryUsage.get() >= memoryCapacity) {
       logger.warn("Current series number {} is too large...", memoryUsage);
@@ -84,7 +83,6 @@ public class MemoryStatistics {
   }
 
   public void releaseMemory(long size) {
-    System.out.println("release " + size);
     memoryUsage.getAndUpdate(v -> v -= size);
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
       logger.info("Current series number {} come back to normal level", memoryUsage);

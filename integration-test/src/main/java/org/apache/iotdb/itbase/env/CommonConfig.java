@@ -109,7 +109,5 @@ public interface CommonConfig {
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
-  CommonConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode);
-
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 }
