@@ -414,7 +414,7 @@ public class StatementGenerator {
   }
 
   public static InsertRowsOfOneDeviceStatement createStatement(
-      TSInsertStringRecordsOfOneDeviceReq req) throws IllegalPathException, QueryProcessException {
+      TSInsertStringRecordsOfOneDeviceReq req) throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();

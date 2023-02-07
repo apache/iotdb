@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class PerformanceOverviewMetricsManager {
   private final MetricService metricService = MetricService.getInstance();
 
-  /** Record the time cost in authority stage */
+  /** Record the time cost in authority stage. */
   public void recordAuthCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
@@ -40,7 +40,7 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewMetrics.AUTHORITY);
   }
 
-  /** Record the time cost in parse stage */
+  /** Record the time cost in parse stage. */
   public void recordParseCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
