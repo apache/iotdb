@@ -825,7 +825,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
     } catch (Throwable e) {
       logger.error(
-          "Fail to recover sealed TsFile {}, skip it.",
+          "Fail to recover unsealed TsFile {}, skip it.",
           recoverPerformer.getTsFileAbsolutePath(),
           e);
     }
