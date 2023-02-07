@@ -257,7 +257,7 @@ public class CompactionUtils {
   public static boolean validateTsFileResources(
       TsFileManager manager, String storageGroupName, long timePartition) {
     List<TsFileResource> resources =
-        manager.getSequenceListByTimePartition(timePartition).getArrayList();
+        manager.getOrCreateSequenceListByTimePartition(timePartition).getArrayList();
     resources.sort(
         (f1, f2) ->
             Long.compareUnsigned(

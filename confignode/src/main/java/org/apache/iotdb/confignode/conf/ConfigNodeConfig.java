@@ -284,6 +284,9 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
+  /** The getOrCreatePartitionTable interface will log new created Partition if set true */
+  private boolean isEnablePrintingNewlyCreatedPartition = false;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1088,5 +1091,13 @@ public class ConfigNodeConfig {
 
   public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
     this.dataRegionRatisLogMax = dataRegionRatisLogMax;
+  }
+
+  public boolean isEnablePrintingNewlyCreatedPartition() {
+    return isEnablePrintingNewlyCreatedPartition;
+  }
+
+  public void setEnablePrintingNewlyCreatedPartition(boolean enablePrintingNewlyCreatedPartition) {
+    isEnablePrintingNewlyCreatedPartition = enablePrintingNewlyCreatedPartition;
   }
 }

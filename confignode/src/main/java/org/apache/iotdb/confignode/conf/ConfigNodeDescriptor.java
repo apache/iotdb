@@ -756,6 +756,14 @@ public class ConfigNodeDescriptor {
                     "data_region_ratis_log_max_size",
                     String.valueOf(conf.getDataRegionRatisLogMax()))
                 .trim()));
+
+    conf.setEnablePrintingNewlyCreatedPartition(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_printing_newly_created_partition",
+                    String.valueOf(conf.isEnablePrintingNewlyCreatedPartition()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {

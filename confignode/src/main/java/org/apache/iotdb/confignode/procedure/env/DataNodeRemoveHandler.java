@@ -590,7 +590,7 @@ public class DataNodeRemoveHandler {
 
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
-            REMOVE_DATANODE_PROCESS,
+            REGION_MIGRATE_PROCESS,
             regionId,
             newLeaderNode);
       }
@@ -604,7 +604,7 @@ public class DataNodeRemoveHandler {
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId,
           newLeaderNode);
     }

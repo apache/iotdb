@@ -59,6 +59,7 @@ public class DataNodeSchemaCache {
             .weigher(
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
+            .recordStats()
             .build();
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
