@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -288,6 +289,13 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
     return insertRowNodeList.stream()
         .map(InsertRowNode::getSchemaComputationWithAutoCreation)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.transferType();
+    }
   }
 
   @Override
