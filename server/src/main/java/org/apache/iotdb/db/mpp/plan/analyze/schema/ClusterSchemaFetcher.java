@@ -184,7 +184,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             devicePath,
             indexOfMissingMeasurements,
             measurements,
-            ((ISchemaAutoCreation) schemaComputationWithAutoCreation)::getDataType,
+            schemaComputationWithAutoCreation::getDataType,
             schemaComputationWithAutoCreation.isAligned());
         indexOfMissingMeasurements =
             schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
