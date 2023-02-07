@@ -191,9 +191,9 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
         return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
-      case CountStorageGroup:
+      case CountDatabase:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
-      case GetStorageGroup:
+      case GetDatabase:
         return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupPlan) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
@@ -274,10 +274,10 @@ public class ConfigPlanExecutor {
       case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
             (AdjustMaxRegionGroupNumPlan) physicalPlan);
-      case DeleteStorageGroup:
+      case DeleteDatabase:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
-      case PreDeleteStorageGroup:
+      case PreDeleteDatabase:
         return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) physicalPlan);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);

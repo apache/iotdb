@@ -184,10 +184,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case AdjustMaxRegionGroupNum:
           plan = new AdjustMaxRegionGroupNumPlan();
           break;
-        case CountStorageGroup:
+        case CountDatabase:
           plan = new CountStorageGroupPlan();
           break;
-        case GetStorageGroup:
+        case GetDatabase:
           plan = new GetStorageGroupPlan();
           break;
         case CreateRegionGroups:
@@ -223,10 +223,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateProcedure:
           plan = new UpdateProcedurePlan();
           break;
-        case PreDeleteStorageGroup:
+        case PreDeleteDatabase:
           plan = new PreDeleteStorageGroupPlan();
           break;
-        case DeleteStorageGroup:
+        case DeleteDatabase:
           plan = new DeleteStorageGroupPlan();
           break;
         case ListUser:

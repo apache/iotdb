@@ -32,7 +32,7 @@ public class DeleteStorageGroupPlan extends ConfigPhysicalPlan {
   private String name;
 
   public DeleteStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.DeleteStorageGroup);
+    super(ConfigPhysicalPlanType.DeleteDatabase);
   }
 
   public DeleteStorageGroupPlan(String name) {

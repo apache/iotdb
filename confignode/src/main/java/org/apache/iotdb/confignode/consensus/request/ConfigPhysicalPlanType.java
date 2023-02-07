@@ -41,10 +41,10 @@ public enum ConfigPhysicalPlanType {
   SetDataReplicationFactor((short) 203),
   SetTimePartitionInterval((short) 204),
   AdjustMaxRegionGroupNum((short) 205),
-  DeleteStorageGroup((short) 206),
-  PreDeleteStorageGroup((short) 207),
-  GetStorageGroup((short) 208),
-  CountStorageGroup((short) 209),
+  DeleteDatabase((short) 206),
+  PreDeleteDatabase((short) 207),
+  GetDatabase((short) 208),
+  CountDatabase((short) 209),
   AlterDatabase((short) 210),
 
   /** Region */
