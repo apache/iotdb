@@ -89,11 +89,12 @@ public class CountIfAccumulator implements Accumulator {
 
   // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      // the input parameter 'ignoringNull' effects on ControlColumn
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -102,6 +103,7 @@ public class CountIfAccumulator implements Accumulator {
       curWindow.mergeOnePoint(column, i);
 
       if (column[2].isNull(i)) {
+        // the member variable 'ignoreNull' effects on calculation of ValueColumn
         if (!this.ignoreNull) {
           keep = 0;
         }
