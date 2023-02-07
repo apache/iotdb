@@ -141,7 +141,7 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewMetrics.WAL);
   }
 
-  public void recordScheduleMemoryTableCost(long costTimeInNanos) {
+  public void recordScheduleMemTableCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,

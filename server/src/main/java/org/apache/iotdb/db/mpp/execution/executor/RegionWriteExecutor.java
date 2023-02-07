@@ -100,13 +100,13 @@ public class RegionWriteExecutor {
 
   public static ConsensusWriteResponse fireTriggerAndInsert(
       ConsensusGroupId groupId, PlanNode planNode) {
+    long triggerCostTime = 0;
     ConsensusWriteResponse writeResponse;
     TriggerFireVisitor visitor = new TriggerFireVisitor();
     long startTime = System.nanoTime();
     // fire Trigger before the insertion
     TriggerFireResult result = visitor.process(planNode, TriggerEvent.BEFORE_INSERT);
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleTriggerCost(System.nanoTime() - startTime);
+    triggerCostTime += (System.nanoTime() - startTime);
     if (result.equals(TriggerFireResult.TERMINATION)) {
       TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
       triggerError.setMessage(
@@ -129,10 +129,10 @@ public class RegionWriteExecutor {
               "Meet trigger error before/after the insertion, the insertion itself is completed.");
           writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
         }
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleTriggerCost(System.nanoTime() - startTime);
+        triggerCostTime += (System.nanoTime() - startTime);
       }
     }
+    PerformanceOverviewMetricsManager.getInstance().recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 

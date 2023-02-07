@@ -284,7 +284,7 @@ public class TsFileProcessor {
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
     PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleMemoryTableCost(System.nanoTime() - startTime);
+        .recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -390,7 +390,7 @@ public class TsFileProcessor {
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
     PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleMemoryTableCost(System.nanoTime() - startTime);
+        .recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
