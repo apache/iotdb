@@ -684,27 +684,30 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
-            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**"), 3, 0, false));
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 0, false));
     Assert.assertEquals(3, actualResult.size());
     // CASE 08. show devices root.** limit 3 offset 1
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
-            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**"), 3, 1, false));
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 1, false));
     Assert.assertEquals(3, actualResult.size());
     // CASE 09. show devices root.** limit 3 offset 2
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
-            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**"), 3, 2, false));
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 2, false));
     Assert.assertEquals(2, actualResult.size());
     // CASE 10. show devices root.** limit 3 offset 99
     actualResult =
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
-            SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**"), 3, 99, false));
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 3, 99, false));
     Assert.assertEquals(0, actualResult.size());
-
   }
 
   @Test
