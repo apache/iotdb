@@ -52,8 +52,14 @@ public class IoTDBCountIfIT {
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(6, 1, 0)",
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(7, 1, 0)",
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(8, 0, 0)",
-        "INSERT INTO root.db.d1(timestamp,s1,s2) values(9, 0, 0)",
-        "INSERT INTO root.db.d1(timestamp,s1,s2) values(10, 0, 0)",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(5000000000, 0, 0)",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(5000000001, 0, 0)",
+        "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(1, 0, 0)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(2, null, 0)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(5000000000, 0, 0)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(5000000001, 0, 0)",
         "flush"
       };
 
@@ -153,9 +159,9 @@ public class IoTDBCountIfIT {
           "Count_if(s1 = 0 & s2 = 0, 3, \"ignoreNull\"=\"true\")",
           "Count_if(s1 = 1 & s2 = 0, 3)"
         };
-    String[] retArray = new String[] {"root.db.d1,2,1,"};
+    String[] retArray = new String[] {"root.db.d1,2,1,", "root.db.d2,1,0,"};
     resultSetEqualTest(
-        "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true'), Count_if(s1=1 & s2=0, 3) from root.db.d1 align by device",
+        "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true'), Count_if(s1=1 & s2=0, 3) from root.db.* align by device",
         expectedHeader,
         retArray);
   }
@@ -175,6 +181,20 @@ public class IoTDBCountIfIT {
     retArray = new String[] {"2,"};
     resultSetEqualTest(
         "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true') from root.db.d1 having Count_if(s1=1 & s2=0, 3) > 0",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {DEVICE, "Count_if(s1 = 0 & s2 = 0, 3, \"ignoreNull\"=\"true\")"};
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true') from root.db.d1 having Count_if(s1=1 & s2=0, 3) > 1 align by device",
+        expectedHeader,
+        retArray);
+
+    retArray = new String[] {"root.db.d1,2,"};
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true') from root.db.d1 having Count_if(s1=1 & s2=0, 3) > 0 align by device",
         expectedHeader,
         retArray);
   }
