@@ -24,6 +24,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+/**
+ * This interface defines the required info provided for schema auto creation, which is executed
+ * schema fetcher.
+ */
 public interface ISchemaAutoCreation {
 
   PartialPath getDevicePath();

@@ -22,13 +22,22 @@ package org.apache.iotdb.db.mpp.plan.analyze.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 
+/**
+ * This interface defines the required behaviour invoked during schema fetch/computation, which is
+ * executed by schema fetcher.
+ */
 public interface ISchemaComputation {
 
   PartialPath getDevicePath();
 
   String[] getMeasurements();
 
+  /** @param isAligned whether the fetched device is aligned */
   void computeDevice(boolean isAligned);
 
+  /**
+   * @param index the index of fetched measurement in array returned by getMeasurements
+   * @param measurementSchemaInfo the measurement schema of fetched measurement
+   */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
 }
