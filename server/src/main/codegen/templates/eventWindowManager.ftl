@@ -45,11 +45,6 @@ public abstract class ${className} extends EventWindowManager {
         // Append aggregation results to valueColumnBuilders.
         ColumnBuilder[] columnBuilders =
             appendOriginAggregationResult(resultTsBlockBuilder, aggregators);
-        // Judge whether we need output event column.
-        if (eventWindowParameter.isNeedOutputEvent()) {
-            columnBuilders[columnBuilders.length - 1].write${type.dataType?cap_first}(
-                ((Event${type.dataType?cap_first}Window) eventWindow).getEventValue());
-        }
     }
 }
 

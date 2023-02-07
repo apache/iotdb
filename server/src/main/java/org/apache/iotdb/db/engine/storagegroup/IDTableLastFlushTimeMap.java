@@ -164,7 +164,7 @@ public class IDTableLastFlushTimeMap implements ILastFlushTimeMap {
 
   private long recoverFlushTime(long partitionId, String devicePath) {
     List<TsFileResource> tsFileResourceList =
-        tsFileManager.getSequenceListByTimePartition(partitionId);
+        tsFileManager.getOrCreateSequenceListByTimePartition(partitionId);
 
     for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
       if (tsFileResourceList.get(i).timeIndex.mayContainsDevice(devicePath)) {

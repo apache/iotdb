@@ -33,6 +33,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -68,9 +70,11 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
@@ -166,6 +170,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
@@ -209,6 +214,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private static final String DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG =
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
+
+  private static final String IGNORINGNULL = "IgnoringNull";
 
   private ZoneId zoneId;
 
@@ -906,7 +913,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     QueryStatement queryStatement = new QueryStatement();
 
     // parse SELECT & FROM
-    queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause()));
+    queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause(), queryStatement));
     queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
 
     // parse INTO
@@ -926,11 +933,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           ctx.groupByClause().groupByAttributeClause();
       for (IoTDBSqlParser.GroupByAttributeClauseContext groupByAttribute : groupByAttributes) {
         if (groupByAttribute.TIME() != null || groupByAttribute.interval != null) {
-          if (groupByKeys.contains("TIME")) {
-            throw new SemanticException("duplicated group by key: TIME");
+          if (groupByKeys.contains("COMMON")) {
+            throw new SemanticException(
+                "Only one of group by time or group by variation can be supported at a time");
           }
 
-          groupByKeys.add("TIME");
+          groupByKeys.add("COMMON");
           queryStatement.setGroupByTimeComponent(parseGroupByTimeClause(groupByAttribute));
         } else if (groupByAttribute.LEVEL() != null) {
           if (groupByKeys.contains("LEVEL")) {
@@ -946,6 +954,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
           groupByKeys.add("TAGS");
           queryStatement.setGroupByTagComponent(parseGroupByTagClause(groupByAttribute));
+        } else if (groupByAttribute.VARIATION() != null) {
+          if (groupByKeys.contains("COMMON")) {
+            throw new SemanticException(
+                "Only one of group by time or group by variation can be supported at a time");
+          }
+
+          groupByKeys.add("COMMON");
+          queryStatement.setGroupByComponent(
+              parseGroupByClause(groupByAttribute, WindowType.EVENT_WINDOW));
         } else {
           throw new SemanticException("Unknown GROUP BY type.");
         }
@@ -1005,7 +1022,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // ---- Select Clause
-  private SelectComponent parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
+  private SelectComponent parseSelectClause(
+      IoTDBSqlParser.SelectClauseContext ctx, QueryStatement queryStatement) {
     SelectComponent selectComponent = new SelectComponent(zoneId);
 
     // parse LAST
@@ -1017,6 +1035,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, Expression> aliasToColumnMap = new HashMap<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      // __endTime shouldn't be included in resultColumns
+      if (resultColumn.getExpression().getExpressionString().equals(ColumnHeaderConstant.ENDTIME)) {
+        queryStatement.setOutputEndTime(true);
+        continue;
+      }
       if (resultColumn.hasAlias()) {
         String alias = resultColumn.getAlias();
         if (aliasToColumnMap.containsKey(alias)) {
@@ -1156,6 +1179,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     return DateTimeUtils.convertDurationStrToLong(duration);
+  }
+
+  private GroupByComponent parseGroupByClause(
+      GroupByAttributeClauseContext ctx, WindowType windowType) {
+
+    boolean ignoringNull = true;
+    if (ctx.attributePair() != null && !ctx.attributePair().isEmpty()) {
+      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORINGNULL)) {
+        ignoringNull = Boolean.parseBoolean(ctx.attributePair().value.getText());
+      }
+    }
+
+    if (windowType == WindowType.EVENT_WINDOW) {
+      GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
+      groupByVariationComponent.setControlColumnExpression(
+          parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null));
+      groupByVariationComponent.setDelta(
+          ctx.delta == null ? 0 : Double.parseDouble(ctx.delta.getText()));
+      groupByVariationComponent.setIgnoringNull(ignoringNull);
+      return groupByVariationComponent;
+    } else {
+      throw new SemanticException("Unsupported window type");
+    }
   }
 
   private GroupByLevelComponent parseGroupByLevelClause(
