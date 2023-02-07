@@ -364,7 +364,15 @@ public class QueryStatement extends Statement {
       }
     }
 
-    if (getHavingCondition() != null) {
+    if (hasWhere()) {
+      Expression whereExpression = getWhereCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
+          == ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+      }
+    }
+
+      if (getHavingCondition() != null) {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
           != ResultColumn.ColumnType.AGGREGATION) {
