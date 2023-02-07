@@ -273,16 +273,18 @@ public class ExpressionUtils {
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          switch (expression.getExpressionType()) {
-            case BETWEEN:
-              resultExpressions.add(
-                  new BetweenExpression(
-                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
-              break;
-            default:
-              throw new IllegalArgumentException(
-                  "unsupported expression type: " + expression.getExpressionType());
-          }
+        	
+        	if(expression.getExpressionType()) {
+        		if(BETWEEN) {
+        			resultExpressions.add(
+                          new BetweenExpression(
+                              fe, se, te, ((BetweenExpression) expression).isNotBetween()));
+        		}else {
+        			throw new IllegalArgumentException(
+                          "unsupported expression type: " + expression.getExpressionType());
+        		}
+        	}
+        	
         }
     }
     return resultExpressions;
