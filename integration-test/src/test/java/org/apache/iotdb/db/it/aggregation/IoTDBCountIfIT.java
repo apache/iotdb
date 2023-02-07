@@ -44,7 +44,8 @@ public class IoTDBCountIfIT {
         "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         // s2 is always 0
         "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.db.d1(timestamp,s1,s2) values(1, 0, 0)",
+        "CREATE TIMESERIES root.db.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1, 0, 0, true)",
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(2, null, 0)",
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(3, 0, 0)",
         "INSERT INTO root.db.d1(timestamp,s1,s2) values(4, 0, 0)",
@@ -197,5 +198,12 @@ public class IoTDBCountIfIT {
         "select Count_if(s1=0 & s2=0, 3, 'ignoreNull'='true') from root.db.d1 having Count_if(s1=1 & s2=0, 3) > 0 align by device",
         expectedHeader,
         retArray);
+  }
+
+  @Test
+  public void testContIfWithoutTransform() {
+    String[] expectedHeader = new String[] {"Count_if(root.db.d1.s3, 1)"};
+    String[] retArray = new String[] {"1,"};
+    resultSetEqualTest("select Count_if(s3, 1) from root.db.d1", expectedHeader, retArray);
   }
 }

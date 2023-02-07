@@ -532,7 +532,7 @@ public class ExpressionAnalyzer {
       List<Expression> rightExpressions =
           removeWildcardInFilter(
               ((BinaryExpression) predicate).getRightExpression(), prefixPaths, schemaTree, false);
-      if ((isRoot && predicate.getExpressionType() == ExpressionType.LOGIC_AND)) {
+      if (isRoot && predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
         return resultExpressions;
@@ -1105,13 +1105,8 @@ public class ExpressionAnalyzer {
     }
   }
 
-  /**
-   * Check for arithmetic expression, logical expression, UDF. Returns true if it exists.
-   *
-   * @param isAfterAggregation if transform is after Aggregation node, all AggregationFunctions are
-   *     not need to do
-   */
-  public static boolean checkIsNeedTransform(Expression expression, boolean isAfterAggregation) {
+  /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
+  public static boolean checkIsNeedTransform(Expression expression) {
     if (expression instanceof TernaryExpression) {
       return true;
     } else if (expression instanceof BinaryExpression) {
@@ -1119,13 +1114,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return true;
     } else if (expression instanceof FunctionExpression) {
-      if (isAfterAggregation) {
-        return !expression.isBuiltInAggregationFunctionExpression();
-      } else {
-        return !(expression.isBuiltInAggregationFunctionExpression()
-            && BuiltinAggregationFunction.canUseStatistics(
-                ((FunctionExpression) expression).getFunctionName()));
-      }
+      return !expression.isBuiltInAggregationFunctionExpression();
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
     } else if (expression instanceof ConstantOperand) {

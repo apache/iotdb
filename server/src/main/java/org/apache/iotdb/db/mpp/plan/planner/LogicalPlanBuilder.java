@@ -842,14 +842,10 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> selectExpressions,
-      boolean isAfterAggregation,
-      boolean isGroupByTime,
-      ZoneId zoneId,
-      Ordering scanOrder) {
+      Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
     boolean needTransform = false;
     for (Expression expression : selectExpressions) {
-      if (ExpressionAnalyzer.checkIsNeedTransform(expression, isAfterAggregation)) {
+      if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
         needTransform = true;
         break;
       }
@@ -909,7 +905,7 @@ public class LogicalPlanBuilder {
       return planFilterAndTransform(
           havingExpression, selectExpressions, isGroupByTime, zoneId, scanOrder);
     } else {
-      return planTransform(selectExpressions, true, isGroupByTime, zoneId, scanOrder);
+      return planTransform(selectExpressions, isGroupByTime, zoneId, scanOrder);
     }
   }
 
@@ -923,7 +919,7 @@ public class LogicalPlanBuilder {
       return planFilterAndTransform(
           whereExpression, sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
     } else {
-      return planTransform(sourceTransformExpressions, false, isGroupByTime, zoneId, scanOrder);
+      return planTransform(sourceTransformExpressions, isGroupByTime, zoneId, scanOrder);
     }
   }
 

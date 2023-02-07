@@ -57,6 +57,7 @@ public enum BuiltinFunction {
     return NATIVE_FUNCTION_NAMES;
   }
 
+  // indicate whether the function is 'input one row, output one row'
   public static boolean isMappable(String name) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
