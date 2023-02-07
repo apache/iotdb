@@ -843,7 +843,7 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.add(tsFileResource, isSeq);
           updateLastFlushTime(tsFileResource, isSeq);
         }
-      } catch (StorageGroupProcessorException | IOException e) {
+      } catch (Throwable e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
       } finally {
