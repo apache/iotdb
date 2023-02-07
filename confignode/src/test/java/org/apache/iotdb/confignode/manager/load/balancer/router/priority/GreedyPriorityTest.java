@@ -69,7 +69,8 @@ public class GreedyPriorityTest {
           .get(i)
           .cacheHeartbeatSample(
               new NodeHeartbeatSample(
-                  new THeartbeatResp(currentTimeMillis, statuses[i].getStatus()),
+                  new THeartbeatResp(
+                      currentTimeMillis, statuses[i].getStatus(), new ConcurrentHashMap<>()),
                   currentTimeMillis));
     }
     nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);

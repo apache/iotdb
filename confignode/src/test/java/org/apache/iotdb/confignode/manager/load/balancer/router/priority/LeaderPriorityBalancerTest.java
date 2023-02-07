@@ -67,7 +67,10 @@ public class LeaderPriorityBalancerTest {
             .get(i)
             .cacheHeartbeatSample(
                 new NodeHeartbeatSample(
-                    new THeartbeatResp(currentTimeMillis, NodeStatus.Running.getStatus()),
+                    new THeartbeatResp(
+                        currentTimeMillis,
+                        NodeStatus.Running.getStatus(),
+                        new ConcurrentHashMap<>()),
                     currentTimeMillis));
       }
     }

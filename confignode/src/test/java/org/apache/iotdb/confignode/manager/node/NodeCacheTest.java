@@ -26,6 +26,8 @@ import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class NodeCacheTest {
 
   @Test
@@ -40,7 +42,9 @@ public class NodeCacheTest {
     long currentTime = System.currentTimeMillis() - 2000;
     dataNodeHeartbeatCache.forceUpdate(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+            new THeartbeatResp(
+                currentTime, NodeStatus.Running.getStatus(), new ConcurrentHashMap<>()),
+            currentTime));
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
@@ -48,7 +52,9 @@ public class NodeCacheTest {
     currentTime += 2000;
     dataNodeHeartbeatCache.forceUpdate(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
+            new THeartbeatResp(
+                currentTime, NodeStatus.ReadOnly.getStatus(), new ConcurrentHashMap<>()),
+            currentTime));
     Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
   }
@@ -59,7 +65,9 @@ public class NodeCacheTest {
     long currentTime = System.currentTimeMillis();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
+            new THeartbeatResp(
+                currentTime, NodeStatus.Running.getStatus(), new ConcurrentHashMap<>()),
+            currentTime));
     Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());

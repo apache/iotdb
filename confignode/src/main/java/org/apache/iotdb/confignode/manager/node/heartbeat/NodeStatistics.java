@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class NodeStatistics {
 
@@ -105,7 +106,8 @@ public class NodeStatistics {
   public NodeHeartbeatSample convertToNodeHeartbeatSample() {
     long currentTime = System.currentTimeMillis();
     return new NodeHeartbeatSample(
-        new THeartbeatResp(currentTime, status.getStatus()).setStatusReason(statusReason),
+        new THeartbeatResp(currentTime, status.getStatus(), new ConcurrentHashMap<>())
+            .setStatusReason(statusReason),
         currentTime);
   }
 
