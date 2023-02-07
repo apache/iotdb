@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompaction
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionCandidate.CrossCompactionTaskResourceSplit;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionCandidate.TsFileResourceCandidate;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -186,7 +187,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       CrossCompactionTaskResource taskResource,
       TsFileResource unseqFile,
       List<TsFileResource> seqFiles,
-      long memoryCost) {
+      long memoryCost)
+      throws IOException {
+    TsFileNameGenerator.TsFileName unseqFileName =
+        TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
+    // for the level-0 unseqFile, it is not allowed to be selected as the candidate of cross
+    // compaction task
+    if (unseqFileName.getInnerCompactionCnt() < 1) {
+      return false;
+    }
     // currently, we must allow at least one unseqFile be selected to handle the situation that
     // an unseqFile has huge time range but few data points.
     if (taskResource.getUnseqFiles().isEmpty()) {
