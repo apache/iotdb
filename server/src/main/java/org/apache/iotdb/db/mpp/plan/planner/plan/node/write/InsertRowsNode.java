@@ -165,7 +165,10 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public void updateAfterSchemaValidation() throws QueryProcessException {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.transferType();
+      insertRowNode.updateAfterSchemaValidation();
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
+      }
     }
   }
 
