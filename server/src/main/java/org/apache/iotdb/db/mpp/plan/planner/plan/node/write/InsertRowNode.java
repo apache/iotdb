@@ -846,40 +846,10 @@ public class InsertRowNode extends InsertNode
       return;
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      // if enable partial insert, mark failed measurements with exception
-      if (measurementSchemas[index] == null) {
-        markFailedMeasurement(
-            index,
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        markFailedMeasurement(
-            index,
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
-    } else {
-      // if not enable partial insert, throw the exception directly
-      if (measurementSchemas[index] == null) {
-        throw new SemanticException(
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        throw new SemanticException(
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
+    try {
+      selfCheckDataTypes(index);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
     }
   }
 }

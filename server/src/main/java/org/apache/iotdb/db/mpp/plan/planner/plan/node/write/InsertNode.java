@@ -22,6 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
@@ -245,6 +247,44 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   public void updateAfterSchemaValidation() throws QueryProcessException {}
+
+  /** Check whether data types are matched with measurement schemas */
+  protected void selfCheckDataTypes(int index)
+      throws DataTypeMismatchException, PathNotExistException {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      // if enable partial insert, mark failed measurements with exception
+      if (measurementSchemas[index] == null) {
+        markFailedMeasurement(
+            index,
+            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
+      } else if ((dataTypes[index] != measurementSchemas[index].getType()
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+        markFailedMeasurement(
+            index,
+            new DataTypeMismatchException(
+                devicePath.getFullPath(),
+                measurements[index],
+                dataTypes[index],
+                measurementSchemas[index].getType(),
+                getMinTime(),
+                getFirstValueOfIndex(index)));
+      }
+    } else {
+      // if not enable partial insert, throw the exception directly
+      if (measurementSchemas[index] == null) {
+        throw new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath());
+      } else if ((dataTypes[index] != measurementSchemas[index].getType()
+          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
+        throw new DataTypeMismatchException(
+            devicePath.getFullPath(),
+            measurements[index],
+            dataTypes[index],
+            measurementSchemas[index].getType(),
+            getMinTime(),
+            getFirstValueOfIndex(index));
+      }
+    }
+  }
 
   protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
 

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -1155,40 +1154,10 @@ public class InsertTabletNode extends InsertNode
       measurementSchemas[index] = measurementSchemaInfo.getSchema();
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      // if enable partial insert, mark failed measurements with exception
-      if (measurementSchemas[index] == null) {
-        markFailedMeasurement(
-            index,
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        markFailedMeasurement(
-            index,
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
-    } else {
-      // if not enable partial insert, throw the exception directly
-      if (measurementSchemas[index] == null) {
-        throw new SemanticException(
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        throw new SemanticException(
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
+    try {
+      selfCheckDataTypes(index);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
     }
   }
 }
