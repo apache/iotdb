@@ -37,6 +37,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RecordUtilTests {
 
@@ -65,8 +67,13 @@ public class RecordUtilTests {
 
   @Test
   public void measurementTest() throws MetadataException {
+    Map<String, String> props = new HashMap<>();
+    props.put("ka", "va");
+    props.put("kb", "vb");
+
     IMeasurementSchema schema =
-        new MeasurementSchema("amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP);
+        new MeasurementSchema(
+            "amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP, props);
     IMNode amn = MeasurementMNode.getMeasurementMNode(null, "amn", schema, "anothername");
 
     ByteBuffer tBuf = RecordUtils.node2Buffer(amn);
@@ -89,5 +96,6 @@ public class RecordUtilTests {
     Assert.assertEquals(
         node2.getAsMeasurementMNode().getAlias(), amn.getAsMeasurementMNode().getAlias());
     Assert.assertEquals(true, node2.getAsMeasurementMNode().isPreDeleted());
+    Assert.assertEquals(props, node2.getAsMeasurementMNode().getSchema().getProps());
   }
 }

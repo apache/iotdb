@@ -83,7 +83,7 @@ storageGroupAttributesClause
     ;
 
 storageGroupAttributeClause
-    : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
+    : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL | SCHEMA_REGION_GROUP_NUM | DATA_REGION_GROUP_NUM) '=' INTEGER_LITERAL
     ;
 
 // Create Timeseries
@@ -291,7 +291,7 @@ stopTrigger
 
 // Show Storage Group
 showStorageGroup
-    : SHOW (STORAGE GROUP | DATABASES) prefixPath?
+    : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
     ;
 
 // Show Devices

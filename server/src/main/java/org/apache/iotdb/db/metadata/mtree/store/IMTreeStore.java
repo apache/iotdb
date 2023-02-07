@@ -79,6 +79,8 @@ public interface IMTreeStore {
 
   void unPinPath(IMNode node);
 
+  IMTreeStore getWithReentrantReadLock();
+
   void clear();
 
   boolean createSnapshot(File snapshotDir);
