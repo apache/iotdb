@@ -75,9 +75,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           };
 
       for (String sql : insertSqls) {
-        System.out.println(sql + ";");
         statement.execute(sql);
-        Thread.sleep(1000);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -103,7 +101,6 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -362,13 +359,11 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
             "COUNT TIMESERIES where tag1 = v1",
             "COUNT TIMESERIES where tag3 = v3"
           };
@@ -501,10 +496,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
             "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
@@ -514,9 +507,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(Collections.singletonList("root.sg.d.status,1,")),
-            new HashSet<>(Arrays.asList("root.sg.d,1,", "root.sg1.d,1,")),
+            new HashSet<>(Arrays.asList("root.ln1,1,", "root.ln2,1,")),
+            new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
+            new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
             Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {
