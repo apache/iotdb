@@ -29,12 +29,11 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -139,10 +138,17 @@ public class FileLoaderManager {
 
   private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
       throws IOException, ClassNotFoundException {
-    try (FileInputStream fis = new FileInputStream(deviceOwnerFile);
-        ObjectInputStream deviceOwnerInput = new ObjectInputStream(fis)) {
-      deviceOwnerMap = (Map<String, String>) deviceOwnerInput.readObject();
+    Map<String, String> finalMap = new HashMap<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(deviceOwnerFile))) {
+      reader
+          .lines()
+          .forEach(
+              o -> {
+                String[] entry = o.split(" ");
+                finalMap.put(entry[0], entry[1]);
+              });
     }
+    deviceOwnerMap = finalMap;
   }
 
   private void serializeDeviceOwnerMap(File deviceOwnerFile) throws IOException {
@@ -152,9 +158,15 @@ public class FileLoaderManager {
     if (!deviceOwnerFile.exists()) {
       deviceOwnerFile.createNewFile();
     }
-    try (FileOutputStream fos = new FileOutputStream(deviceOwnerFile, false);
-        ObjectOutputStream deviceOwnerOutput = new ObjectOutputStream(fos)) {
-      deviceOwnerOutput.writeObject(deviceOwnerMap);
+    try (FileWriter writer = new FileWriter(deviceOwnerFile)) {
+      deviceOwnerMap.forEach(
+          (k, v) -> {
+            try {
+              writer.write(k + " " + v + System.lineSeparator());
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
     }
   }
 
