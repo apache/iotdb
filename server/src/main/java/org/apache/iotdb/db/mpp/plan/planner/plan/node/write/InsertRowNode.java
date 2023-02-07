@@ -827,7 +827,9 @@ public class InsertRowNode extends InsertNode
 
   @Override
   public void updateAfterSchemaValidation() throws QueryProcessException {
-    transferType();
+    if (isNeedInferType) {
+      transferType();
+    }
   }
 
   @Override
