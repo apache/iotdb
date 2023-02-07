@@ -50,6 +50,8 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   private List<String> outputColumnNames;
 
+  private boolean isUpstreamMultiChildrenSinkNode = false;
+
   public ExchangeNode(PlanNodeId id) {
     super(id);
   }
@@ -102,10 +104,12 @@ public class ExchangeNode extends SingleChildProcessNode {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       outputColumnNamesSize--;
     }
+    boolean isUpstreamMultiChildrenSinkNode = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
+    exchangeNode.setUpstreamMultiChildrenSinkNode(isUpstreamMultiChildrenSinkNode);
     return exchangeNode;
   }
 
@@ -120,6 +124,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
+    ReadWriteIOUtils.write(isUpstreamMultiChildrenSinkNode, byteBuffer);
   }
 
   @Override
@@ -133,6 +138,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, stream);
     }
+    ReadWriteIOUtils.write(isUpstreamMultiChildrenSinkNode, stream);
   }
 
   @Override
@@ -157,6 +163,14 @@ public class ExchangeNode extends SingleChildProcessNode {
   public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
     this.setOutputColumnNames(remoteSourceNode.getOutputColumnNames());
+  }
+
+  public void setUpstreamMultiChildrenSinkNode(boolean upstreamMultiChildrenSinkNode) {
+    isUpstreamMultiChildrenSinkNode = upstreamMultiChildrenSinkNode;
+  }
+
+  public boolean isUpstreamMultiChildrenSinkNode() {
+    return isUpstreamMultiChildrenSinkNode;
   }
 
   public TEndPoint getUpstreamEndpoint() {

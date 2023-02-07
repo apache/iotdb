@@ -493,6 +493,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public ISinkHandle createSinkHandle(
       List<DownStreamChannelLocation> downStreamChannelLocationList,
       DownStreamChannelIndex downStreamChannelIndex,
+      SinkHandle.ShuffleStrategyEnum shuffleStrategyEnum,
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
@@ -506,7 +507,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         new SinkHandle(
             downStreamChannelLocationList,
             downStreamChannelIndex,
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            shuffleStrategyEnum,
             localPlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,

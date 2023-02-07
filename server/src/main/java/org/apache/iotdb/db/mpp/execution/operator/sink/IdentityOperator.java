@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.List;
 
 public class IdentityOperator implements Operator {
@@ -35,6 +37,10 @@ public class IdentityOperator implements Operator {
   private final DownStreamChannelIndex downStreamChannelIndex;
 
   private final ISinkHandle sinkHandle;
+
+  private boolean needToReturnNull = false;
+
+  private boolean isFinished = false;
 
   public IdentityOperator(
       OperatorContext operatorContext,
@@ -49,27 +55,42 @@ public class IdentityOperator implements Operator {
 
   @Override
   public boolean hasNext() {
-    while (downStreamChannelIndex.getCurrentIndex() < children.size()) {
-      if (children.get(downStreamChannelIndex.getCurrentIndex()).hasNext()) {
-        return true;
-      } else {
-        // current channel will have no input data
-        sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
-      }
-      // see if next channel has data
-      downStreamChannelIndex.increment();
+    if (children.get(downStreamChannelIndex.getCurrentIndex()).hasNext()) {
+      return true;
     }
-    return false;
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // current channel have no more data
+    sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
+    currentIndex++;
+    if (currentIndex >= children.size()) {
+      isFinished = true;
+      return false;
+    }
+    downStreamChannelIndex.setCurrentIndex(currentIndex);
+    // if we reach here, it means that isBlocked() is called on a different child
+    // we need to ensure that this child is not blocked. We set this field to true here so that we
+    // can begin another loop in Driver.
+    needToReturnNull = true;
+    return true;
   }
 
   @Override
   public TsBlock next() {
+    if (needToReturnNull) {
+      needToReturnNull = false;
+      return null;
+    }
     return children.get(downStreamChannelIndex.getCurrentIndex()).next();
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return children.get(downStreamChannelIndex.getCurrentIndex()).isBlocked();
+  }
+
+  @Override
   public boolean isFinished() {
-    return !hasNextWithTimer();
+    return isFinished;
   }
 
   @Override

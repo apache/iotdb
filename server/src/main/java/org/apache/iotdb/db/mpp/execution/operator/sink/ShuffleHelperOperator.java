@@ -25,7 +25,11 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ShuffleHelperOperator implements Operator {
   private final OperatorContext operatorContext;
@@ -35,7 +39,9 @@ public class ShuffleHelperOperator implements Operator {
 
   private final ISinkHandle sinkHandle;
 
-  private final boolean[] noMoreTsBlocks;
+  private final Set<Integer> unfinishedChildren;
+
+  private boolean needToReturnNull = false;
 
   public ShuffleHelperOperator(
       OperatorContext operatorContext,
@@ -46,38 +52,47 @@ public class ShuffleHelperOperator implements Operator {
     this.children = children;
     this.downStreamChannelIndex = downStreamChannelIndex;
     this.sinkHandle = sinkHandle;
-    this.noMoreTsBlocks = new boolean[children.size()];
+    this.unfinishedChildren = new HashSet<>(children.size());
+    for (int i = 0; i < children.size(); i++) {
+      unfinishedChildren.add(i);
+    }
   }
 
   @Override
   public boolean hasNext() {
-    for (int i = 0; i < children.size(); i++) {
-      if (children.get(downStreamChannelIndex.getCurrentIndex()).hasNext()) {
-        return true;
-      } else {
-        // current channel will have no input data
-        sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
-        noMoreTsBlocks[downStreamChannelIndex.getCurrentIndex()] = true;
-      }
-      downStreamChannelIndex.setCurrentIndex(
-          (downStreamChannelIndex.getCurrentIndex() + i) % children.size());
+    if (children.get(downStreamChannelIndex.getCurrentIndex()).hasNext()) {
+      return true;
     }
-    return false;
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // current channel have no more data
+    sinkHandle.setNoMoreTsBlocksOfOneChannel(downStreamChannelIndex.getCurrentIndex());
+    unfinishedChildren.remove(currentIndex);
+    currentIndex = (currentIndex + 1) % children.size();
+    downStreamChannelIndex.setCurrentIndex(currentIndex);
+    // if we reach here, it means that isBlocked() is called on a different child
+    // we need to ensure that this child is not blocked. We set this field to true here so that we
+    // can begin another loop in Driver.
+    needToReturnNull = true;
+    return true;
   }
 
   @Override
   public TsBlock next() {
+    if (needToReturnNull) {
+      needToReturnNull = false;
+      return null;
+    }
     return children.get(downStreamChannelIndex.getCurrentIndex()).next();
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return children.get(downStreamChannelIndex.getCurrentIndex()).isBlocked();
+  }
+
+  @Override
   public boolean isFinished() {
-    for (boolean noMoreTsBlock : noMoreTsBlocks) {
-      if (!noMoreTsBlock) {
-        return false;
-      }
-    }
-    return true;
+    return unfinishedChildren.isEmpty();
   }
 
   @Override

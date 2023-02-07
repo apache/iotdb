@@ -27,10 +27,6 @@ public class DownStreamChannelIndex {
     this.currentIndex = currentIndex;
   }
 
-  public void increment() {
-    currentIndex++;
-  }
-
   public int getCurrentIndex() {
     return currentIndex;
   }

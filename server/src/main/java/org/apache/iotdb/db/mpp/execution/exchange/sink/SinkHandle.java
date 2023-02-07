@@ -201,8 +201,10 @@ public class SinkHandle implements ISinkHandle {
               .left;
       bufferRetainedSizeInBytes += retainedSizeInBytes;
 
+      currentChannel.channelBufferedSize += currentTsBlockSize;
       currentChannel.sequenceIdToTsBlock.put(
           currentChannel.nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+
       currentChannel.nextSequenceId += 1;
       currentTsBlockSize = retainedSizeInBytes;
 
@@ -233,7 +235,7 @@ public class SinkHandle implements ISinkHandle {
     }
     downStreamChannelList.forEach(
         (downStreamChannel -> {
-          if (!downStreamChannel.closed) {
+          if (!downStreamChannel.noMoreTsBlocks) {
             executorService.submit(new SendEndOfDataBlockEventTask(downStreamChannel.channelIndex));
             downStreamChannel.setNoMoreTsBlocks();
           }
@@ -340,12 +342,9 @@ public class SinkHandle implements ISinkHandle {
         return;
       }
       int channelOfCurrentSequenceId = startSequenceId / CHANNEL_ID_GAP;
+      DownStreamChannel currentChannel = downStreamChannelList.get(channelOfCurrentSequenceId);
       Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =
-          downStreamChannelList
-              .get(channelOfCurrentSequenceId)
-              .sequenceIdToTsBlock
-              .entrySet()
-              .iterator();
+          currentChannel.sequenceIdToTsBlock.entrySet().iterator();
       while (iterator.hasNext()) {
         Entry<Integer, Pair<TsBlock, Long>> entry = iterator.next();
         if (entry.getKey() < startSequenceId) {
@@ -357,6 +356,7 @@ public class SinkHandle implements ISinkHandle {
 
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
+        currentChannel.channelBufferedSize -= entry.getValue().right;
         iterator.remove();
         LOGGER.debug("[ACKTsBlock] {} of channel {}.", entry.getKey(), channelOfCurrentSequenceId);
       }
@@ -449,7 +449,7 @@ public class SinkHandle implements ISinkHandle {
 
     private boolean satisfy(int channelIndex) {
       DownStreamChannel channel = downStreamChannelList.get(channelIndex);
-      if (channel.closed || channel.noMoreTsBlocks) {
+      if (channel.noMoreTsBlocks) {
         return false;
       }
       return channel.getRetainedTsBlockSize() <= channelMemoryThreshold
@@ -482,26 +482,17 @@ public class SinkHandle implements ISinkHandle {
     /** true if this channel has no more data */
     private boolean noMoreTsBlocks = false;
 
-    private boolean closed = false;
-
     /** Index of the channel */
     private final int channelIndex;
 
     /** Next sequence ID for each downstream ISourceHandle */
     private int nextSequenceId;
 
+    private long channelBufferedSize = 0L;
+
     public DownStreamChannel(int channelIndex) {
       this.channelIndex = channelIndex;
       this.nextSequenceId = channelIndex * CHANNEL_ID_GAP;
-    }
-
-    void close() {
-      if (closed) {
-        return;
-      }
-      sequenceIdToTsBlock.clear();
-      noMoreTsBlocks = true;
-      closed = true;
     }
 
     void clear() {
@@ -513,10 +504,7 @@ public class SinkHandle implements ISinkHandle {
     }
 
     long getRetainedTsBlockSize() {
-      return sequenceIdToTsBlock.values().stream()
-          .map(pair -> pair.right)
-          .reduce(Long::sum)
-          .orElse(0L);
+      return channelBufferedSize;
     }
   }
 

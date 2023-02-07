@@ -71,6 +71,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryColl
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -354,6 +356,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitIdentitySink(IdentitySinkNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitShuffleSink(ShuffleSinkNode node, C context) {
     return visitPlan(node, context);
   }
 }
