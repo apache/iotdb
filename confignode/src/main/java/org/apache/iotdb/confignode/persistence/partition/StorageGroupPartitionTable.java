@@ -41,10 +41,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -94,12 +92,10 @@ public class StorageGroupPartitionTable {
    * @param replicaSets List<TRegionReplicaSet>
    */
   public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
-    String currentTime =
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-            .format(new Date(Long.parseLong(String.valueOf(System.currentTimeMillis()))));
     replicaSets.forEach(
         replicaSet ->
-            regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(currentTime, replicaSet)));
+            regionGroupMap.put(
+                replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
   }
 
   /**

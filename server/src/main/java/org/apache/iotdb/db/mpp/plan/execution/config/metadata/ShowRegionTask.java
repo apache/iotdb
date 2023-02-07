@@ -64,7 +64,7 @@ public class ShowRegionTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showRegionResp.getRegionInfoList() != null) {
       for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        builder.getTimeColumnBuilder().writeLong(0L);
+        builder.getTimeColumnBuilder().writeLong(regionInfo.getCreateTime());
         builder.getColumnBuilder(0).writeInt(regionInfo.getConsensusGroupId().getId());
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.SchemaRegion.ordinal()) {
@@ -88,7 +88,6 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(7).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
         builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
         builder.getColumnBuilder(9).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
-        builder.getColumnBuilder(10).writeBinary(Binary.valueOf(regionInfo.getCreateTime()));
         builder.declarePosition();
       }
     }

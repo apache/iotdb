@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroup {
 
-  private String createTime;
+  private long createTime;
   private final TRegionReplicaSet replicaSet;
 
   // Map<TSeriesPartitionSlot, TTimePartitionSlot Count>
@@ -49,20 +49,20 @@ public class RegionGroup {
   private final AtomicLong totalTimeSlotCount;
 
   public RegionGroup() {
-    this.createTime = "0-0-0 0:0:0";
+    this.createTime = 0;
     this.replicaSet = new TRegionReplicaSet();
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong();
   }
 
-  public RegionGroup(String createTime, TRegionReplicaSet replicaSet) {
+  public RegionGroup(long createTime, TRegionReplicaSet replicaSet) {
     this.createTime = createTime;
     this.replicaSet = replicaSet;
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong(0);
   }
 
-  public String getCreateTime() {
+  public long getCreateTime() {
     return createTime;
   }
 
@@ -109,7 +109,7 @@ public class RegionGroup {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
-    this.createTime = ReadWriteIOUtils.readString(inputStream);
+    this.createTime = ReadWriteIOUtils.readLong(inputStream);
     replicaSet.read(protocol);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
@@ -136,7 +136,7 @@ public class RegionGroup {
         return false;
       }
     }
-    return createTime.equals(that.createTime)
+    return createTime == that.createTime
         && replicaSet.equals(that.replicaSet)
         && totalTimeSlotCount.get() == that.totalTimeSlotCount.get();
   }
