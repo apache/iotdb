@@ -283,29 +283,20 @@ public class MemoryPool {
       Validate.notNull(queryId);
       Validate.isTrue(bytes > 0L);
 
-      Map<String, Long> planNodeToBytesReserved =
-          queryMemoryReservations.get(queryId).get(fragmentInstanceId);
-
-      Long queryReservedBytes = planNodeToBytesReserved.get(planNodeId);
+      Long queryReservedBytes =
+          queryMemoryReservations
+              .getOrDefault(queryId, Collections.emptyMap())
+              .getOrDefault(fragmentInstanceId, Collections.emptyMap())
+              .get(planNodeId);
       Validate.notNull(queryReservedBytes);
       Validate.isTrue(bytes <= queryReservedBytes);
 
       queryReservedBytes -= bytes;
+      queryMemoryReservations
+          .get(queryId)
+          .get(fragmentInstanceId)
+          .put(planNodeId, queryReservedBytes);
 
-      if (queryReservedBytes == 0) {
-        planNodeToBytesReserved.remove(planNodeId);
-        if (planNodeToBytesReserved.isEmpty()) {
-          queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
-        }
-        if (queryMemoryReservations.get(queryId).isEmpty()) {
-          queryMemoryReservations.remove(queryId);
-        }
-      } else {
-        queryMemoryReservations
-            .get(queryId)
-            .get(fragmentInstanceId)
-            .put(planNodeId, queryReservedBytes);
-      }
       reservedBytes -= bytes;
 
       if (memoryReservationFutures.isEmpty()) {
@@ -376,8 +367,10 @@ public class MemoryPool {
     return reservedBytes;
   }
 
-  @TestOnly
-  public Map<String, Map<String, Map<String, Long>>> getQueryMemoryReservations() {
-    return queryMemoryReservations;
+  public void removeFragmentInstance(String queryId, String fragmentInstanceId) {
+    queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
+    if (queryMemoryReservations.get(queryId).isEmpty()) {
+      queryMemoryReservations.remove(queryId);
+    }
   }
 }
