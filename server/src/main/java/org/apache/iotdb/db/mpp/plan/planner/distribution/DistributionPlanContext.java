@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+
+import java.util.Map;
 
 public class DistributionPlanContext {
   protected boolean isRoot;
@@ -31,6 +34,9 @@ public class DistributionPlanContext {
   // That the variable is true means this query will be distributed in multi
   // DataRegions
   protected boolean queryMultiRegion;
+
+  // used by group by level
+  private Map<String, Expression> columnNameToExpression;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
@@ -61,5 +67,13 @@ public class DistributionPlanContext {
 
   public void setQueryMultiRegion(boolean queryMultiRegion) {
     this.queryMultiRegion = queryMultiRegion;
+  }
+
+  public Map<String, Expression> getColumnNameToExpression() {
+    return columnNameToExpression;
+  }
+
+  public void setColumnNameToExpression(Map<String, Expression> columnNameToExpression) {
+    this.columnNameToExpression = columnNameToExpression;
   }
 }
