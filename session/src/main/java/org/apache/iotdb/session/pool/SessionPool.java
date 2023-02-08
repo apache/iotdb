@@ -95,7 +95,7 @@ public class SessionPool implements ISessionPool {
   private boolean enableRedirection;
   private boolean enableQueryRedirection = false;
 
-  private volatile Map<String, TEndPoint> deviceIdToEndpoint;
+  private Map<String, TEndPoint> deviceIdToEndpoint;
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
