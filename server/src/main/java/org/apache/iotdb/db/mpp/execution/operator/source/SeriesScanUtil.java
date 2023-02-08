@@ -45,6 +45,8 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
@@ -122,8 +124,8 @@ public class SeriesScanUtil {
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
-      Filter globalTimeFilter,
-      Filter queryFilter,
+      @Nullable Filter globalTimeFilter,
+      @Nullable Filter queryFilter,
       boolean ascending) {
     this.seriesPath = IDTable.translateQueryPath(seriesPath);
     this.allSensors = allSensors;
@@ -131,7 +133,7 @@ public class SeriesScanUtil {
     this.context = context;
 
     this.globalTimeFilter = globalTimeFilter;
-    if (!queryFilter.equals(globalTimeFilter)) {
+    if (!Objects.equals(queryFilter, globalTimeFilter)) {
       this.queryFilter = queryFilter;
     }
     this.paginationController = new PaginationController(0, 0);
