@@ -196,6 +196,9 @@ public class SeriesScanUtil {
   }
 
   public boolean hasNextFile() throws IOException {
+    if (!paginationController.hasCurLimit()) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -271,6 +274,9 @@ public class SeriesScanUtil {
    * overlapped chunks are consumed
    */
   public boolean hasNextChunk() throws IOException {
+    if (!paginationController.hasCurLimit()) {
+      return false;
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -412,6 +418,9 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
+    if (!paginationController.hasCurLimit()) {
+      return false;
+    }
 
     /*
      * has overlapped data before
