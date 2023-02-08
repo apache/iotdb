@@ -372,7 +372,7 @@ public class QueryStatement extends Statement {
       }
     }
 
-      if (getHavingCondition() != null) {
+    if (getHavingCondition() != null) {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
           != ResultColumn.ColumnType.AGGREGATION) {
