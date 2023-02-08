@@ -79,7 +79,9 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       this.seriesScanUtil =
           new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
     }
-    seriesScanUtil.initQueryDataSource(seqFileResource, unseqFileResource);
+
+    QueryDataSource queryDataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    seriesScanUtil.initQueryDataSource(queryDataSource);
   }
 
   @Override

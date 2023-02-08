@@ -40,10 +40,10 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -80,54 +80,41 @@ public class SeriesScanUtil {
   // inner class of SeriesReader for order purpose
   private final TimeOrderUtils orderUtils;
 
-  /*
-   * There is at most one is not null between timeFilter and valueFilter
-   *
-   * timeFilter is pushed down to all pages (seq, unseq) without correctness problem
-   *
-   * valueFilter is pushed down to non-overlapped page only
-   */
-  private Filter timeFilter;
-  private Filter valueFilter;
-
   private QueryDataSource dataSource;
 
-  /*
-   * file index
-   */
+  // file index
   protected int curSeqFileIndex;
   protected int curUnseqFileIndex;
 
-  /*
-   * TimeSeriesMetadata cache
-   */
+  // TimeSeriesMetadata cache
   protected ITimeSeriesMetadata firstTimeSeriesMetadata;
   protected final List<ITimeSeriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
   protected final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
-  /*
-   * chunk cache
-   */
+  // chunk cache
   protected IChunkMetadata firstChunkMetadata;
   protected final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
 
-  /*
-   * page cache
-   */
+  // page cache
   protected VersionPageReader firstPageReader;
   protected final List<VersionPageReader> seqPageReaders = new LinkedList<>();
   protected final PriorityQueue<VersionPageReader> unSeqPageReaders;
 
-  /*
-   * point cache
-   */
+  // point cache
   protected final PriorityMergeReader mergeReader;
 
-  /*
-   * result cache
-   */
+  // result cache
   protected boolean hasCachedNextOverlappedPage;
   protected TsBlock cachedTsBlock;
+
+  //
+  private Filter globalTimeFilter;
+
+  //
+  private Filter queryFilter;
+
+  //
+  protected PaginationController paginationController;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -136,15 +123,18 @@ public class SeriesScanUtil {
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
-      Filter timeFilter,
-      Filter valueFilter,
+      Filter globalTimeFilter,
+      Filter queryFilter,
       boolean ascending) {
     this.seriesPath = IDTable.translateQueryPath(seriesPath);
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
-    this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
+    this.globalTimeFilter = globalTimeFilter;
+    if(!queryFilter.equals(globalTimeFilter)) {
+      this.queryFilter = queryFilter;
+    }
+
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
@@ -166,23 +156,31 @@ public class SeriesScanUtil {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+
+    paginationController = new PaginationController(0, 0);
+  }
+
+  public SeriesScanUtil(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      Filter globalTimeFilter,
+      Filter queryFilter,
+      boolean ascending,
+      int limit,
+      int offset) {
+    this(seriesPath, allSensors, dataType, context, globalTimeFilter, queryFilter, ascending);
+    paginationController = new PaginationController(limit, offset);
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
     dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
-    this.timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
-    if (this.valueFilter != null) {
-      this.valueFilter = dataSource.updateFilterUsingTTL(valueFilter);
+    this.globalTimeFilter = dataSource.updateFilterUsingTTL(globalTimeFilter);
+    if (this.queryFilter != null) {
+      this.queryFilter = dataSource.updateFilterUsingTTL(queryFilter);
     }
-    orderUtils.setCurSeqFileIndex(dataSource);
-  }
-
-  @TestOnly
-  public void initQueryDataSource(
-      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource) {
-    dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
-    dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 
@@ -326,12 +324,20 @@ public class SeriesScanUtil {
         }
       }
     }
-    if (valueFilter != null
-        && firstChunkMetadata != null
-        && !isChunkOverlapped()
-        && !firstChunkMetadata.isModified()
-        && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
-      skipCurrentChunk();
+
+    // filter seq chunks based on push-down conditions
+    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+      if (queryFilter != null) {
+        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
+          skipCurrentChunk();
+        }
+      } else {
+        int rowCount = (int) firstChunkMetadata.getStatistics().getCount();
+        if (paginationController.hasCurOffset(rowCount)) {
+          skipCurrentChunk();
+          paginationController.consumeOffset(rowCount);
+        }
+      }
     }
   }
 
@@ -525,7 +531,7 @@ public class SeriesScanUtil {
 
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
+        FileLoaderUtils.loadPageReaderList(chunkMetaData, getGlobalTimeFilter());
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -636,9 +642,10 @@ public class SeriesScanUtil {
       /*
        * next page is not overlapped, push down value filter if it exists
        */
-      if (valueFilter != null) {
-        firstPageReader.setFilter(valueFilter);
+      if (queryFilter != null) {
+        firstPageReader.setFilter(queryFilter);
       }
+      firstPageReader.setLimitOffset(paginationController);
       TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
       firstPageReader = null;
 
@@ -774,8 +781,8 @@ public class SeriesScanUtil {
               }
             }
 
-            if (valueFilter == null
-                || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
+            if (queryFilter == null
+                || queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
               timeBuilder.writeLong(timeValuePair.getTimestamp());
               switch (dataType) {
                 case BOOLEAN:
@@ -1017,12 +1024,22 @@ public class SeriesScanUtil {
         firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
       }
     }
-    if (valueFilter != null
-        && firstTimeSeriesMetadata != null
+
+    // filter seq files based on push-down conditions
+    if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
-        && !firstTimeSeriesMetadata.isModified()
-        && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
-      firstTimeSeriesMetadata = null;
+        && !firstTimeSeriesMetadata.isModified()) {
+      if (queryFilter != null) {
+        if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
+          skipCurrentFile();
+        }
+      } else {
+        int rowCount = (int) firstTimeSeriesMetadata.getStatistics().getCount();
+        if (paginationController.hasCurOffset(rowCount)) {
+          skipCurrentFile();
+          paginationController.consumeOffset(rowCount);
+        }
+      }
     }
   }
 
@@ -1044,7 +1061,7 @@ public class SeriesScanUtil {
             orderUtils.getNextSeqFileResource(true),
             seriesPath,
             context,
-            getAnyFilter(),
+            getGlobalTimeFilter(),
             allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
@@ -1058,7 +1075,7 @@ public class SeriesScanUtil {
             orderUtils.getNextUnseqFileResource(true),
             seriesPath,
             context,
-            getAnyFilter(),
+            getGlobalTimeFilter(),
             allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
@@ -1086,16 +1103,8 @@ public class SeriesScanUtil {
     return tsBlock.getTsBlockSingleColumnIterator();
   }
 
-  private Filter getAnyFilter() {
-    return timeFilter != null ? timeFilter : valueFilter;
-  }
-
-  void setTimeFilter(long timestamp) {
-    ((UnaryFilter) timeFilter).setValue(timestamp);
-  }
-
-  Filter getTimeFilter() {
-    return timeFilter;
+  Filter getGlobalTimeFilter() {
+    return globalTimeFilter;
   }
 
   protected static class VersionPageReader {
@@ -1164,6 +1173,10 @@ public class SeriesScanUtil {
 
     public boolean isSeq() {
       return isSeq;
+    }
+
+    public void setLimitOffset(PaginationController paginationController) {
+      data.setLimitOffset(paginationController);
     }
   }
 
@@ -1278,7 +1291,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1291,7 +1304,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1394,7 +1407,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1407,7 +1420,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;

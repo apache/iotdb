@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
@@ -60,6 +61,7 @@ public class PageReader implements IPageReader {
   protected ByteBuffer valueBuffer;
 
   protected Filter filter;
+  private PaginationController paginationController;
 
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
@@ -169,10 +171,21 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aBoolean))) {
+              continue;
+            }
+
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeBoolean(aBoolean);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -267,6 +280,11 @@ public class PageReader implements IPageReader {
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
+  }
 
   protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
