@@ -3344,7 +3344,6 @@ public class Session implements ISession {
    * @param insertConsumer insert function
    * @param <T>
    *     <ul>
-   *       B *
    *       <li>{@link TSInsertRecordsReq}
    *       <li>{@link TSInsertStringRecordsReq}
    *       <li>{@link TSInsertTabletsReq}
@@ -3391,7 +3390,7 @@ public class Session implements ISession {
         completableFuture.join();
       } catch (CompletionException completionException) {
         Throwable cause = completionException.getCause();
-        logger.error("Some error here!", cause);
+        logger.error("Meet error when async insert!", cause);
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
