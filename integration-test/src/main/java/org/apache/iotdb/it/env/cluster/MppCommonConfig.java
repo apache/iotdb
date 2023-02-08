@@ -332,6 +332,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
-    return null;
+    return this;
   }
 }
