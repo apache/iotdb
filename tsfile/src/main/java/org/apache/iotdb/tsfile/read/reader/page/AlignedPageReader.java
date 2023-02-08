@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
@@ -49,7 +50,10 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
+
   private Filter filter;
+  private PaginationController paginationController;
+
   private boolean isModified;
   private TsBlockBuilder builder;
 
@@ -168,10 +172,22 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
 
     // construct time column
+    int readEndIndex = timeBatch.length;
     for (int i = 0; i < timeBatch.length; i++) {
-      if (keepCurrentRow[i]) {
+      if (!keepCurrentRow[i]) {
+        continue;
+      }
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        keepCurrentRow[i] = false;
+        continue;
+      }
+      if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
         builder.declarePosition();
+      } else {
+        readEndIndex = i + 1;
+        break;
       }
     }
 
@@ -180,9 +196,9 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
         pageReader.writeColumnBuilderWithNextBatch(
-            timeBatch, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
+            timeBatch, readEndIndex, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
       } else {
-        for (int j = 0; j < timeBatch.length; j++) {
+        for (int j = 0; j < readEndIndex; j++) {
           if (keepCurrentRow[j]) {
             builder.getColumnBuilder(i).appendNull();
           }
@@ -225,6 +241,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     } else {
       this.filter = new AndFilter(this.filter, filter);
     }
+  }
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
   }
 
   @Override

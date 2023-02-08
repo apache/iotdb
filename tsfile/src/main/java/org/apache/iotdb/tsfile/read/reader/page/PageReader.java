@@ -174,7 +174,6 @@ public class PageReader implements IPageReader {
             if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aBoolean))) {
               continue;
             }
-
             if (paginationController.hasCurOffset()) {
               paginationController.consumeOffset();
               continue;
@@ -193,10 +192,20 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             int anInt = valueDecoder.readInt(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, anInt))) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeInt(anInt);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -204,10 +213,20 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             long aLong = valueDecoder.readLong(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aLong))) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeLong(aLong);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -215,10 +234,20 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             float aFloat = valueDecoder.readFloat(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aFloat))) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeFloat(aFloat);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -226,10 +255,20 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             double aDouble = valueDecoder.readDouble(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aDouble))) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeDouble(aDouble);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -237,10 +276,20 @@ public class PageReader implements IPageReader {
           while (timeDecoder.hasNext(timeBuffer)) {
             long timestamp = timeDecoder.readLong(timeBuffer);
             Binary aBinary = valueDecoder.readBinary(valueBuffer);
-            if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
+            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aBinary))) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
               timeBuilder.writeLong(timestamp);
               valueBuilder.writeBinary(aBinary);
               builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
             }
           }
           break;
@@ -265,6 +314,11 @@ public class PageReader implements IPageReader {
     }
   }
 
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
+  }
+
   public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }
@@ -280,11 +334,6 @@ public class PageReader implements IPageReader {
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
-
-  @Override
-  public void setLimitOffset(PaginationController paginationController) {
-    this.paginationController = paginationController;
-  }
 
   protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {

@@ -47,22 +47,12 @@ public class PaginationController {
     return !hasLimit || curLimit > 0;
   }
 
-  public boolean hasCurLimit(int rowCount) {
-    return !hasLimit || curLimit > rowCount;
-  }
-
   public void consumeOffset(int rowCount) {
     curOffset -= rowCount;
   }
 
   public void consumeOffset() {
     curOffset--;
-  }
-
-  public void consumeLimit(int rowCount) {
-    if (hasLimit) {
-      curLimit -= rowCount;
-    }
   }
 
   public void consumeLimit() {

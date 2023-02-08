@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -40,7 +41,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
+
   private Filter valueFilter;
+  private PaginationController paginationController;
+
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
@@ -109,15 +113,28 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     }
 
     // build time column
+    int readEndIndex = tsBlock.getPositionCount();
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      if (satisfyInfo[row] && hasValue[row]) {
+      if (!satisfyInfo[row] || !hasValue[row]) {
+        continue;
+      }
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        satisfyInfo[row] = false;
+        continue;
+      }
+      if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
         builder.declarePosition();
+        paginationController.consumeLimit();
+      } else {
+        readEndIndex = row + 1;
+        break;
       }
     }
 
     // build value column
-    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+    for (int column = 0; column < readEndIndex; column++) {
       Column valueColumn = tsBlock.getColumn(column);
       ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
       for (int row = 0; row < tsBlock.getPositionCount(); row++) {
@@ -156,6 +173,11 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     } else {
       valueFilter = new AndFilter(this.valueFilter, filter);
     }
+  }
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
   }
 
   @Override

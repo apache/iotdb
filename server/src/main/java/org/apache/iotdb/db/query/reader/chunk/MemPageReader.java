@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
@@ -41,7 +42,9 @@ public class MemPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
+
   private Filter valueFilter;
+  private PaginationController paginationController;
 
   public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter filter) {
     this.tsBlock = tsBlock;
@@ -99,10 +102,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           boolean value = tsBlock.getColumn(0).getBoolean(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeBoolean(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -110,10 +123,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           int value = tsBlock.getColumn(0).getInt(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeInt(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -121,10 +144,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           long value = tsBlock.getColumn(0).getLong(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeLong(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -132,10 +165,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           float value = tsBlock.getColumn(0).getFloat(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeFloat(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -143,10 +186,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           double value = tsBlock.getColumn(0).getDouble(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeDouble(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -154,10 +207,20 @@ public class MemPageReader implements IPageReader {
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
           long time = tsBlock.getTimeColumn().getLong(i);
           Binary value = tsBlock.getColumn(0).getBinary(i);
-          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+            continue;
+          }
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
             timeBuilder.writeLong(time);
             valueBuilder.writeBinary(value);
             builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
         }
         break;
@@ -179,6 +242,11 @@ public class MemPageReader implements IPageReader {
     } else {
       valueFilter = new AndFilter(this.valueFilter, filter);
     }
+  }
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
   }
 
   @Override
