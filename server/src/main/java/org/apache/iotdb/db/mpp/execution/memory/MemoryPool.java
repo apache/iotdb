@@ -368,9 +368,11 @@ public class MemoryPool {
   }
 
   public void removeFragmentInstance(String queryId, String fragmentInstanceId) {
-    queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
-    if (queryMemoryReservations.get(queryId).isEmpty()) {
-      queryMemoryReservations.remove(queryId);
+    if (queryMemoryReservations.get(queryId) != null) {
+      queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
+      if (queryMemoryReservations.get(queryId).isEmpty()) {
+        queryMemoryReservations.remove(queryId);
+      }
     }
   }
 }
