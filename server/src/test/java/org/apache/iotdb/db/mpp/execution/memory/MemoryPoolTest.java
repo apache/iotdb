@@ -300,4 +300,41 @@ public class MemoryPoolTest {
     Assert.assertTrue(f.isDone());
     Assert.assertFalse(f.isCancelled());
   }
+
+  @Test
+  public void testMemoryLeakOfMapInMemoryPool() {
+
+    // third level
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID + "1", 1L, Long.MAX_VALUE);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L);
+    Assert.assertFalse(
+        pool.getQueryMemoryReservations().get(QUERY_ID).get(FRAGMENT_INSTANCE_ID).isEmpty());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID + "1", 1L);
+    Assert.assertNull(pool.getQueryMemoryReservations().get(QUERY_ID));
+
+    // second level
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID + "1", 1L, Long.MAX_VALUE);
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID + "1", 1L);
+    Assert.assertNull(pool.getQueryMemoryReservations().get(QUERY_ID).get(FRAGMENT_INSTANCE_ID));
+    Assert.assertFalse(pool.getQueryMemoryReservations().get(QUERY_ID).isEmpty());
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L);
+
+    // first level
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L);
+    Assert.assertTrue(pool.getQueryMemoryReservations().isEmpty());
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.reserve(QUERY_ID + "1", FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L, Long.MAX_VALUE);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 1L);
+    Assert.assertNull(pool.getQueryMemoryReservations().get(QUERY_ID).get(FRAGMENT_INSTANCE_ID));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L);
+    Assert.assertNull(pool.getQueryMemoryReservations().get(QUERY_ID));
+    pool.free(QUERY_ID + "1", FRAGMENT_INSTANCE_ID + "1", PLAN_NODE_ID, 1L);
+    Assert.assertTrue(pool.getQueryMemoryReservations().isEmpty());
+  }
 }

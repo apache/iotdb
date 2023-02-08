@@ -283,17 +283,23 @@ public class MemoryPool {
       Validate.notNull(queryId);
       Validate.isTrue(bytes > 0L);
 
-      Long queryReservedBytes =
-          queryMemoryReservations
-              .getOrDefault(queryId, Collections.emptyMap())
-              .getOrDefault(fragmentInstanceId, Collections.emptyMap())
-              .get(planNodeId);
+      Map<String, Long> planNodeToBytesReserved =
+          queryMemoryReservations.get(queryId).get(fragmentInstanceId);
+
+      Long queryReservedBytes = planNodeToBytesReserved.get(planNodeId);
       Validate.notNull(queryReservedBytes);
       Validate.isTrue(bytes <= queryReservedBytes);
 
       queryReservedBytes -= bytes;
+
       if (queryReservedBytes == 0) {
-        queryMemoryReservations.get(queryId).get(fragmentInstanceId).remove(planNodeId);
+        planNodeToBytesReserved.remove(planNodeId);
+        if (planNodeToBytesReserved.isEmpty()) {
+          queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
+        }
+        if (queryMemoryReservations.get(queryId).isEmpty()) {
+          queryMemoryReservations.remove(queryId);
+        }
       } else {
         queryMemoryReservations
             .get(queryId)
@@ -350,7 +356,7 @@ public class MemoryPool {
         future.set(null);
       } catch (Throwable t) {
         // ignore it, because we still need to notify other future
-        LOGGER.error("error happened while trying to free memory: ", t);
+        LOGGER.warn("error happened while trying to free memory: ", t);
       }
     }
   }
@@ -368,5 +374,10 @@ public class MemoryPool {
 
   public long getReservedBytes() {
     return reservedBytes;
+  }
+
+  @TestOnly
+  public Map<String, Map<String, Map<String, Long>>> getQueryMemoryReservations() {
+    return queryMemoryReservations;
   }
 }
