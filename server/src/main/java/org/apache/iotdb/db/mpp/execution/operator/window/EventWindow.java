@@ -33,6 +33,8 @@ public abstract class EventWindow implements IWindow {
 
   protected boolean initializedEventValue;
 
+  protected boolean valueIsNull = false;
+
   protected EventWindow(EventWindowParameter eventWindowParameter) {
     this.eventWindowParameter = eventWindowParameter;
   }
@@ -73,5 +75,13 @@ public abstract class EventWindow implements IWindow {
 
   public void setInitializedEventValue(boolean initializedEventValue) {
     this.initializedEventValue = initializedEventValue;
+  }
+
+  public boolean valueIsNull() {
+    return valueIsNull;
+  }
+
+  public boolean ignoringNull() {
+    return eventWindowParameter.isIgnoringNull();
   }
 }

@@ -142,4 +142,10 @@ public interface IWindowManager {
    * false.
    */
   boolean needSkipInAdvance();
+
+  /**
+   * When controlColumn is null, this method determined whether we should consider that row. if
+   * ignoringNull is false, null will be considered as a normal value in window.
+   */
+  boolean isIgnoringNull();
 }

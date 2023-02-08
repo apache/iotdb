@@ -213,12 +213,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         schemaRegion.createTimeseries(
             transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
       } catch (MeasurementAlreadyExistException e) {
-        //        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
+        // There's no need to internal create timeseries.
         alreadyExistingTimeseries.add(
             RpcUtils.getStatus(
                 e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
       } catch (MetadataException e) {
-        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -252,7 +252,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         shouldRetry = false;
       } catch (MeasurementAlreadyExistException e) {
         // the existence check will be executed before truly creation
-        logger.info("There's no need to internal create timeseries. {}", e.getMessage());
+        // There's no need to internal create timeseries.
         MeasurementPath measurementPath = e.getMeasurementPath();
         alreadyExistingTimeseries.add(
             RpcUtils.getStatus(
@@ -270,7 +270,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         }
 
       } catch (MetadataException e) {
-        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         shouldRetry = false;
       }

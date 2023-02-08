@@ -39,12 +39,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -718,7 +718,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               root, context, sources, eachSeriesOneRegion, regionCountPerSeries);
 
       if (eachSeriesOneRegion[0]) {
-        newRoot = new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+        newRoot = new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
       } else {
         List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
         for (PlanNode child : root.getChildren()) {
@@ -780,8 +780,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              VerticallyConcatNode parentOfGroup =
-                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              HorizontallyConcatNode parentOfGroup =
+                  new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
               sourceNodes.forEach(parentOfGroup::addChild);
               newRoot.addChild(parentOfGroup);
             }
@@ -881,8 +881,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            VerticallyConcatNode verticallyConcatNode =
-                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            HorizontallyConcatNode verticallyConcatNode =
+                new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
             sourceNodes.forEach(verticallyConcatNode::addChild);
             parentOfGroup.addChild(verticallyConcatNode);
           }
@@ -1029,8 +1029,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            VerticallyConcatNode verticallyConcatNode =
-                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            HorizontallyConcatNode verticallyConcatNode =
+                new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
             sourceNodes.forEach(verticallyConcatNode::addChild);
             parentOfGroup.addChild(verticallyConcatNode);
           }
@@ -1054,10 +1054,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              VerticallyConcatNode verticallyConcatNode =
-                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
-              sourceNodes.forEach(verticallyConcatNode::addChild);
-              newRoot.addChild(verticallyConcatNode);
+              HorizontallyConcatNode horizontallyConcatNode =
+                  new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              sourceNodes.forEach(horizontallyConcatNode::addChild);
+              newRoot.addChild(horizontallyConcatNode);
             }
           }
         });

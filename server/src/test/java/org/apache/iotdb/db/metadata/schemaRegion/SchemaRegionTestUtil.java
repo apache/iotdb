@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionRead
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -266,9 +267,18 @@ public class SchemaRegionTestUtil {
   public static List<ITimeSeriesSchemaInfo> showTimeseries(
       ISchemaRegion schemaRegion, IShowTimeSeriesPlan plan) {
     List<ITimeSeriesSchemaInfo> result = new ArrayList<>();
+    ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
     try (ISchemaReader<ITimeSeriesSchemaInfo> reader = schemaRegion.getTimeSeriesReader(plan)) {
       while (reader.hasNext()) {
-        result.add(reader.next());
+        timeSeriesSchemaInfo = reader.next();
+        result.add(
+            new ShowTimeSeriesResult(
+                timeSeriesSchemaInfo.getFullPath(),
+                timeSeriesSchemaInfo.getAlias(),
+                timeSeriesSchemaInfo.getSchema(),
+                timeSeriesSchemaInfo.getTags(),
+                timeSeriesSchemaInfo.getAttributes(),
+                timeSeriesSchemaInfo.isUnderAlignedDevice()));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

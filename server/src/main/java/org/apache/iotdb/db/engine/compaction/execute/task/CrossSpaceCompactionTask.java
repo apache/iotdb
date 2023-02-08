@@ -83,8 +83,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-    this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
-    this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    this.seqTsFileResourceList =
+        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
+    this.unseqTsFileResourceList =
+        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;

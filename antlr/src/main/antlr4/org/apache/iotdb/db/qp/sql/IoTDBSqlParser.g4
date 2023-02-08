@@ -475,6 +475,12 @@ groupByAttributeClause
     : TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     | LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
     | TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
+    | VARIATION LR_BRACKET expression (COMMA delta=number)? (COMMA attributePair)? RR_BRACKET
+    ;
+
+number
+    :INTEGER_LITERAL
+    |realLiteral
     ;
 
 timeRange

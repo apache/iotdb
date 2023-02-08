@@ -85,21 +85,21 @@ public class TsFileManager {
     }
   }
 
-  public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    readLock();
+  public TsFileResourceList getOrCreateSequenceListByTimePartition(long timePartition) {
+    writeLock("getOrCreateSequenceListByTimePartition");
     try {
       return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
-  public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    readLock();
+  public TsFileResourceList getOrCreateUnsequenceListByTimePartition(long timePartition) {
+    writeLock("getOrCreateUnsequenceListByTimePartition");
     try {
       return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 

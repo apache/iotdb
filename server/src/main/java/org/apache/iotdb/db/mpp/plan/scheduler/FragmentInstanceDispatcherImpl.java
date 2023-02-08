@@ -49,6 +49,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -119,20 +120,38 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+    List<TSStatus> failureStatusList = new ArrayList<>();
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+        TSStatus failureStatus = e.getFailureStatus();
+        if (instances.size() == 1) {
+          failureStatusList.add(failureStatus);
+        } else {
+          if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            failureStatusList.addAll(failureStatus.getSubStatus());
+          } else {
+            failureStatusList.add(failureStatus);
+          }
+        }
       } catch (Throwable t) {
         //        logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+        failureStatusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
       }
     }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+    if (failureStatusList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } else {
+      if (instances.size() == 1) {
+        return immediateFuture(new FragInstanceDispatchResult(failureStatusList.get(0)));
+      } else {
+        return immediateFuture(
+            new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+      }
+    }
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -189,6 +208,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                       TSStatusCode.WRITE_PROCESS_ERROR, sendPlanNodeResp.getMessage()));
             } else {
               throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
+            }
+          } else {
+            // some expected and accepted status except SUCCESS_STATUS need to be returned
+            TSStatus status = sendPlanNodeResp.getStatus();
+            if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new FragmentInstanceDispatchException(status);
             }
           }
           break;
@@ -254,6 +279,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {
             throw new FragmentInstanceDispatchException(writeResult.getStatus());
+          }
+        } else {
+          // some expected and accepted status except SUCCESS_STATUS need to be returned
+          TSStatus status = writeResult.getStatus();
+          if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new FragmentInstanceDispatchException(status);
           }
         }
         break;
