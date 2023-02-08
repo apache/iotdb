@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
@@ -127,11 +126,6 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
-    if (fromIoTConsensusLeader(insertRowNode.getSearchIndex())) {
-      WALFlushListener listener = new WALFlushListener(false);
-      listener.succeed();
-      return listener;
-    }
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
     return log(walEntry);
   }
@@ -139,29 +133,14 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
-    if (fromIoTConsensusLeader(insertTabletNode.getSearchIndex())) {
-      WALFlushListener listener = new WALFlushListener(false);
-      listener.succeed();
-      return listener;
-    }
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
     return log(walEntry);
   }
 
   @Override
   public WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode) {
-    if (fromIoTConsensusLeader(deleteDataNode.getSearchIndex())) {
-      WALFlushListener listener = new WALFlushListener(false);
-      listener.succeed();
-      return listener;
-    }
     WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
     return log(walEntry);
-  }
-
-  private boolean fromIoTConsensusLeader(long searchIndex) {
-    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        && searchIndex == DEFAULT_SEARCH_INDEX;
   }
 
   private WALFlushListener log(WALEntry walEntry) {
