@@ -50,6 +50,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
@@ -64,6 +65,9 @@ public class LogDispatcher {
   private ExecutorService executorService;
 
   private boolean stopped = false;
+
+  private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
+  private final AtomicLong logEntriesFromConsensusRequest = new AtomicLong(0);
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
@@ -169,6 +173,14 @@ public class LogDispatcher {
             }
           });
     }
+  }
+
+  public long getLogEntriesFromWAL() {
+    return logEntriesFromWAL.get();
+  }
+
+  public long getLogEntriesFromConsensusRequest() {
+    return logEntriesFromConsensusRequest.get();
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -317,6 +329,9 @@ public class LogDispatcher {
               .update((System.currentTimeMillis() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
+          logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
+          logEntriesFromConsensusRequest.addAndGet(
+              batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
