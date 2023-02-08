@@ -528,4 +528,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       return new ArrayList<>();
     }
   }
+
+  public LocalMemoryManager getLocalMemoryManager() {
+    return localMemoryManager;
+  }
 }

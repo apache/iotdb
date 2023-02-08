@@ -26,6 +26,8 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
@@ -69,6 +71,9 @@ public class FragmentInstanceManager {
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
   private final ExecutorService intoOperationExecutor;
+
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -151,6 +156,12 @@ public class FragmentInstanceManager {
                 newState -> {
                   if (newState.isDone()) {
                     instanceExecution.remove(instanceId);
+                    // remove memory reservations
+                    MPP_DATA_EXCHANGE_MANAGER
+                        .getLocalMemoryManager()
+                        .getQueryPool()
+                        .removeFragmentInstance(
+                            instanceId.getQueryId().getId(), instanceId.getInstanceId());
                   }
                 });
         return execution.getInstanceInfo();
@@ -204,6 +215,12 @@ public class FragmentInstanceManager {
               newState -> {
                 if (newState.isDone()) {
                   instanceExecution.remove(instanceId);
+                  // remove memory reservations
+                  MPP_DATA_EXCHANGE_MANAGER
+                      .getLocalMemoryManager()
+                      .getQueryPool()
+                      .removeFragmentInstance(
+                          instanceId.getQueryId().getId(), instanceId.getInstanceId());
                 }
               });
       return execution.getInstanceInfo();
