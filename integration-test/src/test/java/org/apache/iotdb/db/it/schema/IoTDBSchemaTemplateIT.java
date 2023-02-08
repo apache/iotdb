@@ -20,7 +20,6 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -29,7 +28,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,16 +42,19 @@ import java.util.Set;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-// TODO: extends AbstractSchemaIT
-@RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBSchemaTemplateIT {
+public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   private Statement statement;
   private Connection connection;
 
+  public IoTDBSchemaTemplateIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
@@ -66,6 +67,7 @@ public class IoTDBSchemaTemplateIT {
     statement.close();
     connection.close();
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
