@@ -93,6 +93,16 @@ public class GroupByLevelNode extends MultiChildProcessNode {
         getPlanNodeId(), getGroupByLevelDescriptors(), this.groupByTimeParameter, this.scanOrder);
   }
 
+  @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new GroupByLevelNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        // TODO figure out the relation of aggregationDescriptorList and children node
+        this.groupByLevelDescriptors.subList(startIndex, endIndex),
+        this.groupByTimeParameter,
+        this.scanOrder);
+  }
+
   public List<CrossSeriesAggregationDescriptor> getGroupByLevelDescriptors() {
     return groupByLevelDescriptors;
   }

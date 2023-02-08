@@ -50,8 +50,7 @@ import java.util.stream.Collectors;
 public class AggregationNode extends MultiChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
-  // of
-  // result TsBlock
+  // of result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
@@ -160,6 +159,19 @@ public class AggregationNode extends MultiChildProcessNode {
     return new AggregationNode(
         getPlanNodeId(),
         getAggregationDescriptorList(),
+        getGroupByTimeParameter(),
+        getGroupByParameter(),
+        getGroupByExpression(),
+        outputEndTime,
+        getScanOrder());
+  }
+
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new AggregationNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        children.subList(startIndex, endIndex),
+        // TODO figure out the relation of aggregationDescriptorList and children node
+        getAggregationDescriptorList().subList(startIndex, endIndex),
         getGroupByTimeParameter(),
         getGroupByParameter(),
         getGroupByExpression(),

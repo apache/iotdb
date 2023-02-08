@@ -216,7 +216,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2211,22 +2213,71 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
       PlanNode node, LocalExecutionPlanContext context) {
     // children after pipelining
-    List<Operator> children = new ArrayList<>();
+    LinkedList<Operator> parentPipelineChildren = new LinkedList<>();
     int finalExchangeNum = context.getExchangeSumNum();
-    for (PlanNode childSource : node.getChildren()) {
-      // Create pipelines for children
-      LocalExecutionPlanContext subContext = context.createSubContext();
-      Operator childOperation = childSource.accept(this, subContext);
-      // If the child belongs to another fragment instance, we don't create pipeline for it
-      if (childOperation instanceof ExchangeOperator) {
-        children.add(childOperation);
+    // 1. exclude ExchangeOperator first
+    Iterator<PlanNode> childrenIterator = node.getChildren().listIterator();
+    while (childrenIterator.hasNext()) {
+      PlanNode childSource = childrenIterator.next();
+      if (childSource instanceof ExchangeNode) {
+        Operator childOperation = childSource.accept(this, context);
         finalExchangeNum += 1;
-      } else {
+        parentPipelineChildren.add(childOperation);
+        // Remove exchangeNode directly for later use
+        childrenIterator.remove();
+      }
+    }
+    List<PlanNode> localChildren = node.getChildren();
+    if (context.getDegreeOfParallelism() == 1) {
+      // If dop = 1, we don't create extra pipeline
+      for (PlanNode localChild : localChildren) {
+        Operator childOperation = localChild.accept(this, context);
+        parentPipelineChildren.add(childOperation);
+      }
+    } else {
+      // 2. divide every childNumInEachPipeline localChildren to different pipeline
+      int childNumInEachPipeline =
+          Math.max(1, localChildren.size() / context.getDegreeOfParallelism());
+      // If dop > size(children) + 1, we can allocate extra dop to child node
+      // Extra dop = dop - size(children), since dop = 1 means serial but not 0
+      int maxDop = Math.min(context.getDegreeOfParallelism(), localChildren.size() + 1);
+      int dopForChild = Math.max(1, context.getDegreeOfParallelism() - localChildren.size());
+
+      for (int i = 0; i < maxDop; i++) {
+        // Only if dop >= size(children) + 1, split all children to new pipeline
+        // Otherwise, the first group but not last will belong to the parent pipeline since the
+        // children number of last group is greaterEqual than the first group
+        if (i == 0 && context.getDegreeOfParallelism() < localChildren.size() + 1) {
+          for (int j = 0; j < childNumInEachPipeline; j++) {
+            Operator childOperation = localChildren.get(j).accept(this, context);
+            parentPipelineChildren.addFirst(childOperation);
+          }
+          continue;
+        }
+        LocalExecutionPlanContext subContext = context.createSubContext();
+        subContext.setDegreeOfParallelism(dopForChild);
+        // Create partial parent operator for children
+        PlanNode partialParentNode = null;
+        Operator partialParentOperator = null;
+        if (childNumInEachPipeline == 1) {
+          partialParentNode = localChildren.get(i);
+          partialParentOperator = localChildren.get(i).accept(this, subContext);
+        } else {
+          // PartialParentNode is equals to parentNode except children
+          int startIndex = i * childNumInEachPipeline,
+              endIndex = i < (maxDop - 1) ? (i + 1) * childNumInEachPipeline : localChildren.size();
+          partialParentNode = node.createSubNode(i, startIndex, endIndex);
+          for (int j = startIndex; j < endIndex; j++) {
+            partialParentNode.addChild(localChildren.get(i));
+          }
+          partialParentOperator = partialParentNode.accept(this, context);
+        }
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
-                subContext.getDriverContext(), childSource.getPlanNodeId().getId());
+                // Attention, there is no parent node, use first child node instead
+                subContext.getDriverContext(), localChildren.get(i).getPlanNodeId().getId());
         subContext.setSinkHandle(localSinkHandle);
-        subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+        subContext.addPipelineDriverFactory(partialParentOperator, subContext.getDriverContext());
 
         ExchangeOperator sourceOperator =
             new ExchangeOperator(
@@ -2237,17 +2288,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                     ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
                     context.getDriverContext()),
-                childSource.getPlanNodeId());
+                partialParentNode.getPlanNodeId());
         context
             .getTimeSliceAllocator()
             .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
-        children.add(sourceOperator);
+        parentPipelineChildren.add(sourceOperator);
         context.addExchangeOperator(sourceOperator);
         finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
       }
     }
     context.setExchangeSumNum(finalExchangeNum);
-    return children;
+    return parentPipelineChildren;
   }
 
   private List<Operator> dealWithConsumeChildrenOneByOneNode(

@@ -64,6 +64,15 @@ public class DeviceMergeNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new DeviceMergeNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        getMergeOrderParameter(),
+        // TODO figure out the relation of devices and children node
+        devices.subList(startIndex, endIndex));
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)

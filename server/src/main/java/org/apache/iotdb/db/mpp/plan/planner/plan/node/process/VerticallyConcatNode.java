@@ -48,6 +48,12 @@ public class VerticallyConcatNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new VerticallyConcatNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)));
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)

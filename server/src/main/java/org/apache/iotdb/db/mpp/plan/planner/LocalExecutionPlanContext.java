@@ -59,6 +59,7 @@ public class LocalExecutionPlanContext {
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
+  private int degreeOfParallelism = 4;
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
@@ -140,6 +141,14 @@ public class LocalExecutionPlanContext {
 
   public DriverContext getDriverContext() {
     return driverContext;
+  }
+
+  public int getDegreeOfParallelism() {
+    return degreeOfParallelism;
+  }
+
+  public void setDegreeOfParallelism(int degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
   }
 
   private int getNextPipelineId() {
