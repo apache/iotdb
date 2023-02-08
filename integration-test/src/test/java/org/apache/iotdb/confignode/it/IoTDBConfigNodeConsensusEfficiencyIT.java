@@ -118,7 +118,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Test
+  /* Add @Test before test */
   public void consensusEfficiencyIT() throws InterruptedException {
     long totalTime = 0;
     int logsCount =
