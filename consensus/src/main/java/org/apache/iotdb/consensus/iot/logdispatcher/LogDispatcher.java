@@ -244,19 +244,19 @@ public class LogDispatcher {
         success = pendingEntries.offer(indexedConsensusRequest);
       } catch (Throwable t) {
         // If exception occurs during request offer, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
         throw t;
       }
       if (!success) {
         // If offer failed, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
       }
       return success;
     }
 
     /** try to remove a request from queue with memory control. */
     private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
-      iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
     }
 
     public void stop() {
@@ -266,12 +266,12 @@ public class LogDispatcher {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
       pendingEntries.clear();
-      iotConsensusMemoryManager.free(requestSize);
+      iotConsensusMemoryManager.free(requestSize, true);
       requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedEntries) {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
-      iotConsensusMemoryManager.free(requestSize);
+      iotConsensusMemoryManager.free(requestSize, true);
       syncStatus.free();
       MetricService.getInstance().removeMetricSet(metrics);
     }
