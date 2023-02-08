@@ -16,30 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
+package org.apache.iotdb.it.framework;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.junit.runners.model.InitializationError;
+import org.junit.runners.parameterized.ParametersRunnerFactory;
+import org.junit.runners.parameterized.TestWithParameters;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteTimeseriesSchemaFileIT extends IoTDBDeleteTimeseriesIT {
-
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-    super.setUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
+public class IoTDBTestRunnerWithParametersFactory implements ParametersRunnerFactory {
+  @Override
+  public org.junit.runner.Runner createRunnerForTestWithParameters(TestWithParameters test)
+      throws InitializationError {
+    return new IoTDBTestRunnerWithParameters(test);
   }
 }
