@@ -60,6 +60,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "safeIndex");
+    // TODO: Consider adding topological order to the traversal of metricEntry.
     MetricService.getInstance()
         .createAutoGauge(
             Metric.IOT_CONSENSUS.toString(),
