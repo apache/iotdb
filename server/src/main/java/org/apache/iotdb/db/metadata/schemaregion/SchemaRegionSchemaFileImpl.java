@@ -40,6 +40,7 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
@@ -520,8 +521,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      logger.error("Series overflow when creating: [{}]", plan.getPath().getFullPath());
-      throw new SeriesOverflowException();
+      CacheMemoryManager.getInstance().waitIfReleasing();
+      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+        logger.error("Series overflow when creating: [{}]", plan.getPath().getFullPath());
+        throw new SeriesOverflowException();
+      }
     }
 
     if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
@@ -640,7 +644,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new SeriesOverflowException();
+      CacheMemoryManager.getInstance().waitIfReleasing();
+      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+        throw new SeriesOverflowException();
+      }
     }
 
     if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
