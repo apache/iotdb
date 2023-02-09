@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -48,6 +49,8 @@ public class SharedTsBlockQueue {
   private final TFragmentInstanceId localFragmentInstanceId;
 
   private final String localPlanNodeId;
+
+  private final String fullFragmentInstanceId;
 
   private final LocalMemoryManager localMemoryManager;
 
@@ -81,6 +84,8 @@ public class SharedTsBlockQueue {
       LocalMemoryManager localMemoryManager) {
     this.localFragmentInstanceId =
         Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
+    this.fullFragmentInstanceId =
+        FragmentInstanceId.createFullIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
@@ -159,7 +164,7 @@ public class SharedTsBlockQueue {
         .getQueryPool()
         .free(
             localFragmentInstanceId.getQueryId(),
-            localFragmentInstanceId.getInstanceId(),
+            fullFragmentInstanceId,
             localPlanNodeId,
             tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
@@ -186,7 +191,7 @@ public class SharedTsBlockQueue {
             .getQueryPool()
             .reserve(
                 localFragmentInstanceId.getQueryId(),
-                localFragmentInstanceId.getInstanceId(),
+                fullFragmentInstanceId,
                 localPlanNodeId,
                 tsBlock.getRetainedSizeInBytes(),
                 maxBytesCanReserve);
@@ -233,7 +238,7 @@ public class SharedTsBlockQueue {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
@@ -241,9 +246,7 @@ public class SharedTsBlockQueue {
     localMemoryManager
         .getQueryPool()
         .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(),
-            localFragmentInstanceId.getInstanceId(),
-            localPlanNodeId);
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
@@ -264,7 +267,7 @@ public class SharedTsBlockQueue {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
@@ -272,9 +275,7 @@ public class SharedTsBlockQueue {
     localMemoryManager
         .getQueryPool()
         .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(),
-            localFragmentInstanceId.getInstanceId(),
-            localPlanNodeId);
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
@@ -295,7 +296,7 @@ public class SharedTsBlockQueue {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;

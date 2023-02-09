@@ -109,4 +109,13 @@ public class FragmentInstanceId {
   public static String createFullId(String queryId, int fragmentId, String instanceId) {
     return queryId + '.' + fragmentId + '.' + instanceId;
   }
+
+  public static String createFullIdFromTFragmentInstanceId(
+      TFragmentInstanceId tFragmentInstanceId) {
+    return tFragmentInstanceId.getQueryId()
+        + '.'
+        + tFragmentInstanceId.getFragmentId()
+        + '.'
+        + tFragmentInstanceId.getInstanceId();
+  }
 }

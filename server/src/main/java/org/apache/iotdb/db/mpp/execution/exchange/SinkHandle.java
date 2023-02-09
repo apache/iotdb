@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -69,6 +70,8 @@ public class SinkHandle implements ISinkHandle {
 
   private final String localPlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
+
+  private final String fullFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
@@ -122,6 +125,8 @@ public class SinkHandle implements ISinkHandle {
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
+    this.fullFragmentInstanceId =
+        FragmentInstanceId.createFullIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);
@@ -138,7 +143,7 @@ public class SinkHandle implements ISinkHandle {
             .getQueryPool()
             .reserve(
                 localFragmentInstanceId.getQueryId(),
-                localFragmentInstanceId.getInstanceId(),
+                fullFragmentInstanceId,
                 localPlanNodeId,
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
@@ -179,7 +184,7 @@ public class SinkHandle implements ISinkHandle {
               .getQueryPool()
               .reserve(
                   localFragmentInstanceId.getQueryId(),
-                  localFragmentInstanceId.getInstanceId(),
+                  fullFragmentInstanceId,
                   localPlanNodeId,
                   retainedSizeInBytes,
                   maxBytesCanReserve)
@@ -223,7 +228,7 @@ public class SinkHandle implements ISinkHandle {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
@@ -231,9 +236,7 @@ public class SinkHandle implements ISinkHandle {
     localMemoryManager
         .getQueryPool()
         .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(),
-            localFragmentInstanceId.getInstanceId(),
-            localPlanNodeId);
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkHandleListener.onAborted(this);
     logger.debug("[EndAbortSinkHandle]");
   }
@@ -249,7 +252,7 @@ public class SinkHandle implements ISinkHandle {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
@@ -257,9 +260,7 @@ public class SinkHandle implements ISinkHandle {
     localMemoryManager
         .getQueryPool()
         .clearMemoryReservationMap(
-            localFragmentInstanceId.getQueryId(),
-            localFragmentInstanceId.getInstanceId(),
-            localPlanNodeId);
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkHandleListener.onFinish(this);
     logger.debug("[EndCloseSinkHandle]");
   }
@@ -339,7 +340,7 @@ public class SinkHandle implements ISinkHandle {
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
-              localFragmentInstanceId.getInstanceId(),
+              fullFragmentInstanceId,
               localPlanNodeId,
               freedBytes);
     }
