@@ -56,12 +56,12 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public void computeSchemaWithAutoCreate(
+  public void fetchAndComputeSchemaWithAutoCreate(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
 
   @Override
-  public void computeSchemaWithAutoCreate(
-      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
+  public void fetchAndComputeSchemaWithAutoCreate(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
 
   /**
    * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,

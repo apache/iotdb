@@ -31,7 +31,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -66,8 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode
-    implements WALEntryValue, ISchemaComputationWithAutoCreation {
+public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaValidation {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
@@ -809,7 +808,7 @@ public class InsertRowNode extends InsertNode
   }
 
   @Override
-  public void computeDevice(boolean isAligned) {
+  public void validateDeviceSchema(boolean isAligned) {
     if (this.isAligned != isAligned) {
       throw new SemanticException(
           new AlignedTimeseriesException(
@@ -821,7 +820,7 @@ public class InsertRowNode extends InsertNode
   }
 
   @Override
-  public ISchemaComputationWithAutoCreation getSchemaComputationWithAutoCreation() {
+  public ISchemaValidation getSchemaValidation() {
     return this;
   }
 
@@ -833,7 +832,7 @@ public class InsertRowNode extends InsertNode
   }
 
   @Override
-  public void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }

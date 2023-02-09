@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -194,9 +194,9 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public List<ISchemaComputationWithAutoCreation> getSchemaComputationWithAutoCreationList() {
+  public List<ISchemaValidation> getSchemaValidationList() {
     return insertTabletNodeList.stream()
-        .map(InsertTabletNode::getSchemaComputationWithAutoCreation)
+        .map(InsertTabletNode::getSchemaValidation)
         .collect(Collectors.toList());
   }
 

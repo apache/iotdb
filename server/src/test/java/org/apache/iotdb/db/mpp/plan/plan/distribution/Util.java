@@ -304,12 +304,13 @@ public class Util {
       }
 
       @Override
-      public void computeSchemaWithAutoCreate(
+      public void fetchAndComputeSchemaWithAutoCreate(
           ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
 
       @Override
-      public void computeSchemaWithAutoCreate(
-          List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
+      public void fetchAndComputeSchemaWithAutoCreate(
+          List<? extends ISchemaComputationWithAutoCreation>
+              schemaComputationWithAutoCreationList) {}
 
       @Override
       public ISchemaTree fetchSchemaListWithAutoCreate(

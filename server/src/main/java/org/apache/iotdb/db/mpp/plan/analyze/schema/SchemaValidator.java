@@ -38,11 +38,10 @@ public class SchemaValidator {
   public static void validate(InsertNode insertNode) {
     try {
       if (insertNode instanceof BatchInsertNode) {
-        SCHEMA_FETCHER.computeSchemaWithAutoCreate(
-            ((BatchInsertNode) insertNode).getSchemaComputationWithAutoCreationList());
+        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
+            ((BatchInsertNode) insertNode).getSchemaValidationList());
       } else {
-        SCHEMA_FETCHER.computeSchemaWithAutoCreate(
-            insertNode.getSchemaComputationWithAutoCreation());
+        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertNode.getSchemaValidation());
       }
       insertNode.updateAfterSchemaValidation();
     } catch (QueryProcessException e) {

@@ -151,7 +151,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public void computeSchemaWithAutoCreate(
+  public void fetchAndComputeSchemaWithAutoCreate(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
@@ -209,8 +209,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public void computeSchemaWithAutoCreate(
-      List<ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+  public void fetchAndComputeSchemaWithAutoCreate(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
