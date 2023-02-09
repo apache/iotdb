@@ -25,12 +25,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 public class MinTimeDescAccumulator extends MinTimeAccumulator {
 
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {

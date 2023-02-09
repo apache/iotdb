@@ -80,10 +80,10 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -189,17 +189,38 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void SetStorageGroupPlanTest() throws IOException {
-    SetStorageGroupPlan req0 =
-        new SetStorageGroupPlan(
+  public void CreateDatabasePlanTest() throws IOException {
+    DatabaseSchemaPlan req0 =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
             new TStorageGroupSchema()
                 .setName("sg")
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
-    SetStorageGroupPlan req1 =
-        (SetStorageGroupPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    DatabaseSchemaPlan req1 =
+        (DatabaseSchemaPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void AlterDatabasePlanTest() throws IOException {
+    DatabaseSchemaPlan req0 =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.AlterDatabase,
+            new TStorageGroupSchema()
+                .setName("sg")
+                .setTTL(Long.MAX_VALUE)
+                .setSchemaReplicationFactor(3)
+                .setDataReplicationFactor(3)
+                .setTimePartitionInterval(604800)
+                .setMinSchemaRegionGroupNum(2)
+                .setMaxSchemaRegionGroupNum(5)
+                .setMinDataRegionGroupNum(3)
+                .setMaxDataRegionGroupNum(8));
+    DatabaseSchemaPlan req1 =
+        (DatabaseSchemaPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
