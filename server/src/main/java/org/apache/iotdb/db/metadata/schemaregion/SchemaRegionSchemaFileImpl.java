@@ -523,7 +523,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
       if (!memoryStatistics.isAllowToCreateNewSeries()) {
-        logger.error("Series overflow when creating: [{}]", plan.getPath().getFullPath());
+        logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
         throw new SeriesOverflowException();
       }
     }
