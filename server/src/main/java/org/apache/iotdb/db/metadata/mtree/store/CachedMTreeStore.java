@@ -462,6 +462,7 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
+    ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
