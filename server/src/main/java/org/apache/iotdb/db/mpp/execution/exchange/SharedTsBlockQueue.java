@@ -85,7 +85,7 @@ public class SharedTsBlockQueue {
     this.localFragmentInstanceId =
         Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
     this.fullFragmentInstanceId =
-        FragmentInstanceId.createFullIdFromTFragmentInstanceId(localFragmentInstanceId);
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");

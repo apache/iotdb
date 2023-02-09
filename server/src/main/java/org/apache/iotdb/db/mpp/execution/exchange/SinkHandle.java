@@ -126,7 +126,7 @@ public class SinkHandle implements ISinkHandle {
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.fullFragmentInstanceId =
-        FragmentInstanceId.createFullIdFromTFragmentInstanceId(localFragmentInstanceId);
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);

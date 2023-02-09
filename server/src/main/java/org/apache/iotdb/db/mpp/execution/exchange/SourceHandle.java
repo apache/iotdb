@@ -127,7 +127,7 @@ public class SourceHandle implements ISourceHandle {
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.fullFragmentInstanceId =
-        FragmentInstanceId.createFullIdFromTFragmentInstanceId(localFragmentInstanceId);
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
