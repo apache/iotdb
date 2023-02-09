@@ -59,7 +59,7 @@ public class DriverTask implements IDIndexedAccessible {
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
 
-  private SettableFuture<?> blockedDependencyDriver = SettableFuture.create();
+  private SettableFuture<?> blockedDependencyDriver = null;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -141,10 +141,15 @@ public class DriverTask implements IDIndexedAccessible {
   }
 
   public void submitDependencyDriver() {
-    this.blockedDependencyDriver.set(null);
+    if (blockedDependencyDriver != null) {
+      this.blockedDependencyDriver.set(null);
+    }
   }
 
   public SettableFuture<?> getBlockedDependencyDriver() {
+    if (blockedDependencyDriver == null) {
+      blockedDependencyDriver = SettableFuture.create();
+    }
     return blockedDependencyDriver;
   }
 

@@ -145,7 +145,7 @@ public class LocalExecutionPlanContext {
   }
 
   public int getPipelineNumber() {
-    return nextPipelineId.get();
+    return pipelineDriverFactories.size();
   }
 
   public DriverContext getDriverContext() {
