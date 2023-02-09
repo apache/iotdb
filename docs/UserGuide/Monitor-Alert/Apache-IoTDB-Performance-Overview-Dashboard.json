@@ -1142,7 +1142,28 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "match": "empty",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 1,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1160,6 +1181,99 @@
         "h": 8,
         "w": 8,
         "x": 8,
+        "y": 18
+      },
+      "id": 50,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(entry_seconds_sum{instance=\"$instance\"}[1m]) / rate(entry_seconds_count{instance=\"$instance\"}[1m])) by (instance, name)",
+          "hide": false,
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Average Time Consumed Of Interface",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
         "y": 18
       },
       "id": 14,
@@ -1272,215 +1386,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 18
-      },
-      "id": 50,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(entry_seconds_sum{instance=\"$instance\"}[1m]) / rate(entry_seconds_count{instance=\"$instance\"}[1m])) by (instance, name)",
-          "hide": false,
-          "legendFormat": "{{name}}",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Average Time Consumed Of Interface",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
         "w": 12,
         "x": 0,
-        "y": 26
-      },
-      "id": 24,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "performance_overview_detail_seconds{instance=\"$instance\", quantile=\"0.99\"}",
-          "hide": false,
-          "legendFormat": "{{stage}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "P99 Time Consumed Of Stage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [
-            {
-              "options": {
-                "match": "empty",
-                "result": {
-                  "index": 0,
-                  "text": "0"
-                }
-              },
-              "type": "special"
-            },
-            {
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "index": 1,
-                  "text": "0"
-                }
-              },
-              "type": "special"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
         "y": 26
       },
       "id": 46,
@@ -1573,10 +1480,10 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 34
+        "x": 12,
+        "y": 26
       },
-      "id": 28,
+      "id": 24,
       "options": {
         "legend": {
           "calcs": [
@@ -1598,14 +1505,14 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "performance_overview_schedule_detail_seconds{instance=~\"$instance\", quantile=\"0.99\"}",
+          "expr": "performance_overview_detail_seconds{instance=\"$instance\", quantile=\"0.99\"}",
           "hide": false,
           "legendFormat": "{{stage}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "P99 Time Consumed Of Schedule Stage",
+      "title": "P99 Time Consumed Of Stage",
       "type": "timeseries"
     },
     {
@@ -1687,7 +1594,7 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
+        "x": 0,
         "y": 34
       },
       "id": 47,
@@ -1720,6 +1627,99 @@
         }
       ],
       "title": "Average Time Consumed Of Schedule Stage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "performance_overview_schedule_detail_seconds{instance=~\"$instance\", quantile=\"0.99\"}",
+          "hide": false,
+          "legendFormat": "{{stage}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "P99 Time Consumed Of Schedule Stage",
       "type": "timeseries"
     },
     {
@@ -1852,7 +1852,28 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "match": "empty",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 1,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1872,7 +1893,7 @@
         "x": 8,
         "y": 42
       },
-      "id": 13,
+      "id": 51,
       "options": {
         "legend": {
           "calcs": [
@@ -1894,13 +1915,14 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "cost_task_seconds{instance=~\"$instance\", quantile=\"0.99\"}",
+          "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[1m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[1m])",
+          "hide": false,
           "legendFormat": "{{name}}",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ],
-      "title": "P99 Time Consumed of Task",
+      "title": "Average Time Consumed of Task",
       "type": "timeseries"
     },
     {
@@ -1943,28 +1965,7 @@
               "mode": "off"
             }
           },
-          "mappings": [
-            {
-              "options": {
-                "match": "empty",
-                "result": {
-                  "index": 0,
-                  "text": "0"
-                }
-              },
-              "type": "special"
-            },
-            {
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "index": 1,
-                  "text": "0"
-                }
-              },
-              "type": "special"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1984,7 +1985,7 @@
         "x": 16,
         "y": 42
       },
-      "id": 51,
+      "id": 13,
       "options": {
         "legend": {
           "calcs": [
@@ -2006,14 +2007,13 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[1m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[1m])",
-          "hide": false,
+          "expr": "cost_task_seconds{instance=~\"$instance\", quantile=\"0.99\"}",
           "legendFormat": "{{name}}",
           "range": true,
-          "refId": "B"
+          "refId": "A"
         }
       ],
-      "title": "Average Time Consumed of Task",
+      "title": "P99 Time Consumed of Task",
       "type": "timeseries"
     },
     {
@@ -2457,35 +2457,11 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"heap\", id=\"PS Old Gen\"}",
+          "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"heap\"}",
           "hide": false,
-          "legendFormat": "Old area",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"heap\", id=\"PS Eden Space\"}",
-          "hide": false,
-          "legendFormat": "Eden area",
+          "legendFormat": "{{id}}",
           "range": true,
           "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"heap\", id=\"PS Survivor Space\"}",
-          "hide": false,
-          "legendFormat": "Survivor area",
-          "range": true,
-          "refId": "E"
         }
       ],
       "title": "Heap Memory",
@@ -3250,6 +3226,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Performance Overview Dashboard",
   "uid": "ZRfEph04k",
-  "version": 1,
+  "version": 20,
   "weekStart": ""
 }
