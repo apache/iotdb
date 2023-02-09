@@ -225,7 +225,7 @@ public class RegionWriteExecutor {
           return response;
         } finally {
           PerformanceOverviewMetricsManager.getInstance()
-              .recordScheduleSchemaValidateCost(System.currentTimeMillis() - startTime);
+              .recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;
