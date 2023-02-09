@@ -643,8 +643,4 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         + "."
         + suffix;
   }
-
-  public LocalMemoryManager getLocalMemoryManager() {
-    return localMemoryManager;
-  }
 }

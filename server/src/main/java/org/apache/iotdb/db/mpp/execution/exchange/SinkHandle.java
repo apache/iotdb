@@ -228,6 +228,12 @@ public class SinkHandle implements ISinkHandle {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    localMemoryManager
+        .getQueryPool()
+        .clearMemoryReservationMap(
+            localFragmentInstanceId.getQueryId(),
+            localFragmentInstanceId.getInstanceId(),
+            localPlanNodeId);
     sinkHandleListener.onAborted(this);
     logger.debug("[EndAbortSinkHandle]");
   }
@@ -248,6 +254,12 @@ public class SinkHandle implements ISinkHandle {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    localMemoryManager
+        .getQueryPool()
+        .clearMemoryReservationMap(
+            localFragmentInstanceId.getQueryId(),
+            localFragmentInstanceId.getInstanceId(),
+            localPlanNodeId);
     sinkHandleListener.onFinish(this);
     logger.debug("[EndCloseSinkHandle]");
   }

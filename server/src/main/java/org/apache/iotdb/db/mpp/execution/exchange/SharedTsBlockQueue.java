@@ -216,7 +216,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and complete the future. Should only be called in normal case */
-  public void close() {
+  public synchronized void close() {
     if (closed) {
       return;
     }
@@ -238,10 +238,16 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    localMemoryManager
+        .getQueryPool()
+        .clearMemoryReservationMap(
+            localFragmentInstanceId.getQueryId(),
+            localFragmentInstanceId.getInstanceId(),
+            localPlanNodeId);
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
-  public void abort() {
+  public synchronized void abort() {
     if (closed) {
       return;
     }
@@ -263,10 +269,16 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    localMemoryManager
+        .getQueryPool()
+        .clearMemoryReservationMap(
+            localFragmentInstanceId.getQueryId(),
+            localFragmentInstanceId.getInstanceId(),
+            localPlanNodeId);
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
-  public void abort(Throwable t) {
+  public synchronized void abort(Throwable t) {
     if (closed) {
       return;
     }

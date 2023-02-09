@@ -321,6 +321,12 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
+      localMemoryManager
+          .getQueryPool()
+          .clearMemoryReservationMap(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId);
       aborted = true;
       sourceHandleListener.onAborted(this);
     }
@@ -354,6 +360,12 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
+      localMemoryManager
+          .getQueryPool()
+          .clearMemoryReservationMap(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId);
       closed = true;
       currSequenceId = lastSequenceId + 1;
       sourceHandleListener.onFinished(this);

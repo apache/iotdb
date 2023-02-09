@@ -367,9 +367,20 @@ public class MemoryPool {
     return reservedBytes;
   }
 
-  public void removeFragmentInstance(String queryId, String fragmentInstanceId) {
-    if (queryMemoryReservations.get(queryId) != null) {
-      queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
+  public void clearMemoryReservationMap(
+      String queryId, String fragmentInstanceId, String planNodeId) {
+    if (queryMemoryReservations.get(queryId) == null
+        || queryMemoryReservations.get(queryId).get(fragmentInstanceId) == null) {
+      return;
+    }
+    Map<String, Long> planNodeIdToBytesReserved =
+        queryMemoryReservations.get(queryId).get(fragmentInstanceId);
+    if (planNodeIdToBytesReserved.get(planNodeId) == null
+        || planNodeIdToBytesReserved.get(planNodeId) <= 0) {
+      planNodeIdToBytesReserved.remove(planNodeId);
+      if (planNodeIdToBytesReserved.isEmpty()) {
+        queryMemoryReservations.get(queryId).remove(fragmentInstanceId);
+      }
       if (queryMemoryReservations.get(queryId).isEmpty()) {
         queryMemoryReservations.remove(queryId);
       }
