@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -50,9 +50,7 @@ public class SnapshotStorage implements StateMachineStorage {
   private static final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
-
-  private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
-  private SnapshotInfo currentSnapshot = null;
+  private volatile SnapshotInfo currentSnapshot = null;
 
   public SnapshotStorage(IStateMachine applicationStateMachine, RaftGroupId groupId) {
     this.applicationStateMachine = applicationStateMachine;
@@ -143,22 +141,12 @@ public class SnapshotStorage implements StateMachineStorage {
   (2) reinitialize, RaftServer resumes from pause. Leader will install a snapshot during pause.
    */
   void updateSnapshotCache() {
-    snapshotCacheGuard.writeLock().lock();
-    try {
-      currentSnapshot = findLatestSnapshot();
-    } finally {
-      snapshotCacheGuard.writeLock().unlock();
-    }
+    currentSnapshot = findLatestSnapshot();
   }
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
-    snapshotCacheGuard.readLock().lock();
-    try {
-      return currentSnapshot;
-    } finally {
-      snapshotCacheGuard.readLock().unlock();
-    }
+    return currentSnapshot;
   }
 
   @Override
@@ -176,20 +164,20 @@ public class SnapshotStorage implements StateMachineStorage {
     }
   }
 
-  public File getStateMachineDir() {
+  File getStateMachineDir() {
     return stateMachineDir;
   }
 
-  public File getSnapshotDir(String snapshotMetadata) {
+  File getSnapshotDir(String snapshotMetadata) {
     return new File(getStateMachineDir().getAbsolutePath() + File.separator + snapshotMetadata);
   }
 
-  public File getSnapshotTmpDir(String snapshotMetadata) {
+  File getSnapshotTmpDir(String snapshotMetadata) {
     return new File(
         getStateMachineDir().getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
   }
 
-  public String getSnapshotTmpId(String snapshotMetadata) {
+  String getSnapshotTmpId(String snapshotMetadata) {
     return TMP_PREFIX + snapshotMetadata;
   }
 
