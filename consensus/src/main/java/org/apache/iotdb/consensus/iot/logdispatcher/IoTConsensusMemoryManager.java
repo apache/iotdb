@@ -64,16 +64,22 @@ public class IoTConsensusMemoryManager {
           }
         });
     if (result.get()) {
-      if (fromQueue) queueMemorySizeInByte.addAndGet(size);
-      else syncMemorySizeInByte.addAndGet(size);
+      if (fromQueue) {
+        queueMemorySizeInByte.addAndGet(size);
+      } else {
+        syncMemorySizeInByte.addAndGet(size);
+      }
     }
     return result.get();
   }
 
   public void free(long size, boolean fromQueue) {
     long currentUsedMemory = memorySizeInByte.addAndGet(-size);
-    if (fromQueue) queueMemorySizeInByte.addAndGet(-size);
-    else syncMemorySizeInByte.addAndGet(-size);
+    if (fromQueue) {
+      queueMemorySizeInByte.addAndGet(-size);
+    } else {
+      syncMemorySizeInByte.addAndGet(-size);
+    }
     logger.debug(
         "{} free {} bytes, total memory size: {} bytes.",
         Thread.currentThread().getName(),
