@@ -88,9 +88,13 @@ public class AggregationOperator implements ProcessOperator {
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
-    this.maxRetainedSize = children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
     this.childrenRetainedSize =
         children.stream().mapToLong(Operator::calculateRetainedSizeAfterCallingNext).sum();
+    this.maxRetainedSize =
+        childrenRetainedSize == 0
+            ? 0
+            : children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
+
     this.maxReturnSize = maxReturnSize;
   }
 

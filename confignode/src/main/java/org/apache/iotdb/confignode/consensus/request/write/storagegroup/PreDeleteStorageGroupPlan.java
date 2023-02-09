@@ -32,7 +32,7 @@ public class PreDeleteStorageGroupPlan extends ConfigPhysicalPlan {
   private PreDeleteType preDeleteType;
 
   public PreDeleteStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.PreDeleteStorageGroup);
+    super(ConfigPhysicalPlanType.PreDeleteDatabase);
   }
 
   public PreDeleteStorageGroupPlan(String storageGroup, PreDeleteType preDeleteType) {

@@ -43,9 +43,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
@@ -134,7 +134,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     String storageGroupName = plan.getSchema().getName();
     StorageGroupPartitionTable storageGroupPartitionTable =
         new StorageGroupPartitionTable(storageGroupName);

@@ -48,6 +48,10 @@ public abstract class EventWindowManager implements IWindowManager {
     this.needSkip = false;
   }
 
+  public boolean isIgnoringNull() {
+    return eventWindowParameter.isIgnoringNull();
+  }
+
   @Override
   public boolean isCurWindowInit() {
     return this.initialized;
@@ -94,10 +98,6 @@ public abstract class EventWindowManager implements IWindowManager {
     // Judge whether we need output endTime column.
     if (eventWindowParameter.isNeedOutputEndTime()) {
       dataTypes.add(0, TSDataType.INT64);
-    }
-    // Judge whether we need output event column.
-    if (eventWindowParameter.isNeedOutputEvent()) {
-      dataTypes.add(eventWindowParameter.getDataType());
     }
     return new TsBlockBuilder(dataTypes);
   }

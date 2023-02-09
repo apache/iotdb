@@ -80,9 +80,9 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.DoublePr
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.FloatPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -118,8 +118,10 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
@@ -153,6 +155,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
@@ -163,7 +166,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -179,7 +181,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
@@ -1372,6 +1376,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
+    GroupByParameter groupByParameter = node.getGroupByParameter();
 
     if (inputRaw) {
       checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
@@ -1390,8 +1395,34 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           calculateMaxAggregationResultSize(
               aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
-      WindowParameter windowParameter = new TimeWindowParameter(false);
+      // groupByParameter and groupByTimeParameter
+      if (groupByParameter != null) {
+        WindowType windowType = groupByParameter.getWindowType();
+        switch (windowType) {
+          case EVENT_WINDOW:
+            String controlColumn = node.getGroupByExpression().getExpressionString();
+            TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
+            WindowParameter windowParameter =
+                new EventWindowParameter(
+                    controlColumnType,
+                    layout.get(controlColumn).get(0).getValueColumnIndex(),
+                    node.isOutputEndTime(),
+                    groupByParameter.isIgnoringNull(),
+                    ((GroupByVariationParameter) groupByParameter).getDelta());
+            return new RawDataAggregationOperator(
+                operatorContext,
+                aggregators,
+                timeRangeIterator,
+                children.get(0),
+                ascending,
+                maxReturnSize,
+                windowParameter);
+          default:
+            throw new IllegalArgumentException("Unsupported window type");
+        }
+      }
 
+      WindowParameter windowParameter = new TimeWindowParameter(node.isOutputEndTime());
       return new RawDataAggregationOperator(
           operatorContext,
           aggregators,
@@ -1659,8 +1690,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitVerticallyConcat(
-      VerticallyConcatNode node, LocalExecutionPlanContext context) {
+  public Operator visitHorizontallyConcat(
+      HorizontallyConcatNode node, LocalExecutionPlanContext context) {
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
@@ -1668,11 +1699,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                VerticallyConcatOperator.class.getSimpleName());
+                HorizontallyConcatOperator.class.getSimpleName());
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new VerticallyConcatOperator(operatorContext, children, outputColumnTypes);
+    return new HorizontallyConcatOperator(operatorContext, children, outputColumnTypes);
   }
 
   @Override

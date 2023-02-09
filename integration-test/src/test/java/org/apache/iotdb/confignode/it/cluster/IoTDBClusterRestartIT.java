@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -183,7 +182,7 @@ public class IoTDBClusterRestartIT {
       Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable;
 
       // Set StorageGroups
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
+      status = client.setDatabase((new TStorageGroupSchema(sg0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Test getSchemaPartition, the result should be empty

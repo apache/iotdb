@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -128,11 +127,10 @@ public class IoTDBAutoRegionGroupExtensionIT {
     for (int i = 0; i < testSgNum; i++) {
       String curSg = sg + i;
       TSStatus status =
-          client.setStorageGroup(
-              new TSetStorageGroupReq(
-                  new TStorageGroupSchema(curSg)
-                      .setMinSchemaRegionGroupNum(testMinSchemaRegionGroupNum)
-                      .setMinDataRegionGroupNum(testMinDataRegionGroupNum)));
+          client.setDatabase(
+              new TStorageGroupSchema(curSg)
+                  .setMinSchemaRegionGroupNum(testMinSchemaRegionGroupNum)
+                  .setMinDataRegionGroupNum(testMinDataRegionGroupNum));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Insert SchemaPartitions to create SchemaRegionGroups
