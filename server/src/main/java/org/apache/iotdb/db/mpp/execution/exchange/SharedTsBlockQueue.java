@@ -216,7 +216,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and complete the future. Should only be called in normal case */
-  public synchronized void close() {
+  public void close() {
     if (closed) {
       return;
     }
@@ -247,7 +247,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
-  public synchronized void abort() {
+  public void abort() {
     if (closed) {
       return;
     }
@@ -278,7 +278,7 @@ public class SharedTsBlockQueue {
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
-  public synchronized void abort(Throwable t) {
+  public void abort(Throwable t) {
     if (closed) {
       return;
     }
