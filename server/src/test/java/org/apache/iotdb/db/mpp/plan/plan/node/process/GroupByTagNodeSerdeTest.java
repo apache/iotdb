@@ -60,6 +60,7 @@ public class GroupByTagNodeSerdeTest {
             TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            1,
             Collections.emptyMap(),
             new FunctionExpression(
                 "max_time",
@@ -71,6 +72,7 @@ public class GroupByTagNodeSerdeTest {
             TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
+            1,
             Collections.emptyMap(),
             new FunctionExpression(
                 "avg",

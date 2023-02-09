@@ -612,6 +612,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
@@ -619,6 +620,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    1,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
@@ -627,6 +629,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
@@ -634,6 +637,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
+                    1,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
@@ -642,6 +646,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
@@ -649,6 +654,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    1,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
             null,
@@ -869,6 +875,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
@@ -877,6 +884,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
@@ -885,6 +893,7 @@ public class QueryLogicalPlanUtil {
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
                     Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
             null,

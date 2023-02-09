@@ -98,6 +98,7 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+            2,
             Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
@@ -107,6 +108,7 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+            2,
             Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
@@ -116,6 +118,7 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
+            2,
             Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
@@ -125,6 +128,7 @@ public class AggregationDescriptorTest {
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
+            2,
             Collections.emptyMap(),
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
   }
