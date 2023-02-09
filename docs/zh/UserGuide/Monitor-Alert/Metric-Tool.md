@@ -184,6 +184,39 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | file_count | name="open_file_handlers" | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
 | file_count | name="mods                | AutoGauge | Modification 文件的数目                  |
 
+#### 4.1.9. JVM 内存统计
+
+| Metric                          | Tags                            | Type      | Description          |
+| ------------------------------- | ------------------------------- | --------- | -------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小       |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量       |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
+
+#### 4.1.10. JVM 线程统计
+
+| Metric                     | Tags                                                          | Type      | Description              |
+| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
+| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数               |
+| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数       |
+| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
+
+#### 4.1.11. JVM GC 统计
+
+| Metric                        | Tags                                                  | Type      | Description                            |
+| ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
+| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
+|                               |
+| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | 老年代内存的历史最大值                 |
+| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                     |
+| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
+| jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
+
 ### 4.2. Important 级别监控指标
 
 目前 Important 级别的监控指标如下所述：
@@ -268,53 +301,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
 | process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
-#### 4.2.8. JVM 线程统计
-
-| Metric                     | Tags                                                          | Type      | Description              |
-| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
-| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数               |
-| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数       |
-| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
-| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
-
-#### 4.2.9. JVM GC 统计
-
-| Metric                        | Tags                                                  | Type      | Description                            |
-| ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
-| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
-|                               |
-| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
-|                               |
-| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | 老年代内存的历史最大值                 |
-| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                     |
-| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
-| jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
-
-#### 4.2.10. JVM 内存统计
-
-| Metric                          | Tags                            | Type      | Description          |
-| ------------------------------- | ------------------------------- | --------- | -------------------- |
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小       |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量       |
-| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
-
-#### 4.2.11. JVM 类加载统计
+#### 4.2.8. JVM 类加载统计
 
 | Metric                       | Tags | Type      | Description         |
 | ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-#### 4.2.12. JVM 编译时间统计
+#### 4.2.9. JVM 编译时间统计
 
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-#### 4.2.13. 查询规划耗时统计
+#### 4.2.10. 查询规划耗时统计
 
 | Metric          | Tags                         | Type  | Description                |
 | --------------- | ---------------------------- | ----- | -------------------------- |
@@ -324,14 +324,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
 | query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
 
-#### 4.2.14. 执行计划分发耗时统计
+#### 4.2.11. 执行计划分发耗时统计
 
 | Metric     | Tags                      | Type  | Description          |
 | ---------- | ------------------------- | ----- | -------------------- |
 | dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
 | dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
 
-#### 4.2.15. 查询资源访问统计
+#### 4.2.12. 查询资源访问统计
 
 | Metric         | Tags                     | Type | Description                |
 | -------------- | ------------------------ | ---- | -------------------------- |
@@ -340,7 +340,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
 | query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
 
-#### 4.2.16. 数据传输模块统计
+#### 4.2.13. 数据传输模块统计
 
 | Metric              | Tags                                                                   | Type      | Description                             |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
@@ -354,7 +354,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
 
-#### 4.2.17. 查询任务调度统计
+#### 4.2.14. 查询任务调度统计
 
 | Metric           | Tags                           | Type      | Description        |
 | ---------------- | ------------------------------ | --------- | ------------------ |
@@ -363,7 +363,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
 
-#### 4.2.18. 查询执行耗时统计
+#### 4.2.15. 查询执行耗时统计
 
 | Metric                   | Tags                                                                                | Type    | Description                                    |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
@@ -433,13 +433,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，其中 value 为具体值
 
-| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
-| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
-| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.999"} value                                                                 |
+| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                          |
+| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.999"} value |
 
 #### 5.2.2. 修改配置文件
 
@@ -689,9 +689,9 @@ static_configs:
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999                                                                                                                                                                                                                                                              |
 | Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. 获取监控指标
 

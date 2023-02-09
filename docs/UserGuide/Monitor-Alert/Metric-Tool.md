@@ -186,6 +186,59 @@ carefully evaluated. The current Core-level metrics are as follows:
 | -------------- | ----------------------------------- | ------- | ------------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | The number of log events |
 
+#### 4.1.8. File
+
+| Metric     | Tags                      | Type      | Description                                                                 |
+| ---------- | ------------------------- | --------- | --------------------------------------------------------------------------- |
+| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
+| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                                     |
+| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                                   |
+| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file                   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file                 |
+| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                           |
+| file_size  | name="mods                | AutoGauge | The size of modification files                                              |
+| file_count | name="wal"                | AutoGauge | The count of WAL file                                                       |
+| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                                |
+| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                              |
+| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file                  |
+| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file                |
+| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                           |
+| file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
+| file_count | name="mods                | AutoGauge | The count of modification file                                              |
+
+#### 4.1.9. JVM Memory
+
+| Metric                          | Tags                            | Type      | Description                 |
+| ------------------------------- | ------------------------------- | --------- | --------------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | The used size of buffer     |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | The max size of buffer      |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | The number of buffer        |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | The committed memory of JVM |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | The max memory of JVM       |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | The used memory of JVM      |
+
+#### 4.1.10. JVM Thread
+
+| Metric                     | Tags                                                          | Type      | Description                              |
+| -------------------------- | ------------------------------------------------------------- | --------- | ---------------------------------------- |
+| jvm_threads_live_threads   |                                                               | AutoGauge | The number of live thread                |
+| jvm_threads_daemon_threads |                                                               | AutoGauge | The number of daemon thread              |
+| jvm_threads_peak_threads   |                                                               | AutoGauge | The number of peak thread                |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | The number of thread in different states |
+
+#### 4.1.11. JVM GC
+
+| Metric                        | Tags                                                  | Type      | Description                                                                 |
+| ----------------------------- | ----------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
+| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | The number and time consumed of Young GC/Full Gc caused by different reason |
+|                               |
+| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | The number and time consumed of Young GC/Full Gc caused by different        |
+|                               |
+| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | The historical maximum value of old memory                                  |
+| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | The usage of old memory                                                     |
+| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | The accumulative value of positive memory growth of old memory              |
+| jvm_gc_memory_allocated_bytes |                                                       | Counter   | The accumulative value of positive memory growth of allocated memory        |
+
 
 ### 4.2. Important level metrics
 
@@ -270,53 +323,20 @@ carefully evaluated. The current Core-level metrics are as follows:
 | process_threads_count | name="process" | AutoGauge | The number of thread of IoTDB process       |
 | process_status        | name="process" | AutoGauge | The status of IoTDB process, 1=live, 0=dead |
 
-#### 4.2.8. JVM Thread
-
-| Metric                     | Tags                                                          | Type      | Description                              |
-| -------------------------- | ------------------------------------------------------------- | --------- | ---------------------------------------- |
-| jvm_threads_live_threads   |                                                               | AutoGauge | The number of live thread                |
-| jvm_threads_daemon_threads |                                                               | AutoGauge | The number of daemon thread              |
-| jvm_threads_peak_threads   |                                                               | AutoGauge | The number of peak thread                |
-| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | The number of thread in different states |
-
-#### 4.2.9. JVM GC
-
-| Metric                        | Tags                                                  | Type      | Description                                                                 |
-| ----------------------------- | ----------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
-| jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | The number and time consumed of Young GC/Full Gc caused by different reason |
-|                               |
-| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | The number and time consumed of Young GC/Full Gc caused by different        |
-|                               |
-| jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | The historical maximum value of old memory                                  |
-| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | The usage of old memory                                                     |
-| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | The accumulative value of positive memory growth of old memory              |
-| jvm_gc_memory_allocated_bytes |                                                       | Counter   | The accumulative value of positive memory growth of allocated memory        |
-
-#### 4.2.10. JVM Memory
-
-| Metric                          | Tags                            | Type      | Description                 |
-| ------------------------------- | ------------------------------- | --------- | --------------------------- |
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | The used size of buffer     |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | The max size of buffer      |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | The number of buffer        |
-| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | The committed memory of JVM |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | The max memory of JVM       |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | The used memory of JVM      |
-
-#### 4.2.11. JVM Class
+#### 4.2.8. JVM Class
 
 | Metric                       | Tags | Type      | Description                  |
 | ---------------------------- | ---- | --------- | ---------------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | The number of unloaded class |
 | jvm_classes_loaded_classes   |      | AutoGauge | The number of loaded class   |
 
-#### 4.2.12. JVM Compilation
+#### 4.2.9. JVM Compilation
 
 | Metric                  | Tags                                          | Type      | Description                      |
 | ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
 
-#### 4.2.13. Query Planning
+#### 4.2.10. Query Planning
 
 | Metric          | Tags                         | Type  | Description                                         |
 | --------------- | ---------------------------- | ----- | --------------------------------------------------- |
@@ -326,14 +346,14 @@ carefully evaluated. The current Core-level metrics are as follows:
 | query_plan_cost | stage="partition_fetcher"    | Timer | The partition information fetching time-consuming   |
 | query_plan_cost | stage="schema_fetcher"       | Timer | The schema information fetching time-consuming      |
 
-#### 4.2.14. Plan Dispatcher
+#### 4.2.11. Plan Dispatcher
 
 | Metric     | Tags                      | Type  | Description                                                  |
 | ---------- | ------------------------- | ----- | ------------------------------------------------------------ |
 | dispatcher | stage="wait_for_dispatch" | Timer | The distribution plan dispatcher time-consuming              |
 | dispatcher | stage="dispatch_read"     | Timer | The distribution plan dispatcher time-consuming (only query) |
 
-#### 4.2.15. Query Resource
+#### 4.2.12. Query Resource
 
 | Metric         | Tags                     | Type | Description                                |
 | -------------- | ------------------------ | ---- | ------------------------------------------ |
@@ -342,7 +362,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | query_resource | type="flushing_memtable" | Rate | The access frequency of flushing memtables |
 | query_resource | type="working_memtable"  | Rate | The access frequency of working memtables  |
 
-#### 4.2.16. Data Exchange
+#### 4.2.13. Data Exchange
 
 | Metric              | Tags                                                                   | Type      | Description                                                     |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
@@ -356,7 +376,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
 
-#### 4.2.17. Query Task Schedule
+#### 4.2.14. Query Task Schedule
 
 | Metric           | Tags                           | Type      | Description                                      |
 | ---------------- | ------------------------------ | --------- | ------------------------------------------------ |
@@ -365,7 +385,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
 
-#### 4.2.18. Query Execution
+#### 4.2.15. Query Execution
 
 | Metric                   | Tags                                                                                | Type    | Description                                                                             |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------- |
@@ -440,13 +460,13 @@ the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, where value is a
 > specific value
 
-| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
-| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
-| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.999"} value                                                                 |
+| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                          |
+| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.999"} value |
 
 #### 5.2.2. Config File
 
@@ -744,9 +764,9 @@ data source for Apache IoTDB Dashboard.
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999                                                                                                                                                                                                                                                              |
 | Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. Obtain metrics
 
