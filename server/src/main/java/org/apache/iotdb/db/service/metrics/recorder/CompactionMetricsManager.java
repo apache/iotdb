@@ -24,16 +24,13 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
-import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CompactionMetrics implements IMetricSet {
-  private static final CompactionMetrics INSTANCE = new CompactionMetrics();
+public class CompactionMetricsManager {
+  private static final CompactionMetricsManager INSTANCE = new CompactionMetricsManager();
   private final AtomicInteger waitingSeqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger waitingCrossCompactionTaskNum = new AtomicInteger(0);
@@ -44,158 +41,10 @@ public class CompactionMetrics implements IMetricSet {
   private final AtomicInteger finishUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishCrossCompactionTaskNum = new AtomicInteger(0);
 
-  private CompactionMetrics() {}
+  private CompactionMetricsManager() {}
 
-  public static CompactionMetrics getInstance() {
+  public static CompactionMetricsManager getInstance() {
     return INSTANCE;
-  }
-
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    bindTaskInfo(metricService);
-  }
-
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    unbindTaskInfo(metricService);
-  }
-
-  private void bindTaskInfo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getWaitingCrossCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getWaitingSeqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getWaitingUnseqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getRunningCrossCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getRunningSeqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.createAutoGauge(
-        Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getRunningUnseqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.createAutoGauge(
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getFinishSeqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "inner_seq");
-    metricService.createAutoGauge(
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getFinishUnseqInnerCompactionTaskNum,
-        Tag.NAME.toString(),
-        "inner_unseq");
-    metricService.createAutoGauge(
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        this,
-        CompactionMetrics::getFinishCrossCompactionTaskNum,
-        Tag.NAME.toString(),
-        "cross");
-  }
-
-  private void unbindTaskInfo(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "inner_seq");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "inner_unseq");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "cross");
   }
 
   public void recordWriteInfo(

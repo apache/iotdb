@@ -31,7 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -96,7 +96,7 @@ public class CompactionTaskManager implements IService {
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
           x ->
-              CompactionMetrics.getInstance()
+              CompactionMetricsManager.getInstance()
                   .reportPollTaskFromWaitingQueue(x.isCrossTask(), x.isInnerSeqTask()));
       init = true;
     }
@@ -224,7 +224,7 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
-      CompactionMetrics.getInstance()
+      CompactionMetricsManager.getInstance()
           .reportAddTaskToWaitingQueue(
               compactionTask.isCrossTask(), compactionTask.isInnerSeqTask());
 
