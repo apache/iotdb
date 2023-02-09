@@ -2120,11 +2120,21 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
-  private void executeCompaction() {
+  protected void executeCompaction() {
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      timePartitions.sort(
+          (o1, o2) -> {
+            long diff = o1 - o2;
+            if (diff > 0) {
+              return 1;
+            } else if (diff < 0) {
+              return -1;
+            } else {
+              return 0;
+            }
+          });
       for (long timePartition : timePartitions) {
         CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
