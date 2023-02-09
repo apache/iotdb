@@ -42,6 +42,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTagIT extends AbstractSchemaIT {
 
   public IoTDBTagIT(SchemaTestMode schemaTestMode) {
@@ -51,6 +52,9 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   @Before
   public void setUp() throws Exception {
     super.setUp();
+    if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
+      allocateMemoryForSchemaRegion(5500);
+    }
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -61,7 +65,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createOneTimeseriesTest() {
     List<String> ret =
         Collections.singletonList(
@@ -108,7 +111,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createMultiTimeseriesTest() {
     List<String> ret =
         Arrays.asList(
@@ -163,7 +165,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void showTimeseriesTest() {
     List<String> ret =
         Arrays.asList(
@@ -217,7 +218,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createDuplicateAliasTimeseriesTest1() {
     String sql1 =
         "create timeseries root.turbine.d3.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
@@ -245,7 +245,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createDuplicateAliasTimeseriesTest2() {
     String sql1 =
         "create timeseries root.turbine.d4.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
@@ -271,7 +270,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createDuplicateAliasTimeseriesTest3() {
     String sql1 =
         "create timeseries root.turbine.d5.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
@@ -298,7 +296,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithAliasTest() {
     List<String> ret =
         Collections.singletonList(
@@ -343,7 +340,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithLimitTest() {
     List<String> ret =
         Arrays.asList(
@@ -398,7 +394,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void deleteTest() {
     List<String> ret1 =
         Arrays.asList(
@@ -482,7 +477,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void deleteWithAliasTest() {
     List<String> ret1 =
         Arrays.asList(
@@ -566,7 +560,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithWhereTest1() {
     List<String> ret1 =
         Arrays.asList(
@@ -690,7 +683,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithWhereTest2() {
     Set<String> ret = new HashSet<>();
     ret.add(
@@ -811,7 +803,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void queryWithWhereAndDeleteTest() {
     Set<String> ret = new HashSet<>();
     ret.add(
@@ -894,7 +885,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithWhereContainsTest() {
     Set<String> ret = new HashSet<>();
     ret.add(
@@ -1014,7 +1004,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void queryWithWhereOnNoneTagTest() {
     String[] sqls = {
       "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
@@ -1061,7 +1050,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void sameNameTest() {
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
@@ -1077,7 +1065,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void deleteStorageGroupTest() {
     List<String> ret =
         Collections.singletonList(
@@ -1127,7 +1114,6 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertWithAliasTest() {
     List<String> ret = Collections.singletonList("1,36.5,36.5");
     String[] sqls = {
