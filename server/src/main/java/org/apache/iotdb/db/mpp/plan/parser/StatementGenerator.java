@@ -440,7 +440,7 @@ public class StatementGenerator {
     return insertStatement;
   }
 
-  public static SetStorageGroupStatement createStatement(String storageGroup)
+  public static DatabaseSchemaStatement createStatement(String storageGroup)
       throws IllegalPathException {
     long startTime = System.nanoTime();
     // construct create database statement
