@@ -98,6 +98,7 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.degreeOfParallelism = parentContext.degreeOfParallelism;
     this.exchangeSumNum = parentContext.exchangeSumNum;
     this.exchangeOperatorList = parentContext.exchangeOperatorList;
     this.cachedDataTypes = parentContext.cachedDataTypes;
@@ -137,6 +138,10 @@ public class LocalExecutionPlanContext {
 
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
+  }
+
+  public int getPipelineNumber() {
+    return nextPipelineId.get();
   }
 
   public DriverContext getDriverContext() {

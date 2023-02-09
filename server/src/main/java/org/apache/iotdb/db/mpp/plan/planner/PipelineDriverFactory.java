@@ -31,6 +31,7 @@ public class PipelineDriverFactory {
   private final DriverContext driverContext;
   // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
+  private int dependencyPipelineIndex = -1;
 
   public PipelineDriverFactory(Operator operation, DriverContext driverContext) {
     this.operation = requireNonNull(operation, "rootOperator is null");
@@ -44,7 +45,11 @@ public class PipelineDriverFactory {
   public Driver createDriver() {
     requireNonNull(driverContext, "driverContext is null");
     try {
-      return new DataDriver(operation, driverContext);
+      Driver driver = new DataDriver(operation, driverContext);
+      if (dependencyPipelineIndex != -1) {
+        driver.getDriverContext().setDependencyDriverIndex(dependencyPipelineIndex);
+      }
+      return driver;
     } catch (Throwable failure) {
       try {
         operation.close();
@@ -55,5 +60,9 @@ public class PipelineDriverFactory {
       }
       throw failure;
     }
+  }
+
+  public void setDependencyPipeline(int dependencyPipelineIndex) {
+    this.dependencyPipelineIndex = dependencyPipelineIndex;
   }
 }
