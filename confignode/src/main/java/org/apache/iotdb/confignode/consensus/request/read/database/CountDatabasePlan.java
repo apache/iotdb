@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.read.database;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -75,8 +76,12 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CountDatabasePlan that = (CountDatabasePlan) o;
     return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }

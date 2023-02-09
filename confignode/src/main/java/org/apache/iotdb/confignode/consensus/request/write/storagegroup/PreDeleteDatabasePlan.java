@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
   private String storageGroup;
@@ -53,10 +54,6 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
     return preDeleteType;
   }
 
-  public void setPreDeleteType(PreDeleteType preDeleteType) {
-    this.preDeleteType = preDeleteType;
-  }
-
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
@@ -68,6 +65,26 @@ public class PreDeleteDatabasePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.storageGroup = BasicStructureSerDeUtil.readString(buffer);
     this.preDeleteType = buffer.get() == (byte) 1 ? PreDeleteType.ROLLBACK : PreDeleteType.EXECUTE;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    PreDeleteDatabasePlan that = (PreDeleteDatabasePlan) o;
+    return storageGroup.equals(that.storageGroup) && preDeleteType == that.preDeleteType;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), storageGroup, preDeleteType);
   }
 
   public enum PreDeleteType {

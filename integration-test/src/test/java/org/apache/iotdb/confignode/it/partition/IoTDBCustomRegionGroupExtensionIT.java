@@ -130,12 +130,12 @@ public class IoTDBCustomRegionGroupExtensionIT {
             .getRegionInfoList()
             .forEach(
                 regionInfo -> {
-                  if (regionInfo.getStorageGroup().equals(curSg)
+                  if (regionInfo.getDatabase().equals(curSg)
                       && TConsensusGroupType.DataRegion.equals(
                           regionInfo.getConsensusGroupId().getType())) {
                     dataRegionCount.getAndIncrement();
                   }
-                  if (regionInfo.getStorageGroup().equals(curSg)
+                  if (regionInfo.getDatabase().equals(curSg)
                       && TConsensusGroupType.SchemaRegion.equals(
                           regionInfo.getConsensusGroupId().getType())) {
                     schemaRegionCount.getAndIncrement();

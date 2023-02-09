@@ -96,7 +96,7 @@ public class IoTDBDatabaseRegionControlIT {
       // Check RegionGroupNum, which should be equal to the default value
       TShowRegionResp resp =
           configNodeClient.showRegion(
-              new TShowRegionReq().setStorageGroups(Collections.singletonList(database)));
+              new TShowRegionReq().setDatabases(Collections.singletonList(database)));
       AtomicInteger schemaRegionGroupNum = new AtomicInteger(0);
       AtomicInteger dataRegionGroupNum = new AtomicInteger(0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -140,7 +140,7 @@ public class IoTDBDatabaseRegionControlIT {
       // Check RegionGroupNum, which should be equal to the specified value
       TShowRegionResp resp =
           configNodeClient.showRegion(
-              new TShowRegionReq().setStorageGroups(Collections.singletonList(database)));
+              new TShowRegionReq().setDatabases(Collections.singletonList(database)));
       AtomicInteger schemaRegionGroupNum = new AtomicInteger(0);
       AtomicInteger dataRegionGroupNum = new AtomicInteger(0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -179,7 +179,7 @@ public class IoTDBDatabaseRegionControlIT {
       // Check RegionGroupNum, which should be equal to the default value
       TShowRegionResp resp =
           configNodeClient.showRegion(
-              new TShowRegionReq().setStorageGroups(Collections.singletonList(database)));
+              new TShowRegionReq().setDatabases(Collections.singletonList(database)));
       AtomicInteger schemaRegionGroupNum = new AtomicInteger(0);
       AtomicInteger dataRegionGroupNum = new AtomicInteger(0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -212,7 +212,7 @@ public class IoTDBDatabaseRegionControlIT {
       // Check RegionGroupNum, which should be equal to the specified value
       resp =
           configNodeClient.showRegion(
-              new TShowRegionReq().setStorageGroups(Collections.singletonList(database)));
+              new TShowRegionReq().setDatabases(Collections.singletonList(database)));
       schemaRegionGroupNum.set(0);
       dataRegionGroupNum.set(0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());

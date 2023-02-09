@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -57,8 +58,12 @@ public class DeleteDatabasePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DeleteDatabasePlan that = (DeleteDatabasePlan) o;
     return name.equals(that.name);
   }

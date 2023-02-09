@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.response.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -27,7 +28,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Map;
 
 public class DataNodeToStatusResp implements DataSet {
-  // TODO the class is  useful?
   private TSStatus status;
 
   private Map<TDataNodeLocation, TSStatus> dataNodeLocationToStatus;
