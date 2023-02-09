@@ -1190,7 +1190,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(process_cpu_time{instance=\"$instance\",name=\"process\"}[1m]))*60)",
+          "expr": "sum(rate(process_cpu_time{instance=\"$instance\",name=\"process\"}[1m]))*60",
           "hide": false,
           "legendFormat": "Process CPU Time",
           "range": true,
