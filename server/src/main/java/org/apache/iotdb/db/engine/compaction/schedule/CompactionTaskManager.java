@@ -31,8 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionTaskStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetrics;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -97,8 +96,8 @@ public class CompactionTaskManager implements IService {
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(
           x ->
-              CompactionMetricsRecorder.recordTaskInfo(
-                  x, CompactionTaskStatus.POLL_FROM_QUEUE, candidateCompactionTaskQueue.size()));
+              CompactionMetrics.getInstance()
+                  .reportPollTaskFromWaitingQueue(x.isCrossTask(), x.isInnerSeqTask()));
       init = true;
     }
     logger.info("Compaction task manager started.");
@@ -225,8 +224,9 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
-      CompactionMetricsRecorder.recordTaskInfo(
-          compactionTask, CompactionTaskStatus.ADD_TO_QUEUE, candidateCompactionTaskQueue.size());
+      CompactionMetrics.getInstance()
+          .reportAddTaskToWaitingQueue(
+              compactionTask.isCrossTask(), compactionTask.isInnerSeqTask());
 
       return true;
     }
@@ -272,9 +272,6 @@ public class CompactionTaskManager implements IService {
     if (storageGroupTasks.containsKey(regionWithSG)) {
       storageGroupTasks.get(regionWithSG).remove(task);
     }
-    // add metrics
-    CompactionMetricsRecorder.recordTaskInfo(
-        task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
     finishedTaskNum.incrementAndGet();
   }
 
