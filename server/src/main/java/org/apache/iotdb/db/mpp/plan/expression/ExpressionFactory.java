@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Arrays;
@@ -73,14 +73,14 @@ public class ExpressionFactory {
 
   public static FunctionExpression count(Expression inputExpression) {
     return new FunctionExpression(
-        TAggregationType.COUNT.toString(),
+        AggregationType.COUNT.toString(),
         new LinkedHashMap<>(),
         Collections.singletonList(inputExpression));
   }
 
   public static FunctionExpression sum(Expression inputExpression) {
     return new FunctionExpression(
-        TAggregationType.SUM.toString(),
+        AggregationType.SUM.toString(),
         new LinkedHashMap<>(),
         Collections.singletonList(inputExpression));
   }
