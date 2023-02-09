@@ -31,10 +31,8 @@ import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeReleaseTaskManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
@@ -59,19 +57,12 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
-  private final ICacheManager cacheManager = new LRUCacheManager();
+  private final ICacheManager cacheManager =
+      CacheMemoryManager.getInstance().createLRUCacheManager(this);
 
   private ISchemaFile file;
 
   private IMNode root;
-
-  private final MTreeFlushTaskManager flushTaskManager = MTreeFlushTaskManager.getInstance();
-  private int flushCount = 0;
-  private volatile boolean hasFlushTask;
-
-  private final MTreeReleaseTaskManager releaseTaskManager = MTreeReleaseTaskManager.getInstance();
-  private volatile boolean hasReleaseTask;
-  private int releaseCount = 0;
 
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
@@ -80,9 +71,7 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
-
-    hasFlushTask = false;
-    hasReleaseTask = false;
+    ensureMemoryStatus();
   }
 
   @Override
@@ -311,7 +300,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) throws MetadataException {
+  public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
@@ -321,7 +310,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNode setToInternal(IEntityMNode entityMNode) throws MetadataException {
+  public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
@@ -445,9 +434,6 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
       file = null;
-
-      hasFlushTask = false;
-      hasReleaseTask = false;
     } finally {
       lock.unlockWrite();
     }
@@ -455,8 +441,14 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    flushVolatileNodes();
-    return file.createSnapshot(snapshotDir);
+    lock.writeLock();
+    try {
+      flushVolatileNodes();
+      ensureMemoryStatus();
+      return file.createSnapshot(snapshotDir);
+    } finally {
+      lock.unlockWrite();
+    }
   }
 
   public static CachedMTreeStore loadFromSnapshot(
@@ -470,49 +462,22 @@ public class CachedMTreeStore implements IMTreeStore {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
-
-    hasFlushTask = false;
-    hasReleaseTask = false;
+    ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
-    if (memManager.isExceedFlushThreshold() && !hasReleaseTask) {
-      registerReleaseTask();
-    }
+    CacheMemoryManager.getInstance().ensureMemoryStatus();
   }
 
-  private synchronized void registerReleaseTask() {
-    if (hasReleaseTask) {
-      return;
-    }
-    hasReleaseTask = true;
-    releaseTaskManager.submit(this::tryExecuteMemoryRelease);
-  }
-
-  /**
-   * Execute cache eviction until the memory status is under safe mode or no node could be evicted.
-   * If the memory status is still full, which means the nodes in memory are all volatile nodes, new
-   * added or updated, fire flush task.
-   */
-  private void tryExecuteMemoryRelease() {
-    lock.threadReadLock();
-    try {
-      executeMemoryRelease();
-      releaseCount++;
-      hasReleaseTask = false;
-    } finally {
-      lock.threadReadUnlock();
-    }
-    if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
-      registerFlushTask();
-    }
+  public StampedWriterPreferredLock getLock() {
+    return lock;
   }
 
   /**
    * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
    * no node could be evicted. Update the memory status after evicting each node.
    */
-  private void executeMemoryRelease() {
+  public void executeMemoryRelease() {
     while (memManager.isExceedReleaseThreshold() && !memManager.isEmpty()) {
       if (!cacheManager.evict()) {
         break;
@@ -520,17 +485,8 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  private synchronized void registerFlushTask() {
-    if (hasFlushTask) {
-      return;
-    }
-    hasFlushTask = true;
-    flushTaskManager.submit(this::flushVolatileNodes);
-  }
-
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
-  private void flushVolatileNodes() {
-    lock.writeLock();
+  public void flushVolatileNodes() {
     try {
       IStorageGroupMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
@@ -557,15 +513,10 @@ public class CachedMTreeStore implements IMTreeStore {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
-      executeMemoryRelease();
-      hasFlushTask = false;
-      flushCount++;
     } catch (Throwable e) {
       logger.error(
           "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);
       e.printStackTrace();
-    } finally {
-      lock.unlockWrite();
     }
   }
 

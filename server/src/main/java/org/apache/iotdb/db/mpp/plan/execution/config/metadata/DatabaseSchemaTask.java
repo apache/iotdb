@@ -23,51 +23,57 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class SetStorageGroupTask implements IConfigTask {
+public class DatabaseSchemaTask implements IConfigTask {
 
-  private final SetStorageGroupStatement setStorageGroupStatement;
+  private final DatabaseSchemaStatement databaseSchemaStatement;
 
-  public SetStorageGroupTask(SetStorageGroupStatement setStorageGroupStatement) {
-    this.setStorageGroupStatement = setStorageGroupStatement;
+  public DatabaseSchemaTask(DatabaseSchemaStatement databaseSchemaStatement) {
+    this.databaseSchemaStatement = databaseSchemaStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.setStorageGroup(setStorageGroupStatement);
+    switch (databaseSchemaStatement.getSubType()) {
+      case CREATE:
+        return configTaskExecutor.setDatabase(databaseSchemaStatement);
+      case ALTER:
+      default:
+        return configTaskExecutor.alterDatabase(databaseSchemaStatement);
+    }
   }
 
-  /** construct create database schema according to statement */
+  /** Construct DatabaseSchema according to statement */
   public static TStorageGroupSchema constructStorageGroupSchema(
-      SetStorageGroupStatement setStorageGroupStatement) {
+      DatabaseSchemaStatement databaseSchemaStatement) {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
-    if (setStorageGroupStatement.getTTL() != null) {
-      storageGroupSchema.setTTL(setStorageGroupStatement.getTTL());
+    storageGroupSchema.setName(databaseSchemaStatement.getStorageGroupPath().getFullPath());
+    if (databaseSchemaStatement.getTTL() != null) {
+      storageGroupSchema.setTTL(databaseSchemaStatement.getTTL());
     }
-    if (setStorageGroupStatement.getSchemaReplicationFactor() != null) {
+    if (databaseSchemaStatement.getSchemaReplicationFactor() != null) {
       storageGroupSchema.setSchemaReplicationFactor(
-          setStorageGroupStatement.getSchemaReplicationFactor());
+          databaseSchemaStatement.getSchemaReplicationFactor());
     }
-    if (setStorageGroupStatement.getDataReplicationFactor() != null) {
+    if (databaseSchemaStatement.getDataReplicationFactor() != null) {
       storageGroupSchema.setDataReplicationFactor(
-          setStorageGroupStatement.getDataReplicationFactor());
+          databaseSchemaStatement.getDataReplicationFactor());
     }
-    if (setStorageGroupStatement.getTimePartitionInterval() != null) {
+    if (databaseSchemaStatement.getTimePartitionInterval() != null) {
       storageGroupSchema.setTimePartitionInterval(
-          setStorageGroupStatement.getTimePartitionInterval());
+          databaseSchemaStatement.getTimePartitionInterval());
     }
-    if (setStorageGroupStatement.getSchemaRegionGroupNum() != null) {
+    if (databaseSchemaStatement.getSchemaRegionGroupNum() != null) {
       storageGroupSchema.setMinSchemaRegionGroupNum(
-          setStorageGroupStatement.getSchemaRegionGroupNum());
+          databaseSchemaStatement.getSchemaRegionGroupNum());
     }
-    if (setStorageGroupStatement.getDataRegionGroupNum() != null) {
-      storageGroupSchema.setMinDataRegionGroupNum(setStorageGroupStatement.getDataRegionGroupNum());
+    if (databaseSchemaStatement.getDataRegionGroupNum() != null) {
+      storageGroupSchema.setMinDataRegionGroupNum(databaseSchemaStatement.getDataRegionGroupNum());
     }
     return storageGroupSchema;
   }

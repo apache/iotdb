@@ -36,15 +36,15 @@ import java.util.stream.Collectors;
  * same time column or no time column at all, and we can merge the value column directly without
  * compare.
  */
-public class VerticallyConcatNode extends MultiChildProcessNode {
+public class HorizontallyConcatNode extends MultiChildProcessNode {
 
-  public VerticallyConcatNode(PlanNodeId id) {
+  public HorizontallyConcatNode(PlanNodeId id) {
     super(id, new ArrayList<>());
   }
 
   @Override
   public PlanNode clone() {
-    return new VerticallyConcatNode(getPlanNodeId());
+    return new HorizontallyConcatNode(getPlanNodeId());
   }
 
   @Override
@@ -58,7 +58,7 @@ public class VerticallyConcatNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitVerticallyConcat(this, context);
+    return visitor.visitHorizontallyConcat(this, context);
   }
 
   @Override
@@ -71,9 +71,9 @@ public class VerticallyConcatNode extends MultiChildProcessNode {
     PlanNodeType.VERTICALLY_CONCAT.serialize(stream);
   }
 
-  public static VerticallyConcatNode deserialize(ByteBuffer byteBuffer) {
+  public static HorizontallyConcatNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new VerticallyConcatNode(planNodeId);
+    return new HorizontallyConcatNode(planNodeId);
   }
 
   @Override
@@ -92,7 +92,7 @@ public class VerticallyConcatNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    VerticallyConcatNode that = (VerticallyConcatNode) o;
+    HorizontallyConcatNode that = (HorizontallyConcatNode) o;
     return children.equals(that.children);
   }
 

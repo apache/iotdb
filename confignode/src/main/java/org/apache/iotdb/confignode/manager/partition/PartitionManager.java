@@ -315,7 +315,16 @@ public class PartitionManager {
       }
     }
 
-    return (DataPartitionResp) getDataPartition(req);
+    resp = (DataPartitionResp) getDataPartition(req);
+    if (!resp.isAllPartitionsExist()) {
+      LOGGER.error(
+          "Lacked some data partition allocation result in the response of getOrCreateDataPartition method");
+      resp.setStatus(
+          new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some data partition allocation result in the response"));
+      return resp;
+    }
+    return resp;
   }
 
   // ======================================================
@@ -418,12 +427,12 @@ public class PartitionManager {
       float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
-      // 1. The number of current RegionGroup of the StorageGroup is less than the least number
+      // 1. The number of current RegionGroup of the StorageGroup is less than the minimum number
       int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
       if (allocatedRegionGroupCount < minRegionGroupNum) {
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
-        // no less than the leastRegionGroupNum
+        // no less than the minRegionGroupNum
         int delta =
             (int)
                 Math.min(

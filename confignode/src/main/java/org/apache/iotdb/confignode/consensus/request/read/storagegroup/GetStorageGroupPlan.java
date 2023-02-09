@@ -25,10 +25,10 @@ import java.util.List;
 public class GetStorageGroupPlan extends CountStorageGroupPlan {
 
   public GetStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.GetStorageGroup);
+    super(ConfigPhysicalPlanType.GetDatabase);
   }
 
   public GetStorageGroupPlan(List<String> storageGroupPathPattern) {
-    super(ConfigPhysicalPlanType.GetStorageGroup, storageGroupPathPattern);
+    super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern);
   }
 }

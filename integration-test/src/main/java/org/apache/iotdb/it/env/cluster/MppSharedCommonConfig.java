@@ -336,4 +336,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     dnConfig.setSeriesSlotNum(seriesSlotNum);
     return this;
   }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    dnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    return this;
+  }
 }
