@@ -83,6 +83,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -113,6 +114,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 
 public class LogicalPlanBuilder {
 
@@ -142,7 +144,8 @@ public class LogicalPlanBuilder {
     }
     expressions.forEach(
         expression -> {
-          if (!expression.getExpressionString().equals(DEVICE)) {
+          if (!expression.getExpressionString().equals(DEVICE)
+              && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
@@ -616,7 +619,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planAggregation(
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       GroupByTimeParameter groupByTimeParameter,
+      GroupByParameter groupByParameter,
+      boolean outputEndTime,
       AggregationStep curStep,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
@@ -632,12 +638,18 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
+    if (outputEndTime) {
+      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
             groupByTimeParameter,
+            groupByParameter,
+            groupByExpression,
+            outputEndTime,
             scanOrder);
     return this;
   }

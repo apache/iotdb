@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -90,6 +91,8 @@ public class Analysis {
 
   private Expression whereExpression;
 
+  private Expression groupByExpression;
+
   // all aggregations that need to be calculated
   private Set<Expression> aggregationExpressions;
 
@@ -131,6 +134,9 @@ public class Analysis {
   // expression of output column to be calculated
   private Map<String, Set<Expression>> deviceToSelectExpressions;
 
+  // expression of group by that need to be calculated
+  private Map<String, Expression> deviceToGroupByExpression;
+
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
@@ -161,6 +167,9 @@ public class Analysis {
 
   // parameter of `GROUP BY TIME` clause
   private GroupByTimeParameter groupByTimeParameter;
+
+  // parameter of `GROUP BY VARIATION` clause
+  private GroupByParameter groupByParameter;
 
   private OrderByParameter mergeOrderParameter;
 
@@ -339,6 +348,18 @@ public class Analysis {
     this.groupByTimeParameter = groupByTimeParameter;
   }
 
+  public void setGroupByParameter(GroupByParameter groupByParameter) {
+    this.groupByParameter = groupByParameter;
+  }
+
+  public GroupByParameter getGroupByParameter() {
+    return groupByParameter;
+  }
+
+  public boolean hasGroupByParameter() {
+    return groupByParameter != null;
+  }
+
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
   }
@@ -431,6 +452,22 @@ public class Analysis {
 
   public void setDeviceToSelectExpressions(Map<String, Set<Expression>> deviceToSelectExpressions) {
     this.deviceToSelectExpressions = deviceToSelectExpressions;
+  }
+
+  public Expression getGroupByExpression() {
+    return groupByExpression;
+  }
+
+  public void setGroupByExpression(Expression groupByExpression) {
+    this.groupByExpression = groupByExpression;
+  }
+
+  public Map<String, Expression> getDeviceToGroupByExpression() {
+    return deviceToGroupByExpression;
+  }
+
+  public void setDeviceToGroupByExpression(Map<String, Expression> deviceToGroupByExpression) {
+    this.deviceToGroupByExpression = deviceToGroupByExpression;
   }
 
   public Set<TSchemaNode> getMatchedNodes() {

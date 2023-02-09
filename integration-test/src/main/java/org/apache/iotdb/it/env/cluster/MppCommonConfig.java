@@ -328,4 +328,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
     return this;
   }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
+    return this;
+  }
 }

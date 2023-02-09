@@ -444,9 +444,7 @@ public class RegionWriteExecutor {
             metadataException = failingMeasurement.getValue();
             if (metadataException.getErrorCode()
                 == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-              LOGGER.info(
-                  "There's no need to internal create timeseries. {}",
-                  failingMeasurement.getValue().getMessage());
+              // There's no need to internal create timeseries.
               alreadyExistingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(),
@@ -454,7 +452,7 @@ public class RegionWriteExecutor {
                           ((MeasurementAlreadyExistException) metadataException)
                               .getMeasurementPath())));
             } else {
-              LOGGER.error("Metadata error: ", metadataException);
+              LOGGER.warn("Metadata error: ", metadataException);
               failingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));
@@ -496,15 +494,16 @@ public class RegionWriteExecutor {
             }
           }
 
+          RegionExecutionResult result = new RegionExecutionResult();
           TSStatus status;
           if (failingStatus.isEmpty()) {
             status = RpcUtils.getStatus(alreadyExistingStatus);
+            result.setAccepted(true);
           } else {
             status = RpcUtils.getStatus(failingStatus);
+            result.setAccepted(false);
           }
 
-          RegionExecutionResult result = new RegionExecutionResult();
-          result.setAccepted(false);
           result.setMessage(status.getMessage());
           result.setStatus(status);
           return result;
@@ -544,9 +543,7 @@ public class RegionWriteExecutor {
               metadataException = failingMeasurement.getValue();
               if (metadataException.getErrorCode()
                   == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                LOGGER.info(
-                    "There's no need to internal create timeseries. {}",
-                    failingMeasurement.getValue().getMessage());
+                // There's no need to internal create timeseries.
                 alreadyExistingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(),
@@ -554,7 +551,7 @@ public class RegionWriteExecutor {
                             ((MeasurementAlreadyExistException) metadataException)
                                 .getMeasurementPath())));
               } else {
-                LOGGER.error("Metadata error: ", metadataException);
+                LOGGER.warn("Metadata error: ", metadataException);
                 failingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(), metadataException.getMessage()));
@@ -597,15 +594,16 @@ public class RegionWriteExecutor {
             }
           }
 
+          RegionExecutionResult result = new RegionExecutionResult();
           TSStatus status;
           if (failingStatus.isEmpty()) {
             status = RpcUtils.getStatus(alreadyExistingStatus);
+            result.setAccepted(true);
           } else {
             status = RpcUtils.getStatus(failingStatus);
+            result.setAccepted(false);
           }
 
-          RegionExecutionResult result = new RegionExecutionResult();
-          result.setAccepted(false);
           result.setMessage(status.getMessage());
           result.setStatus(status);
           return result;

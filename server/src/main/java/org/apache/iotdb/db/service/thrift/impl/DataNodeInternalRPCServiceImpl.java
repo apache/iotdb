@@ -1076,6 +1076,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+        LOGGER.warn(
+            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            freeDiskRatio,
+            commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       }

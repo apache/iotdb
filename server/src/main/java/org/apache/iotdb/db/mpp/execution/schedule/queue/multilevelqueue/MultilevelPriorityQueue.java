@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 
-import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 
 import java.util.PriorityQueue;
@@ -34,7 +34,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * This class is inspired by Trino <a
  * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/executor/MultilevelSplitQueue.java">...</a>
  */
-public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
+public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverTask> {
   /** Scheduled time threshold of TASK in each level */
   static final int[] LEVEL_THRESHOLD_SECONDS = {0, 1, 10, 60, 300};
 

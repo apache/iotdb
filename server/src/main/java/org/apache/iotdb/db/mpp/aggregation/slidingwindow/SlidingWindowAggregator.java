@@ -54,7 +54,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   }
 
   @Override
-  public int processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock, boolean ignoringNull) {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");

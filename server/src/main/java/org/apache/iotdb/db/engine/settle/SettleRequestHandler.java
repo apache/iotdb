@@ -174,11 +174,11 @@ public class SettleRequestHandler {
 
       if (hasSeqFiles) {
         allTsFileResourceList =
-            tsFileManager.getSequenceListByTimePartition(
+            tsFileManager.getOrCreateSequenceListByTimePartition(
                 targetConsistentSettleInfo.timePartitionId);
       } else {
         allTsFileResourceList =
-            tsFileManager.getUnsequenceListByTimePartition(
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(
                 targetConsistentSettleInfo.timePartitionId);
       }
 

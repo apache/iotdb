@@ -221,50 +221,6 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-After measurement template created, you can edit the template with belowed APIs.
-
-**Attention: **
-
-**1. templates had been set could not be pruned**
-
-**2. templates will be activated until data points insert into correspoding measurements**
-
-**3. templates will not be shown by showtimeseries before activating**
-
-```java
-// Add aligned measurements to a template
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// Add one aligned measurement to a template
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// Add unaligned measurements to a template
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// Add one unaligned measurement to a template
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// Delete a node in template
-public void deleteNodeInTemplate(String templateName, String path);
-```
-
 You can query measurement inside templates with these APIS:
 
 ```java
