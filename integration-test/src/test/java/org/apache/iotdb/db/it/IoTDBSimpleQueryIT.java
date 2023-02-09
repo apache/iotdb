@@ -112,7 +112,7 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  // TODO: Temp ignore this case as it's not worked as our expected
+  @Ignore // TODO: Temp ignore this case as it's not worked as our expected
   public void testLastQueryNonCached() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
