@@ -488,42 +488,30 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> removeWildcardInFilter(
-      Expression predicate,
-      List<PartialPath> prefixPaths,
-      ISchemaTree schemaTree,
-      boolean isWhere) {
+      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
           removeWildcardInFilter(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
+              ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, schemaTree, false);
       List<Expression> secondExpressions =
           removeWildcardInFilter(
               ((TernaryExpression) predicate).getSecondExpression(),
               prefixPaths,
               schemaTree,
-              isWhere);
+              false);
       List<Expression> thirdExpressions =
           removeWildcardInFilter(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
+              ((TernaryExpression) predicate).getThirdExpression(), prefixPaths, schemaTree, false);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
           removeWildcardInFilter(
-              ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, schemaTree, isWhere);
+              ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, schemaTree, false);
       List<Expression> rightExpressions =
           removeWildcardInFilter(
-              ((BinaryExpression) predicate).getRightExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
-      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
+              ((BinaryExpression) predicate).getRightExpression(), prefixPaths, schemaTree, false);
+      if (isRoot && predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
         return resultExpressions;
@@ -533,16 +521,13 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
           removeWildcardInFilter(
-              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, isWhere);
+              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, false);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
-        throw new SemanticException("aggregate functions are not supported in WHERE clause");
-      }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInFilter(suffixExpression, prefixPaths, schemaTree, isWhere));
+            removeWildcardInFilter(suffixExpression, prefixPaths, schemaTree, false));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());

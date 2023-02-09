@@ -179,4 +179,9 @@ public class TimeWindowManager implements IWindowManager {
   public boolean needSkipInAdvance() {
     return false;
   }
+
+  @Override
+  public boolean isIgnoringNull() {
+    return true;
+  }
 }
