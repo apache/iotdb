@@ -209,6 +209,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             } else {
               throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
             }
+          } else {
+            // some expected and accepted status except SUCCESS_STATUS need to be returned
+            TSStatus status = sendPlanNodeResp.getStatus();
+            if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new FragmentInstanceDispatchException(status);
+            }
           }
           break;
         default:
@@ -273,6 +279,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {
             throw new FragmentInstanceDispatchException(writeResult.getStatus());
+          }
+        } else {
+          // some expected and accepted status except SUCCESS_STATUS need to be returned
+          TSStatus status = writeResult.getStatus();
+          if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new FragmentInstanceDispatchException(status);
           }
         }
         break;

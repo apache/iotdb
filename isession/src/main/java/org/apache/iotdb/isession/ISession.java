@@ -19,6 +19,7 @@
 package org.apache.iotdb.isession;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
@@ -53,6 +54,12 @@ public interface ISession extends AutoCloseable {
   void open(boolean enableRPCCompression) throws IoTDBConnectionException;
 
   void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+      throws IoTDBConnectionException;
+
+  void open(
+      boolean enableRPCCompression,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint)
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;

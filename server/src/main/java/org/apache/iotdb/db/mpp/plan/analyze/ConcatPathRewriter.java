@@ -56,12 +56,28 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.constructPatternTreeFromExpression(
             resultColumn.getExpression(), prefixPaths, patternTree);
       }
+      if (queryStatement.hasGroupByExpression()) {
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            queryStatement.getGroupByComponent().getControlColumnExpression(),
+            prefixPaths,
+            patternTree);
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
           concatSelectWithFrom(
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
+
+      // concat GROUP BY VARIATION with FROM
+      if (queryStatement.hasGroupByExpression()) {
+        queryStatement
+            .getGroupByComponent()
+            .setControlColumnExpression(
+                contactGroupByWithFrom(
+                    queryStatement.getGroupByComponent().getControlColumnExpression(),
+                    prefixPaths));
+      }
     }
 
     // concat WHERE with FROM
@@ -106,5 +122,14 @@ public class ConcatPathRewriter {
       }
     }
     return resultColumns;
+  }
+
+  private Expression contactGroupByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+    if (resultExpressions.size() != 1) {
+      throw new IllegalStateException("Expression in group by should indicate one value");
+    }
+    return resultExpressions.get(0);
   }
 }
