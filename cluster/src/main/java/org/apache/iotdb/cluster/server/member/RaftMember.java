@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
 import org.apache.iotdb.cluster.expr.craft.FragmentedLogDispatcher;
+import org.apache.iotdb.cluster.expr.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.cluster.expr.vgraft.KeyManager;
 import org.apache.iotdb.cluster.expr.vgraft.TrustValueHolder;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
@@ -327,6 +328,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     startBackGroundThreads();
     setSkipElection(false);
+    FlowMonitorManager.INSTANCE.register(thisNode);
     logger.info("{} started", name);
   }
 
@@ -1248,6 +1250,8 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest = logSequencer.sequence(log);
+    FlowMonitorManager.INSTANCE.report(thisNode, log.estimateSize());
+
     if (sendLogRequest == null) {
       return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
     }

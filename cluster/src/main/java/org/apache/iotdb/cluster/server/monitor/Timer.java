@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.WindowStatistic;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -375,8 +374,10 @@ public class Timer {
     String blockName;
     AtomicLong sum = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
-    private WindowStatistic latestWindow = new WindowStatistic();
+    AtomicLong intervalSum = new AtomicLong(0);
+    AtomicLong intervalCounter = new AtomicLong(0);
     long max;
+    long intervalMax;
     double scale;
     boolean valid;
     int level;
@@ -401,8 +402,10 @@ public class Timer {
       if (ENABLE_INSTRUMENTING) {
         sum.addAndGet(val);
         counter.incrementAndGet();
+        intervalSum.addAndGet(val);
+        intervalCounter.incrementAndGet();
         max = Math.max(max, val);
-        latestWindow.add(val);
+        intervalMax = Math.max(intervalMax, val);
       }
     }
 
@@ -432,7 +435,9 @@ public class Timer {
       sum.set(0);
       counter.set(0);
       max = 0;
-      latestWindow.reset();
+      intervalCounter.set(0);
+      intervalSum.set(0);
+      intervalMax = 0;
     }
 
     /** WARN: no current safety guarantee. */
@@ -446,10 +451,16 @@ public class Timer {
     public String toString() {
       double s = sum.get() / scale;
       long cnt = counter.get();
+      double intervalS = intervalSum.get() / scale;
+      long intervalCnt = intervalCounter.get();
       double avg = s / cnt;
+      double intervalAvg = intervalS / intervalCnt;
+      intervalSum.set(0);
+      intervalCounter.set(0);
+      intervalMax = 0;
       return String.format(
-          "%s - %s: %.2f, %d, %.2f, %d, %.2f",
-          className, blockName, s, cnt, avg, max, latestWindow.getAvg());
+          "%s - %s: %.4f(%.4f), %d(%d), %.4f(%.4f), %d(%d)",
+          className, blockName, s, intervalS, cnt, intervalCnt, avg, intervalAvg, max, intervalMax);
     }
 
     public long getCnt() {

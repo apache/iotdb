@@ -223,6 +223,9 @@ public class ClusterConfig {
 
   private boolean enableInstrumenting = true;
 
+  private int flowMonitorMaxWindowSize = 1000;
+  private long flowMonitorWindowInterval = 1000;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -701,5 +704,13 @@ public class ClusterConfig {
 
   public void setEnableInstrumenting(boolean enableInstrumenting) {
     this.enableInstrumenting = enableInstrumenting;
+  }
+
+  public int getFlowMonitorMaxWindowSize() {
+    return flowMonitorMaxWindowSize;
+  }
+
+  public long getFlowMonitorWindowInterval() {
+    return flowMonitorWindowInterval;
   }
 }

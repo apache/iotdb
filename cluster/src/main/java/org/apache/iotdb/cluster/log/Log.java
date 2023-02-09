@@ -170,4 +170,8 @@ public abstract class Log implements Comparable<Log> {
   public void setSequenceStartTime(long sequenceStartTime) {
     this.sequenceStartTime = sequenceStartTime;
   }
+
+  public long estimateSize() {
+    return 0;
+  }
 }

@@ -71,6 +71,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
   @Override
   public void onComplete(AppendEntryResult response) {
+
     if (Timer.ENABLE_INSTRUMENTING) {
       Statistic.RAFT_SENDER_SEND_LOG_ASYNC.calOperationCostTimeFromStart(sendStart);
     }

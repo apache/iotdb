@@ -136,4 +136,9 @@ public class RequestLog extends Log {
   public int hashCode() {
     return Objects.hash(super.hashCode(), request);
   }
+
+  @Override
+  public long estimateSize() {
+    return request.estimateSize();
+  }
 }

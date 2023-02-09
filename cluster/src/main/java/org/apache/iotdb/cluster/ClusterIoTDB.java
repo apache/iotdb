@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.expr.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.cluster.expr.vgraft.KeyManager;
 import org.apache.iotdb.cluster.impl.PlanBasedStateMachine;
 import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
@@ -313,6 +314,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       logger.info("Index diff: {}", Statistic.RAFT_RECEIVER_INDEX_DIFF);
       logger.info("Follower time: {}", Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL);
       logger.info("Window length: {}", Statistic.RAFT_WINDOW_LENGTH);
+
+      FlowMonitorManager.INSTANCE.close();
     }
   }
 

@@ -117,4 +117,9 @@ public class DummyPlan extends PhysicalPlan {
   public String toString() {
     return "ExprPlan";
   }
+
+  @Override
+  public long estimateSize() {
+    return workload.length;
+  }
 }

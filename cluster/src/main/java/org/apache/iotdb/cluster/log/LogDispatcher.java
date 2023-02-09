@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.expr.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
@@ -42,6 +43,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -80,6 +82,8 @@ public class LogDispatcher {
   protected boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
   protected List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
   protected Map<Node, Boolean> nodesEnabled;
+  protected Map<Node, RateLimiter> nodesRateLimiter = new HashMap<>();
+  protected Map<Node, Double> nodesRate = new HashMap<>();
   protected Map<Node, ExecutorService> executorServices = new HashMap<>();
   protected ExecutorService resultHandlerThread =
       IoTDBThreadPoolFactory.newFixedThreadPool(2, "AppendResultHandler");
@@ -95,7 +99,16 @@ public class LogDispatcher {
     createQueueAndBindingThreads();
   }
 
+  protected void updateRateLimiter() {
+    logger.info("Node rates: {}", nodesRate);
+    for (Entry<Node, Double> nodeDoubleEntry : nodesRate.entrySet()) {
+      nodesRateLimiter.get(nodeDoubleEntry.getKey()).setRate(nodeDoubleEntry.getValue());
+    }
+  }
+
   void createQueueAndBindingThreads() {
+    double baseRate = 300_000_000.0;
+    int i = 1;
     for (Node node : member.getAllNodes()) {
       if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
         BlockingQueue<SendLogRequest> logBlockingQueue;
@@ -103,10 +116,15 @@ public class LogDispatcher {
             new ArrayBlockingQueue<>(
                 ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
         nodesLogQueuesList.add(new Pair<>(node, logBlockingQueue));
+        FlowMonitorManager.INSTANCE.register(node);
+        nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
+        nodesRate.put(node, baseRate * i);
+        i += 100;
       }
     }
+    updateRateLimiter();
 
-    for (int i = 0; i < bindingThreadNum; i++) {
+    for (i = 0; i < bindingThreadNum; i++) {
       for (Pair<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesList) {
         executorServices
             .computeIfAbsent(
@@ -467,6 +485,11 @@ public class LogDispatcher {
           int concurrentSender = concurrentSenderNum.incrementAndGet();
           Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
           result = client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier);
+          FlowMonitorManager.INSTANCE.report(
+              receiver,
+              logRequest.appendEntryRequest.entry.remaining());
+          nodesRateLimiter.get(receiver).acquire(logRequest.appendEntryRequest.entry.remaining());
+
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
               logRequest.getVotingLog().getLog().getCreateTime());
           concurrentSenderNum.decrementAndGet();
@@ -505,6 +528,10 @@ public class LogDispatcher {
       if (client != null) {
         try {
           client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier, handler);
+          FlowMonitorManager.INSTANCE.report(
+              receiver,
+              logRequest.appendEntryRequest.entry.remaining());
+          nodesRateLimiter.get(receiver).acquire(logRequest.appendEntryRequest.entry.remaining());
         } catch (TException e) {
           handler.onError(e);
         }

@@ -206,6 +206,7 @@ public class NodeReport {
     RaftNode header;
     long headerLatency;
     private Map<Node, List<Node>> directToIndirectFollowerMap;
+    private String votingListReport;
 
     public DataMemberReport(
         NodeCharacter character,
@@ -221,7 +222,8 @@ public class NodeReport {
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
         long maxAppliedLogIndex,
-        RelayEntry nextToRelay) {
+        RelayEntry nextToRelay,
+        String votingListReport) {
       super(
           character,
           leader,
@@ -237,6 +239,7 @@ public class NodeReport {
           nextToRelay);
       this.header = header;
       this.headerLatency = headerLatency;
+      this.votingListReport = votingListReport;
     }
 
     @Override
@@ -274,7 +277,9 @@ public class NodeReport {
               + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
               + "ms ago"
               + ", logIncrement="
-              + (lastLogIndex - prevLastLogIndex);
+              + (lastLogIndex - prevLastLogIndex)
+              + ", "
+              + votingListReport;
       if (directToIndirectFollowerMap != null) {
         s = s + ", relayMap=" + directToIndirectFollowerMap;
       }

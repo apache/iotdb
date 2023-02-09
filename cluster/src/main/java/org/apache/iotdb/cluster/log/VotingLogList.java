@@ -90,7 +90,7 @@ public class VotingLogList {
       return false;
     }
     nodeIndices.sort(Entry.comparingByValue());
-    Long value = nodeIndices.get(quorumSize - 1).getValue();
+    Long value = nodeIndices.get(nodeIndices.size() - quorumSize).getValue();
     long oldValue = newCommitIndex.getAndUpdate(oldV -> Math.max(value, oldV));
     return value > oldValue;
   }
@@ -136,5 +136,11 @@ public class VotingLogList {
       }
     }
     return num;
+  }
+
+  public String report() {
+    return String.format(
+        "Nodes accepted indices: %s, new commitIndex: %d",
+        stronglyAcceptedIndices, newCommitIndex.get());
   }
 }
