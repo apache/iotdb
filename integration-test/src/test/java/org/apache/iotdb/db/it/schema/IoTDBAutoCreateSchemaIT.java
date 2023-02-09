@@ -45,9 +45,7 @@ import java.util.Set;
  * IoTDB server should be defined as integration test.
  */
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
-  private Statement statement;
-  private Connection connection;
+public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT{
 
   public IoTDBAutoCreateSchemaIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
@@ -57,15 +55,10 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
   public void setUp() throws Exception {
     super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvFactory.getEnv().cleanClusterEnvironment();
     super.tearDown();
   }
@@ -165,18 +158,18 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
     String storageGroup = "root.sg2.a.b.c";
     String timeSeriesPrefix = "root.sg2.a.b";
 
-    statement.execute(String.format("CREATE DATABASE %s", storageGroup));
-    try {
-      statement.execute(
-          String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
-    } catch (SQLException ignored) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
+      try {
+        statement.execute(
+            String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
+      } catch (SQLException ignored) {
+      }
+
+      // ensure that current database in cache is right.
+      InsertAutoCreate2Tool(statement, storageGroup, timeSeriesPrefix);
     }
-
-    // ensure that current database in cache is right.
-    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
-
-    statement.close();
-    connection.close();
     // todo restart test
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
@@ -185,8 +178,8 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
     //    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
   }
 
-  private void InsertAutoCreate2Tool(String storageGroup, String timeSeriesPrefix)
-      throws SQLException {
+  private void InsertAutoCreate2Tool(
+      Statement statement, String storageGroup, String timeSeriesPrefix) throws SQLException {
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
@@ -209,16 +202,19 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
    * insert data when database hasn't been set, timeseries hasn't been created and have null values
    */
   @Test
-  public void testInsertAutoCreate3() {
+  public void testInsertAutoCreate3() throws SQLException {
     String[] sqls = {
       "INSERT INTO root.sg0.d3(timestamp,s1) values(1,null)",
       "INSERT INTO root.sg0.d3(timestamp,s1,s2) values(1,null,2)",
     };
-    for (String sql : sqls) {
-      try {
-        statement.execute(sql);
-      } catch (SQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        try {
+          statement.execute(sql);
+        } catch (SQLException e) {
+          Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+        }
       }
     }
   }

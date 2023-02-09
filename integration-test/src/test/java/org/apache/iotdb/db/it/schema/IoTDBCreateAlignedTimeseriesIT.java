@@ -40,9 +40,6 @@ import java.sql.Statement;
  */
 public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
 
-  private Statement statement;
-  private Connection connection;
-
   public IoTDBCreateAlignedTimeseriesIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
@@ -51,15 +48,10 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   public void setUp() throws Exception {
     super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvFactory.getEnv().cleanClusterEnvironment();
     super.tearDown();
   }
@@ -72,19 +64,18 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
           "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED",
           "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      try {
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+      } catch (SQLException ignored) {
+      }
 
-    statement.execute("CREATE DATABASE root.sg1");
-    try {
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-    } catch (SQLException ignored) {
+      // ensure that current database in cache is right.
+      assertTimeseriesEquals(timeSeriesArray);
     }
-
-    // ensure that current database in cache is right.
-    assertTimeseriesEquals(timeSeriesArray);
-
-    statement.close();
-    connection.close();
     // todo test restart
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
@@ -99,16 +90,18 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
         new String[] {
           "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
-
-    statement.execute("CREATE DATABASE root.sg1");
-    try {
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-      statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
-    } catch (SQLException e) {
-      e.printStackTrace();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      try {
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+        statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+      }
     }
 
     // ensure that current database in cache is right.
@@ -125,7 +118,9 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   private void assertTimeseriesEquals(String[] timeSeriesArray) throws SQLException {
 
     int count = 0;
-    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
       while (resultSet.next()) {
         String ActualResult =
             resultSet.getString(ColumnHeaderConstant.TIMESERIES)

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
@@ -28,17 +29,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SetStorageGroupPlan extends ConfigPhysicalPlan {
+public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
 
   private TStorageGroupSchema schema;
 
-  public SetStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.SetStorageGroup);
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
+    super(planType);
     this.schema = new TStorageGroupSchema();
   }
 
-  public SetStorageGroupPlan(TStorageGroupSchema schema) {
-    this();
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TStorageGroupSchema schema) {
+    this(planType);
     this.schema = schema;
   }
 
@@ -59,9 +60,13 @@ public class SetStorageGroupPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DatabaseSchemaPlan that = (DatabaseSchemaPlan) o;
     return schema.equals(that.schema);
   }
 

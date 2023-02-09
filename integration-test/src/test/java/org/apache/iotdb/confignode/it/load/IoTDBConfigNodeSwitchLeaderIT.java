@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -103,9 +102,9 @@ public class IoTDBConfigNodeSwitchLeaderIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // Set StorageGroups
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
+      status = client.setDatabase((new TStorageGroupSchema(sg0)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
+      status = client.setDatabase((new TStorageGroupSchema(sg1)));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // Create SchemaRegionGroups through getOrCreateSchemaPartition and record

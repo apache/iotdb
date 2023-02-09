@@ -769,65 +769,72 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void recoverUnsealedTsFileCallBack(UnsealedTsFileRecoverPerformer recoverPerformer) {
-    TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
-    boolean isSeq = recoverPerformer.isSequence();
-    if (!recoverPerformer.canWrite()) {
-      // cannot write, just close it
-      for (ISyncManager syncManager :
-          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-      }
-      try {
-        tsFileResource.close();
-      } catch (IOException e) {
-        logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
-      }
-      updateLastFlushTime(tsFileResource, isSeq);
-      tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-      TsFileMetricManager.getInstance()
-          .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
-    } else {
-      // the last file is not closed, continue writing to it
-      RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
-      long timePartitionId = tsFileResource.getTimePartition();
-      TimePartitionManager.getInstance()
-          .updateAfterOpeningTsFileProcessor(
-              new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
-      TsFileProcessor tsFileProcessor =
-          new TsFileProcessor(
-              dataRegionId,
-              dataRegionInfo,
-              tsFileResource,
-              this::closeUnsealedTsFileProcessorCallBack,
-              isSeq ? this::sequenceFlushCallback : this::unsequenceFlushCallback,
-              isSeq,
-              writer);
-      if (isSeq) {
-        workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+    try {
+      TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
+      boolean isSeq = recoverPerformer.isSequence();
+      if (!recoverPerformer.canWrite()) {
+        // cannot write, just close it
+        for (ISyncManager syncManager :
+            SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
+        }
+        try {
+          tsFileResource.close();
+        } catch (IOException e) {
+          logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
+        }
+        updateLastFlushTime(tsFileResource, isSeq);
+        tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+        TsFileMetricManager.getInstance()
+            .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
       } else {
-        workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-      }
-      tsFileResource.setProcessor(tsFileProcessor);
-      tsFileResource.removeResourceFile();
-      tsFileProcessor.setTimeRangeId(timePartitionId);
-      writer.makeMetadataVisible();
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
-        // get chunkMetadata size
-        long chunkMetadataSize = 0;
-        for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
-          for (List<ChunkMetadata> metadatas : metaMap.values()) {
-            for (ChunkMetadata chunkMetadata : metadatas) {
-              chunkMetadataSize += chunkMetadata.calculateRamSize();
+        // the last file is not closed, continue writing to it
+        RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
+        long timePartitionId = tsFileResource.getTimePartition();
+        TimePartitionManager.getInstance()
+            .updateAfterOpeningTsFileProcessor(
+                new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
+        TsFileProcessor tsFileProcessor =
+            new TsFileProcessor(
+                dataRegionId,
+                dataRegionInfo,
+                tsFileResource,
+                this::closeUnsealedTsFileProcessorCallBack,
+                isSeq ? this::sequenceFlushCallback : this::unsequenceFlushCallback,
+                isSeq,
+                writer);
+        if (isSeq) {
+          workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+        } else {
+          workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+        }
+        tsFileResource.setProcessor(tsFileProcessor);
+        tsFileResource.removeResourceFile();
+        tsFileProcessor.setTimeRangeId(timePartitionId);
+        writer.makeMetadataVisible();
+        if (enableMemControl) {
+          TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+          tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+          this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
+          // get chunkMetadata size
+          long chunkMetadataSize = 0;
+          for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+            for (List<ChunkMetadata> metadatas : metaMap.values()) {
+              for (ChunkMetadata chunkMetadata : metadatas) {
+                chunkMetadataSize += chunkMetadata.calculateRamSize();
+              }
             }
           }
+          tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
         }
-        tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
       }
+      tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
+    } catch (Throwable e) {
+      logger.error(
+          "Fail to recover unsealed TsFile {}, skip it.",
+          recoverPerformer.getTsFileAbsolutePath(),
+          e);
     }
-    tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
 
   /** recover sealed TsFile */
@@ -850,7 +857,7 @@ public class DataRegion implements IDataRegionForQuery {
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
-    } catch (DataRegionException | IOException e) {
+    } catch (Throwable e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
       // update recovery context

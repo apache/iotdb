@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.it;
+
+package org.apache.iotdb.confignode.it.database;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -26,13 +27,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -47,8 +48,8 @@ import java.util.List;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
-public class IoTDBStorageGroupIT {
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBDatabaseSetAndDeleteIT {
 
   @Before
   public void setUp() throws Exception {
@@ -62,43 +63,42 @@ public class IoTDBStorageGroupIT {
   }
 
   @Test
-  public void testSetAndQueryStorageGroup() throws Exception {
+  public void testSetAndQueryDatabase() throws Exception {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // set StorageGroup0 by default values
-      TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-      status = client.setStorageGroup(setReq0);
+      // set Database0 by default values
+      TStorageGroupSchema storageGroupSchema0 = new TStorageGroupSchema(sg0);
+      status = client.setDatabase(storageGroupSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // set StorageGroup1 by specific values
-      TSetStorageGroupReq setReq1 =
-          new TSetStorageGroupReq(
-              new TStorageGroupSchema(sg1)
-                  .setTTL(1024L)
-                  .setSchemaReplicationFactor(5)
-                  .setDataReplicationFactor(5)
-                  .setTimePartitionInterval(2048L));
-      status = client.setStorageGroup(setReq1);
+      // set Database1 by specific values
+      TStorageGroupSchema storageGroupSchema1 =
+          new TStorageGroupSchema(sg1)
+              .setTTL(1024L)
+              .setSchemaReplicationFactor(5)
+              .setDataReplicationFactor(5)
+              .setTimePartitionInterval(2048L);
+      status = client.setDatabase(storageGroupSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // test count all StorageGroups
+      // test count all Databases
       TCountStorageGroupResp countResp =
           client.countMatchedStorageGroups(Arrays.asList("root", "**"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
 
-      // test count one StorageGroup
+      // test count one Database
       countResp = client.countMatchedStorageGroups(Arrays.asList("root", "sg0"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
 
-      // test query all StorageGroupSchemas
+      // test query all DatabaseSchemas
       TStorageGroupSchemaResp getResp =
           client.getMatchedStorageGroupSchemas(Arrays.asList("root", "**"));
       Assert.assertEquals(
@@ -121,10 +121,10 @@ public class IoTDBStorageGroupIT {
       Assert.assertEquals(2048L, storageGroupSchema.getTimePartitionInterval());
 
       // test fail by re-register
-      status = client.setStorageGroup(setReq0);
+      status = client.setDatabase(storageGroupSchema0);
       Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(), status.getCode());
 
-      // test StorageGroup setter interfaces
+      // test Database setter interfaces
       PartialPath patternPath = new PartialPath(sg1);
       status = client.setTTL(new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -159,13 +159,13 @@ public class IoTDBStorageGroupIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+      TStorageGroupSchema storageGroupSchema0 = new TStorageGroupSchema(sg0);
       // set StorageGroup0 by default values
-      status = client.setStorageGroup(setReq0);
+      status = client.setDatabase(storageGroupSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       // set StorageGroup1 by specific values
-      TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
-      status = client.setStorageGroup(setReq1);
+      TStorageGroupSchema storageGroupSchema1 = new TStorageGroupSchema(sg1);
+      status = client.setDatabase(storageGroupSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
       List<String> sgs = Arrays.asList(sg0, sg1);

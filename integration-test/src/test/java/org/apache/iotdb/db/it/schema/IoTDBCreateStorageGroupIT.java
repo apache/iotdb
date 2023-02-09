@@ -47,8 +47,7 @@ import static org.junit.Assert.fail;
  */
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
-  private Statement statement;
-  private Connection connection;
+
 
   public IoTDBCreateStorageGroupIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
@@ -58,15 +57,10 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
   public void setUp() throws Exception {
     super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvFactory.getEnv().cleanClusterEnvironment();
     super.tearDown();
   }
@@ -75,16 +69,15 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
   @Test
   public void testCreateStorageGroup() throws Exception {
     String[] storageGroups = {"root.sg1", "root.sg2", "root.sg3"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String storageGroup : storageGroups) {
+        statement.execute(String.format("create database %s", storageGroup));
+      }
 
-    for (String storageGroup : storageGroups) {
-      statement.execute(String.format("create database %s", storageGroup));
+      // ensure that current StorageGroup in cache is right.
+      createStorageGroupTool(statement, storageGroups);
     }
-
-    // ensure that current StorageGroup in cache is right.
-    createStorageGroupTool(storageGroups);
-
-    statement.close();
-    connection.close();
     // todo test restart
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
@@ -93,7 +86,8 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
     //    createStorageGroupTool(storageGroups);
   }
 
-  private void createStorageGroupTool(String[] storageGroups) throws SQLException {
+  private void createStorageGroupTool(Statement statement, String[] storageGroups)
+      throws SQLException {
 
     List<String> resultList = new ArrayList<>();
     try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
@@ -116,16 +110,19 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
   public void testCreateExistStorageGroup1() throws Exception {
     String storageGroup = "root.sg";
 
-    statement.execute(String.format("CREATE DATABASE %s", storageGroup));
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
 
-    try {
-      statement.execute(String.format("create database %s", storageGroup));
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-              + ": root.sg has already been created as database",
-          e.getMessage());
+      try {
+        statement.execute(String.format("create database %s", storageGroup));
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+                + ": root.sg has already been created as database",
+            e.getMessage());
+      }
     }
   }
 
@@ -133,16 +130,19 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
   @Test
   public void testCreateExistStorageGroup2() throws Exception {
 
-    statement.execute("create database root.sg");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database root.sg");
 
-    try {
-      statement.execute("create database root.sg.`device`");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
-              + ": root.sg has already been created as database",
-          e.getMessage());
+      try {
+        statement.execute("create database root.sg.`device`");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+                + ": root.sg has already been created as database",
+            e.getMessage());
+      }
     }
   }
 }

@@ -34,10 +34,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTe
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -118,13 +118,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Cache StorageGroupSchema
+   * Cache DatabaseSchema
    *
-   * @param plan SetStorageGroupPlan
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to set
-   *     StorageGroup in MTreeAboveSG.
+   * @param plan DatabaseSchemaPlan
+   * @return SUCCESS_STATUS if the Database is set successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
@@ -138,6 +137,66 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getStorageGroupNodeByStorageGroupPath(partialPathName)
           .setStorageGroupSchema(storageGroupSchema);
 
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Alter DatabaseSchema
+   *
+   * @param plan DatabaseSchemaPlan
+   * @return SUCCESS_STATUS if the DatabaseSchema is altered successfully.
+   */
+  public TSStatus alterDatabase(DatabaseSchemaPlan plan) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      TStorageGroupSchema alterSchema = plan.getSchema();
+      PartialPath partialPathName = new PartialPath(alterSchema.getName());
+
+      TStorageGroupSchema currentSchema =
+          mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+      // TODO: Support alter other fields
+      if (alterSchema.isSetMinSchemaRegionGroupNum()) {
+        currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
+        currentSchema.setMaxSchemaRegionGroupNum(
+            Math.max(
+                currentSchema.getMinSchemaRegionGroupNum(),
+                currentSchema.getMaxSchemaRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinSchemaRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxSchemaRegionGroupNum());
+      }
+      if (alterSchema.isSetMinDataRegionGroupNum()) {
+        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
+        currentSchema.setMaxDataRegionGroupNum(
+            Math.max(
+                currentSchema.getMinDataRegionGroupNum(),
+                currentSchema.getMaxDataRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinDataRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxDataRegionGroupNum());
+      }
+
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -365,6 +424,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return storageGroups;
+  }
+
+  /**
+   * Only leader use this interface. Check if the specified Database already exists.
+   *
+   * @param databaseName The specified Database's name
+   * @throws IllegalPathException If the specified Database's name is illegal
+   */
+  public boolean isDatabaseExisted(String databaseName) throws IllegalPathException {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      return mTree.isStorageGroupAlreadySet(new PartialPath(databaseName));
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
   }
 
   /**

@@ -97,7 +97,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -113,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -492,10 +492,31 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
+  public TSStatus setDatabase(TStorageGroupSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.setStorageGroup(req);
+        TSStatus status = client.setDatabase(databaseSchema);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus alterDatabase(TStorageGroupSchema databaseSchema) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.alterDatabase(databaseSchema);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
