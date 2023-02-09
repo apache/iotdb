@@ -112,10 +112,14 @@ public class LocalExecutionPlanContext {
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
     this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
 
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
     this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
+    this.pipelineDriverFactories = new ArrayList<>();
+    // TODO combine with SchemaDriverContext
+    this.getNextPipelineId();
   }
 
   public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {

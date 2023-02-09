@@ -2243,7 +2243,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       int maxDop = Math.min(context.getDegreeOfParallelism(), localChildren.size() + 1);
       int dopForChild = Math.max(1, context.getDegreeOfParallelism() - localChildren.size());
 
-      for (int i = 0; i < maxDop; i++) {
+      for (int i = 0; i < maxDop && i < localChildren.size(); i++) {
         // Only if dop >= size(children) + 1, split all children to new pipeline
         // Otherwise, the first group but not last will belong to the parent pipeline since the
         // children number of last group is greaterEqual than the first group
