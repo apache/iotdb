@@ -109,9 +109,9 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -193,7 +193,7 @@ public class ConfigPhysicalPlanSerDeTest {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase,
-            new TStorageGroupSchema()
+            new TDatabaseSchema()
                 .setName("sg")
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
@@ -209,7 +209,7 @@ public class ConfigPhysicalPlanSerDeTest {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.AlterDatabase,
-            new TStorageGroupSchema()
+            new TDatabaseSchema()
                 .setName("sg")
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
@@ -752,7 +752,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    deleteStorageGroupProcedure.setDeleteSgSchema(new TStorageGroupSchema("root.sg"));
+    deleteStorageGroupProcedure.setDeleteSgSchema(new TDatabaseSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
     updateProcedurePlan0.setProcedure(deleteStorageGroupProcedure);
     UpdateProcedurePlan updateProcedurePlan1 =
@@ -797,9 +797,9 @@ public class ConfigPhysicalPlanSerDeTest {
   public void UpdateProcedurePlanTest() throws IOException {
     UpdateProcedurePlan req0 = new UpdateProcedurePlan();
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
-    tStorageGroupSchema.setName("root.sg");
-    deleteStorageGroupProcedure.setDeleteSgSchema(tStorageGroupSchema);
+    TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
+    tDatabaseSchema.setName("root.sg");
+    deleteStorageGroupProcedure.setDeleteSgSchema(tDatabaseSchema);
     req0.setProcedure(deleteStorageGroupProcedure);
     UpdateProcedurePlan req1 =
         (UpdateProcedurePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());

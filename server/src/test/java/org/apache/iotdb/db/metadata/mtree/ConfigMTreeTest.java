@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -257,7 +257,7 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      TStorageGroupSchema storageGroupSchema =
+      TDatabaseSchema storageGroupSchema =
           newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());

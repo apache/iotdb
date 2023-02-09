@@ -64,12 +64,12 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
@@ -152,7 +152,7 @@ public class ClusterSchemaManager {
   public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus result;
     boolean isDatabaseExisted;
-    TStorageGroupSchema storageGroupSchema = databaseSchemaPlan.getSchema();
+    TDatabaseSchema storageGroupSchema = databaseSchemaPlan.getSchema();
 
     try {
       isDatabaseExisted = clusterSchemaInfo.isDatabaseExisted(storageGroupSchema.getName());
@@ -235,19 +235,19 @@ public class ClusterSchemaManager {
   }
 
   /** Only used in cluster tool show StorageGroup */
-  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+  public TShowDatabaseResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
     StorageGroupSchemaResp storageGroupSchemaResp =
         (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
     if (storageGroupSchemaResp.getStatus().getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
-      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+      return new TShowDatabaseResp().setStatus(storageGroupSchemaResp.getStatus());
     }
 
-    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+    Map<String, TDatabaseInfo> infoMap = new ConcurrentHashMap<>();
+    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
       String database = storageGroupSchema.getName();
-      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
+      TDatabaseInfo storageGroupInfo = new TDatabaseInfo();
       storageGroupInfo.setName(database);
       storageGroupInfo.setTTL(storageGroupSchema.getTTL());
       storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
@@ -269,7 +269,7 @@ public class ClusterSchemaManager {
             getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
       } catch (DatabaseNotExistsException e) {
         // Return immediately if some StorageGroups doesn't exist
-        return new TShowStorageGroupResp()
+        return new TShowDatabaseResp()
             .setStatus(
                 new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
@@ -278,7 +278,7 @@ public class ClusterSchemaManager {
       infoMap.put(database, storageGroupInfo);
     }
 
-    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+    return new TShowDatabaseResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
   public Map<String, Long> getAllTTLInfo() {
@@ -291,7 +291,7 @@ public class ClusterSchemaManager {
       // Return immediately if some StorageGroups doesn't exist
       return infoMap;
     }
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
       infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
     }
     return infoMap;
@@ -306,7 +306,7 @@ public class ClusterSchemaManager {
    */
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
-    Map<String, TStorageGroupSchema> storageSchemaMap =
+    Map<String, TDatabaseSchema> storageSchemaMap =
         clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(
             setTTLPlan.getStorageGroupPathPattern());
 
@@ -375,7 +375,7 @@ public class ClusterSchemaManager {
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all StorageGroupSchemas
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap =
+    Map<String, TDatabaseSchema> storageGroupSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
     if (storageGroupSchemaMap.size() == 0) {
       // Skip when there are no StorageGroups
@@ -387,7 +387,7 @@ public class ClusterSchemaManager {
     int storageGroupNum = storageGroupSchemaMap.size();
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
+    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
         // Adjust maxSchemaRegionGroupNum for each StorageGroup.
         // All StorageGroups share the DataNodes equally.
@@ -480,7 +480,7 @@ public class ClusterSchemaManager {
    * @return The specific DatabaseSchema
    * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
-  public TStorageGroupSchema getDatabaseSchemaByName(String database)
+  public TDatabaseSchema getDatabaseSchemaByName(String database)
       throws DatabaseNotExistsException {
     return clusterSchemaInfo.getMatchedDatabaseSchemaByName(database);
   }
@@ -491,8 +491,7 @@ public class ClusterSchemaManager {
    * @param rawPathList List<DatabaseName>
    * @return the matched DatabaseSchemas
    */
-  public Map<String, TStorageGroupSchema> getMatchedDatabaseSchemasByName(
-      List<String> rawPathList) {
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
     return clusterSchemaInfo.getMatchedDatabaseSchemasByName(rawPathList);
   }
 
@@ -506,7 +505,7 @@ public class ClusterSchemaManager {
    */
   public int getReplicationFactor(String database, TConsensusGroupType consensusGroupType)
       throws DatabaseNotExistsException {
-    TStorageGroupSchema storageGroupSchema = getDatabaseSchemaByName(database);
+    TDatabaseSchema storageGroupSchema = getDatabaseSchemaByName(database);
     return TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
         ? storageGroupSchema.getSchemaReplicationFactor()
         : storageGroupSchema.getDataReplicationFactor();

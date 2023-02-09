@@ -55,6 +55,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
@@ -102,18 +104,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -492,7 +492,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus setDatabase(TStorageGroupSchema databaseSchema) throws TException {
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.setDatabase(databaseSchema);
@@ -513,7 +513,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus alterDatabase(TStorageGroupSchema databaseSchema) throws TException {
+  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.alterDatabase(databaseSchema);
@@ -598,12 +598,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
+  public TDatabaseSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+        TDatabaseSchemaResp resp = client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -1149,12 +1148,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
+  public TShowDatabaseResp showStorageGroup(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowStorageGroupResp showStorageGroupResp =
-            client.showStorageGroup(storageGroupPathPattern);
+        TShowDatabaseResp showStorageGroupResp = client.showStorageGroup(storageGroupPathPattern);
         if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
           return showStorageGroupResp;
         }

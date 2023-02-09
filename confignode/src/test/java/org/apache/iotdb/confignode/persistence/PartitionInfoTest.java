@@ -40,8 +40,8 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -104,7 +104,7 @@ public class PartitionInfoTest {
     // Set StorageGroup
     partitionInfo.createDatabase(
         new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TStorageGroupSchema("root.test")));
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
 
     // Create a SchemaRegion
     CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
@@ -159,7 +159,7 @@ public class PartitionInfoTest {
       // Set StorageGroup
       partitionInfo.createDatabase(
           new DatabaseSchemaPlan(
-              ConfigPhysicalPlanType.CreateDatabase, new TStorageGroupSchema("root.test" + i)));
+              ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test" + i)));
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();

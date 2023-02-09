@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Test;
@@ -40,7 +40,7 @@ public class DeleteStorageGroupProcedureTest {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     DeleteStorageGroupProcedure p1 =
-        new DeleteStorageGroupProcedure(new TStorageGroupSchema("root.sg"));
+        new DeleteStorageGroupProcedure(new TDatabaseSchema("root.sg"));
 
     try {
       p1.serialize(outputStream);

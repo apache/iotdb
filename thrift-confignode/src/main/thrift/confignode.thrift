@@ -174,13 +174,13 @@ struct TCountStorageGroupResp {
   2: optional i32 count
 }
 
-struct TStorageGroupSchemaResp {
+struct TDatabaseSchemaResp {
   1: required common.TSStatus status
-  // map<string, TStorageGroupSchema>
-  2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
+  // map<string, TDatabaseSchema>
+  2: optional map<string, TDatabaseSchema> storageGroupSchemaMap
 }
 
-struct TStorageGroupSchema {
+struct TDatabaseSchema {
   1: required string name
   2: optional i64 TTL
   3: optional i32 schemaReplicationFactor
@@ -482,8 +482,8 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
-// Show storageGroup
-struct TStorageGroupInfo {
+// Show Database
+struct TDatabaseInfo {
   1: required string name
   2: required i64 TTL
   3: required i32 schemaReplicationFactor
@@ -497,10 +497,10 @@ struct TStorageGroupInfo {
   11: required i32 maxDataRegionNum
 }
 
-struct TShowStorageGroupResp {
+struct TShowDatabaseResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, TStorageGroupInfo>
-  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
+  // map<DatabaseName, TDatabaseInfo>
+  2: optional map<string, TDatabaseInfo> storageGroupInfoMap
 }
 
 // Show regions
@@ -781,7 +781,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Set a new Databse, all fields in TStorageGroupSchema can be customized
+   * Set a new Databse, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
    * @return SUCCESS_STATUS if the new Database set successfully
@@ -789,7 +789,7 @@ service IConfigNodeRPCService {
    *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
    *         DATABASE_ALREADY_EXISTS if the Database already exist
    */
-  common.TSStatus setDatabase(TStorageGroupSchema databaseSchema)
+  common.TSStatus setDatabase(TDatabaseSchema databaseSchema)
 
   /**
    * Alter a Database's schema, including
@@ -800,7 +800,7 @@ service IConfigNodeRPCService {
    *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
    *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
-  common.TSStatus alterDatabase(TStorageGroupSchema databaseSchema)
+  common.TSStatus alterDatabase(TDatabaseSchema databaseSchema)
 
   /**
    * Generate a DeleteStorageGroupProcedure to delete a specific StorageGroup
@@ -835,8 +835,8 @@ service IConfigNodeRPCService {
   /** Count the matched StorageGroups */
   TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
 
-  /** Get the matched StorageGroups' TStorageGroupSchema */
-  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
+  /** Get the matched StorageGroups' TDatabaseSchema */
+  TDatabaseSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
 
   // ======================================================
   // SchemaPartition
@@ -1102,7 +1102,7 @@ service IConfigNodeRPCService {
   TShowConfigNodesResp showConfigNodes()
 
   /** Show cluster StorageGroups' information */
-  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
+  TShowDatabaseResp showStorageGroup(list<string> storageGroupPathPattern)
 
   /**
    * Show the matched cluster Regions' information

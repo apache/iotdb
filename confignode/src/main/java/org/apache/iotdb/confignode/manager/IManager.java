@@ -92,9 +92,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -446,7 +446,7 @@ public interface IManager {
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
    */
-  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
+  TShowDatabaseResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
 
   /**
    * create schema template

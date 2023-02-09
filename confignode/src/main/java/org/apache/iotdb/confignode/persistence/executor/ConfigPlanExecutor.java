@@ -100,8 +100,8 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -491,7 +491,7 @@ public class ConfigPlanExecutor {
       final List<String> storageGroups = showRegionReq.getStorageGroups();
       final List<String> matchedStorageGroups =
           clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
-              .map(TStorageGroupSchema::getName)
+              .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {
         showRegionReq.setStorageGroups(matchedStorageGroups);

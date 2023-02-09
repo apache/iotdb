@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -63,15 +65,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -203,7 +203,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TStorageGroupSchema storageGroupSchema =
+    TDatabaseSchema storageGroupSchema =
         DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
@@ -230,7 +230,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TStorageGroupSchema storageGroupSchema =
+    TDatabaseSchema storageGroupSchema =
         DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
@@ -262,7 +262,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
-      TShowStorageGroupResp resp = client.showStorageGroup(storageGroupPathPattern);
+      TShowDatabaseResp resp = client.showStorageGroup(storageGroupPathPattern);
       // build TSBlock
       showStorageGroupStatement.buildTSBlock(resp.getStorageGroupInfoMap(), future);
     } catch (ClientManagerException | TException e) {
@@ -856,18 +856,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       if (showTTLStatement.isAll()) {
         List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(allStorageGroupPathPattern);
-        for (Map.Entry<String, TStorageGroupSchema> entry :
+        TDatabaseSchemaResp resp = client.getMatchedStorageGroupSchemas(allStorageGroupPathPattern);
+        for (Map.Entry<String, TDatabaseSchema> entry :
             resp.getStorageGroupSchemaMap().entrySet()) {
           storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
         }
       } else {
         for (PartialPath storageGroupPath : storageGroupPaths) {
           List<String> storageGroupPathPattern = Arrays.asList(storageGroupPath.getNodes());
-          TStorageGroupSchemaResp resp =
-              client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-          for (Map.Entry<String, TStorageGroupSchema> entry :
+          TDatabaseSchemaResp resp = client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+          for (Map.Entry<String, TDatabaseSchema> entry :
               resp.getStorageGroupSchemaMap().entrySet()) {
             if (!storageGroupToTTL.containsKey(entry.getKey())) {
               storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());

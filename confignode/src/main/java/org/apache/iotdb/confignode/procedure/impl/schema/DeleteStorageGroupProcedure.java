@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteStorageGroupState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -50,22 +50,22 @@ public class DeleteStorageGroupProcedure
   private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
-  private TStorageGroupSchema deleteSgSchema;
+  private TDatabaseSchema deleteSgSchema;
 
   public DeleteStorageGroupProcedure() {
     super();
   }
 
-  public DeleteStorageGroupProcedure(TStorageGroupSchema deleteSgSchema) {
+  public DeleteStorageGroupProcedure(TDatabaseSchema deleteSgSchema) {
     super();
     this.deleteSgSchema = deleteSgSchema;
   }
 
-  public TStorageGroupSchema getDeleteSgSchema() {
+  public TDatabaseSchema getDeleteSgSchema() {
     return deleteSgSchema;
   }
 
-  public void setDeleteSgSchema(TStorageGroupSchema deleteSgSchema) {
+  public void setDeleteSgSchema(TDatabaseSchema deleteSgSchema) {
     this.deleteSgSchema = deleteSgSchema;
   }
 

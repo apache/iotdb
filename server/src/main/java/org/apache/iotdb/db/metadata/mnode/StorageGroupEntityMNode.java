@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 public class StorageGroupEntityMNode extends EntityMNode implements IStorageGroupMNode {
@@ -61,10 +61,10 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   public void setTimePartitionInterval(long timePartitionInterval) {}
 
   @Override
-  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+  public void setStorageGroupSchema(TDatabaseSchema schema) {}
 
   @Override
-  public TStorageGroupSchema getStorageGroupSchema() {
+  public TDatabaseSchema getStorageGroupSchema() {
     return null;
   }
 
