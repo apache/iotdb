@@ -33,7 +33,7 @@ public class CountStorageGroupPlan extends ConfigPhysicalPlan {
   private String[] storageGroupPattern;
 
   public CountStorageGroupPlan() {
-    super(ConfigPhysicalPlanType.CountStorageGroup);
+    super(ConfigPhysicalPlanType.CountDatabase);
   }
 
   public CountStorageGroupPlan(ConfigPhysicalPlanType type) {
