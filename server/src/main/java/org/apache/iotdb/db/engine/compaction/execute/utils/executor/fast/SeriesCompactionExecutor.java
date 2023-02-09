@@ -307,48 +307,56 @@ public abstract class SeriesCompactionExecutor {
     while (pointPriorityReader.hasNext()) {
       TimeValuePair currentPoint = pointPriorityReader.currentPoint();
       long currentTime = currentPoint.getTimestamp();
-      while (currentTime >= nextChunkStartTime) {
-        // read new overlap chunk and deserialize it
-        ChunkMetadataElement overlappedChunkMetadata = chunkMetadataQueue.poll();
-        readChunk(overlappedChunkMetadata);
-        deserializeChunkIntoQueue(overlappedChunkMetadata);
-        currentTime = nextChunkStartTime;
-        // update nextPageStartTime and nextChunkStartTIme
-        nextPageStartTime = pageQueue.peek().startTime;
-        nextChunkStartTime =
-            chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
-      }
-      while (currentTime >= nextPageStartTime) {
+
+      while (currentTime >= nextChunkStartTime || currentTime >= nextPageStartTime) {
+        if (currentTime >= nextChunkStartTime) {
+          // read new overlap chunk and deserialize it
+          ChunkMetadataElement overlappedChunkMetadata = chunkMetadataQueue.poll();
+          readChunk(overlappedChunkMetadata);
+          deserializeChunkIntoQueue(overlappedChunkMetadata);
+          nextChunkStartTime =
+              chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
+        }
         // read new overlap page
         PageElement nextPageElement = pageQueue.poll();
-        ModifiedStatus nextPageModifiedStatus = isPageModified(nextPageElement);
+        checkAndCompactOverlapPage(nextPageElement, currentPoint);
 
-        if (nextPageModifiedStatus == ModifiedStatus.ALL_DELETED) {
-          // all data on next page has been deleted, remove it
-          removePage(nextPageElement);
-        } else {
-          // check is next page overlap or not
-          boolean isNextPageOverlap =
-              currentPoint.getTimestamp() <= nextPageElement.pageHeader.getEndTime()
-                  || isPageOverlap(nextPageElement);
-          if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
-            // next page is overlapped or modified, then deserialize it
-            pointPriorityReader.addNewPage(nextPageElement);
-          } else {
-            // has none overlap or modified pages, flush it to chunk writer directly
-            summary.PAGE_FAKE_OVERLAP += 1;
-            compactWithNonOverlapPage(nextPageElement);
-          }
-        }
         nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
         // get new current point
         currentPoint = pointPriorityReader.currentPoint();
         currentTime = currentPoint.getTimestamp();
       }
-
       // write data point into chunk writer
       compactionWriter.write(currentPoint, subTaskId);
       pointPriorityReader.next();
+    }
+  }
+
+  /**
+   * Check whether the page is true overlap or fake overlap. If a page is located in the gap of
+   * another page, then this page is fake overlap, which can be flushed to chunk writer directly.
+   * Otherwise, deserialize this page into point priority reader.
+   */
+  private void checkAndCompactOverlapPage(PageElement nextPageElement, TimeValuePair currentPoint)
+      throws IOException, IllegalPathException, PageException, WriteProcessException {
+    ModifiedStatus nextPageModifiedStatus = isPageModified(nextPageElement);
+
+    if (nextPageModifiedStatus == ModifiedStatus.ALL_DELETED) {
+      // all data on next page has been deleted, remove it
+      removePage(nextPageElement);
+    } else {
+      // check is next page fake overlap (locates in the gap) or not
+      boolean isNextPageOverlap =
+          currentPoint.getTimestamp() <= nextPageElement.pageHeader.getEndTime()
+              || isPageOverlap(nextPageElement);
+      if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
+        // next page is overlapped or modified, then deserialize it
+        pointPriorityReader.addNewPage(nextPageElement);
+      } else {
+        // has none overlap or modified pages, flush it to chunk writer directly
+        summary.PAGE_FAKE_OVERLAP += 1;
+        compactWithNonOverlapPage(nextPageElement);
+      }
     }
   }
 
