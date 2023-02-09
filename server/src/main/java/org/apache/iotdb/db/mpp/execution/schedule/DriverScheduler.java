@@ -195,8 +195,16 @@ public class DriverScheduler implements IDriverScheduler, IService {
             tasks.get(driver.getDependencyDriverIndex()).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(
             () -> {
-              registerTaskToQueryMap(queryId, task);
-              submitTaskToReadyQueue(task);
+              // Only if query is alive, we can submit this task
+              Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.get(queryId);
+              if (queryRelatedTasks != null) {
+                Set<DriverTask> instanceRelatedTasks =
+                    queryRelatedTasks.get(task.getDriverTaskId().getFragmentInstanceId());
+                if (instanceRelatedTasks != null) {
+                  instanceRelatedTasks.add(task);
+                  submitTaskToReadyQueue(task);
+                }
+              }
             },
             MoreExecutors.directExecutor());
       } else {
@@ -473,8 +481,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
+      } finally {
+        task.unlock();
+      }
+      // Dependency driver must be submitted before this task is cleared
+      task.submitDependencyDriver();
+      task.lock();
+      try {
         clearDriverTask(task);
-        task.submitDependencyDriver();
       } finally {
         task.unlock();
       }
@@ -499,7 +513,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           task.unlock();
         }
         QueryId queryId = task.getDriverTaskId().getQueryId();
-        Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.get(queryId);
+        Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
         if (queryRelatedTasks != null) {
           for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
             if (fragmentRelatedTasks != null) {
