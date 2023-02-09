@@ -3246,7 +3246,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(process_cpu_time{instance=\"$instance\",name=\"process\"}[1m]))*60",
+          "expr": "sum(rate(process_cpu_time{instance=\"$instance\",name=\"process\"}[1m]))*60 / max(sys_cpu_cores{instance=\"$instance\",name=\"system\"})",
           "interval": "",
           "legendFormat": "System CPU Load",
           "range": true,
