@@ -190,12 +190,10 @@ public class PartitionCache {
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
-        TDatabaseSchemaResp storageGroupSchemaResp =
-            client.getMatchedStorageGroupSchemas(ROOT_PATH);
+        TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          Set<String> storageGroupNames =
-              storageGroupSchemaResp.getStorageGroupSchemaMap().keySet();
+          Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
         }

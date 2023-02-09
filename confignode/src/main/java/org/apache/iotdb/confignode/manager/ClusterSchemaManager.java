@@ -33,8 +33,8 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemp
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
@@ -54,11 +54,11 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSche
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
@@ -207,8 +207,8 @@ public class ClusterSchemaManager {
   }
 
   /** Delete StorageGroup synchronized to protect the safety of adjustMaxRegionGroupNum */
-  public synchronized TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
-    TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+  public synchronized TSStatus deleteStorageGroup(DeleteDatabasePlan deleteDatabasePlan) {
+    TSStatus result = getConsensusManager().write(deleteDatabasePlan).getStatus();
     // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       adjustMaxRegionGroupNum();
@@ -221,8 +221,8 @@ public class ClusterSchemaManager {
    *
    * @return CountStorageGroupResp
    */
-  public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
-    return getConsensusManager().read(countStorageGroupPlan).getDataset();
+  public DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan) {
+    return getConsensusManager().read(countDatabasePlan).getDataset();
   }
 
   /**
@@ -230,22 +230,21 @@ public class ClusterSchemaManager {
    *
    * @return StorageGroupSchemaDataSet
    */
-  public DataSet getMatchedStorageGroupSchema(GetStorageGroupPlan getStorageGroupPlan) {
+  public DataSet getMatchedStorageGroupSchema(GetDatabasePlan getStorageGroupPlan) {
     return getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
   /** Only used in cluster tool show StorageGroup */
-  public TShowDatabaseResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+  public TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan) {
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+    if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
-      return new TShowDatabaseResp().setStatus(storageGroupSchemaResp.getStatus());
+      return new TShowDatabaseResp().setStatus(databaseSchemaResp.getStatus());
     }
 
     Map<String, TDatabaseInfo> infoMap = new ConcurrentHashMap<>();
-    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+    for (TDatabaseSchema storageGroupSchema : databaseSchemaResp.getSchemaMap().values()) {
       String database = storageGroupSchema.getName();
       TDatabaseInfo storageGroupInfo = new TDatabaseInfo();
       storageGroupInfo.setName(database);
@@ -278,20 +277,19 @@ public class ClusterSchemaManager {
       infoMap.put(database, storageGroupInfo);
     }
 
-    return new TShowDatabaseResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+    return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
   public Map<String, Long> getAllTTLInfo() {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp)
-            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp)
+            getMatchedStorageGroupSchema(new GetDatabasePlan(Arrays.asList("root", "**")));
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
       return infoMap;
     }
-    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+    for (TDatabaseSchema storageGroupSchema : databaseSchemaResp.getSchemaMap().values()) {
       infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
     }
     return infoMap;

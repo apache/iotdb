@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -214,7 +214,7 @@ public class PartitionInfoTest {
                 Assert.assertEquals(
                     regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion));
     showRegionReq.setConsensusGroupType(null);
-    showRegionReq.setStorageGroups(Collections.singletonList("root.test1"));
+    showRegionReq.setDatabases(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList4.getRegionInfoList().size(), 10);
@@ -223,7 +223,7 @@ public class PartitionInfoTest {
         .forEach(
             (regionInfo) -> {
               Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
-              Assert.assertEquals(regionInfo.getStorageGroup(), "root.test1");
+              Assert.assertEquals(regionInfo.getDatabase(), "root.test1");
             });
   }
 

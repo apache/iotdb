@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -102,7 +102,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
       // Delete all StorageGroups
       for (int i = 0; i < testSgNum; i++) {
         String curSg = sg + i;
-        client.deleteStorageGroup(new TDeleteStorageGroupReq(curSg));
+        client.deleteDatabase(new TDeleteDatabaseReq(curSg));
       }
       boolean isAllRegionGroupDeleted = false;
       for (int retry = 0; retry < retryNum; retry++) {
@@ -170,7 +170,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
         .forEach(
             regionInfo ->
                 regionCounter
-                    .computeIfAbsent(regionInfo.getStorageGroup(), empty -> new AtomicInteger(0))
+                    .computeIfAbsent(regionInfo.getDatabase(), empty -> new AtomicInteger(0))
                     .getAndIncrement());
     Assert.assertEquals(testSgNum, regionCounter.size());
     regionCounter.forEach(
@@ -188,7 +188,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
         .forEach(
             regionInfo ->
                 regionCounter
-                    .computeIfAbsent(regionInfo.getStorageGroup(), empty -> new AtomicInteger(0))
+                    .computeIfAbsent(regionInfo.getDatabase(), empty -> new AtomicInteger(0))
                     .getAndIncrement());
     Assert.assertEquals(testSgNum, regionCounter.size());
     regionCounter.forEach(

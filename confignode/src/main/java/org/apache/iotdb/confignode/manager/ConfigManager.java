@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -53,8 +55,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
@@ -67,18 +67,18 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -486,11 +486,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
+  public DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan) {
     TSStatus status = confirmLeader();
-    CountStorageGroupResp result = new CountStorageGroupResp();
+    CountDatabaseResp result = new CountDatabaseResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.countMatchedStorageGroups(countStorageGroupPlan);
+      return clusterSchemaManager.countMatchedStorageGroups(countDatabasePlan);
     } else {
       result.setStatus(status);
     }
@@ -498,12 +498,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getStorageGroupReq) {
+  public DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
     } else {
-      StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
+      DatabaseSchemaResp dataSet = new DatabaseSchemaResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -1304,7 +1304,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+  public TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return getClusterSchemaManager().showStorageGroup(getStorageGroupPlan);

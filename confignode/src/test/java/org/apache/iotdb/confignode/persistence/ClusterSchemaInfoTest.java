@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -101,10 +101,10 @@ public class ClusterSchemaInfoTest {
 
     Assert.assertEquals(storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames().size());
 
-    GetStorageGroupPlan getStorageGroupReq =
-        new GetStorageGroupPlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
+    GetDatabasePlan getStorageGroupReq =
+        new GetDatabasePlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
     Map<String, TDatabaseSchema> reloadResult =
-        clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
+        clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
   }
 

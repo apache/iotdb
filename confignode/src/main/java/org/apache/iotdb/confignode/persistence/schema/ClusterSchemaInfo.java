@@ -27,15 +27,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
@@ -46,12 +46,12 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSche
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
@@ -213,7 +213,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param plan DeleteStorageGroupPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus deleteStorageGroup(DeleteStorageGroupPlan plan) {
+  public TSStatus deleteDatabase(DeleteDatabasePlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
@@ -235,8 +235,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupPlan plan) {
-    CountStorageGroupResp result = new CountStorageGroupResp();
+  public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
+    CountDatabaseResp result = new CountDatabaseResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
@@ -254,8 +254,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupPlan plan) {
-    StorageGroupSchemaResp result = new StorageGroupSchemaResp();
+  public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
+    DatabaseSchemaResp result = new DatabaseSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
       Map<String, TDatabaseSchema> schemaMap = new HashMap<>();

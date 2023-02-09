@@ -23,10 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
@@ -86,24 +86,22 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test count all Databases
-      TCountStorageGroupResp countResp =
-          client.countMatchedStorageGroups(Arrays.asList("root", "**"));
+      TCountDatabaseResp countResp = client.countMatchedDatabases(Arrays.asList("root", "**"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
 
       // test count one Database
-      countResp = client.countMatchedStorageGroups(Arrays.asList("root", "sg0"));
+      countResp = client.countMatchedDatabases(Arrays.asList("root", "sg0"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
 
       // test query all DatabaseSchemas
-      TDatabaseSchemaResp getResp =
-          client.getMatchedStorageGroupSchemas(Arrays.asList("root", "**"));
+      TDatabaseSchemaResp getResp = client.getMatchedDatabaseSchemas(Arrays.asList("root", "**"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
-      Map<String, TDatabaseSchema> schemaMap = getResp.getStorageGroupSchemaMap();
+      Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(2, schemaMap.size());
       TDatabaseSchema storageGroupSchema = schemaMap.get(sg0);
       Assert.assertNotNull(storageGroupSchema);
@@ -136,10 +134,10 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test setter results
-      getResp = client.getMatchedStorageGroupSchemas(Arrays.asList("root", "sg1"));
+      getResp = client.getMatchedDatabaseSchemas(Arrays.asList("root", "sg1"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
-      schemaMap = getResp.getStorageGroupSchemaMap();
+      schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(1, schemaMap.size());
       storageGroupSchema = schemaMap.get(sg1);
       Assert.assertNotNull(storageGroupSchema);
@@ -167,12 +165,12 @@ public class IoTDBDatabaseSetAndDeleteIT {
       TDatabaseSchema storageGroupSchema1 = new TDatabaseSchema(sg1);
       status = client.setDatabase(storageGroupSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
+      TDeleteDatabasesReq deleteStorageGroupsReq = new TDeleteDatabasesReq();
       List<String> sgs = Arrays.asList(sg0, sg1);
       deleteStorageGroupsReq.setPrefixPathList(sgs);
-      TSStatus deleteSgStatus = client.deleteStorageGroups(deleteStorageGroupsReq);
-      TDatabaseSchemaResp root = client.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
-      Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
+      TSStatus deleteSgStatus = client.deleteDatabases(deleteStorageGroupsReq);
+      TDatabaseSchemaResp root = client.getMatchedDatabaseSchemas(Arrays.asList("root", "*"));
+      Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }
   }

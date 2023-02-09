@@ -327,9 +327,9 @@ public class IoTDBPartitionGetterIT {
         // Check the number of DataRegionGroup.
         // And this number should be greater than or equal to leastDataRegionGroupNum
         TShowDatabaseResp showStorageGroupResp =
-            client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
+            client.showDatabase(Arrays.asList(storageGroup.split("\\.")));
         Assert.assertTrue(
-            showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
+            showStorageGroupResp.getDatabaseInfoMap().get(storageGroup).getDataRegionNum()
                 >= leastDataRegionGroupNum);
       }
     }
@@ -405,7 +405,7 @@ public class IoTDBPartitionGetterIT {
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
       TSchemaPartitionTableResp schemaPartitionTableResp =
           client.getSchemaPartitionTable(schemaPartitionReq);
-      getRegionIdReq.setStorageGroup(sg0);
+      getRegionIdReq.setDatabase(sg0);
       getRegionIdReq.setSeriesSlotId(
           new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
               .get(0));

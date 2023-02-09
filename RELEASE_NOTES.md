@@ -887,7 +887,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * IOTDB-947 Fix error when counting node with wildcard
 * IOTDB-949 Align by device doesn't support 'T*' in path.
 * IOTDB-956 Filter will be missed in group by time align by device
-* IOTDB-963 Redo deleteStorageGroupPlan failed when recovering
+* IOTDB-963 Redo deleteDatabasePlan failed when recovering
 * IOTDB-967 Fix xxx does not have the child node xxx Bug in count timeseries
 * IOTDB-970 Restrict log file number and size
 * IOTDB-971 More precise error messages of slimit and soffset 

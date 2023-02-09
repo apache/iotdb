@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -58,8 +58,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -534,10 +534,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
+  public TSStatus deleteDatabase(TDeleteDatabaseReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroup(req);
+        TSStatus status = client.deleteDatabase(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -555,10 +555,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req) throws TException {
+  public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroups(req);
+        TSStatus status = client.deleteDatabases(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -576,11 +576,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -598,11 +598,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDatabaseSchemaResp resp = client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -1148,11 +1148,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowDatabaseResp showStorageGroup(List<String> storageGroupPathPattern)
-      throws TException {
+  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowDatabaseResp showStorageGroupResp = client.showStorageGroup(storageGroupPathPattern);
+        TShowDatabaseResp showStorageGroupResp = client.showDatabase(storageGroupPathPattern);
         if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
           return showStorageGroupResp;
         }

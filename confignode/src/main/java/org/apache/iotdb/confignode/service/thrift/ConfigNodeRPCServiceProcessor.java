@@ -36,14 +36,14 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -54,14 +54,14 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -72,7 +72,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -92,8 +92,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -345,7 +345,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
     TSStatus resp = configManager.setDatabase(setPlan);
 
-    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
+    // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
 
     return resp;
@@ -389,20 +389,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
     TSStatus resp = configManager.alterDatabase(alterPlan);
 
-    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
+    // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
 
     return resp;
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) {
+  public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
     String prefixPath = tDeleteReq.getPrefixPath();
     return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) {
+  public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
     return configManager.deleteStorageGroups(prefixList);
   }
@@ -415,42 +415,40 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
     return configManager.setSchemaReplicationFactor(
-        new SetSchemaReplicationFactorPlan(
-            req.getStorageGroup(), req.getSchemaReplicationFactor()));
+        new SetSchemaReplicationFactorPlan(req.getDatabase(), req.getSchemaReplicationFactor()));
   }
 
   @Override
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
     return configManager.setDataReplicationFactor(
-        new SetDataReplicationFactorPlan(req.getStorageGroup(), req.getDataReplicationFactor()));
+        new SetDataReplicationFactorPlan(req.getDatabase(), req.getDataReplicationFactor()));
   }
 
   @Override
   public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
     return configManager.setTimePartitionInterval(
-        new SetTimePartitionIntervalPlan(req.getStorageGroup(), req.getTimePartitionInterval()));
+        new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern) {
-    CountStorageGroupResp countStorageGroupResp =
-        (CountStorageGroupResp)
-            configManager.countMatchedStorageGroups(
-                new CountStorageGroupPlan(storageGroupPathPattern));
+  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern) {
+    CountDatabaseResp countDatabaseResp =
+        (CountDatabaseResp)
+            configManager.countMatchedStorageGroups(new CountDatabasePlan(storageGroupPathPattern));
 
-    TCountStorageGroupResp resp = new TCountStorageGroupResp();
-    countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
+    TCountDatabaseResp resp = new TCountDatabaseResp();
+    countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
     return resp;
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern) {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp)
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern) {
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp)
             configManager.getMatchedStorageGroupSchemas(
-                new GetStorageGroupPlan(storageGroupPathPattern));
+                new GetDatabasePlan(storageGroupPathPattern));
 
-    return storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp();
+    return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
   }
 
   @Override
@@ -774,8 +772,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowDatabaseResp showStorageGroup(List<String> storageGroupPathPattern) {
-    return configManager.showStorageGroup(new GetStorageGroupPlan(storageGroupPathPattern));
+  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) {
+    return configManager.showStorageGroup(new GetDatabasePlan(storageGroupPathPattern));
   }
 
   @Override
@@ -809,12 +807,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) {
     return configManager.unsetSchemaTemplate(req);
   }
 
   @Override
-  public TSStatus dropSchemaTemplate(String req) throws TException {
+  public TSStatus dropSchemaTemplate(String req) {
     return configManager.dropSchemaTemplate(req);
   }
 
@@ -886,7 +884,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
     long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
     GetTimeSlotListPlan plan =
-        new GetTimeSlotListPlan(req.getStorageGroup(), req.getSeriesSlotId(), startTime, endTime);
+        new GetTimeSlotListPlan(req.getDatabase(), req.getSeriesSlotId(), startTime, endTime);
     return configManager.getTimeSlotList(plan);
   }
 
@@ -894,7 +892,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     TConsensusGroupType type =
         req.isSetType() ? req.getType() : TConsensusGroupType.ConfigNodeRegion;
-    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getStorageGroup(), type);
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), type);
     return configManager.getSeriesSlotList(plan);
   }
 
