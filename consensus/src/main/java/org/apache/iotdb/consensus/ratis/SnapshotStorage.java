@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -49,7 +50,8 @@ public class SnapshotStorage implements StateMachineStorage {
   private static final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
-  private volatile SnapshotInfo currentSnapshot = null;
+  private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
+  private SnapshotInfo currentSnapshot = null;
 
   public SnapshotStorage(IStateMachine applicationStateMachine, RaftGroupId groupId) {
     this.applicationStateMachine = applicationStateMachine;
@@ -140,12 +142,22 @@ public class SnapshotStorage implements StateMachineStorage {
   (2) reinitialize, RaftServer resumes from pause. Leader will install a snapshot during pause.
    */
   void updateSnapshotCache() {
-    currentSnapshot = findLatestSnapshot();
+    snapshotCacheGuard.writeLock().lock();
+    try {
+      currentSnapshot = findLatestSnapshot();
+    } finally {
+      snapshotCacheGuard.writeLock().unlock();
+    }
   }
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
-    return currentSnapshot;
+    snapshotCacheGuard.readLock().lock();
+    try {
+      return currentSnapshot;
+    } finally {
+      snapshotCacheGuard.readLock().unlock();
+    }
   }
 
   @Override
