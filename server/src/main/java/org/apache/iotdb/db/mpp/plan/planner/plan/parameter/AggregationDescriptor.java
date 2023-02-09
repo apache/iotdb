@@ -113,18 +113,14 @@ public class AggregationDescriptor {
           Collections.singletonList(inputExpressions.get(0).getExpressionString()));
     }
 
-    List<List<String>> inputColumnNames = new ArrayList<>();
-    for (Expression expression : inputExpressions) {
-      inputColumnNames.add(getInputColumnNames(expression));
-    }
-    return inputColumnNames;
+    return Collections.singletonList(getInputColumnNames());
   }
 
-  public List<String> getInputColumnNames(Expression inputExpression) {
+  public List<String> getInputColumnNames() {
     List<String> inputAggregationNames = getActualAggregationNames(step.isInputPartial());
     List<String> inputColumnNames = new ArrayList<>();
     for (String funcName : inputAggregationNames) {
-      inputColumnNames.add(funcName + "(" + inputExpression.getExpressionString() + ")");
+      inputColumnNames.add(funcName + "(" + getParametersString() + ")");
     }
     return inputColumnNames;
   }
@@ -132,7 +128,7 @@ public class AggregationDescriptor {
   public Map<String, Expression> getInputColumnCandidateMap() {
     Map<String, Expression> inputColumnNameToExpressionMap = new HashMap<>();
     for (Expression inputExpression : inputExpressions) {
-      List<String> inputColumnNames = getInputColumnNames(inputExpression);
+      List<String> inputColumnNames = getInputColumnNames();
       for (String inputColumnName : inputColumnNames) {
         inputColumnNameToExpressionMap.put(inputColumnName, inputExpression);
       }
@@ -175,7 +171,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  public String getParametersString() {
+  private String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {
@@ -184,31 +180,35 @@ public class AggregationDescriptor {
           builder.append(", ").append(inputExpressions.get(i).toString());
         }
       }
-      if (!inputAttributes.isEmpty()) {
-        builder.append(", ");
+      appendAttributes(builder);
+      parametersString = builder.toString();
+    }
+    return parametersString;
+  }
 
-        Iterator<Map.Entry<String, String>> iterator = inputAttributes.entrySet().iterator();
-        Map.Entry<String, String> entry = iterator.next();
+  protected void appendAttributes(StringBuilder builder) {
+    if (!inputAttributes.isEmpty()) {
+      builder.append(", ");
+
+      Iterator<Map.Entry<String, String>> iterator = inputAttributes.entrySet().iterator();
+      Map.Entry<String, String> entry = iterator.next();
+      builder
+          .append("\"")
+          .append(entry.getKey())
+          .append("\"=\"")
+          .append(entry.getValue())
+          .append("\"");
+      while (iterator.hasNext()) {
+        entry = iterator.next();
         builder
+            .append(", ")
             .append("\"")
             .append(entry.getKey())
             .append("\"=\"")
             .append(entry.getValue())
             .append("\"");
-        while (iterator.hasNext()) {
-          entry = iterator.next();
-          builder
-              .append(", ")
-              .append("\"")
-              .append(entry.getKey())
-              .append("\"=\"")
-              .append(entry.getValue())
-              .append("\"");
-        }
       }
-      parametersString = builder.toString();
     }
-    return parametersString;
   }
 
   public List<Expression> getInputExpressions() {

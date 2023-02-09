@@ -145,7 +145,7 @@ public class IoTDBCountIfIT {
           "Count_if(root.db.d1.s1 = 0 & root.db.d1.s2 = 0, keep < 3, \"ignoreNull\"=\"false\")",
           "Count_if(root.db.d1.s1 = 1 & root.db.d1.s2 = 0, keep < 3, \"ignoreNull\"=\"false\")"
         };
-    retArray = new String[] {"1,0,"};
+    retArray = new String[] {"2,0,"};
     resultSetEqualTest(
         "select Count_if(s1=0 & s2=0, keep<3, 'ignoreNull'='false'), Count_if(s1=1 & s2=0, keep<3, 'ignoreNull'='false') from root.db.d1",
         expectedHeader,

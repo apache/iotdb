@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -1319,38 +1318,6 @@ public class ExpressionAnalyzer {
       return false;
     } else if (expression instanceof LeafOperand) {
       return false;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static void checkCanUseInMultiPhaseAggregation(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      TernaryExpression ternaryExpression = (TernaryExpression) expression;
-      checkCanUseInMultiPhaseAggregation(ternaryExpression.getFirstExpression());
-      checkCanUseInMultiPhaseAggregation(ternaryExpression.getSecondExpression());
-      checkCanUseInMultiPhaseAggregation(ternaryExpression.getThirdExpression());
-    } else if (expression instanceof BinaryExpression) {
-      BinaryExpression binaryExpression = (BinaryExpression) expression;
-      checkCanUseInMultiPhaseAggregation(binaryExpression.getLeftExpression());
-      checkCanUseInMultiPhaseAggregation(binaryExpression.getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      checkCanUseInMultiPhaseAggregation(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof FunctionExpression) {
-      String funcName = ((FunctionExpression) expression).getFunctionName();
-      if (expression.isBuiltInAggregationFunctionExpression()
-          && !BuiltinAggregationFunction.canSplitToMultiPhases((funcName.toLowerCase()))) {
-        throw new SemanticException(
-            String.format(
-                "AggregationFunction [%s] cannot used to multi phases aggregation like GroupByTag or GroupByLevel",
-                funcName));
-      }
-      for (Expression child : expression.getExpressions()) {
-        checkCanUseInMultiPhaseAggregation(child);
-      }
-    } else if (expression instanceof LeafOperand) {
-      // do nothing
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

@@ -704,6 +704,7 @@ public class LogicalPlanBuilder {
                   .map(Expression::getExpressions)
                   .flatMap(List::stream)
                   .collect(Collectors.toList()),
+              ((FunctionExpression) groupedExpression).getFunctionAttributes(),
               groupedExpression.getExpressions().get(0)));
     }
     updateTypeProvider(groupByLevelExpressions.keySet());
@@ -749,6 +750,7 @@ public class LogicalPlanBuilder {
                   functionName,
                   curStep,
                   groupedTimeseriesOperands.get(next),
+                  ((FunctionExpression) next).getFunctionAttributes(),
                   next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);
         } else {

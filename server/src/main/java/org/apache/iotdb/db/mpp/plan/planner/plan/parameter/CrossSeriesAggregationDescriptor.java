@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,12 +33,15 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private final Expression outputExpression;
 
+  private String outputParametersString;
+
   public CrossSeriesAggregationDescriptor(
       String aggregationFuncName,
       AggregationStep step,
       List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
       Expression outputExpression) {
-    super(aggregationFuncName, step, inputExpressions);
+    super(aggregationFuncName, step, inputExpressions, inputAttributes);
     this.outputExpression = outputExpression;
   }
 
@@ -51,9 +55,25 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return outputExpression;
   }
 
-  @Override
-  public String getParametersString() {
-    return outputExpression.getExpressionString();
+  public List<String> getOutputColumnNames() {
+    List<String> outputAggregationNames = getActualAggregationNames(step.isOutputPartial());
+    List<String> outputColumnNames = new ArrayList<>();
+    for (String funcName : outputAggregationNames) {
+      outputColumnNames.add(funcName + "(" + getOutputParametersString() + ")");
+    }
+    return outputColumnNames;
+  }
+
+  private String getOutputParametersString() {
+    if (outputParametersString == null) {
+      StringBuilder builder = new StringBuilder(outputExpression.getExpressionString());
+      for (int i = 1; i < inputExpressions.size(); i++) {
+        builder.append(", ").append(inputExpressions.get(i).toString());
+      }
+      appendAttributes(builder);
+      outputParametersString = builder.toString();
+    }
+    return outputParametersString;
   }
 
   @Override
@@ -72,6 +92,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
         this.getAggregationFuncName(),
         this.getStep(),
         this.getInputExpressions(),
+        this.getInputAttributes(),
         this.getOutputExpression());
   }
 

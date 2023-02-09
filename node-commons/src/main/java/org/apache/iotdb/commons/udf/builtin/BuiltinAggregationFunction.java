@@ -80,6 +80,8 @@ public enum BuiltinAggregationFunction {
     }
   }
 
+  // TODO Maybe we can merge this method with canUseStatistics(),
+  //  new method returns three level push-down: No push-down, DataRegion, SeriesScan
   /** @return if the Aggregation can split to multi phases */
   public static boolean canSplitToMultiPhases(String name) {
     final String functionName = name.toLowerCase();

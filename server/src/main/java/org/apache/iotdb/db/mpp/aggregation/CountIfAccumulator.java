@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 import java.util.function.Function;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class CountIfAccumulator implements Accumulator {
 
   // number of the point segment that satisfies the KEEP expression
@@ -64,7 +66,12 @@ public class CountIfAccumulator implements Accumulator {
       if (column[2].isNull(i)) {
         // the member variable 'ignoreNull' effects on calculation of ValueColumn
         if (!this.ignoreNull) {
+          // data point segment was over, judge whether to count
+          if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
+            countValue++;
+          }
           keep = 0;
+          lastPointIsSatisfy = false;
         }
       } else {
         if (column[2].getBoolean(i)) {
@@ -86,7 +93,11 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    throw new UnsupportedOperationException(getClass().getName());
+    checkArgument(partialResult.length == 1, "partialResult of count_if should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
+    countValue += partialResult[0].getLong(0);
   }
 
   @Override
@@ -105,7 +116,12 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    throw new UnsupportedOperationException(getClass().getName());
+    checkArgument(columnBuilders.length == 1, "partialResult of count_if should be 1");
+    // judge whether the last data point segment need to count
+    if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
+      countValue++;
+    }
+    columnBuilders[0].writeLong(countValue);
   }
 
   @Override
@@ -130,7 +146,7 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public TSDataType[] getIntermediateType() {
-    throw new UnsupportedOperationException(getClass().getName());
+    return new TSDataType[] {TSDataType.INT64};
   }
 
   @Override
