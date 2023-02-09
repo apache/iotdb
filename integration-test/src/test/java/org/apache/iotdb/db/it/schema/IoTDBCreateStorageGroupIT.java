@@ -48,7 +48,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
 
-
   public IoTDBCreateStorageGroupIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }

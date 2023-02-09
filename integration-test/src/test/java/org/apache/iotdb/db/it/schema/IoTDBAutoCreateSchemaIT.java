@@ -45,7 +45,7 @@ import java.util.Set;
  * IoTDB server should be defined as integration test.
  */
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT{
+public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
 
   public IoTDBAutoCreateSchemaIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);

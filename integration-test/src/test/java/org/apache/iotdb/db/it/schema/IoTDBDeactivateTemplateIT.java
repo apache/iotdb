@@ -38,7 +38,6 @@ import java.sql.Statement;
 @Category({ClusterIT.class})
 public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
 
-
   public IoTDBDeactivateTemplateIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
