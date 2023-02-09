@@ -32,9 +32,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -87,7 +85,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
   // Modify testConsensusProtocolClass to indicate the test consensusProtocolClass
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  @BeforeClass
+  /* Add @BeforeClass before test */
   public static void setUp() throws SQLException {
     EnvFactory.getEnv()
         .getConfig()
@@ -112,7 +110,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
     }
   }
 
-  @AfterClass
+  /* Add @AfterClass before test */
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
