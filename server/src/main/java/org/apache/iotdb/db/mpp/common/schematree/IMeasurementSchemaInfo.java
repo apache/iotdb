@@ -17,17 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.List;
+public interface IMeasurementSchemaInfo {
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  String getName();
 
-  List<ISchemaValidation> getSchemaValidationList();
+  MeasurementSchema getSchema();
+
+  String getAlias();
 }

@@ -17,17 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
-
-import java.util.List;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 
 /**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
+ * This interface defines the required behaviour invoked during schema fetch/computation, which is
+ * executed by schema fetcher.
  */
-public interface BatchInsertNode {
+public interface ISchemaComputation {
 
-  List<ISchemaValidation> getSchemaValidationList();
+  PartialPath getDevicePath();
+
+  String[] getMeasurements();
+
+  /** @param isAligned whether the fetched device is aligned */
+  void computeDevice(boolean isAligned);
+
+  /**
+   * @param index the index of fetched measurement in array returned by getMeasurements
+   * @param measurementSchemaInfo the measurement schema of fetched measurement
+   */
+  void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
 }

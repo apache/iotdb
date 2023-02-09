@@ -17,17 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
-
-import java.util.List;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 /**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
+ * This interface defines the required info provided for schema auto creation, which is executed
+ * schema fetcher.
  */
-public interface BatchInsertNode {
+public interface ISchemaAutoCreation {
 
-  List<ISchemaValidation> getSchemaValidationList();
+  PartialPath getDevicePath();
+
+  String[] getMeasurements();
+
+  boolean isAligned();
+
+  TSDataType getDataType(int index);
+
+  TSEncoding getEncoding(int index);
+
+  CompressionType getCompressionType(int index);
 }
