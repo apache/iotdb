@@ -662,19 +662,26 @@ static_configs:
     - `System Memory`： 系统内存使用率，单位为%
     - `Write Point Per Second`：系统每秒中写入点数
 - `Performance`：系统性能
-    - `Memory`：系统各部分内存使用情况
     - `QPS`：系统接口和RPC每秒钟访问次数
-    - `QPS Of Schedule`：系统接口和RPC每秒钟访问次数
+    - `QPS Of Stage`：Stage 各部分的每秒钟执行次数
+    - `QPS Of Schedule`：Schedule 各部分的每秒钟执行次数
     - `Time Consumed Of Operation`：不同操作的耗时情况
-    - `Time Consumed of Interface`：不同接口的耗时情况
-    - `Time Consumed of Stage`：不同阶段的耗时情况
-    - `Time Consumed of Schedule Stage`：不同 Schedule 阶段的耗时情况
+    - `P99 Time Consumed of Interface`：不同接口的 P99 耗时情况
+    - `Average Time Consumed of Interface`：不同接口的平均耗时情况
+    - `P99 Time Consumed of Stage`：不同阶段的 P99 耗时情况
+    - `Average Time Consumed of Stage`：不同阶段的平均耗时情况
+    - `P99 Time Consumed of Schedule Stage`：不同 Schedule 阶段的 P99 耗时情况
+    - `Average Time Consumed of Schedule Stage`：不同 Schedule 阶段的平均耗时情况
     - `Task Number`：任务个数
-    - `Time Consumed of Task`：任务耗时情况
+    - `P99 Time Consumed of Task`：任务的 P99 耗时情况
+    - `Average Time Consumed of Task`：任务的平均耗时情况
 - `System`：系统
     - `CPU Load`：CPU 负载变化情况
     - `CPU Time Per Minute`：CPU 平均每分钟的耗时
     - `GC Time Per Minute`：GC 平均每分钟的耗时
+    - `Heap Memory`：IoTDB 进程的堆内存
+    - `Off Heap Memory`：IoTDB 进程的堆外内存
+    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
     - `File Count`：文件数量变化情况
     - `File Size`：文件大小变化情况
     - `Log Number Per Minute`：日志每分钟变化情况
