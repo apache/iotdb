@@ -171,12 +171,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       ClusterSchemaTree remoteSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
               devicePath, measurements, indexOfMissingMeasurements);
+      // check and compute the fetched schema
       indexOfMissingMeasurements =
           remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+
+      // all schema has been taken and processed
       if (indexOfMissingMeasurements.isEmpty()) {
         return;
       }
 
+      // auto create and process the missing schema
       if (config.isAutoCreateSchemaEnabled()) {
         ClusterSchemaTree schemaTree = new ClusterSchemaTree();
         autoCreateSchemaExecutor.autoCreateMissingMeasurements(
@@ -188,12 +192,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             schemaComputationWithAutoCreation.isAligned());
         indexOfMissingMeasurements =
             schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+
+        // all schema has been taken and processed
+        if (indexOfMissingMeasurements.isEmpty()) {
+          return;
+        }
       }
 
-      if (!indexOfMissingMeasurements.isEmpty()) {
-        for (int index : indexOfMissingMeasurements) {
-          schemaComputationWithAutoCreation.computeMeasurement(index, null);
-        }
+      // offer null for the rest missing schema processing
+      for (int index : indexOfMissingMeasurements) {
+        schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
     } finally {
       schemaCache.releaseReadLock();
@@ -227,7 +235,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return;
       }
 
-      // try fetch the missing schema from remote and cache fetched schema
+      // try fetch the missing schema from remote
       ClusterSchemaTree remoteSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
               schemaComputationWithAutoCreationList.stream()
@@ -238,6 +246,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   .collect(Collectors.toList()),
               indexOfDevicesWithMissingMeasurements,
               indexOfMissingMeasurementsList);
+      // check and compute the fetched schema
       List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
       List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
       for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
@@ -252,7 +261,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
 
-      if (!indexOfDevicesNeedAutoCreateSchema.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+      // all schema has been taken and processed
+      if (indexOfDevicesNeedAutoCreateSchema.isEmpty()) {
+        return;
+      }
+
+      // auto create and process the missing schema
+      if (config.isAutoCreateSchemaEnabled()) {
         ClusterSchemaTree schemaTree = new ClusterSchemaTree();
         autoCreateSchemaExecutor.autoCreateMissingMeasurements(
             schemaTree,
@@ -292,19 +307,22 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
           }
         }
+
+        // all schema has been taken and processed
+        if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
+          return;
+        }
       } else {
         indexOfDevicesWithMissingMeasurements = indexOfDevicesNeedAutoCreateSchema;
         indexOfMissingMeasurementsList = indexOfMeasurementsNeedAutoCreate;
       }
 
-      if (!indexOfDevicesWithMissingMeasurements.isEmpty()) {
-        for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
-          schemaComputationWithAutoCreation =
-              schemaComputationWithAutoCreationList.get(
-                  indexOfDevicesWithMissingMeasurements.get(i));
-          for (int index : indexOfMissingMeasurementsList.get(i)) {
-            schemaComputationWithAutoCreation.computeMeasurement(index, null);
-          }
+      // offer null for the rest missing schema processing
+      for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
+        schemaComputationWithAutoCreation =
+            schemaComputationWithAutoCreationList.get(indexOfDevicesWithMissingMeasurements.get(i));
+        for (int index : indexOfMissingMeasurementsList.get(i)) {
+          schemaComputationWithAutoCreation.computeMeasurement(index, null);
         }
       }
     } finally {
