@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -127,14 +128,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     // recover measurement
     MeasurementCollector<?> collector =
         new MeasurementCollector<Void>(
-            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
+            this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
+          protected Void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
             SchemaStatisticsManager.getInstance().addTimeseries(1);
+            return null;
           }
         };
-    collector.setPrefixMatch(true);
     collector.traverse();
   }
 
@@ -212,9 +213,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       Runnable flushCallback)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
+        new PartialPath(storageGroupFullPath),
         CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupMNode.getFullPath(), schemaRegionId, flushCallback),
-        storageGroupMNode,
+            snapshotDir, storageGroupFullPath, schemaRegionId, flushCallback),
         measurementProcess,
         tagGetter);
   }

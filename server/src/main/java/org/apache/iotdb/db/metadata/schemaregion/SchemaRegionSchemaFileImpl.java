@@ -178,7 +178,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGCachedImpl(
-                  new PartialPath(storageGroupFullPath),
+              new PartialPath(storageGroupFullPath),
               tagManager::readTags,
               this::flushCallback,
               measurementMNode -> {

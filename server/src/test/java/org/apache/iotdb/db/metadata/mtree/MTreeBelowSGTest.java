@@ -85,7 +85,7 @@ public abstract class MTreeBelowSGTest {
           .equals(SchemaEngineMode.Schema_File)) {
         mtree =
             new MTreeBelowSGCachedImpl(
-                root.getStorageGroupNodeByStorageGroupPath(path),
+                path,
                 null,
                 () -> {
                   // do nothing
