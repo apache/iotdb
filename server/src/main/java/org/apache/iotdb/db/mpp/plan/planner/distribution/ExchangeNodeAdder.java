@@ -445,8 +445,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     // parent.
     visitedChildren.forEach(
         child -> {
-          // If the child's region is NOT_ASSIGNED, it means the child do not belong to any
-          // existing DataRegion. We make it belong to its parent and no ExchangeNode will be added.
           if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
             ExchangeNode exchangeNode =
                 new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
