@@ -235,7 +235,7 @@ public class SourceHandleTest {
           .reserve(
               queryId,
               FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                  remoteFragmentInstanceId),
+                  localFragmentInstanceId),
               localPlanNodeId,
               mockTsBlockSize,
               5 * mockTsBlockSize);
@@ -268,7 +268,7 @@ public class SourceHandleTest {
           .free(
               queryId,
               FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                  remoteFragmentInstanceId),
+                  localFragmentInstanceId),
               localPlanNodeId,
               mockTsBlockSize);
       sourceHandle.receive();
