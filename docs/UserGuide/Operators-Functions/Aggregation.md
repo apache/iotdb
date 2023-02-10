@@ -70,6 +70,8 @@ predicate: legal expression with `BOOLEAN` return type
 
 use of threshold and ignoreNull can see above table
 
+>Note: count_if is not supported to use with SlidingWindow in group by time now
+
 ### example
 
 #### raw data

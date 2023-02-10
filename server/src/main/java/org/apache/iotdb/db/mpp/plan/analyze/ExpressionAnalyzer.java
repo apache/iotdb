@@ -272,6 +272,8 @@ public class ExpressionAnalyzer {
 
         // We just process first input Expression of AggregationFunction,
         // keep other input Expressions as origin
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
         if (expression.isBuiltInAggregationFunctionExpression()) {
           List<Expression> children = expression.getExpressions();
           for (int i = 1; i < children.size(); i++) {
@@ -470,6 +472,8 @@ public class ExpressionAnalyzer {
 
         // We just process first input Expression of AggregationFunction,
         // keep other input Expressions as origin and bind Type
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
         if (expression.isBuiltInAggregationFunctionExpression()) {
           List<Expression> children = expression.getExpressions();
           bindTypeForAggregationNonSeriesInputExpressions(
@@ -551,6 +555,8 @@ public class ExpressionAnalyzer {
 
         // We just process first input Expression of AggregationFunction,
         // keep other input Expressions as origin and bind Type
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
         if (predicate.isBuiltInAggregationFunctionExpression()) {
           List<Expression> children = predicate.getExpressions();
           bindTypeForAggregationNonSeriesInputExpressions(
@@ -684,6 +690,8 @@ public class ExpressionAnalyzer {
 
         // We just process first input Expression of AggregationFunction,
         // keep other input Expressions as origin and bind Type
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
         if (expression.isBuiltInAggregationFunctionExpression()) {
           List<Expression> children = expression.getExpressions();
           bindTypeForAggregationNonSeriesInputExpressions(

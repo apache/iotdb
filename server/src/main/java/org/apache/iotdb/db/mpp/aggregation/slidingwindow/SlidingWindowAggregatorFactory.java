@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.aggregation.slidingwindow;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -149,6 +150,8 @@ public class SlidingWindowAggregatorFactory {
         return !ascending
             ? new NormalQueueSlidingWindowAggregator(accumulator, inputLocationList, step)
             : new EmptyQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
+      case COUNT_IF:
+        throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType);
     }

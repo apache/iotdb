@@ -51,6 +51,7 @@ predicate: 返回类型为`BOOLEAN`的合法表达式
 
 threshold 及 ignoreNull 用法见上表
 
+>注意: count_if 当前暂不支持与 group by time 的 SlidingWindow 一起使用
 
 ### 使用示例
 

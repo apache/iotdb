@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
@@ -42,7 +44,6 @@ public class IoTDBCountIfIT {
       new String[] {
         "CREATE DATABASE root.db",
         "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        // s2 is always 0
         "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1, 0, 0, true)",
@@ -205,5 +206,36 @@ public class IoTDBCountIfIT {
     String[] expectedHeader = new String[] {"Count_if(root.db.d1.s3, 1)"};
     String[] retArray = new String[] {"1,"};
     resultSetEqualTest("select Count_if(s3, 1) from root.db.d1", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testContIfWithGroupByLevel() {
+    String[] expectedHeader = new String[] {"Count_if(root.db.*.s1 = 0 & root.db.*.s2 = 0, 3)"};
+    String[] retArray = new String[] {"4,"};
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, 3) from root.db.* group by level = 1",
+        expectedHeader,
+        retArray);
+
+    expectedHeader =
+        new String[] {
+          "Count_if(root.*.d1.s1 = 0 & root.*.d1.s2 = 0, 3)",
+          "Count_if(root.*.d1.s1 = 0 & root.*.d2.s2 = 0, 3)",
+          "Count_if(root.*.d2.s1 = 0 & root.*.d1.s2 = 0, 3)",
+          "Count_if(root.*.d2.s1 = 0 & root.*.d2.s2 = 0, 3)"
+        };
+    retArray = new String[] {"2,0,1,1,"};
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, 3) from root.db.* group by level = 2",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void testContIfWithSlidingWindow() {
+    assertTestFail(
+        "select count_if(s1>1,1) from root.db.d1 group by time([1,10),3ms,2ms)",
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            + ": COUNT_IF with slidingWindow is not supported now");
   }
 }
