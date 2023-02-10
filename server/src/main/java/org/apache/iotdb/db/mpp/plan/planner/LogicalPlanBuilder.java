@@ -751,7 +751,6 @@ public class LogicalPlanBuilder {
                   functionName,
                   curStep,
                   groupedTimeseriesOperands.get(next),
-                  1,
                   ((FunctionExpression) next).getFunctionAttributes(),
                   next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);

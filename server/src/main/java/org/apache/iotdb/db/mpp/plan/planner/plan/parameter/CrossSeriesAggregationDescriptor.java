@@ -37,7 +37,10 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private String outputParametersString;
 
-  /** records how many Expressions are in one input, used for calculation of inputColumnNames */
+  /**
+   * Records how many Expressions are in one input, used for calculation of inputColumnNames .e.g
+   * input[count_if(root.db.d1.s1, 3), count_if(root.db.d2.s1, 3)], expressionNumOfOneInput = 2
+   */
   private final int expressionNumOfOneInput;
 
   public CrossSeriesAggregationDescriptor(
@@ -50,6 +53,21 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     super(aggregationFuncName, step, inputExpressions, inputAttributes);
     this.outputExpression = outputExpression;
     this.expressionNumOfOneInput = inputExpressions.size() / numberOfInput;
+  }
+
+  /**
+   * Please ensure only one Expression in one input when you use this construction, now only
+   * GroupByTagNode use it
+   */
+  public CrossSeriesAggregationDescriptor(
+      String aggregationFuncName,
+      AggregationStep step,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      Expression outputExpression) {
+    super(aggregationFuncName, step, inputExpressions, inputAttributes);
+    this.outputExpression = outputExpression;
+    this.expressionNumOfOneInput = 1;
   }
 
   public CrossSeriesAggregationDescriptor(
