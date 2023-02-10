@@ -108,4 +108,6 @@ public interface CommonConfig {
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 }

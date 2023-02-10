@@ -39,12 +39,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -720,7 +720,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               root, context, sources, eachSeriesOneRegion, regionCountPerSeries);
 
       if (eachSeriesOneRegion[0]) {
-        newRoot = new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+        newRoot = new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
       } else {
         List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
         for (PlanNode child : root.getChildren()) {
@@ -784,8 +784,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              VerticallyConcatNode parentOfGroup =
-                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              HorizontallyConcatNode parentOfGroup =
+                  new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
               sourceNodes.forEach(parentOfGroup::addChild);
               newRoot.addChild(parentOfGroup);
             }
@@ -818,6 +818,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
+    Map<String, Expression> columnNameToExpression = new HashMap<>();
+    for (CrossSeriesAggregationDescriptor originalDescriptor :
+        newRoot.getGroupByLevelDescriptors()) {
+      for (Expression exp : originalDescriptor.getInputExpressions()) {
+        columnNameToExpression.put(exp.getExpressionString(), exp);
+      }
+      columnNameToExpression.put(
+          originalDescriptor.getOutputExpression().getExpressionString(),
+          originalDescriptor.getOutputExpression());
+    }
+
+    context.setColumnNameToExpression(columnNameToExpression);
     calculateGroupByLevelNodeAttributes(newRoot, 0, context);
     return Collections.singletonList(newRoot);
   }
@@ -873,8 +885,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            VerticallyConcatNode verticallyConcatNode =
-                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            HorizontallyConcatNode verticallyConcatNode =
+                new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
             sourceNodes.forEach(verticallyConcatNode::addChild);
             parentOfGroup.addChild(verticallyConcatNode);
           }
@@ -957,21 +969,29 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
+      Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
+      Set<Expression> childrenExpressionSet = new HashSet<>();
+      for (String childColumn : childrenOutputColumns) {
+        Expression childExpression =
+            columnNameToExpression.get(
+                childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
+        childrenExpressionSet.add(childExpression);
+      }
+
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
-        for (String childColumn : childrenOutputColumns) {
-          // If this condition matched, the childColumn should come from GroupByLevelNode
-          if (isAggColumnMatchExpression(childColumn, originalDescriptor.getOutputExpression())) {
-            descriptorExpressions.add(originalDescriptor.getOutputExpression());
-            continue;
-          }
-          for (Expression exp : originalDescriptor.getInputExpressions()) {
-            if (isAggColumnMatchExpression(childColumn, exp)) {
-              descriptorExpressions.add(exp);
-            }
+
+        if (childrenExpressionSet.contains(originalDescriptor.getOutputExpression())) {
+          descriptorExpressions.add(originalDescriptor.getOutputExpression());
+        }
+
+        for (Expression exp : originalDescriptor.getInputExpressions()) {
+          if (childrenExpressionSet.contains(exp)) {
+            descriptorExpressions.add(exp);
           }
         }
+
         if (descriptorExpressions.isEmpty()) {
           continue;
         }
@@ -1014,8 +1034,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            VerticallyConcatNode verticallyConcatNode =
-                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            HorizontallyConcatNode verticallyConcatNode =
+                new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
             sourceNodes.forEach(verticallyConcatNode::addChild);
             parentOfGroup.addChild(verticallyConcatNode);
           }
@@ -1039,10 +1059,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              VerticallyConcatNode verticallyConcatNode =
-                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
-              sourceNodes.forEach(verticallyConcatNode::addChild);
-              newRoot.addChild(verticallyConcatNode);
+              HorizontallyConcatNode horizontallyConcatNode =
+                  new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              sourceNodes.forEach(horizontallyConcatNode::addChild);
+              newRoot.addChild(horizontallyConcatNode);
             }
           }
         });

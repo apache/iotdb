@@ -221,42 +221,6 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-* 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
-
-```java
-// 为指定模板新增一组对齐的物理量，若其父节点在模板中已经存在，且不要求对齐，则报错
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// 为指定模板新增一个对齐物理量, 若其父节点在模板中已经存在，且不要求对齐，则报错
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// 为指定模板新增一个不对齐物理量, 若其父节在模板中已经存在，且要求对齐，则报错
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// 为指定模板新增一组不对齐的物理量, 若其父节在模板中已经存在，且要求对齐，则报错
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// 从指定模板中删除一个节点
-public void deleteNodeInTemplate(String templateName, String path);
-```
-
 * 对于已经创建的元数据模板，还可以通过以下接口查询模板信息：
 
 ```java

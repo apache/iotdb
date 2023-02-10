@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -36,33 +35,18 @@ public class SchemaValidator {
 
   private static final ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  public static ISchemaTree validate(InsertNode insertNode) {
-
-    ISchemaTree schemaTree;
-    if (insertNode instanceof BatchInsertNode) {
-      BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
-      schemaTree =
-          SCHEMA_FETCHER.fetchSchemaListWithAutoCreate(
-              batchInsertNode.getDevicePaths(),
-              batchInsertNode.getMeasurementsList(),
-              batchInsertNode.getDataTypesList(),
-              batchInsertNode.getAlignedList());
-    } else {
-      schemaTree =
-          SCHEMA_FETCHER.fetchSchemaWithAutoCreate(
-              insertNode.getDevicePath(),
-              insertNode.getMeasurements(),
-              insertNode::getDataType,
-              insertNode.isAligned());
-    }
-
+  public static void validate(InsertNode insertNode) {
     try {
-      insertNode.validateAndSetSchema(schemaTree);
-    } catch (QueryProcessException | MetadataException e) {
+      if (insertNode instanceof BatchInsertNode) {
+        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(
+            ((BatchInsertNode) insertNode).getSchemaValidationList());
+      } else {
+        SCHEMA_FETCHER.fetchAndComputeSchemaWithAutoCreate(insertNode.getSchemaValidation());
+      }
+      insertNode.updateAfterSchemaValidation();
+    } catch (QueryProcessException e) {
       throw new SemanticException(e);
     }
-
-    return schemaTree;
   }
 
   public static ISchemaTree validate(
