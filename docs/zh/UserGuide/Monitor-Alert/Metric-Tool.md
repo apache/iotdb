@@ -567,8 +567,8 @@ static_configs:
     - `Database Used Memory`：每个 Database 使用的内存大小
 - `Interface`：接口
     - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
-    - `The Time Consumed Of Operation(75%)`：不同客户端操作耗时的上四分位数
-    - `The Time Consumed Of Operation(100%)`：不同客户端操作耗时的最大值
+    - `The Time Consumed Of Operation(99%)`：不同客户端操作耗时的P99
+    - `The Time Consumed Of Operation(99.9%)`：不同客户端操作耗时的P999
     - `The QPS of Interface`：系统接口每秒钟访问次数
     - `The Time Consumed Of Interface`：系统接口的平均耗时
     - `Cache Hit Rate`：缓存命中率
@@ -581,45 +581,43 @@ static_configs:
     - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
     - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
 - `Query Engine`：查询引擎
-    - `The time consumed of query plan stages(avg\50%\75%\100%)`：查询规划各阶段耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of plan dispatch stages(avg\50%\75%\100%)`：查询计划分发耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query execution stages(avg\50%\75%\100%)`：查询执行各阶段耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of operator execution stages(avg\50%\75%\100%)`：查询算子耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query aggregation(avg\50%\75%\100%)`：查询聚合计算耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query scan(avg\50%\75%\100%)`：查询文件/内存耗时的平均值\中位数\上四分位数\最大值
-    - `The usage of query resource(avg\50%\75%\100%)`：查询不同资源访问数量的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query data exchange(avg\50%\75%\100%)`：查询数据传输耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of query plan stages(avg\50%\99%\99.9%)`：查询规划各阶段耗时的平均值\中位数\P99\P999
+    - `The time consumed of plan dispatch stages(avg\50%\99%\99.9%)`：查询计划分发耗时的平均值\中位数\P99\P999
+    - `The time consumed of query execution stages(avg\50%\99%\99.9%)`：查询执行各阶段耗时的平均值\中位数\P99\P999
+    - `The time consumed of operator execution stages(avg\50%\99%\99.9%)`：查询算子耗时的平均值\中位数\P99\P999
+    - `The time consumed of query aggregation(avg\50%\99%\99.9%)`：查询聚合计算耗时的平均值\中位数\P99\P999
+    - `The time consumed of query scan(avg\50%\99%\99.9%)`：查询文件/内存耗时的平均值\中位数\P99\P999
+    - `The usage of query resource(avg\50%\99%\99.9%)`：查询不同资源访问数量的平均值\中位数\P99\P999
+    - `The time consumed of query data exchange(avg\50%\99%\99.9%)`：查询数据传输耗时的平均值\中位数\P99\P999
     - `The count of data exchange(avg)`：查询数据传输平均次数
     - `The count of data exchange`：查询数据传输次数的分布情况（最小值、下四分位数、中位数、上四分位数、最大值）
     - `The number of query queue`：查询不同队列的大小
-    - `The time consumed of query schedule time(avg\50%\75%\100%)`：查询任务调度耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of query schedule time(avg\50%\99%\99.9%)`：查询任务调度耗时的平均值\中位数\P99\P999
 - `Query Interface`：查询文件/耗时的具体耗时情况
-    - `The time consumed of load timesereis metadata(avg\50%\75%\100%)`：查询从不同来源加载时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of read timeseries metadata(avg\50%\75%\100%)`：查询从不同来源读取时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of timeseries metadata modiftication(avg\50%\75%\100%)`：查询修改不同类型时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of load chunk metadata list(avg\50%\75%\100%)`：查询加载不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of chunk metadata modification(avg\50%\75%\100%)`：查询修改不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of chunk metadata filter(avg\50%\75%\100%)`：查询过滤不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of construct chunk reader(avg\50%\75%\100%)`：查询构造不同类型Chunk读取器耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of read chunk(avg\50%\75%\100%)`：查询读取不同类型Chunk耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of init chunk reader(avg\50%\75%\100%)`：查询初始化不同类型Chunk读取器耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of build tsblock from page reader(avg\50%\75%\100%)`：查询从Page
-      Reader构造TsBlock耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of build tsblock from merge reader(avg\50%\75%\100%)`：查询从Merge
-      Reader构造TsBlock耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of load timesereis metadata(avg\50%\99%\99.9%)`：查询从不同来源加载时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of read timeseries metadata(avg\50%\99%\99.9%)`：查询从不同来源读取时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of timeseries metadata modiftication(avg\50%\99%\99.9%)`：查询修改不同类型时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of load chunk metadata list(avg\50%\99%\99.9%)`：查询加载不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of chunk metadata modification(avg\50%\99%\99.9%)`：查询修改不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of chunk metadata filter(avg\50%\99%\99.9%)`：查询过滤不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of construct chunk reader(avg\50%\99%\99.9%)`：查询构造不同类型Chunk读取器耗时的平均值\中位数\P99\P999
+    - `The time consumed of read chunk(avg\50%\99%\99.9%)`：查询读取不同类型Chunk耗时的平均值\中位数\P99\P999
+    - `The time consumed of init chunk reader(avg\50%\99%\99.9%)`：查询初始化不同类型Chunk读取器耗时的平均值\中位数\P99\P999
+    - `The time consumed of build tsblock from page reader(avg\50%\99%\99.9%)`：查询从PageReader构造TsBlock耗时的平均值\中位数\P99\P999
+    - `The time consumed of build tsblock from merge reader(avg\50%\99%\99.9%)`：查询从MergeReader构造TsBlock耗时的平均值\中位数\P99\P999
 - `Query Data Exchange`：查询数据传输的具体耗时情况
-    - `The time consumed of source handle get tsblock(avg\50%\75%\100%)`：查询从不同来源获取TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of source handle deserialize tsblock(avg\50%\75%\100%)`：查询从不同来源反序列化TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of sink handle send tsblock(avg\50%\75%\100%)`：查询向不同地方发送TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of on acknowledge data block event task(avg\50%\75%\100%)`：查询从不同地方确认Block耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of get data block event task(avg\50%\75%\100%)`：查询从不同地方获取Block耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of source handle get tsblock(avg\50%\99%\99.9%)`：查询从不同来源获取TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of source handle deserialize tsblock(avg\50%\99%\99.9%)`：查询从不同来源反序列化TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of sink handle send tsblock(avg\50%\99%\99.9%)`：查询向不同地方发送TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of on acknowledge data block event task(avg\50%\99%\99.9%)`：查询从不同地方确认Block耗时的平均值\中位数\P99\P999
+    - `The time consumed of get data block event task(avg\50%\99%\99.9%)`：查询从不同地方获取Block耗时的平均值\中位数\P99\P999
 - `IoTConsensus`：IoT共识协议
     - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
     - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
     - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
     - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
-    - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
-    - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
+    - `The time consumed of different stages(99%)`：不同阶段耗时的P99
+    - `The time consumed of different stages(99.9%)`：不同阶段耗时的P999
     - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
     - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
     - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
