@@ -40,7 +40,7 @@ public class SchemaLogWriter<T> implements AutoCloseable {
 
   private final File logFile;
 
-  private FileOutputStream fileOutputStream;
+  private final FileOutputStream fileOutputStream;
 
   private final ISerializer<T> serializer;
 
@@ -80,7 +80,6 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     hasSynced = false;
     // serialize plan to binary data
     serializer.serialize(schemaPlan, fileOutputStream);
-
     if (forceEachWrite) {
       syncBufferToDisk();
     }
@@ -105,13 +104,6 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     if (logFile != null && logFile.exists()) {
       Files.delete(logFile.toPath());
     }
-  }
-
-  public synchronized void reset() throws IOException {
-    fileOutputStream.close();
-    // rename file
-    // logFile.renameTo(new File(MetadataConstant.METADATA_LOG + "-" + System.currentTimeMillis()));
-    fileOutputStream = new FileOutputStream(logFile, false);
   }
 
   @Override
