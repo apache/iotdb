@@ -44,20 +44,20 @@ public class FirstValueAccumulator implements Accumulator {
 
   // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow);
+        return addIntInput(column, curWindow, ignoringNull);
       case INT64:
-        return addLongInput(column, curWindow);
+        return addLongInput(column, curWindow, ignoringNull);
       case FLOAT:
-        return addFloatInput(column, curWindow);
+        return addFloatInput(column, curWindow, ignoringNull);
       case DOUBLE:
-        return addDoubleInput(column, curWindow);
+        return addDoubleInput(column, curWindow, ignoringNull);
       case TEXT:
-        return addBinaryInput(column, curWindow);
+        return addBinaryInput(column, curWindow, ignoringNull);
       case BOOLEAN:
-        return addBooleanInput(column, curWindow);
+        return addBooleanInput(column, curWindow, ignoringNull);
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in FirstValue: %s", seriesDataType));
@@ -130,8 +130,32 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    hasCandidateResult = true;
-    firstValue.setObject(finalResult.getObject(0));
+    if (!finalResult.isNull(0)) {
+      hasCandidateResult = true;
+      switch (seriesDataType) {
+        case INT32:
+          firstValue.setInt(finalResult.getInt(0));
+          break;
+        case INT64:
+          firstValue.setLong(finalResult.getLong(0));
+          break;
+        case FLOAT:
+          firstValue.setFloat(finalResult.getFloat(0));
+          break;
+        case DOUBLE:
+          firstValue.setDouble(finalResult.getDouble(0));
+          break;
+        case TEXT:
+          firstValue.setBinary(finalResult.getBinary(0));
+          break;
+        case BOOLEAN:
+          firstValue.setBoolean(finalResult.getBoolean(0));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in FirstValue: %s", seriesDataType));
+      }
+    }
   }
 
   // columnBuilder should be double in FirstValueAccumulator
@@ -222,18 +246,18 @@ public class FirstValueAccumulator implements Accumulator {
     return firstValue.getDataType();
   }
 
-  protected int addIntInput(Column[] column, IWindow curWindow) {
+  protected int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntFirstValue(column[2].getInt(i), column[1].getLong(i));
         return i;
@@ -251,18 +275,18 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addLongInput(Column[] column, IWindow curWindow) {
+  protected int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongFirstValue(column[2].getLong(i), column[1].getLong(i));
         return i;
@@ -280,18 +304,18 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addFloatInput(Column[] column, IWindow curWindow) {
+  protected int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatFirstValue(column[2].getFloat(i), column[1].getLong(i));
         return i;
@@ -309,18 +333,18 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addDoubleInput(Column[] column, IWindow curWindow) {
+  protected int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleFirstValue(column[2].getDouble(i), column[1].getLong(i));
         return i;
@@ -338,18 +362,18 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBooleanInput(Column[] column, IWindow curWindow) {
+  protected int addBooleanInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBooleanFirstValue(column[2].getBoolean(i), column[1].getLong(i));
         return i;
@@ -367,18 +391,18 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected int addBinaryInput(Column[] column, IWindow curWindow) {
+  protected int addBinaryInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBinaryFirstValue(column[2].getBinary(i), column[1].getLong(i));
         return i;

@@ -19,25 +19,83 @@
 
 package org.apache.iotdb.db.qp.sql;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.SqlConstant;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.parser.ASTVisitor;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+
+import static org.junit.Assert.assertEquals;
 
 public class ASTVisitorTest {
 
-  ASTVisitor astVisitor;
+  ASTVisitor visitor;
 
   @Before
   public void setUp() {
-    astVisitor = new ASTVisitor();
-    astVisitor.setZoneId(ZonedDateTime.now().getOffset());
+    visitor = new ASTVisitor();
+    visitor.setZoneId(ZonedDateTime.now().getOffset());
   }
 
   @After
   public void tearDown() {}
 
-  // TODO: add more tests
+  @Test
+  public void testParseTimeFormatNow() {
+    long now = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    for (int i = 0; i <= 12; i++) {
+      ZoneOffset offset1, offset2;
+      if (i < 10) {
+        offset1 = ZoneOffset.of("+0" + i + ":00");
+        offset2 = ZoneOffset.of("-0" + i + ":00");
+      } else {
+        offset1 = ZoneOffset.of("+" + i + ":00");
+        offset2 = ZoneOffset.of("-" + i + ":00");
+      }
+      ZonedDateTime zonedDateTime =
+          ZonedDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.of(offset1.toString()));
+      assertEquals(now, zonedDateTime.toInstant().toEpochMilli());
+      zonedDateTime =
+          ZonedDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.of(offset2.toString()));
+      assertEquals(now, zonedDateTime.toInstant().toEpochMilli());
+    }
+  }
+
+  @Test
+  public void testParseTimeFormatNowPrecision() {
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
+    long now_ms = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    String ms_str = String.valueOf(now_ms);
+
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("us");
+    long now_us = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    String us_str = String.valueOf(now_us);
+
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+    long now_ns = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    String ns_str = String.valueOf(now_ns);
+
+    assertEquals(ms_str.length() + 3, (us_str).length());
+    assertEquals(us_str.length() + 3, (ns_str).length());
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision(timePrecision);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void testParseTimeFormatFail1() {
+    visitor.parseDateFormat(null);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void testParseTimeFormatFail2() {
+    visitor.parseDateFormat("");
+  }
 }

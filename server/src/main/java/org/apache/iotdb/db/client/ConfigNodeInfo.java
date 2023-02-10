@@ -44,7 +44,7 @@ public class ConfigNodeInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeInfo.class);
 
-  private final String CONFIG_NODE_LIST = "config_node_list";
+  private static final String CONFIG_NODE_LIST = "config_node_list";
 
   private static final String PROPERTIES_FILE_NAME = "system.properties";
 
@@ -67,11 +67,7 @@ public class ConfigNodeInfo {
                 + PROPERTIES_FILE_NAME);
   }
 
-  /**
-   * Update ConfigNodeList both in memory and confignode-system.properties file
-   *
-   * @param latestConfigNodes
-   */
+  /** Update ConfigNodeList both in memory and system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
     // check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();

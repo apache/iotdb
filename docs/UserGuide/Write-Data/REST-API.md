@@ -36,7 +36,7 @@ Example：
             "temperature",
             "status"
       ],
-      "dataTypes": [
+      "data_types": [
             "FLOAT",
             "BOOLEAN"
       ],
@@ -52,7 +52,7 @@ Example：
                   true
             ]
       ],
-      "isAligned": false,
-      "deviceId": "root.ln.wf01.wt01"
+      "is_aligned": false,
+      "device": "root.ln.wf01.wt01"
 }
 ```

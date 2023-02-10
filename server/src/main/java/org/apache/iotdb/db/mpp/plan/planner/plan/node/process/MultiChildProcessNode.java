@@ -30,12 +30,12 @@ public abstract class MultiChildProcessNode extends ProcessNode {
 
   protected List<PlanNode> children;
 
-  public MultiChildProcessNode(PlanNodeId id, List<PlanNode> children) {
+  protected MultiChildProcessNode(PlanNodeId id, List<PlanNode> children) {
     super(id);
     this.children = children;
   }
 
-  public MultiChildProcessNode(PlanNodeId id) {
+  protected MultiChildProcessNode(PlanNodeId id) {
     super(id);
     this.children = new ArrayList<>();
   }

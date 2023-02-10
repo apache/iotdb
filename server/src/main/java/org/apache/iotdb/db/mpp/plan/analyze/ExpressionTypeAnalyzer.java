@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class ExpressionTypeAnalyzer {
 
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
@@ -252,14 +250,16 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-        checkArgument(
-            inputExpressions.size() == 1,
-            String.format(
-                "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
-                inputExpressions.size()));
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getAggrDataType(
+                functionExpression.getFunctionName(),
+                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+      }
+      if (functionExpression.isBuiltInScalarFunction()) {
+        return setExpressionType(
+            functionExpression,
+            TypeInferenceUtils.getScalarFunctionDataType(
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       } else {

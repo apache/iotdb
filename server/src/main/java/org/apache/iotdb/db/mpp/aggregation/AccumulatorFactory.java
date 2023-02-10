@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ public class AccumulatorFactory {
 
   // TODO: Are we going to create different seriesScanOperator based on order by sequence?
   public static Accumulator createAccumulator(
-      AggregationType aggregationType, TSDataType tsDataType, boolean ascending) {
+      TAggregationType aggregationType, TSDataType tsDataType, boolean ascending) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -61,9 +61,9 @@ public class AccumulatorFactory {
   }
 
   public static List<Accumulator> createAccumulators(
-      List<AggregationType> aggregationTypes, TSDataType tsDataType, boolean ascending) {
+      List<TAggregationType> aggregationTypes, TSDataType tsDataType, boolean ascending) {
     List<Accumulator> accumulators = new ArrayList<>();
-    for (AggregationType aggregationType : aggregationTypes) {
+    for (TAggregationType aggregationType : aggregationTypes) {
       accumulators.add(createAccumulator(aggregationType, tsDataType, ascending));
     }
     return accumulators;

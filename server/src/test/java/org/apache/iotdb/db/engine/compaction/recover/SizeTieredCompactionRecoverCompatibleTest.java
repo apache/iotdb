@@ -21,12 +21,12 @@ package org.apache.iotdb.db.engine.compaction.recover;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -91,23 +91,23 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     File logFile =
         new File(
             targetResource.getTsFile().getParent(),
-            "root.compactionTest" + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
+            COMPACTION_TEST_SG + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
     BufferedWriter logWriter = new BufferedWriter(new FileWriter(logFile));
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(
           String.format(
-              "info-source\nroot.compactionTest 0 0 %s sequence\n",
-              tsFileResource.getTsFile().getName()));
+              "info-source\n%s 0 0 %s sequence\n",
+              COMPACTION_TEST_SG, tsFileResource.getTsFile().getName()));
     }
     logWriter.write("sequence\n");
     logWriter.write(
         String.format(
-            "info-target\nroot.compactionTest 0 0 %s sequence\n",
-            targetResource.getTsFile().getName()));
+            "info-target\n%s 0 0 %s sequence\n",
+            COMPACTION_TEST_SG, targetResource.getTsFile().getName()));
     logWriter.close();
 
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
+        new TsFileManager(COMPACTION_TEST_SG, "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);
@@ -135,7 +135,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, "root.compactionTest");
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
 
     // first source file does not exist
     seqResources.get(0).delete();
@@ -151,23 +151,23 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     File logFile =
         new File(
             targetResource.getTsFile().getParent(),
-            "root.compactionTest" + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
+            COMPACTION_TEST_SG + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD);
     BufferedWriter logWriter = new BufferedWriter(new FileWriter(logFile));
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(
           String.format(
-              "info-source\nroot.compactionTest 0 0 %s sequence\n",
-              tsFileResource.getTsFile().getName()));
+              "info-source\n%s 0 0 %s sequence\n",
+              COMPACTION_TEST_SG, tsFileResource.getTsFile().getName()));
     }
     logWriter.write("sequence\n");
     logWriter.write(
         String.format(
-            "info-target\nroot.compactionTest 0 0 %s sequence\n",
-            targetResource.getTsFile().getName()));
+            "info-target\n%s 0 0 %s sequence\n",
+            COMPACTION_TEST_SG, targetResource.getTsFile().getName()));
     logWriter.close();
 
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", targetResource.getTsFile().getParent());
+        new TsFileManager(COMPACTION_TEST_SG, "0", targetResource.getTsFile().getParent());
     tsFileManager.addAll(seqResources, true);
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true);

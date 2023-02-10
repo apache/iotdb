@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
@@ -58,9 +59,9 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -71,7 +72,7 @@ public class LinearFillOperatorTest {
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -126,7 +127,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -271,9 +272,9 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -284,7 +285,7 @@ public class LinearFillOperatorTest {
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -339,7 +340,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -484,9 +485,9 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -497,7 +498,7 @@ public class LinearFillOperatorTest {
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -552,7 +553,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -697,9 +698,9 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray =
           new LinearFill[] {
@@ -710,7 +711,7 @@ public class LinearFillOperatorTest {
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -765,7 +766,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -910,14 +911,14 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -932,7 +933,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -1030,14 +1031,14 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -1052,7 +1053,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -1150,14 +1151,14 @@ public class LinearFillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
       ILinearFill[] fillArray = new ILinearFill[] {new IdentityLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
@@ -1172,7 +1173,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override

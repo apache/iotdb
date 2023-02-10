@@ -31,7 +31,7 @@ public abstract class Partition {
   // todo decouple this executor with Partition
   private final SeriesPartitionExecutor executor;
 
-  public Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+  protected Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     this.seriesSlotExecutorName = seriesSlotExecutorName;
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
     executor =

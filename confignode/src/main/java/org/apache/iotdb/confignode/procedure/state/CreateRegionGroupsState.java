@@ -32,7 +32,7 @@ public enum CreateRegionGroupsState {
   SHUNT_REGION_REPLICAS,
 
   // Mark RegionGroupCache as available for those RegionGroups that created successfully.
-  // For DataRegionGroups that use multi-leader consensus protocol, select leader by the way
+  // For DataRegionGroups that use iot consensus protocol, select leader by the way
   ACTIVATE_REGION_GROUPS,
 
   CREATE_REGION_GROUPS_FINISH

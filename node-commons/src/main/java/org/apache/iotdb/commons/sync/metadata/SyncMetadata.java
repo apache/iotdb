@@ -157,6 +157,9 @@ public class SyncMetadata implements SnapshotProcessor {
 
   public void setPipeStatus(String pipeName, PipeStatus status) {
     pipes.get(pipeName).setStatus(status);
+    if (status.equals(PipeStatus.RUNNING)) {
+      pipes.get(pipeName).setMessageType(PipeMessage.PipeMessageType.NORMAL);
+    }
   }
 
   public PipeInfo getPipeInfo(String pipeName) {
@@ -197,6 +200,7 @@ public class SyncMetadata implements SnapshotProcessor {
     }
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
     try (SyncLogWriter writer = new SyncLogWriter(snapshotDir, tmpFile.getName())) {
+      writer.initOutputStream();
       for (PipeSink pipeSink : pipeSinks.values()) {
         writer.addPipeSink(pipeSink);
       }
@@ -208,6 +212,8 @@ public class SyncMetadata implements SnapshotProcessor {
             break;
           case STOP:
             writer.operatePipe(pipeInfo.getPipeName(), SyncOperation.STOP_PIPE);
+            break;
+          default:
             break;
         }
       }

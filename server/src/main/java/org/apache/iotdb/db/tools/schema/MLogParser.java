@@ -42,7 +42,7 @@ import java.io.IOException;
 public class MLogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogParser.class);
-  private static final String MLOG_CLI_PREFIX = "MlogParser";
+  private static final String MLOG_CLI_PREFIX = "print-schema-log";
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "mlog file";

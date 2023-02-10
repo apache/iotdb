@@ -71,7 +71,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (env.doubleCheckReplica()) {
+          if (env.doubleCheckReplica(removedDataNode)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
@@ -150,7 +150,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
             .filter(replica -> replica.getDataNodeLocations().contains(removedDataNode))
             .map(TRegionReplicaSet::getRegionId)
             .collect(Collectors.toList());
-    if (migratedFailedRegions.size() > 0) {
+    if (!migratedFailedRegions.isEmpty()) {
       LOG.warn(
           "{}, Some regions are migrated failed, the StopDataNode process should not be executed, migratedFailedRegions: {}",
           REMOVE_DATANODE_PROCESS,

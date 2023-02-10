@@ -22,13 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -36,7 +37,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -76,20 +76,6 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     String mode = args[0];
     LOGGER.info("Running mode {}", mode);
 
-    // Check config of IoTDB, and set some configs in cluster mode
-    try {
-      dataNode.serverCheckAndInit(mode);
-    } catch (ConfigurationException | IOException e) {
-      LOGGER.error("Meet error when doing start checking", e);
-      return -1;
-    }
-
-    // Initialize the current node and its services
-    if (!dataNode.initLocalEngines()) {
-      LOGGER.error("Init local engines error, stop process!");
-      return -1;
-    }
-
     // Start IoTDB kernel first, then start the cluster module
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
@@ -107,7 +93,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
    * @param args id or ip:rpc_port for removed datanode
    */
   private void doRemoveDataNode(String[] args)
-      throws BadNodeUrlException, TException, IoTDBException {
+      throws BadNodeUrlException, TException, IoTDBException, ClientManagerException {
 
     if (args.length != 2) {
       LOGGER.info("Usage: <node-id>/<ip>:<rpc-port>");
@@ -116,16 +102,19 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
 
+    // Load ConfigNodeList from system.properties file
     ConfigNodeInfo.getInstance().loadConfigNodeList();
+
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");
     }
     LOGGER.info("Start to remove datanode, removed datanode endpoints: {}", dataNodeLocations);
     TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
-    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
-      LOGGER.info("Remove result {} ", removeResp.toString());
+      LOGGER.info("Remove result {} ", removeResp);
       if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBException(
             removeResp.getStatus().toString(), removeResp.getStatus().getCode());
@@ -159,17 +148,19 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     // Below supports multiple datanode deletion, split by ',', and is reserved for extension
     try {
       List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args);
-      try (ConfigNodeClient client = new ConfigNodeClient()) {
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         dataNodeLocations =
             client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
                 .map(TDataNodeConfiguration::getLocation)
                 .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
                 .collect(Collectors.toList());
-      } catch (TException e) {
+      } catch (TException | ClientManagerException e) {
         LOGGER.error("Get data node locations failed", e);
       }
     } catch (BadNodeUrlException e) {
-      try (ConfigNodeClient client = new ConfigNodeClient()) {
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         for (String id : args.split(",")) {
           if (!isNumeric(id)) {
             LOGGER.warn("Incorrect id format {}, skipped...", id);
@@ -188,7 +179,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
             dataNodeLocations.add(nodeLocationResult.get(0));
           }
         }
-      } catch (TException e1) {
+      } catch (TException | ClientManagerException e1) {
         LOGGER.error("Get data node locations failed", e);
       }
     }

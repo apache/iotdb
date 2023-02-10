@@ -1,0 +1,60 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+version: "3"
+services:
+  iotdb-confignode:
+    image: apache/iotdb:1.0.0-confignode
+    container_name: iotdb-confignode
+    ports:
+      - "22277:22277"
+      - "22278:22278"
+    environment:
+      - cn_internal_address=iotdb-confignode-1
+      - cn_target_config_node_list=iotdb-confignode-1:22277
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/confignode:/iotdb/data
+      - ./logs/confignode:/iotdb/logs
+    networks:
+      iotdb:
+        ipv4_address: 172.18.0.12
+
+  iotdb-datanode:
+    image: apache/iotdb:1.0.0-datanode
+    container_name: iotdb-datanode
+    ports:
+      - "6667:6667"
+      - "8777:8777"
+      - "9003:9003"
+      - "50010:50010"
+      - "40010:40010"
+    environment:
+      - dn_rpc_address=iotdb-datanode-1
+      - dn_internal_address=iotdb-datanode-1
+      - dn_target_config_node_list=iotdb-confignode-1:22277
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/datanode1:/iotdb/data/
+      - ./logs/datanode1:/iotdb/logs/
+    networks:
+      iotdb:
+        ipv4_address: 172.18.0.13
+networks:
+  iotdb:
+    external: true

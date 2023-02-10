@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 

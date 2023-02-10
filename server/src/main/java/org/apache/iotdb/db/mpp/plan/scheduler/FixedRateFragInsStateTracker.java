@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -35,7 +36,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +48,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
-  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10 * 60 * 1000;
+  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10L * 60 * 1000;
 
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
@@ -131,9 +131,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
           updateQueryState(instance.getId(), instanceInfo);
         }
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         // TODO: do nothing ?
-        logger.error("error happened while fetching query state", e);
+        logger.warn("error happened while fetching query state", e);
       }
     }
   }
@@ -141,7 +141,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
     if (instanceInfo.getState().isFailed()) {
       if (instanceInfo.getFailureInfoList() == null
-          || instanceInfo.getFailureInfoList().size() == 0) {
+          || instanceInfo.getFailureInfoList().isEmpty()) {
         stateMachine.transitionToFailed(
             new RuntimeException(String.format("FragmentInstance[%s] is failed.", instanceId)));
       } else {

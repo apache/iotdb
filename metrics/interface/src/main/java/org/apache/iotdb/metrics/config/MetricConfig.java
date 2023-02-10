@@ -19,50 +19,180 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.metrics.utils.SystemType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
-  /** Is metric service enabled */
-  private Boolean enableMetric = true;
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricConfig.class);
+  /** The type of the implementation of metric framework. */
+  private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
-  /** Is stat performance of operations enabled */
-  private Boolean enablePerformanceStat = false;
-
-  /** The type of the implementation of metric service */
-  private MonitorType monitorType = MonitorType.MICROMETER;
-
-  /** The list of reporters provide data for external system */
+  /** The list of reporters provide metrics for external tool. */
   private List<ReporterType> metricReporterList = Collections.emptyList();
 
-  /** The level of metric service */
+  /** The level of metric service. */
   private MetricLevel metricLevel = MetricLevel.CORE;
 
+  /** The period of async collection of some metrics in second. */
   private Integer asyncCollectPeriodInSecond = 5;
 
-  /** The http server's port for prometheus reporter to get metric data. */
-  private Integer prometheusExporterPort = 9091;
+  /** The export port for prometheus to get metrics. */
+  private Integer prometheusReporterPort = 9091;
 
-  /** The config for iotdb reporter to push metric data */
-  private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
+  /** The iotdb config for iotdb reporter to push metric data. */
+  private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
+
+  /** The type of internal reporter. */
+  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
+
+  /** The address of iotdb instance that is monitored. */
+  private String rpcAddress = "0.0.0.0";
+  /** The port of iotdb instance that is monitored. */
+  private Integer rpcPort = 6667;
+  /** The pid of iotdb instance. */
+  private String pid = "";
+  /** The running system of iotdb instance */
+  private final SystemType systemType = SystemType.getSystemType();
+
+  public MetricConfig() {
+    // try to get pid of iotdb instance
+    try {
+      pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get pid, because ", e);
+    }
+  }
+
+  public MetricFrameType getMetricFrameType() {
+    return metricFrameType;
+  }
+
+  public void setMetricFrameType(MetricFrameType metricFrameType) {
+    this.metricFrameType = metricFrameType;
+  }
+
+  public List<ReporterType> getMetricReporterList() {
+    return metricReporterList;
+  }
+
+  public void setMetricReporterList(String metricReporterList) {
+    this.metricReporterList = new ArrayList<>();
+    for (String type : metricReporterList.split(",")) {
+      if (type.trim().length() != 0) {
+        this.metricReporterList.add(ReporterType.valueOf(type));
+      }
+    }
+  }
+
+  public InternalReporterType getInternalReportType() {
+    return internalReporterType;
+  }
+
+  public void setInternalReportType(InternalReporterType internalReporterType) {
+    this.internalReporterType = internalReporterType;
+  }
+
+  public MetricLevel getMetricLevel() {
+    return metricLevel;
+  }
+
+  public void setMetricLevel(MetricLevel metricLevel) {
+    this.metricLevel = metricLevel;
+  }
+
+  public Integer getAsyncCollectPeriodInSecond() {
+    return asyncCollectPeriodInSecond;
+  }
+
+  public void setAsyncCollectPeriodInSecond(Integer asyncCollectPeriodInSecond) {
+    this.asyncCollectPeriodInSecond = asyncCollectPeriodInSecond;
+  }
+
+  public Integer getPrometheusReporterPort() {
+    return prometheusReporterPort;
+  }
+
+  public void setPrometheusReporterPort(Integer prometheusReporterPort) {
+    this.prometheusReporterPort = prometheusReporterPort;
+  }
+
+  public IoTDBReporterConfig getIotdbReporterConfig() {
+    return iotdbReporterConfig;
+  }
+
+  public String getRpcAddress() {
+    return rpcAddress;
+  }
+
+  public Integer getRpcPort() {
+    return rpcPort;
+  }
+
+  public String getPid() {
+    return pid;
+  }
+
+  public SystemType getSystemType() {
+    return systemType;
+  }
+
+  /** Update rpc address and rpc port of monitored node. */
+  public void updateRpcInstance(String rpcAddress, int rpcPort) {
+    this.rpcAddress = rpcAddress;
+    this.rpcPort = rpcPort;
+  }
+
+  /** Copy properties from another metric config. */
+  public void copy(MetricConfig newMetricConfig) {
+    metricFrameType = newMetricConfig.getMetricFrameType();
+    metricReporterList = newMetricConfig.getMetricReporterList();
+    metricLevel = newMetricConfig.getMetricLevel();
+    asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
+    prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
+    internalReporterType = newMetricConfig.getInternalReportType();
+
+    iotdbReporterConfig.copy(newMetricConfig.getIotdbReporterConfig());
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof MetricConfig)) {
+      return false;
+    }
+    MetricConfig anotherMetricConfig = (MetricConfig) obj;
+    return metricFrameType.equals(anotherMetricConfig.getMetricFrameType())
+        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
+        && metricLevel.equals(anotherMetricConfig.getMetricLevel())
+        && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
+        && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
+        && iotdbReporterConfig.equals(anotherMetricConfig.getIotdbReporterConfig())
+        && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
+  }
 
   public static class IoTDBReporterConfig {
-    /** The host of iotdb that store metric value */
+    /** The host of iotdb that store metric value. */
     private String host = "127.0.0.1";
-    /** The port of iotdb that store metric value */
+    /** The port of iotdb that store metric value. */
     private Integer port = 6667;
-    /** The username of iotdb */
+    /** The username of iotdb. */
     private String username = "root";
-    /** The password of iotdb */
+    /** The password of iotdb. */
     private String password = "root";
-    /** The max number of connection */
+    /** The max number of connection. */
     private Integer maxConnectionNumber = 3;
-    /** The location of iotdb metrics */
+    /** The location of iotdb metrics. */
     private String location = "metric";
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
@@ -123,6 +253,16 @@ public class MetricConfig {
       this.pushPeriodInSecond = pushPeriodInSecond;
     }
 
+    public void copy(IoTDBReporterConfig iotdbReporterConfig) {
+      host = iotdbReporterConfig.getHost();
+      port = iotdbReporterConfig.getPort();
+      username = iotdbReporterConfig.getUsername();
+      password = iotdbReporterConfig.getPassword();
+      maxConnectionNumber = iotdbReporterConfig.getMaxConnectionNumber();
+      pushPeriodInSecond = iotdbReporterConfig.getPushPeriodInSecond();
+      location = iotdbReporterConfig.getLocation();
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -144,112 +284,5 @@ public class MetricConfig {
     public int hashCode() {
       return Objects.hash(host, port, username, password, location, pushPeriodInSecond);
     }
-  }
-
-  /** the address of iotdb instance that is monitored */
-  private String rpcAddress = "0.0.0.0";
-  /** the port of iotdb instance that is monitored */
-  private Integer rpcPort = 6667;
-
-  public void copy(MetricConfig newMetricConfig) {
-    enableMetric = newMetricConfig.getEnableMetric();
-    monitorType = newMetricConfig.getMonitorType();
-    metricReporterList = newMetricConfig.getMetricReporterList();
-    metricLevel = newMetricConfig.getMetricLevel();
-    asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
-    prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
-  }
-
-  public void updateRpcInstance(String rpcAddress, int rpcPort) {
-    this.rpcAddress = rpcAddress;
-    this.rpcPort = rpcPort;
-  }
-
-  public Boolean getEnableMetric() {
-    return enableMetric;
-  }
-
-  public void setEnableMetric(Boolean enableMetric) {
-    this.enableMetric = enableMetric;
-  }
-
-  public Boolean getEnablePerformanceStat() {
-    return enablePerformanceStat;
-  }
-
-  public void setEnablePerformanceStat(Boolean enablePerformanceStat) {
-    this.enablePerformanceStat = enablePerformanceStat;
-  }
-
-  public MonitorType getMonitorType() {
-    return monitorType;
-  }
-
-  public void setMonitorType(MonitorType monitorType) {
-    this.monitorType = monitorType;
-  }
-
-  public List<ReporterType> getMetricReporterList() {
-    return metricReporterList;
-  }
-
-  public void setMetricReporterList(List<ReporterType> metricReporterList) {
-    this.metricReporterList = metricReporterList;
-  }
-
-  public MetricLevel getMetricLevel() {
-    return metricLevel;
-  }
-
-  public void setMetricLevel(MetricLevel metricLevel) {
-    this.metricLevel = metricLevel;
-  }
-
-  public Integer getAsyncCollectPeriodInSecond() {
-    return asyncCollectPeriodInSecond;
-  }
-
-  public void setAsyncCollectPeriodInSecond(Integer asyncCollectPeriodInSecond) {
-    this.asyncCollectPeriodInSecond = asyncCollectPeriodInSecond;
-  }
-
-  public Integer getPrometheusExporterPort() {
-    return prometheusExporterPort;
-  }
-
-  public void setPrometheusExporterPort(Integer prometheusExporterPort) {
-    this.prometheusExporterPort = prometheusExporterPort;
-  }
-
-  public IoTDBReporterConfig getIoTDBReporterConfig() {
-    return ioTDBReporterConfig;
-  }
-
-  public void setIoTDBReporterConfig(IoTDBReporterConfig ioTDBReporterConfig) {
-    this.ioTDBReporterConfig = ioTDBReporterConfig;
-  }
-
-  public String getRpcAddress() {
-    return rpcAddress;
-  }
-
-  public Integer getRpcPort() {
-    return rpcPort;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof MetricConfig)) {
-      return false;
-    }
-    MetricConfig anotherMetricConfig = (MetricConfig) obj;
-    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && monitorType.equals(anotherMetricConfig.getMonitorType())
-        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
-        && metricLevel.equals(anotherMetricConfig.getMetricLevel())
-        && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
-        && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
-        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
   }
 }

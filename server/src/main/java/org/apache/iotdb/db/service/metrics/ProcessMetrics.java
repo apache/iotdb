@@ -31,18 +31,18 @@ import com.sun.management.OperatingSystemMXBean;
 import java.lang.management.ManagementFactory;
 
 public class ProcessMetrics implements IMetricSet {
-  private OperatingSystemMXBean sunOsMXBean;
-  private Runtime runtime;
+  private final OperatingSystemMXBean sunOsMxBean;
+  private final Runtime runtime;
 
   public ProcessMetrics() {
-    sunOsMXBean =
+    sunOsMxBean =
         (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     runtime = Runtime.getRuntime();
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    collectProcessCPUInfo(metricService);
+    collectProcessCpuInfo(metricService);
     collectProcessMemInfo(metricService);
     collectProcessStatusInfo(metricService);
     collectThreadInfo(metricService);
@@ -50,55 +50,55 @@ public class ProcessMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    removeProcessCPUInfo(metricService);
+    removeProcessCpuInfo(metricService);
     removeProcessMemInfo(metricService);
     removeProcessStatusInfo(metricService);
     removeThreadInfo(metricService);
   }
 
-  private void collectProcessCPUInfo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+  private void collectProcessCpuInfo(AbstractMetricService metricService) {
+    metricService.createAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
-        sunOsMXBean,
-        a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
+        sunOsMxBean,
+        a -> (long) (sunOsMxBean.getProcessCpuLoad() * 100),
         Tag.NAME.toString(),
         "process");
 
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_CPU_TIME.toString(),
         MetricLevel.CORE,
-        sunOsMXBean,
+        sunOsMxBean,
         com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
         Tag.NAME.toString(),
         "process");
   }
 
-  private void removeProcessCPUInfo(AbstractMetricService metricService) {
+  private void removeProcessCpuInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
 
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
   }
 
   private void collectProcessMemInfo(AbstractMetricService metricService) {
     Runtime runtime = Runtime.getRuntime();
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_MAX_MEM.toString(),
         MetricLevel.CORE,
         runtime,
         a -> runtime.maxMemory(),
         Tag.NAME.toString(),
         "process");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_TOTAL_MEM.toString(),
         MetricLevel.CORE,
         runtime,
         a -> runtime.totalMemory(),
         Tag.NAME.toString(),
         "process");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_FREE_MEM.toString(),
         MetricLevel.CORE,
         runtime,
@@ -106,14 +106,14 @@ public class ProcessMetrics implements IMetricSet {
         Tag.NAME.toString(),
         "process");
     // TODO maybe following metrics can be removed
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_USED_MEM.toString(),
         MetricLevel.IMPORTANT,
         this,
         a -> getProcessUsedMemory(),
         Tag.NAME.toString(),
         "process");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_MEM_RATIO.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -124,20 +124,20 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeProcessMemInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
   }
 
   private void collectThreadInfo(AbstractMetricService metricService) {
     // TODO maybe duplicated with thread info in jvm related metrics
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -148,11 +148,14 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeThreadInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_THREADS_COUNT.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_THREADS_COUNT.toString(),
+        Tag.NAME.toString(),
+        "process");
   }
 
   private void collectProcessStatusInfo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.PROCESS_STATUS.toString(),
         MetricLevel.IMPORTANT,
         this,
@@ -163,7 +166,7 @@ public class ProcessMetrics implements IMetricSet {
 
   private void removeProcessStatusInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
   }
 
   private long getProcessUsedMemory() {
@@ -175,17 +178,16 @@ public class ProcessMetrics implements IMetricSet {
   }
 
   private int getThreadsCount() {
-    ThreadGroup parentThread;
-    for (parentThread = Thread.currentThread().getThreadGroup();
-        parentThread.getParent() != null;
-        parentThread = parentThread.getParent()) {}
-
+    ThreadGroup parentThread = Thread.currentThread().getThreadGroup();
+    while (parentThread.getParent() != null) {
+      parentThread = parentThread.getParent();
+    }
     return parentThread.activeCount();
   }
 
   private double getProcessMemoryRatio() {
     long processUsedMemory = getProcessUsedMemory();
-    long totalPhysicalMemorySize = sunOsMXBean.getTotalPhysicalMemorySize();
+    long totalPhysicalMemorySize = sunOsMxBean.getTotalPhysicalMemorySize();
     return (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
   }
 }

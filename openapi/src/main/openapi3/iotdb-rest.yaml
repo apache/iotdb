@@ -23,6 +23,7 @@ info:
   description: IoTDB Rest API for Grafana, Prometheus, etc..
   license:
     name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.0
 servers:
 - url: http://127.0.0.1:18080/
@@ -173,7 +174,7 @@ components:
       properties:
         sql:
           type: string
-        rowLimit:
+        row_limit:
           type: integer
           format: int32
 
@@ -190,7 +191,7 @@ components:
           type: array
           items:
             type: string
-        dataTypes:
+        data_types:
           type: array
           items:
             type: string
@@ -200,9 +201,9 @@ components:
             type: array
             items:
               type: object
-        isAligned:
+        is_aligned:
           type: boolean
-        deviceId:
+        device:
           type: string
 
     ExecutionStatus:
@@ -221,7 +222,7 @@ components:
           type: array
           items:
             type: string
-        columnNames:
+        column_names:
           type: array
           items:
             type: string
@@ -244,7 +245,7 @@ components:
           type: array
           items:
             type: string
-        prefixPath:
+        prefix_path:
           type: array
           items:
             type: string
@@ -252,9 +253,9 @@ components:
           type: string
         control:
            type: string
-        startTime:
+        start_time:
           type: number
-        endTime:
+        end_time:
           type: number
 
     VariablesResult:

@@ -88,7 +88,7 @@ public class TsFileGenerator implements AutoCloseable {
     device2MeasurementSchema.put(path, measurementSchemaList);
   }
 
-  public void generateData(String device, int number, boolean isAligned)
+  public void generateData(String device, int number, long timeGap, boolean isAligned)
       throws IOException, WriteProcessException {
     List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
@@ -100,7 +100,8 @@ public class TsFileGenerator implements AutoCloseable {
 
     for (long r = 0; r < number; r++) {
       int row = tablet.rowSize++;
-      timestamps[row] = ++startTime;
+      startTime += timeGap;
+      timestamps[row] = startTime;
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
         generateDataPoint(values[i], row, schemas.get(i));

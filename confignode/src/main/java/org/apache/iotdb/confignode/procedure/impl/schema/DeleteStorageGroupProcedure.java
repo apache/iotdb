@@ -115,6 +115,11 @@ public class DeleteStorageGroupProcedure
                 env.getConfigManager()
                     .getPartitionManager()
                     .removeRegionGroupCache(regionReplicaSet.getRegionId());
+                env.getConfigManager()
+                    .getLoadManager()
+                    .getRouteBalancer()
+                    .getRegionRouteMap()
+                    .removeRegionRouteCache(regionReplicaSet.getRegionId());
               });
           env.getConfigManager().getConsensusManager().write(offerPlan);
 
@@ -153,6 +158,8 @@ public class DeleteStorageGroupProcedure
         LOG.info("Rollback preDeleted:{}", deleteSgSchema.getName());
         env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
         break;
+      default:
+        break;
     }
   }
 
@@ -162,8 +169,9 @@ public class DeleteStorageGroupProcedure
       case DELETE_PRE:
       case INVALIDATE_CACHE:
         return true;
+      default:
+        return false;
     }
-    return false;
   }
 
   @Override

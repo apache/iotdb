@@ -394,8 +394,32 @@ public class ValueChunkWriter {
     writer.endCurrentChunk();
   }
 
+  public String getMeasurementId() {
+    return measurementId;
+  }
+
+  public TSEncoding getEncodingType() {
+    return encodingType;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
+  }
+
+  public Statistics<? extends Serializable> getStatistics() {
+    return statistics;
+  }
+
   /** only used for test */
   public PublicBAOS getPageBuffer() {
     return pageBuffer;
+  }
+
+  public boolean checkIsUnsealedPageOverThreshold(long size) {
+    return pageWriter.estimateMaxMemSize() >= size;
+  }
+
+  public ValuePageWriter getPageWriter() {
+    return pageWriter;
   }
 }

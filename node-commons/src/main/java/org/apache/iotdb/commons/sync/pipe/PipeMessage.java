@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.commons.sync.pipe;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class PipeMessage {
   private final String message;
   private final PipeMessageType type;
@@ -35,24 +42,55 @@ public class PipeMessage {
     return type;
   }
 
+  public ByteBuffer serializeToByteBuffer() throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    serialize(dataOutputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    ReadWriteIOUtils.write(message, dataOutputStream);
+    ReadWriteIOUtils.write(type.getType(), dataOutputStream);
+  }
+
+  public static PipeMessage deserialize(ByteBuffer buffer) {
+    String message = ReadWriteIOUtils.readString(buffer);
+    PipeMessageType type = PipeMessageType.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+    return new PipeMessage(type, message);
+  }
+
   @Override
   public String toString() {
     return "PipeMessage{" + "message='" + message + '\'' + ", type=" + type + '}';
   }
 
   public enum PipeMessageType {
-    NORMAL(1),
-    WARN(2),
-    ERROR(3);
+    NORMAL((byte) 1),
+    WARN((byte) 2),
+    ERROR((byte) 3);
 
-    private int value;
+    private byte type;
 
-    PipeMessageType(int value) {
-      this.value = value;
+    PipeMessageType(byte type) {
+      this.type = type;
     }
 
-    public int getValue() {
-      return value;
+    public byte getType() {
+      return type;
+    }
+
+    public static PipeMessageType getPipeStatus(byte type) {
+      switch (type) {
+        case 1:
+          return PipeMessageType.NORMAL;
+        case 2:
+          return PipeMessageType.WARN;
+        case 3:
+          return PipeMessageType.ERROR;
+        default:
+          throw new IllegalArgumentException("Invalid input: " + type);
+      }
     }
   }
 }

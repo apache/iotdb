@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -98,6 +98,9 @@ public class CreateRegionGroupsProcedure
                             // A RegionGroup was created successfully when
                             // all RegionReplicas were created successfully
                             persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+                            LOGGER.info(
+                                "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
+                                regionReplicaSet.getRegionId());
                           } else {
                             TRegionReplicaSet failedRegionReplicas =
                                 failedRegionReplicaSets.get(regionReplicaSet.getRegionId());
@@ -105,7 +108,7 @@ public class CreateRegionGroupsProcedure
                             if (failedRegionReplicas.getDataNodeLocationsSize()
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
                               // A RegionGroup can provide service as long as there are more than
-                              // half of the RegionReplicas were created successfully
+                              // half of the RegionReplicas created successfully
                               persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
 
                               // Build recreate tasks
@@ -120,13 +123,16 @@ public class CreateRegionGroupsProcedure
                                             regionReplicaSet.getRegionId().getType())) {
                                           try {
                                             createTask.setTTL(env.getTTL(storageGroup));
-                                          } catch (StorageGroupNotExistsException e) {
+                                          } catch (DatabaseNotExistsException e) {
                                             LOGGER.error("Can't get TTL", e);
                                           }
                                         }
                                         offerPlan.appendRegionMaintainTask(createTask);
                                       });
 
+                              LOGGER.info(
+                                  "[CreateRegionGroups] Failed to create some replicas of RegionGroup: {}, but this RegionGroup can still be used.",
+                                  regionReplicaSet.getRegionId());
                             } else {
                               // The redundant RegionReplicas should be deleted otherwise
                               regionReplicaSet
@@ -142,11 +148,15 @@ public class CreateRegionGroupsProcedure
                                           offerPlan.appendRegionMaintainTask(deleteTask);
                                         }
                                       });
+
+                              LOGGER.info(
+                                  "[CreateRegionGroups] Failed to create most of replicas in RegionGroup: {}, The redundant replicas in this RegionGroup will be deleted.",
+                                  regionReplicaSet.getRegionId());
                             }
                           }
                         }));
 
-        env.persistAndBroadcastRegionGroup(persistPlan);
+        env.persistRegionGroup(persistPlan);
         env.getConfigManager().getConsensusManager().write(offerPlan);
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
@@ -191,6 +201,7 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
+        env.broadcastRegionGroup();
         return Flow.NO_MORE_STATE;
     }
 
@@ -221,7 +232,7 @@ public class CreateRegionGroupsProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    // must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
+    // Must serialize CREATE_REGION_GROUPS.getTypeCode() firstly
     stream.writeShort(ProcedureType.CREATE_REGION_GROUPS.getTypeCode());
     super.serialize(stream);
     stream.writeInt(consensusGroupType.getValue());

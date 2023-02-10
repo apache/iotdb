@@ -62,7 +62,7 @@ Then, all the jars are in folder named `target/`. Import `target/tsfile-0.12.0-j
   	 <dependency>
   	   <groupId>org.apache.iotdb</groupId>
   	   <artifactId>tsfile</artifactId>
-  	   <version>0.14.0-SNAPSHOT</version>
+  	   <version>1.0.0</version>
   	 </dependency>
     ```
     
@@ -96,7 +96,7 @@ Then, all the jars are in folder named `target/`. Import `target/tsfile-0.12.0-j
   	 <dependency>
   	   <groupId>org.apache.iotdb</groupId>
   	   <artifactId>tsfile</artifactId>
-  	   <version>0.14.0-SNAPSHOT</version>
+  	   <version>1.0.0</version>
   	 </dependency>
     ```
 

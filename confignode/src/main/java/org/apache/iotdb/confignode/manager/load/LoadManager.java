@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -37,9 +36,9 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -49,17 +48,23 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.eventbus.AsyncEventBus;
+import com.google.common.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -91,12 +96,19 @@ public class LoadManager {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
   private final Object scheduleMonitor = new Object();
 
+  private final EventBus eventBus =
+      new AsyncEventBus("LoadManager-EventBus", Executors.newFixedThreadPool(5));
+
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+
+    eventBus.register(configManager.getClusterSchemaManager());
+    eventBus.register(configManager.getSyncManager());
+
     MetricService.getInstance().addMetricSet(new LoadManagerMetrics(configManager));
   }
 
@@ -107,12 +119,12 @@ public class LoadManager {
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException If there are not enough DataNodes
-   * @throws StorageGroupNotExistsException If some specific StorageGroups don't exist
+   * @throws DatabaseNotExistsException If some specific StorageGroups don't exist
    */
   public CreateRegionGroupsPlan allocateRegionGroups(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    return regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
   /**
@@ -134,8 +146,7 @@ public class LoadManager {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap)
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
@@ -186,20 +197,26 @@ public class LoadManager {
     // Broadcast the RegionRouteMap if some LoadStatistics has changed
     boolean isNeedBroadcast = false;
 
-    // Update NodeStatistics
-    Map<Integer, NodeStatistics> differentNodeStatisticsMap = new ConcurrentHashMap<>();
+    // Update NodeStatistics:
+    // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one
+    // means the previous NodeStatistics
+    Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
+        new ConcurrentHashMap<>();
     getNodeManager()
         .getNodeCacheMap()
         .forEach(
             (nodeId, nodeCache) -> {
+              NodeStatistics preNodeStatistics = nodeCache.getPreviousStatistics().deepCopy();
               if (nodeCache.periodicUpdate()) {
                 // Update and record the changed NodeStatistics
-                differentNodeStatisticsMap.put(nodeId, nodeCache.getStatistics());
+                differentNodeStatisticsMap.put(
+                    nodeId, new Pair<>(nodeCache.getStatistics(), preNodeStatistics));
               }
             });
     if (!differentNodeStatisticsMap.isEmpty()) {
       isNeedBroadcast = true;
       recordNodeStatistics(differentNodeStatisticsMap);
+      eventBus.post(new NodeStatisticsEvent(differentNodeStatisticsMap));
     }
 
     // Update RegionGroupStatistics
@@ -223,7 +240,7 @@ public class LoadManager {
     // Update RegionRouteMap
     if (routeBalancer.updateRegionRouteMap()) {
       isNeedBroadcast = true;
-      recordRegionRouteMap(routeBalancer.getLatestRegionRouteMap());
+      recordRegionRouteMap(routeBalancer.getRegionRouteMap());
     }
 
     if (isNeedBroadcast) {
@@ -231,14 +248,15 @@ public class LoadManager {
     }
   }
 
-  private void recordNodeStatistics(Map<Integer, NodeStatistics> differentNodeStatisticsMap) {
+  private void recordNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry :
+    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
           "[UpdateLoadStatistics]\t {}={}",
           "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue());
+          nodeCacheEntry.getValue().left);
     }
   }
 
@@ -329,5 +347,9 @@ public class LoadManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  public EventBus getEventBus() {
+    return eventBus;
   }
 }

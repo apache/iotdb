@@ -20,14 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,6 +34,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 /**
  * This class translate an IMNode into a bytebuffer, or vice versa. Expected to support record as
@@ -50,7 +49,7 @@ public class RecordUtils {
   private static final short INTERNAL_NODE_LENGTH =
       (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
   private static final short MEASUREMENT_BASIC_LENGTH =
-      (short) 1 + 2 + 8 + 8; // final length depends on its alias
+      (short) 1 + 2 + 8 + 8; // final length depends on its alias and props
 
   /** These offset rather than magic number may also be used to track usage of related field. */
   private static final short LENGTH_OFFSET = 1;
@@ -108,7 +107,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write(INTERNAL_NODE_LENGTH, buffer);
     ReadWriteIOUtils.write(
         ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
-    ReadWriteIOUtils.write(node.getSchemaTemplateId(), buffer);
+    ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), buffer);
 
     // encode bitwise flag
     byte useAndAligned = encodeInternalStatus(node.isUseTemplate(), isAligned);
@@ -118,7 +117,6 @@ public class RecordUtils {
   }
 
   /**
-   * Properties are bound to tagIndex so no extra process needed.<br>
    * It is convenient to expand the semantic of the statusBytes for further status of a measurement,
    * e.g., preDelete, since 8 bytes are far more sufficient to represent the schema of it.
    *
@@ -131,6 +129,7 @@ public class RecordUtils {
    *   <li>1 long (8 bytes): tagIndex, value of the offset within a measurement
    *   <li>1 long (8 bytes): statusBytes, including datatype/compressionType/encoding and so on
    *   <li>var length string (4+var_length bytes): alias
+   *   <li>var length map (4+var_length bytes): props, serialized by {@link ReadWriteIOUtils}
    * </ul>
    *
    * <p>It doesn't use MeasurementSchema.serializeTo for duplication of measurementId
@@ -140,6 +139,15 @@ public class RecordUtils {
         node.getAlias() == null
             ? 4 + MEASUREMENT_BASIC_LENGTH
             : (node.getAlias().getBytes().length + 4 + MEASUREMENT_BASIC_LENGTH);
+
+    // consider props
+    bufferLength += 4;
+    if (node.getSchema().getProps() != null) {
+      for (Map.Entry<String, String> e : node.getSchema().getProps().entrySet()) {
+        bufferLength += 8 + e.getKey().getBytes().length + e.getValue().length();
+      }
+    }
+
     ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
 
     ReadWriteIOUtils.write(MEASUREMENT_TYPE, buffer);
@@ -147,6 +155,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
     ReadWriteIOUtils.write(convertMeasStat2Long(node), buffer);
     ReadWriteIOUtils.write(node.getAlias(), buffer);
+    ReadWriteIOUtils.write(node.getSchema().getProps(), buffer);
     return buffer;
   }
 
@@ -189,15 +198,16 @@ public class RecordUtils {
       resNode.setUseTemplate(usingTemplate);
       resNode.setSchemaTemplateId(templateId);
 
-      return paddingTemplate(resNode, templateId);
+      return resNode;
     } else {
       // measurement node
       short recLenth = ReadWriteIOUtils.readShort(buffer);
       long tagIndex = ReadWriteIOUtils.readLong(buffer);
       long schemaByte = ReadWriteIOUtils.readLong(buffer);
       String alias = ReadWriteIOUtils.readString(buffer);
+      Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
 
-      return paddingMeasurement(nodeName, tagIndex, schemaByte, alias);
+      return paddingMeasurement(nodeName, tagIndex, schemaByte, alias, props);
     }
   }
 
@@ -321,16 +331,6 @@ public class RecordUtils {
     return node.getOffset();
   }
 
-  private static IMNode paddingTemplate(IMNode node, int templateId) {
-    // TODO: Remove this conditional judgment after removing the standalone version
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      if (templateId > 0) {
-        node.setSchemaTemplate(ClusterTemplateManager.getInstance().getTemplate(templateId));
-      }
-    }
-    return node;
-  }
-
   /** Including schema and pre-delete flag of a measurement, could be expanded further. */
   private static long convertMeasStat2Long(IMeasurementMNode node) {
     byte dataType = node.getSchema().getTypeInByte();
@@ -342,7 +342,7 @@ public class RecordUtils {
   }
 
   private static IMNode paddingMeasurement(
-      String nodeName, long tagIndex, long statsBytes, String alias) {
+      String nodeName, long tagIndex, long statsBytes, String alias, Map<String, String> props) {
     byte preDel = (byte) (statsBytes >>> 24);
     byte dataType = (byte) (statsBytes >>> 16);
     byte encoding = (byte) ((statsBytes >>> 8) & 0xffL);
@@ -353,7 +353,8 @@ public class RecordUtils {
             nodeName,
             TSDataType.values()[dataType],
             TSEncoding.values()[encoding],
-            CompressionType.deserialize(compressor));
+            CompressionType.deserialize(compressor),
+            props);
 
     IMNode res = MeasurementMNode.getMeasurementMNode(null, nodeName, schema, alias);
     res.getAsMeasurementMNode().setOffset(tagIndex);

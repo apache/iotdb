@@ -43,9 +43,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
@@ -53,11 +53,12 @@ import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -110,7 +111,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
-  private final String snapshotFileName = "partition_info.bin";
+  private static final String SNAPSHOT_FILENAME = "partition_info.bin";
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
@@ -133,7 +134,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     String storageGroupName = plan.getSchema().getName();
     StorageGroupPartitionTable storageGroupPartitionTable =
         new StorageGroupPartitionTable(storageGroupName);
@@ -235,6 +236,8 @@ public class PartitionInfo implements SnapshotProcessor {
         break;
       case ROLLBACK:
         storageGroupPartitionTable.setPredeleted(false);
+        break;
+      default:
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -536,16 +539,13 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only Leader use this interface. Filter unassigned SchemaPartitionSlots
    *
-   * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
-   *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
-   *     DataPartitionSlots that is not assigned in partitionSlotsMap
+   * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot, TTimeSlotList>>
+   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, TTimeSlotList>>, DataPartitionSlots
+   *     that is not assigned in partitionSlotsMap
    */
-  public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      filterUnassignedDataPartitionSlots(
-          Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result =
-        new ConcurrentHashMap<>();
+  public Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> filterUnassignedDataPartitionSlots(
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> result = new ConcurrentHashMap<>();
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
@@ -607,18 +607,19 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the number of Regions currently owned by the specific
-   * StorageGroup
+   * Only leader use this interface.
+   *
+   * <p>Get the number of RegionGroups currently owned by the specified StorageGroup
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
    * @return Number of Regions currently owned by the specific StorageGroup
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
    */
-  public int getRegionCount(String storageGroup, TConsensusGroupType type)
-      throws StorageGroupNotExistsException {
+  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
+      throws DatabaseNotExistsException {
     if (!isStorageGroupExisted(storageGroup)) {
-      throw new StorageGroupNotExistsException(storageGroup);
+      throw new DatabaseNotExistsException(storageGroup);
     }
 
     return storageGroupPartitionTables.get(storageGroup).getRegionGroupCount(type);
@@ -687,7 +688,6 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
-      // TODO: this metric can be optimized
       MetricService.getInstance()
           .getOrCreateGauge(
               Metric.REGION.toString(),
@@ -704,7 +704,7 @@ public class PartitionInfo implements SnapshotProcessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -757,7 +757,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
 
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",

@@ -62,12 +62,12 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -170,14 +171,14 @@ public class ConfigPlanExecutor {
     this.authorInfo = authorInfo;
     this.snapshotProcessorList.add(authorInfo);
 
-    this.udfInfo = udfInfo;
-    this.snapshotProcessorList.add(udfInfo);
-
     this.triggerInfo = triggerInfo;
     this.snapshotProcessorList.add(triggerInfo);
 
+    this.udfInfo = udfInfo;
+    this.snapshotProcessorList.add(udfInfo);
+
     this.syncInfo = syncInfo;
-    this.snapshotProcessorList.add(triggerInfo);
+    this.snapshotProcessorList.add(syncInfo);
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
@@ -190,9 +191,9 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
         return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
-      case CountStorageGroup:
+      case CountDatabase:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
-      case GetStorageGroup:
+      case GetDatabase:
         return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupPlan) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
@@ -262,19 +263,21 @@ public class ConfigPlanExecutor {
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
       case UpdateDataNodeConfiguration:
         return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
-      case SetStorageGroup:
-        TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      case CreateDatabase:
+        TSStatus status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        return partitionInfo.setStorageGroup((SetStorageGroupPlan) physicalPlan);
-      case AdjustMaxRegionGroupCount:
+        return partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+      case AlterDatabase:
+        return clusterSchemaInfo.alterDatabase((DatabaseSchemaPlan) physicalPlan);
+      case AdjustMaxRegionGroupNum:
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
-            (AdjustMaxRegionGroupCountPlan) physicalPlan);
-      case DeleteStorageGroup:
+            (AdjustMaxRegionGroupNumPlan) physicalPlan);
+      case DeleteDatabase:
         partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
-      case PreDeleteStorageGroup:
+      case PreDeleteDatabase:
         return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) physicalPlan);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
@@ -357,6 +360,8 @@ public class ConfigPlanExecutor {
         return syncInfo.setPipeStatus((SetPipeStatusPlan) physicalPlan);
       case DropPipe:
         return syncInfo.dropPipe((DropPipePlan) physicalPlan);
+      case RecordPipeMessage:
+        return syncInfo.recordPipeMessage((RecordPipeMessagePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -394,24 +399,25 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
-        .forEach(
-            x -> {
-              boolean takeSnapshotResult = true;
-              try {
-                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
-              } catch (TException | IOException e) {
-                LOGGER.error(e.getMessage());
-                takeSnapshotResult = false;
-              } finally {
-                // If any snapshot fails, the whole fails
-                // So this is just going to be false
-                if (!takeSnapshotResult) {
-                  result.set(false);
-                }
-              }
-            });
+    snapshotProcessorList.forEach(
+        x -> {
+          boolean takeSnapshotResult = true;
+          try {
+            takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+          } catch (TException | IOException e) {
+            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            takeSnapshotResult = false;
+          } finally {
+            // If any snapshot fails, the whole fails
+            // So this is just going to be false
+            if (!takeSnapshotResult) {
+              result.set(false);
+            }
+          }
+        });
+    if (result.get()) {
+      LOGGER.info("Task snapshot success, snapshotDir: {}", snapshotDir);
+    }
     return result.get();
   }
 
@@ -423,6 +429,7 @@ public class ConfigPlanExecutor {
       return;
     }
 
+    AtomicBoolean result = new AtomicBoolean(true);
     snapshotProcessorList
         .parallelStream()
         .forEach(
@@ -430,9 +437,13 @@ public class ConfigPlanExecutor {
               try {
                 x.processLoadSnapshot(latestSnapshotRootDir);
               } catch (TException | IOException e) {
-                LOGGER.error(e.getMessage());
+                result.set(false);
+                LOGGER.error("Load snapshot error: {}", e.getMessage());
               }
             });
+    if (result.get()) {
+      LOGGER.info("Load snapshot success, latestSnapshotRootDir: {}", latestSnapshotRootDir);
+    }
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {
@@ -479,7 +490,7 @@ public class ConfigPlanExecutor {
     if (showRegionReq != null && showRegionReq.isSetStorageGroups()) {
       final List<String> storageGroups = showRegionReq.getStorageGroups();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedStorageGroupSchemasByName(storageGroups).values().stream()
+          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
               .map(TStorageGroupSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

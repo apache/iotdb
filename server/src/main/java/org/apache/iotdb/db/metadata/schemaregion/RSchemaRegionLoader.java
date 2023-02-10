@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,11 +52,9 @@ public class RSchemaRegionLoader {
    *
    * @param storageGroup
    * @param schemaRegionId
-   * @param node
    * @return
    */
-  public ISchemaRegion loadRSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode node) {
+  public ISchemaRegion loadRSchemaRegion(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     ISchemaRegion region = null;
     LOGGER.info("Creating instance for schema-engine-rocksdb");
     try {
@@ -66,14 +63,9 @@ public class RSchemaRegionLoader {
       Class<?> classForRSchemaConfLoader = urlClassLoader.loadClass(RSCHEMA_CONF_LOADER_CLASS_NAME);
       Constructor<?> constructor =
           classForRSchemaRegion.getConstructor(
-              PartialPath.class,
-              SchemaRegionId.class,
-              IStorageGroupMNode.class,
-              classForRSchemaConfLoader);
+              PartialPath.class, SchemaRegionId.class, classForRSchemaConfLoader);
       Object rSchemaLoader = classForRSchemaConfLoader.getConstructor().newInstance();
-      region =
-          (ISchemaRegion)
-              constructor.newInstance(storageGroup, schemaRegionId, node, rSchemaLoader);
+      region = (ISchemaRegion) constructor.newInstance(storageGroup, schemaRegionId, rSchemaLoader);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException

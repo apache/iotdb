@@ -30,10 +30,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -64,9 +60,7 @@ public class SchemaEngine {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ConfigMTree sharedPrefixTree;
-
-  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -122,7 +116,6 @@ public class SchemaEngine {
     SchemaResourceManager.initSchemaResource();
 
     schemaRegionMap = new ConcurrentHashMap<>();
-    sharedPrefixTree = new ConfigMTree();
 
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 
@@ -211,7 +204,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: " + e.getMessage());
+        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
         e.printStackTrace();
       }
     }
@@ -221,6 +214,7 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
+    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
     if (schemaRegionMap != null) {
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.forceMlog();
@@ -242,11 +236,6 @@ public class SchemaEngine {
       }
       schemaRegionMap.clear();
       schemaRegionMap = null;
-    }
-
-    if (sharedPrefixTree != null) {
-      sharedPrefixTree.clear();
-      sharedPrefixTree = null;
     }
   }
 
@@ -289,9 +278,9 @@ public class SchemaEngine {
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
-            String.format(
-                "Recover [%s] spend: %s ms",
-                storageGroup.concatNode(schemaRegionId.toString()), timeRecord));
+            "Recover [{}] spend: {} ms",
+            storageGroup.concatNode(schemaRegionId.toString()),
+            timeRecord);
         return schemaRegion;
       } catch (MetadataException e) {
         logger.error(
@@ -306,22 +295,16 @@ public class SchemaEngine {
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion;
-    IStorageGroupMNode storageGroupMNode = ensureStorageGroupByStorageGroupPath(storageGroup);
     switch (this.schemaRegionStoredMode) {
       case Memory:
-        schemaRegion =
-            new SchemaRegionMemoryImpl(
-                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerMonitor);
+        schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, seriesNumerMonitor);
         break;
       case Schema_File:
         schemaRegion =
-            new SchemaRegionSchemaFileImpl(
-                storageGroup, schemaRegionId, storageGroupMNode, seriesNumerMonitor);
+            new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, seriesNumerMonitor);
         break;
       case Rocksdb_based:
-        schemaRegion =
-            new RSchemaRegionLoader()
-                .loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion = new RSchemaRegionLoader().loadRSchemaRegion(storageGroup, schemaRegionId);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -330,29 +313,6 @@ public class SchemaEngine {
                 schemaRegionStoredMode));
     }
     return schemaRegion;
-  }
-
-  private IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
-      throws MetadataException {
-    try {
-      return sharedPrefixTree.getStorageGroupNodeByStorageGroupPath(storageGroup);
-    } catch (StorageGroupNotSetException e) {
-      try {
-        sharedPrefixTree.setStorageGroup(storageGroup);
-      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
-        // do nothing
-        // concurrent timeseries creation may result concurrent ensureStorageGroup
-        // it's ok that the storageGroup has already been set
-
-        if (storageGroupAlreadySetException.isHasChild()) {
-          // if setStorageGroup failure is because of child, the deviceNode should not be created.
-          // Timeseries can't be created under a deviceNode without storageGroup.
-          throw storageGroupAlreadySetException;
-        }
-      }
-
-      return sharedPrefixTree.getStorageGroupNodeByStorageGroupPath(storageGroup);
-    }
   }
 
   public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
@@ -382,7 +342,6 @@ public class SchemaEngine {
       if (sgDir.exists()) {
         FileUtils.deleteDirectory(sgDir);
       }
-      sharedPrefixTree.deleteStorageGroup(new PartialPath(schemaRegion.getStorageGroupFullPath()));
     }
   }
 

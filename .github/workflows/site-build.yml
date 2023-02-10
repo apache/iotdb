@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
     paths:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
-      - 'rel/*'
     paths:
       - 'docs/**'
       - 'site/**'
@@ -27,12 +25,8 @@ env:
 
 jobs:
   test:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
-      matrix:
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os}}
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
 
     steps:
       - uses: actions/checkout@v3
@@ -43,4 +37,25 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test compile website
-        run: mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile -pl site
+        run: mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile -pl site
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'master' || github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile and deploy website
+        env:
+          IOTDB_WEBSITE_BUILD: ${{ secrets.IOTDB_WEBSITE_BUILD }}
+        run: |
+          git config --global url."https://asf-ci-deploy:$IOTDB_WEBSITE_BUILD@github.com/apache/".insteadOf "https://gitbox.apache.org/repos/asf/"
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+          mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site

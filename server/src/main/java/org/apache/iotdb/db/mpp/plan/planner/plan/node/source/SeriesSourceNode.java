@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public abstract class SeriesSourceNode extends SourceNode {
-  public SeriesSourceNode(PlanNodeId id) {
+  protected SeriesSourceNode(PlanNodeId id) {
     super(id);
   }
 

@@ -61,13 +61,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
+    groupId = id;
     retryPolicy =
         applicationStateMachine instanceof IStateMachine.RetryPolicy
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
-    snapshotStorage = new SnapshotStorage(applicationStateMachine);
+    snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     applicationStateMachine.start();
-    groupId = id;
   }
 
   @Override
@@ -134,7 +134,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         if (!firstTry) {
           Thread.sleep(retryPolicy.getSleepTime());
         }
-        TSStatus result = applicationStateMachine.write(applicationRequest);
+        IConsensusRequest deserializedRequest =
+            applicationStateMachine.deserializeRequest(applicationRequest);
+        TSStatus result = applicationStateMachine.write(deserializedRequest);
 
         if (firstTry) {
           finalStatus = result;
@@ -209,7 +211,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     boolean applicationTakeSnapshotSuccess =
-        applicationStateMachine.takeSnapshot(snapshotTmpDir, metadata);
+        applicationStateMachine.takeSnapshot(
+            snapshotTmpDir, snapshotStorage.getSnapshotTmpId(metadata), metadata);
     if (!applicationTakeSnapshotSuccess) {
       deleteIncompleteSnapshot(snapshotTmpDir);
       return RaftLog.INVALID_LOG_INDEX;
@@ -241,7 +244,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // statemachine is supposed to clear snapshotDir on failure
     boolean isEmpty = snapshotDir.delete();
     if (!isEmpty) {
-      logger.info("Snapshot directory is incomplete, deleting " + snapshotDir.getAbsolutePath());
+      logger.info("Snapshot directory is incomplete, deleting {}", snapshotDir.getAbsolutePath());
       FileUtils.deleteFully(snapshotDir);
     }
   }

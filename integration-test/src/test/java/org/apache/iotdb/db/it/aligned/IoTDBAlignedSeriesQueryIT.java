@@ -20,7 +20,6 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -60,32 +59,23 @@ import static org.junit.Assert.fail;
 public class IoTDBAlignedSeriesQueryIT {
 
   private static final double DELTA = 1e-6;
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-  protected static int maxTsBlockLineNumber;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // ------------------------------Raw Query Without Value Filter----------------------------------
@@ -2199,7 +2189,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2250,7 +2239,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2299,7 +2287,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void selectAllAlignedWithTimeAndValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2348,7 +2335,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest1() {
     String[] retArray =
@@ -2403,7 +2389,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void selectSomeAlignedWithValueFilterAlignByDeviceTest2() {
     String[] retArray =
@@ -2610,7 +2595,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void countAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "11"};
@@ -2648,7 +2632,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void aggregationFuncAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray =
@@ -2702,7 +2685,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void countAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "6", "6", "9", "11", "6"};
@@ -2742,7 +2724,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void aggregationAllAlignedWithValueFilterAlignByDeviceTest() {
     String[] retArray = new String[] {"root.sg1.d1", "160016.0", "11", "1", "13"};
@@ -3027,7 +3008,6 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // Remove after supporting value filter
   @Test
   public void countSumAvgValueFillAlignByDeviceTest() throws SQLException {
     String[] retArray =

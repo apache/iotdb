@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 public class ProcedureInfo {
 
@@ -49,10 +50,8 @@ public class ProcedureInfo {
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
   public void load(List<Procedure> procedureList) {
-    try {
-      Files.list(Paths.get(procedureWalDir))
-          .filter(
-              path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
+    try (Stream<Path> s = Files.list(Paths.get(procedureWalDir))) {
+      s.filter(path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
                   Long.compareUnsigned(

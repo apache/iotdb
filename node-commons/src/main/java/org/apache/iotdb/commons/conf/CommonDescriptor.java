@@ -85,32 +85,90 @@ public class CommonDescriptor {
             properties
                 .getProperty("default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))
                 .trim()));
-    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()).trim());
+    config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
-        properties.getProperty("dn_wal_dirs", config.getWalDirs()[0]).trim().split(","));
+        properties
+            .getProperty("dn_wal_dirs", String.join(",", config.getWalDirs()))
+            .trim()
+            .split(","));
 
-    config.setCnRpcThriftCompressionEnabled(
+    config.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "cn_rpc_thrift_compression_enable",
-                    String.valueOf(config.isCnRpcThriftCompressionEnabled()))
+                    String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setCnConnectionTimeoutInMS(
+    config.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
+                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
                 .trim()));
 
-    config.setCnSelectorNumOfClientManager(
+    config.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties
                 .getProperty(
                     "cn_selector_thread_nums_of_client_manager",
-                    String.valueOf(config.getCnSelectorNumOfClientManager()))
+                    String.valueOf(config.getSelectorNumOfClientManager()))
+                .trim()));
+
+    config.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
+                .trim()));
+
+    config.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
+                .trim()));
+
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                .trim()));
+
+    config.setRpcThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "dn_rpc_thrift_compression_enable",
+                    String.valueOf(config.isRpcThriftCompressionEnabled()))
+                .trim()));
+
+    config.setSelectorNumOfClientManager(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_selector_thread_nums_of_client_manager",
+                    String.valueOf(config.getSelectorNumOfClientManager()))
+                .trim()));
+
+    config.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
+                .trim()));
+
+    config.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
     config.setHandleSystemErrorStrategy(

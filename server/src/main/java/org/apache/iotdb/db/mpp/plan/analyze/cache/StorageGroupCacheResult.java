@@ -29,7 +29,7 @@ public abstract class StorageGroupCacheResult<V> {
   /** the list of devices that miss */
   private List<String> missedDevices = new ArrayList<>();
   /** result map, Notice: this map will be empty when failed */
-  protected Map<String, V> map = new HashMap<>();;
+  protected Map<String, V> map = new HashMap<>();
 
   public boolean isSuccess() {
     return success;

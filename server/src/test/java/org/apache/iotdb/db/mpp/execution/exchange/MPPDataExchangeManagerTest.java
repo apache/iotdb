@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
@@ -55,11 +55,10 @@ public class MPPDataExchangeManagerTest {
             Executors.newSingleThreadExecutor(),
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandleForFragment(
             localFragmentInstanceId,
             remoteFragmentInstanceId,
             remotePlanNodeId,
@@ -68,7 +67,7 @@ public class MPPDataExchangeManagerTest {
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
 
     ISourceHandle localSourceHandle =
-        mppDataExchangeManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandleForFragment(
             remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
@@ -98,17 +97,16 @@ public class MPPDataExchangeManagerTest {
             Executors.newSingleThreadExecutor(),
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISourceHandle localSourceHandle =
-        mppDataExchangeManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandleForFragment(
             localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
     ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandleForFragment(
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,

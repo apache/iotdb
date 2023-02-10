@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -38,16 +38,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -57,11 +57,12 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generatePatternTreeBuffer;
@@ -71,64 +72,51 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 public class IoTDBPartitionGetterIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionGetterIT.class);
-
-  private static String originalConfigNodeConsensusProtocolClass;
-  private static String originalSchemaRegionConsensusProtocolClass;
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalSchemaReplicationFactor;
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
-
-  private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
+  private static final int testDataRegionGroupPerDatabase = 5;
 
   private static final String sg = "root.sg";
-  private static final int storageGroupNum = 5;
-  private static final int seriesPartitionSlotsNum = 10000;
-  private static final int seriesPartitionBatchSize = 100;
-  private static final int timePartitionSlotsNum = 10;
+  private static final int storageGroupNum = 2;
+  private static final int testSeriesPartitionSlotNum = 1000;
+  private static final int seriesPartitionBatchSize = 10;
+  private static final int testTimePartitionSlotsNum = 10;
   private static final int timePartitionBatchSize = 10;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
-
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
-
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setTimePartitionInterval(testTimePartitionInterval)
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
+    // .setSeriesSlotNum(testSeriesPartitionSlotNum);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
     prepareData();
   }
 
-  private static void prepareData()
-      throws IOException, InterruptedException, TException, IllegalPathException {
+  @AfterClass
+  public static void tearDown() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void prepareData() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set StorageGroups */
       for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        TSStatus status = client.setStorageGroup(setReq);
+        TSStatus status = client.setDatabase(new TStorageGroupSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
       /* Create SchemaPartitions */
-      final String sg = "root.sg";
       final String sg0 = "root.sg0";
       final String sg1 = "root.sg1";
 
@@ -157,9 +145,9 @@ public class IoTDBPartitionGetterIT {
       /* Create DataPartitions */
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
-            Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
+            Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
                     j,
@@ -206,26 +194,8 @@ public class IoTDBPartitionGetterIT {
     }
   }
 
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
-  }
-
   @Test
-  public void testGetSchemaPartition()
-      throws TException, IOException, IllegalPathException, InterruptedException {
+  public void testGetSchemaPartition() throws Exception {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -288,7 +258,7 @@ public class IoTDBPartitionGetterIT {
   }
 
   @Test
-  public void testGetDataPartition() throws TException, IOException, InterruptedException {
+  public void testGetDataPartition() throws Exception {
     final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
@@ -298,7 +268,7 @@ public class IoTDBPartitionGetterIT {
       TDataPartitionTableResp dataPartitionTableResp;
 
       // Prepare partitionSlotsMap
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg + 10, 0, 10, 0, 10, testTimePartitionInterval);
 
@@ -311,10 +281,22 @@ public class IoTDBPartitionGetterIT {
       Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
       Assert.assertEquals(0, dataPartitionTableResp.getDataPartitionTableSize());
 
+      // Re-calculate the least DataRegionGroup num based on the test resource
+      int totalCpuCoreNum = 0;
+      TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+      for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+        totalCpuCoreNum += dataNodeInfo.getCpuCoreNum();
+      }
+      int leastDataRegionGroupNum =
+          (int)
+              Math.ceil(
+                  (double) totalCpuCoreNum / (double) (storageGroupNum * testReplicationFactor));
+      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testDataRegionGroupPerDatabase);
+
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        for (int j = 0; j < seriesPartitionSlotsNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < timePartitionSlotsNum; k += timePartitionBatchSize) {
+        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
+          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
             partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
@@ -341,59 +323,89 @@ public class IoTDBPartitionGetterIT {
                 dataPartitionTableResp.getDataPartitionTable());
           }
         }
+
+        // Check the number of DataRegionGroup.
+        // And this number should be greater than or equal to leastDataRegionGroupNum
+        TShowStorageGroupResp showStorageGroupResp =
+            client.showStorageGroup(Arrays.asList(storageGroup.split("\\.")));
+        Assert.assertTrue(
+            showStorageGroupResp.getStorageGroupInfoMap().get(storageGroup).getDataRegionNum()
+                >= leastDataRegionGroupNum);
       }
     }
   }
 
   @Test
-  public void testGetSlots()
-      throws TException, IOException, IllegalPathException, InterruptedException {
+  public void testGetSlots() throws Exception {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
+
+    final String d00 = sg0 + ".d0.s";
+    final String d01 = sg0 + ".d1.s";
+    final String d10 = sg1 + ".d0.s";
+    final String d11 = sg1 + ".d1.s";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      // Test getSlots api
+      /* Test getRegionId */
       TGetRegionIdReq getRegionIdReq;
       TGetRegionIdResp getRegionIdResp;
-
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(0);
       TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(0L);
 
-      getRegionIdReq =
-          new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion, seriesPartitionSlot);
+      // Get RegionIds of specified PartitionSlot
+      getRegionIdReq = new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion);
+      getRegionIdReq.setSeriesSlotId(seriesPartitionSlot);
       getRegionIdReq.setTimeSlotId(timePartitionSlot);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
       Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
 
+      // Get RegionId with wrong PartitionSlot
       getRegionIdReq.setType(TConsensusGroupType.SchemaRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
 
+      // Get RegionId with wrong RegionType
       getRegionIdReq.setType(TConsensusGroupType.ConfigNodeRegion);
       getRegionIdResp = client.getRegionId(getRegionIdReq);
       Assert.assertEquals(
           TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), getRegionIdResp.status.getCode());
 
-      getRegionIdReq.unsetTimeSlotId();
-      getRegionIdReq.setType(TConsensusGroupType.DataRegion);
-      getRegionIdResp = client.getRegionId(getRegionIdReq);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
-      Assert.assertEquals(1, getRegionIdResp.getDataRegionIdListSize());
+      // Get all RegionIds within one SeriesSlot
+      for (int i = 0; i < storageGroupNum; i++) {
+        String curSg = sg + i;
 
-      final String d00 = sg0 + ".d0.s";
-      final String d01 = sg0 + ".d1.s";
-      final String d10 = sg1 + ".d0.s";
-      final String d11 = sg1 + ".d1.s";
+        getRegionIdReq = new TGetRegionIdReq(curSg, TConsensusGroupType.DataRegion);
+        getRegionIdReq.setSeriesSlotId(seriesPartitionSlot);
+        getRegionIdResp = client.getRegionId(getRegionIdReq);
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), getRegionIdResp.status.getCode());
+        Set<TConsensusGroupId> idSet = new HashSet<>(getRegionIdResp.getDataRegionIdList());
+
+        Set<TConsensusGroupId> subSets = new HashSet<>();
+        for (long j = 0; j < testTimePartitionSlotsNum; j++) {
+          TGetRegionIdReq subReq = new TGetRegionIdReq(curSg, TConsensusGroupType.DataRegion);
+          subReq.setSeriesSlotId(seriesPartitionSlot);
+          subReq.setTimeSlotId(new TTimePartitionSlot(j * testTimePartitionInterval));
+          TGetRegionIdResp subResp = client.getRegionId(subReq);
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), subResp.getStatus().getCode());
+          subSets.addAll(subResp.getDataRegionIdList());
+        }
+
+        Assert.assertEquals(idSet, subSets);
+      }
+
+      // Get RegionId of SchemaPartition
       ByteBuffer buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
       TSchemaPartitionReq schemaPartitionReq = new TSchemaPartitionReq(buffer);
       TSchemaPartitionTableResp schemaPartitionTableResp =
           client.getSchemaPartitionTable(schemaPartitionReq);
+      getRegionIdReq.setStorageGroup(sg0);
       getRegionIdReq.setSeriesSlotId(
           new ArrayList<>(schemaPartitionTableResp.getSchemaPartitionTable().get(sg0).keySet())
               .get(0));
@@ -446,14 +458,16 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigNodeRegion);
 
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
@@ -467,13 +481,13 @@ public class IoTDBPartitionGetterIT {
       getSeriesSlotListResp = client.getSeriesSlotList(getSeriesSlotListReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
-      Assert.assertEquals(seriesPartitionSlotsNum, getSeriesSlotListResp.getSeriesSlotListSize());
+      Assert.assertEquals(
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
     }
   }
 
   @Test
-  public void testGetSchemaNodeManagementPartition()
-      throws IOException, TException, IllegalPathException, InterruptedException {
+  public void testGetSchemaNodeManagementPartition() throws Exception {
 
     TSchemaNodeManagementReq nodeManagementReq;
     TSchemaNodeManagementResp nodeManagementResp;
@@ -487,7 +501,7 @@ public class IoTDBPartitionGetterIT {
       nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
-      Assert.assertEquals(5, nodeManagementResp.getMatchedNodeSize());
+      Assert.assertEquals(storageGroupNum, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
       Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());
     }

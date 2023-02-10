@@ -20,6 +20,7 @@
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
+namespace go rpc
 
 struct TSQueryDataSet{
   // ByteBuffer for time column
@@ -95,7 +96,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }
@@ -319,8 +320,8 @@ struct TSRawDataQueryReq {
   4: required i64 startTime
   5: required i64 endTime
   6: required i64 statementId
-  7: optional bool enableRedirectQuery;
-  8: optional bool jdbcQuery;
+  7: optional bool enableRedirectQuery
+  8: optional bool jdbcQuery
   9: optional i64 timeout
 }
 
@@ -330,9 +331,22 @@ struct TSLastDataQueryReq {
   3: optional i32 fetchSize
   4: required i64 time
   5: required i64 statementId
-  6: optional bool enableRedirectQuery;
-  7: optional bool jdbcQuery;
+  6: optional bool enableRedirectQuery
+  7: optional bool jdbcQuery
   8: optional i64 timeout
+}
+
+struct TSAggregationQueryReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required list<string> paths
+  4: required list<common.TAggregationType> aggregations
+  5: optional i64 startTime
+  6: optional i64 endTime
+  7: optional i64 interval
+  8: optional i64 slidingStep
+  9: optional i32 fetchSize
+  10: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -417,14 +431,12 @@ struct TSDropSchemaTemplateReq {
 
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
-  // Check whether the ip of sender is in the white list of receiver.
-  1:required string address
   // Sender needs to tell receiver its identity.
-  2:required string pipeName
-  3:required i64 createTime
+  1:required string pipeName
+  2:required i64 createTime
   // The version of sender and receiver need to be the same.
-  4:required string version
-  5:required string database
+  3:required string version
+  4:required string database
 }
 
 struct TSyncTransportMetaInfo{
@@ -432,6 +444,13 @@ struct TSyncTransportMetaInfo{
   1:required string fileName
   // The start index of the file slice in sending.
   2:required i64 startIndex
+}
+
+struct TSBackupConfigurationResp {
+  1: required common.TSStatus status
+  2: optional bool enableOperationSync
+  3: optional string secondaryAddress
+  4: optional i32 secondaryPort
 }
 
 enum TSConnectionType {
@@ -462,6 +481,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
 
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
@@ -539,6 +560,8 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
 
+  TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
+
   i64 requestStatementId(1:i64 sessionId);
 
   common.TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
@@ -560,6 +583,8 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
 }

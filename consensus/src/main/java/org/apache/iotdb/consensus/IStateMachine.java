@@ -47,18 +47,26 @@ public interface IStateMachine {
   }
 
   /**
-   * apply a write-request from user
+   * apply a deserialized write-request from user.
    *
-   * @param IConsensusRequest write request
+   * @param request deserialized request
    */
-  TSStatus write(IConsensusRequest IConsensusRequest);
+  TSStatus write(IConsensusRequest request);
 
   /**
-   * read local data and return
+   * deserialize IConsensusRequest.
    *
-   * @param IConsensusRequest read request
+   * @param request write request
+   * @return deserialized request
    */
-  DataSet read(IConsensusRequest IConsensusRequest);
+  IConsensusRequest deserializeRequest(IConsensusRequest request);
+
+  /**
+   * read local data and return.
+   *
+   * @param request read request
+   */
+  DataSet read(IConsensusRequest request);
 
   /**
    * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
@@ -74,15 +82,16 @@ public interface IStateMachine {
    * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
    *
    * @param snapshotDir required storage dir
+   * @param snapshotTmpId temporary id of the snapshot
    * @param snapshotId the id of the snapshot
    * @return true if snapshot is successfully taken
    */
-  default boolean takeSnapshot(File snapshotDir, String snapshotId) {
+  default boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
     return takeSnapshot(snapshotDir);
   }
 
   /**
-   * Load the latest snapshot from given dir
+   * Load the latest snapshot from given dir.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    */
@@ -109,14 +118,13 @@ public interface IStateMachine {
    * retry the operation until it succeed.
    */
   interface RetryPolicy {
-
-    /** Given the last write result, should we retry? */
+    /** whether we should retry according to the last write result. */
     default boolean shouldRetry(TSStatus writeResult) {
       return false;
     }
 
     /**
-     * Use the latest write result to update final write result
+     * Use the latest write result to update final write result.
      *
      * @param previousResult previous write result
      * @param retryResult latest write result
@@ -127,13 +135,13 @@ public interface IStateMachine {
     }
 
     /**
-     * sleep time before the next retry
+     * sleep time before the next retry.
      *
      * @return time in millis
      */
     default long getSleepTime() {
       return 100;
-    };
+    }
   }
 
   /** An optional API for event notifications. */
@@ -145,7 +153,9 @@ public interface IStateMachine {
      * @param groupId The id of this consensus group.
      * @param newLeaderId The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+      // do nothing default
+    }
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a
@@ -155,7 +165,9 @@ public interface IStateMachine {
      * @param index index which is being updated
      * @param newConfiguration new configuration
      */
-    default void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {}
+    default void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {
+      // do nothing default
+    }
   }
 
   /**
@@ -169,5 +181,15 @@ public interface IStateMachine {
    */
   default IStateMachine.EventApi event() {
     return (IStateMachine.EventApi) this;
+  }
+
+  /**
+   * Since Ratis 2.4.1, RatisConsensus allows statemachine to customize its own snapshot storage.
+   * Currently only DataRegionStateMachine will use this interface.
+   *
+   * @return statemachine snapshot root
+   */
+  default File getSnapshotRoot() {
+    return null;
   }
 }

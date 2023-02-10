@@ -30,7 +30,7 @@ public class RegionGroupCache {
 
   private final TConsensusGroupId consensusGroupId;
 
-  // Map<DataNodeId(where a RegionReplica resides), RegionCache>
+  // Map<DataNodeId(where a RegionReplica resides in), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
 
   // The previous RegionGroupStatistics, used for comparing with
@@ -123,25 +123,34 @@ public class RegionGroupCache {
   private RegionGroupStatus updateRegionGroupStatus(
       Map<Integer, RegionStatistics> regionStatisticsMap) {
     int unknownCount = 0;
+    int readonlyCount = 0;
     for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
-      if (RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus())
-          || RegionStatus.Removing.equals(regionStatistics.getRegionStatus())) {
+      if (RegionStatus.Removing.equals(regionStatistics.getRegionStatus())) {
         // The RegionGroup is considered as Disabled when
         // at least one Region is in the ReadOnly or Removing status
         return RegionGroupStatus.Disabled;
       }
       unknownCount += RegionStatus.Unknown.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
+      readonlyCount += RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
     }
 
-    if (unknownCount == 0) {
+    if (unknownCount + readonlyCount == 0) {
       // The RegionGroup is considered as Running only if
       // all Regions are in the Running status
       return RegionGroupStatus.Running;
-    } else {
+    } else if (readonlyCount == 0) {
       return unknownCount <= ((regionCacheMap.size() - 1) / 2)
           // The RegionGroup is considered as Available when the number of Unknown Regions is less
           // than half
           ? RegionGroupStatus.Available
+          // Disabled otherwise
+          : RegionGroupStatus.Disabled;
+    } else {
+      return unknownCount + readonlyCount <= ((regionCacheMap.size() - 1) / 2)
+          // The RegionGroup is considered as Discouraged when the number of Unknown or ReadOnly
+          // Regions is less
+          // than half, and there are at least 1 ReadOnly Region
+          ? RegionGroupStatus.Discouraged
           // Disabled otherwise
           : RegionGroupStatus.Disabled;
     }

@@ -21,14 +21,17 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -99,10 +102,15 @@ public class QueryStatement extends Statement {
   // `GROUP BY TAG` clause
   private GroupByTagComponent groupByTagComponent;
 
+  // `GROUP BY VARIATION` clause
+  private GroupByComponent groupByComponent;
+
   // `INTO` clause
   private IntoComponent intoComponent;
 
   private boolean isCqQueryBody;
+
+  private boolean isOutputEndTime = false;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -240,6 +248,22 @@ public class QueryStatement extends Statement {
     this.groupByTagComponent = groupByTagComponent;
   }
 
+  public GroupByComponent getGroupByComponent() {
+    return groupByComponent;
+  }
+
+  public void setGroupByComponent(GroupByComponent groupByComponent) {
+    this.groupByComponent = groupByComponent;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    isOutputEndTime = outputEndTime;
+  }
+
+  public boolean isOutputEndTime() {
+    return isOutputEndTime;
+  }
+
   public boolean isLastQuery() {
     return selectComponent.hasLast();
   }
@@ -258,6 +282,18 @@ public class QueryStatement extends Statement {
 
   public boolean isGroupByTime() {
     return groupByTimeComponent != null;
+  }
+
+  public boolean isGroupBy() {
+    return isGroupByTime() || isGroupByVariation();
+  }
+
+  public boolean isGroupByVariation() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
+  }
+
+  public boolean hasGroupByExpression() {
+    return isGroupByVariation();
   }
 
   public boolean isAlignByTime() {
@@ -297,6 +333,13 @@ public class QueryStatement extends Statement {
       return Ordering.ASC;
     }
     return orderByComponent.getTimeOrder();
+  }
+
+  public Ordering getResultDeviceOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByDevice()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getDeviceOrder();
   }
 
   public List<SortItem> getSortItemList() {
@@ -348,20 +391,43 @@ public class QueryStatement extends Statement {
                 : resultColumn.getExpression().getExpressionString());
       }
       if (isGroupByTag()) {
+        if (hasHaving()) {
+          throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
+        }
         for (String s : getGroupByTagComponent().getTagKeys()) {
           if (outputColumn.contains(s)) {
             throw new SemanticException("Output column is duplicated with the tag key: " + s);
           }
         }
+        if (rowLimit > 0 || rowOffset > 0 || seriesLimit > 0 || seriesOffset > 0) {
+          throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+        }
+        for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+          Expression expression = resultColumn.getExpression();
+          if (!(expression instanceof FunctionExpression
+              && expression.getExpressions().get(0) instanceof TimeSeriesOperand
+              && expression.isBuiltInAggregationFunctionExpression())) {
+            throw new SemanticException(
+                expression + " can't be used in group by tag. It will be supported in the future.");
+          }
+        }
       }
     } else {
-      if (isGroupByTime() || isGroupByLevel()) {
+      if (isGroupBy() || isGroupByLevel()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
     }
 
-    if (getHavingCondition() != null) {
+    if (hasWhere()) {
+      Expression whereExpression = getWhereCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
+          == ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+      }
+    }
+
+    if (hasHaving()) {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
           != ResultColumn.ColumnType.AGGREGATION) {
@@ -394,10 +460,6 @@ public class QueryStatement extends Statement {
 
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
-      }
-      if (isOrderByDevice()) {
-        // TODO support sort by device
-        throw new SemanticException("Sorting by device is not yet supported.");
       }
     }
 

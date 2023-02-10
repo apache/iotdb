@@ -36,7 +36,7 @@ public class TsFileProcessorInfo {
       MetricService.getInstance()
           .addMetricSet(
               new TsFileProcessorInfoMetrics(
-                  dataRegionInfo.getDataRegion().getStorageGroupName(), memCost));
+                  dataRegionInfo.getDataRegion().getDatabaseName(), this));
     }
   }
 
@@ -56,5 +56,10 @@ public class TsFileProcessorInfo {
   public void clear() {
     dataRegionInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
+  }
+
+  /** get memCost */
+  public long getMemCost() {
+    return memCost;
   }
 }

@@ -105,7 +105,7 @@ If compiling successful, you can see that the `distribution/target` directory co
 * Modify Grafana configuration file: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
 
   ```ini
-  allow_loading_unsigned_plugins = iotdb
+  allow_loading_unsigned_plugins = apache-iotdb-datasource
   ```
 * Modify the location of Grafana's plugin directory: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
   
@@ -143,7 +143,7 @@ For more details，please click [here](https://grafana.com/docs/grafana/latest/i
 
 #### Configure IoTDB REST Service
 
-* Modify `{iotdb directory}/conf/iotdb-rest.properties` as following:
+* Modify `{iotdb directory}/conf/iotdb-common.properties` as following:
 
 ```properties
 # Is the REST service enabled

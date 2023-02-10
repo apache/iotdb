@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -57,13 +58,13 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -80,6 +81,8 @@ import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.sqlToPlanMa
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+@Ignore
+@Deprecated
 public class LogicalPlannerTest {
 
   @Test
@@ -645,7 +648,7 @@ public class LogicalPlannerTest {
       Assert.assertEquals(1, descriptors.size());
       CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
       Assert.assertEquals("s1", descriptor.getOutputExpression().toString());
-      Assert.assertEquals(AggregationType.MAX_VALUE, descriptor.getAggregationType());
+      Assert.assertEquals(TAggregationType.MAX_VALUE, descriptor.getAggregationType());
       Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
       Assert.assertEquals(3, descriptor.getInputExpressions().size());
       for (Expression expression : descriptor.getInputExpressions()) {

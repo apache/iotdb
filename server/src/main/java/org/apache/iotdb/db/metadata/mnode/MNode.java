@@ -39,7 +39,7 @@ public abstract class MNode implements IMNode {
   protected CacheEntry cacheEntry;
 
   /** Constructor of MNode. */
-  public MNode(IMNode parent, String name) {
+  protected MNode(IMNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }

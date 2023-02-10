@@ -35,10 +35,13 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -62,6 +65,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_HEADER_SIZE;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MAX_SIZ;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_MIN_SIZ;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_OFF_DIG;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_LST;
 import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig.SEG_SIZE_METRIC;
 
@@ -87,10 +91,14 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
+  // handle timeout interruption during reading
+  private File pmtFile;
+  private FileChannel readChannel;
+
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
 
-  PageManager(FileChannel channel, int lastPageIndex, String logPath)
+  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     this.dirtyPages = new ConcurrentHashMap<>();
@@ -100,6 +108,8 @@ public abstract class PageManager implements IPageManager {
         lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     this.treeTrace = new int[16];
     this.channel = channel;
+    this.pmtFile = pmtFile;
+    this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
 
     // recover if log exists
     int pageAcc = (int) recoverFromLog(logPath) / PAGE_LENGTH;
@@ -128,12 +138,12 @@ public abstract class PageManager implements IPageManager {
     reader.close();
 
     // complete log file
-    if (res.size() != 0) {
-      FileOutputStream outputStream = new FileOutputStream(logPath, true);
-      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-      long length = outputStream.getChannel().size();
-      outputStream.close();
-      return length;
+    if (!res.isEmpty()) {
+      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
+        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+        long length = outputStream.getChannel().size();
+        return length;
+      }
     }
     return 0L;
   }
@@ -148,7 +158,6 @@ public abstract class PageManager implements IPageManager {
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     String alias;
-    int secIdxEntrance = -1; // first page of secondary index
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, IMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
@@ -428,11 +437,14 @@ public abstract class PageManager implements IPageManager {
   }
 
   @Override
-  public StringBuilder inspect(StringBuilder builder) throws IOException, MetadataException {
+  public void inspect(PrintWriter pw) throws IOException, MetadataException {
+    String pageContent;
     for (int i = 0; i <= lastPageIndex.get(); i++) {
-      builder.append(String.format("---------------------\n%s\n", getPageInstance(i).inspect()));
+      pageContent = getPageInstance(i).inspect();
+      pw.print("---------------------\n");
+      pw.print(pageContent);
+      pw.print("\n");
     }
-    return builder;
   }
 
   @Override
@@ -477,7 +489,7 @@ public abstract class PageManager implements IPageManager {
   @Deprecated
   // TODO: improve to remove
   private long preAllocateSegment(short size) throws IOException, MetadataException {
-    ISegmentedPage page = getMinApplSegmentedPageInMem(size);
+    ISegmentedPage page = getMinApplSegmentedPageInMem((short) (size + SEG_OFF_DIG));
     return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
@@ -489,14 +501,14 @@ public abstract class PageManager implements IPageManager {
   protected ISegmentedPage getMinApplSegmentedPageInMem(short size) {
     for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().isCapableForSize(size)) {
+          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
         return dirtyPages.get(entry.getKey()).getAsSegmentedPage();
       }
     }
 
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().isCapableForSize(size)) {
+          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
         markDirty(entry.getValue());
         return pageInstCache.get(entry.getKey()).getAsSegmentedPage();
       }
@@ -551,9 +563,12 @@ public abstract class PageManager implements IPageManager {
     return page;
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+  private synchronized int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
     dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
+    if (!readChannel.isOpen()) {
+      readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
+    }
+    return readChannel.read(dst, getPageAddress(pageIndex));
   }
 
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
@@ -621,12 +636,22 @@ public abstract class PageManager implements IPageManager {
    * SchemaPageOverflowException} occurs. It is designed to accelerate when there is lots of new
    * children nodes, avoiding segments extend several times.
    *
+   * <p>Notice that SegmentOverflowException inside a page with sufficient space will not reach
+   * here. Supposed to merge with SchemaFile#reEstimateSegSize.
+   *
    * @param expSize expected size calculated from next new record
    * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
    * @return estimated size
    * @throws MetadataException
    */
   private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
+    int base_tier = 0;
+    for (int i = 0; i < SEG_SIZE_LST.length; i++) {
+      if (SEG_SIZE_LST[i] >= expSize) {
+        base_tier = i;
+        break;
+      }
+    }
     int base_tier = 0;
     for (int i = 0; i < SEG_SIZE_LST.length; i++) {
       if (SEG_SIZE_LST[i] >= expSize) {

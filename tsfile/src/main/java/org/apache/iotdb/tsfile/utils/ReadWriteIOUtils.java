@@ -1059,4 +1059,28 @@ public class ReadWriteIOUtils {
     clone.flip();
     return clone;
   }
+
+  /**
+   * The skip method of will return only if skipping n bytes or reaching end of file.
+   *
+   * @param inputStream the inputSteam to be skipped.
+   * @param n the number of bytes to be skipped.
+   * @throws IOException if the stream does not support seek, or if some other I/O error occurs.
+   */
+  public static void skip(InputStream inputStream, long n) throws IOException {
+    while (n > 0) {
+      long skipN = inputStream.skip(n);
+      if (skipN > 0) {
+        n -= skipN;
+      } else {
+        // read one byte to decide should we retry
+        if (inputStream.read() == -1) {
+          // EOF
+          break;
+        } else {
+          n--;
+        }
+      }
+    }
+  }
 }

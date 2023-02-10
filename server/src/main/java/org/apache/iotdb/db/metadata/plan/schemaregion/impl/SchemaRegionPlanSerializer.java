@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -36,8 +35,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -125,20 +122,6 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateSetLevel());
         dataOutputStream.writeInt(activateTemplateInClusterPlan.getTemplateId());
         dataOutputStream.writeBoolean(activateTemplateInClusterPlan.isAligned());
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
-    }
-
-    @Override
-    public SchemaRegionPlanSerializationResult visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, DataOutputStream dataOutputStream) {
-      try {
-        ReadWriteIOUtils.write(
-            activateTemplatePlan.getPrefixPath().getFullPath(), dataOutputStream);
         // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);
         return SchemaRegionPlanSerializationResult.SUCCESS;
@@ -357,38 +340,6 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         DataOutputStream dataOutputStream) {
       try {
         rollbackPreDeleteTimeSeriesPlan.getPath().serialize(dataOutputStream);
-
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
-    }
-
-    @Override
-    public SchemaRegionPlanSerializationResult visitSetTemplate(
-        ISetTemplatePlan setTemplatePlan, DataOutputStream dataOutputStream) {
-      try {
-        ReadWriteIOUtils.write(setTemplatePlan.getTemplateName(), dataOutputStream);
-        ReadWriteIOUtils.write(setTemplatePlan.getPrefixPath(), dataOutputStream);
-
-        // serialize a long to keep compatible with old version (raft index)
-        dataOutputStream.writeLong(0);
-
-        return SchemaRegionPlanSerializationResult.SUCCESS;
-      } catch (IOException e) {
-        return new SchemaRegionPlanSerializationResult(e);
-      }
-    }
-
-    @Override
-    public SchemaRegionPlanSerializationResult visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, DataOutputStream dataOutputStream) {
-      try {
-        ReadWriteIOUtils.write(unsetTemplatePlan.getPrefixPath(), dataOutputStream);
-        ReadWriteIOUtils.write(unsetTemplatePlan.getTemplateName(), dataOutputStream);
 
         // serialize a long to keep compatible with old version (raft index)
         dataOutputStream.writeLong(0);

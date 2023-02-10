@@ -39,8 +39,8 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterDetailsTask implements IConfigTask {
 
@@ -134,9 +134,9 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     e.getInternalEndPoint().getPort(),
                     e.getClientRpcEndPoint().getIp(),
                     e.getClientRpcEndPoint().getPort(),
-                    e.getDataRegionConsensusEndPoint().getPort(),
+                    e.getMPPDataExchangeEndPoint().getPort(),
                     e.getSchemaRegionConsensusEndPoint().getPort(),
-                    e.getMPPDataExchangeEndPoint().getPort()));
+                    e.getDataRegionConsensusEndPoint().getPort()));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

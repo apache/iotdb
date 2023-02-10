@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -60,8 +62,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -72,18 +77,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -107,6 +114,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 
 public class LogicalPlanBuilder {
 
@@ -136,7 +144,8 @@ public class LogicalPlanBuilder {
     }
     expressions.forEach(
         expression -> {
-          if (!expression.getExpressionString().equals(DEVICE)) {
+          if (!expression.getExpressionString().equals(DEVICE)
+              && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
@@ -192,18 +201,26 @@ public class LogicalPlanBuilder {
       Filter globalTimeFilter,
       OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Expression sourceExpression : sourceExpressions) {
-      MeasurementPath selectPath =
-          (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-      if (selectPath.isUnderAlignedEntity()) {
+    List<PartialPath> selectedPaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toList());
+
+    List<PartialPath> groupedPaths =
+        mergeOrderParameter.getSortItemList().isEmpty()
+            ? MetaUtils.groupAlignedSeries(selectedPaths)
+            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, mergeOrderParameter);
+    for (PartialPath path : groupedPaths) {
+      if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
-            new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), (MeasurementPath) path));
+      } else if (path instanceof AlignedPath) { // aligned series
+        sourceNodeList.add(
+            new AlignedLastQueryScanNode(context.getQueryId().genPlanNodeId(), (AlignedPath) path));
       } else {
-        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+        throw new IllegalArgumentException("unexpected path type");
       }
     }
-    updateTypeProvider(sourceExpressions);
 
     this.root =
         new LastQueryNode(
@@ -473,10 +490,10 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<AggregationType> splitAggregations =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     String inputExpressionStr = aggregationDescriptor.getInputExpressions().get(0).toString();
-    for (AggregationType aggregation : splitAggregations) {
+    for (TAggregationType aggregation : splitAggregations) {
       String functionName = aggregation.toString().toLowerCase();
       TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
       typeProvider.setType(
@@ -487,10 +504,10 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<AggregationType> splitAggregations =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (AggregationType aggregationType : splitAggregations) {
+    for (TAggregationType aggregationType : splitAggregations) {
       String functionName = aggregationType.toString().toLowerCase();
       typeProvider.setType(
           String.format("%s(%s)", functionName, path.getFullPath()),
@@ -512,32 +529,73 @@ public class LogicalPlanBuilder {
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      Ordering mergeOrder) {
+      List<SortItem> sortItemList) {
     List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    DeviceViewNode deviceViewNode =
-        new DeviceViewNode(
-            context.getQueryId().genPlanNodeId(),
-            new OrderByParameter(
-                Arrays.asList(
-                    new SortItem(SortKey.DEVICE, Ordering.ASC),
-                    new SortItem(SortKey.TIME, mergeOrder))),
-            outputColumnNames,
-            deviceToMeasurementIndexesMap);
+    int timePriority = -1, devicePriority = -1;
+    for (int i = 0; i < sortItemList.size(); i++) {
+      SortKey sortKey = sortItemList.get(i).getSortKey();
+      if (sortKey == SortKey.TIME) {
+        timePriority = sortItemList.size() - i;
+      } else if (sortKey == SortKey.DEVICE) {
+        devicePriority = sortItemList.size() - i;
+      }
+    }
+    Ordering deviceOrdering =
+        devicePriority == -1
+            ? Ordering.ASC
+            : sortItemList.get(sortItemList.size() - devicePriority).getOrdering();
+    Ordering timeOrdering =
+        timePriority == -1
+            ? Ordering.ASC
+            : sortItemList.get(sortItemList.size() - timePriority).getOrdering();
 
-    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
-      PlanNode subPlan = entry.getValue();
-      deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+    if ((timePriority == -1 && devicePriority == -1) || devicePriority > timePriority) {
+      DeviceViewNode deviceViewNode =
+          new DeviceViewNode(
+              context.getQueryId().genPlanNodeId(),
+              new OrderByParameter(
+                  Arrays.asList(
+                      new SortItem(SortKey.DEVICE, deviceOrdering),
+                      new SortItem(SortKey.TIME, timeOrdering))),
+              outputColumnNames,
+              deviceToMeasurementIndexesMap);
+
+      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+        String deviceName = entry.getKey();
+        PlanNode subPlan = entry.getValue();
+        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+      }
+      this.root = deviceViewNode;
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              new OrderByParameter(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering))),
+              outputColumnNames);
+      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+        String deviceName = entry.getKey();
+        PlanNode subPlan = entry.getValue();
+        SingleDeviceViewNode singleDeviceViewNode =
+            new SingleDeviceViewNode(
+                context.getQueryId().genPlanNodeId(),
+                outputColumnNames,
+                deviceName,
+                deviceToMeasurementIndexesMap.get(deviceName));
+        singleDeviceViewNode.addChild(subPlan);
+        mergeSortNode.addChild(singleDeviceViewNode);
+      }
+      this.root = mergeSortNode;
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
-
-    this.root = deviceViewNode;
     return this;
   }
 
@@ -561,7 +619,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planAggregation(
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       GroupByTimeParameter groupByTimeParameter,
+      GroupByParameter groupByParameter,
+      boolean outputEndTime,
       AggregationStep curStep,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
@@ -577,12 +638,18 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
+    if (outputEndTime) {
+      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
             groupByTimeParameter,
+            groupByParameter,
+            groupByExpression,
+            outputEndTime,
             scanOrder);
     return this;
   }
@@ -673,7 +740,7 @@ public class LogicalPlanBuilder {
         }
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
+          String functionName = ((FunctionExpression) next).getFunctionName();
           CrossSeriesAggregationDescriptor aggregationDescriptor =
               new CrossSeriesAggregationDescriptor(
                   functionName,
@@ -1058,6 +1125,64 @@ public class LogicalPlanBuilder {
     this.root =
         new PathsUsingTemplateScanNode(
             context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+    return this;
+  }
+
+  private LogicalPlanBuilder planSort(OrderByParameter orderByParameter) {
+    if (orderByParameter.isEmpty()) {
+      return this;
+    }
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowQueries(Analysis analysis, ShowQueriesStatement statement) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowQueries(dataNodeLocations.get(0))
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  statement.getZoneId(),
+                  Ordering.ASC)
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else {
+      List<String> outputColumns = new ArrayList<>();
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              outputColumns);
+
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  this.planSingleShowQueries(dataNodeLocation)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          statement.getZoneId(),
+                          Ordering.ASC)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showQueriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
+    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
     return this;
   }
 }

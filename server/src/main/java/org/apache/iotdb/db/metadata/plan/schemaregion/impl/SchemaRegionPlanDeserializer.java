@@ -26,8 +26,8 @@ import org.apache.iotdb.db.metadata.logfile.IDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -39,8 +39,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -67,7 +65,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
   @Override
   public ISchemaRegionPlan deserialize(ByteBuffer byteBuffer) {
     ISchemaRegionPlan schemaRegionPlan =
-        SchemaRegionPlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
+        SchemaRegionWritePlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
     return schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
   }
 
@@ -96,20 +94,6 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       // deserialize a long to keep compatible with old version (raft index)
       buffer.getLong();
       return activateTemplateInClusterPlan;
-    }
-
-    @Override
-    public ISchemaRegionPlan visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, ByteBuffer buffer) {
-      try {
-        activateTemplatePlan.setPrefixPath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
-      } catch (IllegalPathException e) {
-        LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
-      }
-
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
-      return activateTemplatePlan;
     }
 
     @Override
@@ -313,29 +297,6 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       buffer.getLong();
 
       return rollbackPreDeleteTimeSeriesPlan;
-    }
-
-    @Override
-    public ISchemaRegionPlan visitSetTemplate(ISetTemplatePlan setTemplatePlan, ByteBuffer buffer) {
-      setTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
-      setTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
-
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
-
-      return setTemplatePlan;
-    }
-
-    @Override
-    public ISchemaRegionPlan visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, ByteBuffer buffer) {
-      unsetTemplatePlan.setPrefixPath(ReadWriteIOUtils.readString(buffer));
-      unsetTemplatePlan.setTemplateName(ReadWriteIOUtils.readString(buffer));
-
-      // deserialize a long to keep compatible with old version (raft index)
-      buffer.getLong();
-
-      return unsetTemplatePlan;
     }
 
     @Override

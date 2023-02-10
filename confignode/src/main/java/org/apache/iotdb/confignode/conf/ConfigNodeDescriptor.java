@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -128,6 +130,7 @@ public class ConfigNodeDescriptor {
         commonDescriptor
             .getConfig()
             .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
@@ -140,6 +143,9 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setInternalAddress(
         properties
             .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
@@ -165,11 +171,10 @@ public class ConfigNodeDescriptor {
       conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
     }
 
-    conf.setSeriesPartitionSlotNum(
+    conf.setSeriesSlotNum(
         Integer.parseInt(
             properties
-                .getProperty(
-                    "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))
+                .getProperty("series_slot_num", String.valueOf(conf.getSeriesSlotNum()))
                 .trim()));
 
     conf.setSeriesPartitionExecutorClass(
@@ -190,12 +195,11 @@ public class ConfigNodeDescriptor {
                 conf.getSchemaRegionConsensusProtocolClass())
             .trim());
 
-    conf.setSchemaRegionPerDataNode(
-        Double.parseDouble(
+    conf.setSchemaReplicationFactor(
+        Integer.parseInt(
             properties
                 .getProperty(
-                    "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaRegionPerDataNode()))
+                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
     conf.setDataRegionConsensusProtocolClass(
@@ -203,6 +207,47 @@ public class ConfigNodeDescriptor {
             .getProperty(
                 "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass())
             .trim());
+
+    conf.setDataReplicationFactor(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
+                .trim()));
+
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDefaultSchemaRegionGroupNumPerDatabase(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "default_schema_region_group_num_per_database",
+                    String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase()))
+                .trim()));
+
+    conf.setSchemaRegionPerDataNode(
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "schema_region_per_data_node",
+                    String.valueOf(conf.getSchemaReplicationFactor()))
+                .trim()));
+
+    conf.setDataRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "data_region_group_extension_policy",
+                conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDefaultDataRegionGroupNumPerDatabase(
+        Integer.parseInt(
+            properties.getProperty(
+                "default_data_region_group_num_per_database",
+                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
     conf.setDataRegionPerProcessor(
         Double.parseDouble(
@@ -213,9 +258,10 @@ public class ConfigNodeDescriptor {
 
     try {
       conf.setRegionAllocateStrategy(
-          RegionBalancer.RegionAllocateStrategy.valueOf(
+          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
               properties
-                  .getProperty("region_allocate_strategy", conf.getRegionAllocateStrategy().name())
+                  .getProperty(
+                      "region_group_allocate_policy", conf.getRegionGroupAllocatePolicy().name())
                   .trim()));
     } catch (IllegalArgumentException e) {
       LOGGER.warn(
@@ -259,6 +305,22 @@ public class ConfigNodeDescriptor {
                     "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
                 .trim()));
 
+    conf.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
+                .trim()));
+
+    conf.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
+                .trim()));
+
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()).trim());
@@ -274,20 +336,6 @@ public class ConfigNodeDescriptor {
                     "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
                 .trim()));
 
-    conf.setSchemaReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
-                .trim()));
-
-    conf.setDataReplicationFactor(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
-                .trim()));
-
     conf.setHeartbeatIntervalInMs(
         Long.parseLong(
             properties
@@ -295,20 +343,47 @@ public class ConfigNodeDescriptor {
                     "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))
                 .trim()));
 
-    String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy()).trim();
-    if (routingPolicy.equals(RouteBalancer.GREEDY_POLICY)
-        || routingPolicy.equals(RouteBalancer.LEADER_POLICY)) {
-      conf.setRoutingPolicy(routingPolicy);
+    String leaderDistributionPolicy =
+        properties
+            .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
+            .trim();
+    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+      conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown routing_policy: %s, please set to \"leader\" or \"greedy\"", routingPolicy));
+              "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              leaderDistributionPolicy));
     }
 
-    conf.setEnableLeaderBalancing(
+    conf.setEnableAutoLeaderBalanceForRatisConsensus(
         Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_leader_balancing", String.valueOf(conf.isEnableLeaderBalancing()))));
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_ratis_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForRatisConsensus()))
+                .trim()));
+
+    conf.setEnableAutoLeaderBalanceForIoTConsensus(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_iot_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))
+                .trim()));
+
+    String routePriorityPolicy =
+        properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
+    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
+        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
+      conf.setRoutePriorityPolicy(routePriorityPolicy);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
+              routePriorityPolicy));
+    }
 
     String readConsistencyLevel =
         properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel()).trim();
@@ -392,14 +467,6 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "config_node_ratis_snapshot_trigger_threshold",
                     String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))
-                .trim()));
-
-    conf.setConfigNodeSimpleConsensusSnapshotTriggerThreshold(
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "config_node_simple_consensus_snapshot_trigger_threshold",
-                    String.valueOf(conf.getConfigNodeSimpleConsensusSnapshotTriggerThreshold()))
                 .trim()));
 
     conf.setSchemaRegionRatisSnapshotTriggerThreshold(
@@ -665,6 +732,46 @@ public class ConfigNodeDescriptor {
                     "ratis_first_election_timeout_max_ms",
                     String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
                 .trim()));
+
+    conf.setConfigNodeRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_max_size",
+                    String.valueOf(conf.getConfigNodeRatisLogMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_max_size",
+                    String.valueOf(conf.getSchemaRegionRatisLogMax()))
+                .trim()));
+
+    conf.setDataRegionRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_max_size",
+                    String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
+
+    conf.setEnablePrintingNewlyCreatedPartition(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_printing_newly_created_partition",
+                    String.valueOf(conf.isEnablePrintingNewlyCreatedPartition()))
+                .trim()));
+
+    conf.setForceWalPeriodForConfigNodeSimpleInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "force_wal_period_for_confignode_simple_in_ms",
+                    String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {
@@ -704,6 +811,8 @@ public class ConfigNodeDescriptor {
 
   /**
    * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when first startup.
    *
    * @return True if the target_config_node_list points to itself
    */

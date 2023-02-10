@@ -39,18 +39,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     super.reset();
   }
 
-  protected int addIntInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
         return i;
@@ -60,18 +61,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     return curPositionCount;
   }
 
-  protected int addLongInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
         return i;
@@ -81,18 +83,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     return curPositionCount;
   }
 
-  protected int addFloatInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
         return i;
@@ -102,18 +105,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     return curPositionCount;
   }
 
-  protected int addDoubleInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
         return i;
@@ -123,18 +127,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     return curPositionCount;
   }
 
-  protected int addBooleanInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addBooleanInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
         return i;
@@ -144,18 +149,19 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     return curPositionCount;
   }
 
-  protected int addBinaryInput(Column[] column, IWindow curWindow) {
+  @Override
+  protected int addBinaryInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
         return i;

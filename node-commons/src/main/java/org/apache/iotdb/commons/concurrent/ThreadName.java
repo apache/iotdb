@@ -23,8 +23,8 @@ public enum ThreadName {
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
   CONFIGNODE_RPC_SERVICE("ConfigNodeRPC-Service"),
   CONFIGNODE_RPC_PROCESSOR("ConfigNodeRPC-Processor"),
-  MULTI_LEADER_CONSENSUS_RPC_SERVICE("MultiLeaderConsensusRPC-Service"),
-  MULTI_LEADER_CONSENSUS_RPC_PROCESSOR("MultiLeaderConsensusRPC-Processor"),
+  IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
+  IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
   DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
@@ -45,12 +45,11 @@ public enum ThreadName {
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
   QUERY_SERVICE("Query"),
-  SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   TTL_CHECK_SERVICE("TTL-CHECK"),
-  TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
-  TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
+  TIMED_FLUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
+  TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   SETTLE_SERVICE("Settle"),
   SYNC_SENDER_PIPE("Sync-Pipe"),
   SYNC_SENDER_HEARTBEAT("Sync-Heartbeat"),
@@ -61,7 +60,10 @@ public enum ThreadName {
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
-  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool");
+  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+  ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+  SCHEMA_REGION_RELEASE_POOL("SchemaRegion-Release-Task"),
+  SCHEMA_REGION_FLUSH_POOL("SchemaRegion-Flush-Task");
 
   private final String name;
 

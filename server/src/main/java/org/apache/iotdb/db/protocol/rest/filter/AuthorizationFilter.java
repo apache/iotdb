@@ -23,7 +23,6 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;
@@ -74,8 +73,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode())
-                      .message(TSStatusCode.UNINITIALIZED_AUTH_ERROR.name()))
+                      .code(TSStatusCode.INIT_AUTH_ERROR.getStatusCode())
+                      .message(TSStatusCode.INIT_AUTH_ERROR.name()))
               .build();
       containerRequestContext.abortWith(resp);
       return;
@@ -108,8 +107,8 @@ public class AuthorizationFilter implements ContainerRequestFilter {
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
-                      .message(TSStatusCode.AUTHENTICATION_ERROR.name()))
+                      .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+                      .message("Illegal format of authorization header."))
               .build();
       containerRequestContext.abortWith(resp);
       return null;
@@ -118,29 +117,15 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     User user = new User();
     user.setUsername(split[0]);
     user.setPassword(split[1]);
-    try {
-      TSStatus tsStatus = ((AuthorizerManager) authorizer).checkUser(split[0], split[1]);
-      if (tsStatus.code != 200) {
-        Response resp =
-            Response.status(Status.UNAUTHORIZED)
-                .type(MediaType.APPLICATION_JSON)
-                .entity(
-                    new ExecutionStatus()
-                        .code(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode())
-                        .message(TSStatusCode.WRONG_LOGIN_PASSWORD.name()))
-                .build();
-        containerRequestContext.abortWith(resp);
-        return null;
-      }
-    } catch (ConfigNodeConnectionException e) {
-      LOGGER.warn(e.getMessage(), e);
+    TSStatus tsStatus = ((AuthorizerManager) authorizer).checkUser(split[0], split[1]);
+    if (tsStatus.code != 200) {
       Response resp =
-          Response.status(Status.INTERNAL_SERVER_ERROR)
+          Response.status(Status.UNAUTHORIZED)
               .type(MediaType.APPLICATION_JSON)
               .entity(
                   new ExecutionStatus()
-                      .code(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                      .message(e.getMessage()))
+                      .code(TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode())
+                      .message(TSStatusCode.WRONG_LOGIN_PASSWORD.name()))
               .build();
       containerRequestContext.abortWith(resp);
       return null;

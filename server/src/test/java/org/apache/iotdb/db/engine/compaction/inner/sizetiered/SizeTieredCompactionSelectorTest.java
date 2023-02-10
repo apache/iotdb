@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -54,14 +55,14 @@ public class SizeTieredCompactionSelectorTest {
       Assert.assertEquals(
           1,
           new SizeTieredCompactionSelector("root.test", "0", i, true, manager)
-              .selectInnerSpaceTask(manager.getSequenceListByTimePartition(i))
+              .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(i))
               .size());
     }
 
     Assert.assertEquals(
         0,
         new SizeTieredCompactionSelector("root.test", "0", 9, true, manager)
-            .selectInnerSpaceTask(manager.getSequenceListByTimePartition(9))
+            .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(9))
             .size());
   }
 }

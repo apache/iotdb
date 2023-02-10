@@ -21,18 +21,17 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import com.codahale.metrics.jmx.JmxReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DropwizardJmxReporter implements Reporter {
+public class DropwizardJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardJmxReporter.class);
 
   private AbstractMetricManager dropwizardMetricManager = null;
-  private JmxReporter jmxReporter = null;
+  private com.codahale.metrics.jmx.JmxReporter jmxReporter = null;
 
   @Override
   public boolean start() {
@@ -42,24 +41,33 @@ public class DropwizardJmxReporter implements Reporter {
     }
     try {
       jmxReporter =
-          JmxReporter.forRegistry(
+          com.codahale.metrics.jmx.JmxReporter.forRegistry(
                   ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
               .inDomain("org.apache.iotdb.metrics")
               .build();
       jmxReporter.start();
     } catch (Exception e) {
-      LOGGER.error("Failed to start Dropwizard JmxReporter, because {}", e.getMessage());
+      jmxReporter = null;
+      LOGGER.warn("Dropwizard JmxReporter failed to start, because ", e);
       return false;
     }
+    LOGGER.info("Dropwizard JmxReporter start!");
     return true;
   }
 
   @Override
   public boolean stop() {
-    if (jmxReporter != null) {
-      jmxReporter.stop();
-      jmxReporter = null;
+    try {
+      if (jmxReporter != null) {
+        jmxReporter.stop();
+        jmxReporter = null;
+      }
+    } catch (RuntimeException e) {
+      // catch possible RuntimeException throwed by stop method of jmxReporter
+      LOGGER.warn("Dropwizard JmxReporter failed to stop, because ", e);
+      return false;
     }
+    LOGGER.info("Dropwizard JmxReporter stop!");
     return true;
   }
 

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -38,25 +37,19 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByLevelQueryIT {
-
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-  protected static int maxTsBlockLineNumber;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
-
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initClusterEnvironment();
 
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -90,15 +83,10 @@ public class IoTDBGroupByLevelQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void countFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{39, 20}};
@@ -135,7 +123,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void sumFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{131111, 510}};
@@ -169,7 +156,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void avgFuncByLevelTest() {
     // level = 1
     double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
@@ -203,7 +189,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void timeFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
@@ -217,7 +202,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void valueFuncGroupByLevelTest() {
     double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
@@ -233,7 +217,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void nestedQueryTest1() {
     // level = 1
     double[][] retArray1 = new double[][] {{40.0, 21.0}};
@@ -255,7 +238,6 @@ public class IoTDBGroupByLevelQueryIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void nestedQueryTest2() {
     // level = 1
     double[][] retArray1 = new double[][] {{390423.0, 449.0, 390404.0, 430.0}};
@@ -284,5 +266,36 @@ public class IoTDBGroupByLevelQueryIT {
     String[] columnNames3 = {"count(root.*.*.s1) + sum(root.*.*.s1)"};
     resultSetEqualTest(
         "select count(s1) + sum(s1) from root.*.* group by level=3", retArray3, columnNames3);
+  }
+
+  @Test
+  public void caseSensitivityTest() {
+    double[][] retArray = new double[][] {{39, 20, 39, 20, 39, 20}};
+
+    String[] columnNames1 = {
+      "count(root.sg1.*.s1)",
+      "count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames1);
+
+    String[] columnNames2 = {
+      "Count(root.sg1.*.s1)",
+      "Count(root.sg2.*.s1)",
+      "COUNT(root.sg1.*.s1)",
+      "COUNT(root.sg2.*.s1)",
+      "cOuNt(root.sg1.*.s1)",
+      "cOuNt(root.sg2.*.s1)"
+    };
+    resultSetEqualTest(
+        "select Count(s1), COUNT(s1), cOuNt(s1) from root.*.* group by level=1",
+        retArray,
+        columnNames2);
   }
 }

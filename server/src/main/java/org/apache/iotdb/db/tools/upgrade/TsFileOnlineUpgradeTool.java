@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.tools.upgrade;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -250,8 +250,8 @@ public class TsFileOnlineUpgradeTool extends TsFileSplitByPartitionTool {
     return dataType == TSDataType.BOOLEAN
         || dataType == TSDataType.TEXT
         || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
-        || StorageEngineV2.getTimePartition(pageHeader.getStartTime())
-            != StorageEngineV2.getTimePartition(pageHeader.getEndTime())
+        || StorageEngine.getTimePartition(pageHeader.getStartTime())
+            != StorageEngine.getTimePartition(pageHeader.getEndTime())
         || super.checkIfNeedToDecode(schema, deviceId, pageHeader, chunkHeaderOffset);
   }
 

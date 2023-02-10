@@ -138,16 +138,16 @@ Request path: http://ip:port/rest/v1/query
 Parameter Description:
 
 | parameter name | parameter type | required | parameter description                                        |
-| -------------- | -------------- | -------- | ------------------------------------------------------------ |
+|----------------| -------------- | -------- | ------------------------------------------------------------ |
 | sql            | string         | yes      |                                                              |
-| rowLimit       | integer        | no       | The maximum number of rows in the result set that can be returned by a query. <br />If this parameter is not set, the `rest_query_default_row_size_limit` of the configuration file will be used as the default value. <br /> When the number of rows in the returned result set exceeds the limit, the status code `411` will be returned. |
+| row_limit      | integer        | no       | The maximum number of rows in the result set that can be returned by a query. <br />If this parameter is not set, the `rest_query_default_row_size_limit` of the configuration file will be used as the default value. <br /> When the number of rows in the returned result set exceeds the limit, the status code `411` will be returned. |
 
 Response parameters:
 
 | parameter name | parameter type | parameter description                                        |
-| -------------- | -------------- | ------------------------------------------------------------ |
+|----------------| -------------- | ------------------------------------------------------------ |
 | expressions    | array          | Array of result set column names for data query, `null` for metadata query |
-| columnNames    | array          | Array of column names for metadata query result set, `null` for data query |
+| column_names   | array          | Array of column names for metadata query result set, `null` for data query |
 | timestamps     | array          | Timestamp column, `null` for metadata query                  |
 | values         | array          | A two-dimensional array, the first dimension has the same length as the result set column name array, and the second dimension array represents a column of the result set |
 
@@ -168,7 +168,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "root.sg27.s4",
     "root.sg27.s3 + 1"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     1635232143960,
     1635232153960
@@ -199,7 +199,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "child paths"
   ],
   "timestamps": null,
@@ -221,7 +221,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "child nodes"
   ],
   "timestamps": null,
@@ -243,7 +243,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "database",
     "ttl"
   ],
@@ -270,7 +270,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "database",
     "ttl"
   ],
@@ -295,7 +295,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "function name",
     "function type",
     "class name (UDF)"
@@ -333,7 +333,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "alias",
     "database",
@@ -406,7 +406,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "alias",
     "database",
@@ -479,7 +479,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count"
   ],
   "timestamps": null,
@@ -500,7 +500,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count"
   ],
   "timestamps": null,
@@ -521,7 +521,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "devices",
     "isAligned"
   ],
@@ -548,7 +548,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "devices",
     "database",
     "isAligned"
@@ -580,7 +580,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "user"
   ],
   "timestamps": null,
@@ -604,7 +604,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "count(root.sg27.s3)",
     "count(root.sg27.s4)"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     0
   ],
@@ -628,7 +628,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "count(root.sg27.*)",
     "count(root.sg28.*)"
   ],
@@ -656,7 +656,7 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
     "count(root.sg27.s3)",
     "count(root.sg27.s4)"
   ],
-  "columnNames": null,
+  "column_names": null,
   "timestamps": [
     1635232143960,
     1635232144960,
@@ -707,7 +707,7 @@ curl -H "Content-Type:application/json"  -H "Authorization:Basic cm9vdDpyb290" -
 ```json
 {
   "expressions": null,
-  "columnNames": [
+  "column_names": [
     "timeseries",
     "value",
     "dataType"
@@ -814,18 +814,18 @@ Request path: http://ip:port/rest/v1/insertTablet
 
 Parameter Description:
 
-|parameter name  |parameter type |is required|parameter describe|
-|:--- | :--- | :---| :---|
-|  timestamps | array | yes |  Time column  |
-|  measurements | array | yes  | The name of the measuring point |
-| dataTypes | array | yes  | The data type |
-|  values | array | yes  | Value columns, the values in each column can be `null` |
-|  isAligned | boolean | yes  | Whether to align the timeseries |
-|  deviceId | string | yes  | Device name |
+| parameter name |parameter type |is required|parameter describe|
+|:---------------| :--- | :---| :---|
+| timestamps     | array | yes |  Time column  |
+| measurements   | array | yes  | The name of the measuring point |
+| data_types     | array | yes  | The data type |
+| values         | array | yes  | Value columns, the values in each column can be `null` |
+| is_aligned     | boolean | yes  | Whether to align the timeseries |
+| device         | string | yes  | Device name |
 
 Example request:
 ```shell
-curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"dataTypes":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"isAligned":false,"deviceId":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
+curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"timestamps":[1635232143960,1635232153960],"measurements":["s3","s4"],"data_types":["INT32","BOOLEAN"],"values":[[11,null],[false,true]],"is_aligned":false,"device":"root.sg27"}' http://127.0.0.1:18080/rest/v1/insertTablet
 ```
 
 Sample response:

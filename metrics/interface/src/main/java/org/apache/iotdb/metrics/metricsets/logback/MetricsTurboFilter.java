@@ -30,27 +30,27 @@ import ch.qos.logback.core.spi.FilterReply;
 import org.slf4j.Marker;
 
 public class MetricsTurboFilter extends TurboFilter {
-  private Counter errorCounter;
-  private Counter warnCounter;
-  private Counter infoCounter;
-  private Counter debugCounter;
-  private Counter traceCounter;
+  private final Counter errorCounter;
+  private final Counter warnCounter;
+  private final Counter infoCounter;
+  private final Counter debugCounter;
+  private final Counter traceCounter;
 
   MetricsTurboFilter(AbstractMetricService metricService) {
     errorCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "error");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "error");
 
     warnCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "warn");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "warn");
 
     infoCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "info");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "info");
 
     debugCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "debug");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "debug");
 
     traceCounter =
-        metricService.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "trace");
+        metricService.getOrCreateCounter("logback_events", MetricLevel.IMPORTANT, "level", "trace");
   }
 
   @Override
@@ -89,6 +89,8 @@ public class MetricsTurboFilter extends TurboFilter {
           break;
         case Level.TRACE_INT:
           traceCounter.inc();
+          break;
+        default:
           break;
       }
     }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -188,101 +187,6 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastCacheUpdateTest() {
-    String[] retArray =
-        new String[] {
-          "500,root.ln.wf01.wt01.temperature,22.1,DOUBLE",
-          "500,root.ln.wf01.wt01.status,false,BOOLEAN",
-          "500,root.ln.wf01.wt01.id,5,INT32",
-          "700,root.ln.wf01.wt01.temperature,33.1,DOUBLE",
-          "700,root.ln.wf01.wt01.status,false,BOOLEAN",
-          "700,root.ln.wf01.wt01.id,3,INT32",
-          "700,root.ln.wf01.wt01.temperature,33.1,DOUBLE",
-          "700,root.ln.wf01.wt01.status,false,BOOLEAN",
-          "700,root.ln.wf01.wt01.id,3,INT32"
-        };
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
-          statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
-
-      assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-      }
-
-      PartialPath path = new PartialPath("root.ln.wf01.wt01.temperature");
-      IoTDB.schemaProcessor.resetLastCache(path);
-
-      statement.execute(
-          "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
-
-      // Last cache is updated with above insert sql
-      long time = IoTDB.schemaProcessor.getLastCache(path).getTimestamp();
-      Assert.assertEquals(700, time);
-
-      hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-      }
-
-      statement.execute(
-          "insert into root.ln.wf01.wt01(time, temperature, status, id) values(600, 19.1, false, 1)");
-
-      // Last cache is not updated with above insert sql
-      time = IoTDB.schemaProcessor.getLastCache(path).getTimestamp();
-      Assert.assertEquals(700, time);
-
-      hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(TIMESEIRES_STR)
-                  + ","
-                  + resultSet.getString(VALUE_STR)
-                  + ","
-                  + resultSet.getString(DATA_TYPE_STR);
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-      }
-      Assert.assertEquals(cnt, retArray.length);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void lastWithUnSeqFilesTest() {
     String[] retArray =
         new String[] {
@@ -298,7 +202,6 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       PartialPath path = new PartialPath("root.ln.wf01.wt02.temperature");
-      IoTDB.schemaProcessor.resetLastCache(path);
 
       boolean hasResultSet =
           statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
@@ -343,7 +246,6 @@ public class IoTDBLastIT {
       }
       Assert.assertEquals(cnt, retArray.length);
 
-      IoTDB.schemaProcessor.resetLastCache(path);
       String[] retArray3 =
           new String[] {
             "900,root.ln.wf01.wt01.temperature,10.2,DOUBLE",
@@ -388,8 +290,6 @@ public class IoTDBLastIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
-      IoTDB.schemaProcessor.resetLastCache(new PartialPath("root.ln.wf01.wt03.temperature"));
 
       statement.execute(
           "INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
@@ -439,8 +339,6 @@ public class IoTDBLastIT {
       statement.execute("flush");
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
-
-      IoTDB.schemaProcessor.resetLastCache(new PartialPath("root.ln.wf01.wt04.temperature"));
 
       boolean hasResultSet = statement.execute("select last temperature from root.ln.wf01.wt04");
 

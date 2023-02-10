@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -39,7 +43,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -272,7 +275,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
         patternTree.appendPathPattern(rawPath);
       } else {
@@ -341,7 +344,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
@@ -389,7 +392,7 @@ public class ExpressionAnalyzer {
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         patternTree.appendPathPattern(rawPath);
         return;
       }
@@ -485,42 +488,30 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> removeWildcardInFilter(
-      Expression predicate,
-      List<PartialPath> prefixPaths,
-      ISchemaTree schemaTree,
-      boolean isWhere) {
+      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
           removeWildcardInFilter(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
+              ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, schemaTree, false);
       List<Expression> secondExpressions =
           removeWildcardInFilter(
               ((TernaryExpression) predicate).getSecondExpression(),
               prefixPaths,
               schemaTree,
-              isWhere);
+              false);
       List<Expression> thirdExpressions =
           removeWildcardInFilter(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
+              ((TernaryExpression) predicate).getThirdExpression(), prefixPaths, schemaTree, false);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
           removeWildcardInFilter(
-              ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, schemaTree, isWhere);
+              ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, schemaTree, false);
       List<Expression> rightExpressions =
           removeWildcardInFilter(
-              ((BinaryExpression) predicate).getRightExpression(),
-              prefixPaths,
-              schemaTree,
-              isWhere);
-      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
+              ((BinaryExpression) predicate).getRightExpression(), prefixPaths, schemaTree, false);
+      if (isRoot && predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
         return resultExpressions;
@@ -530,16 +521,13 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
           removeWildcardInFilter(
-              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, isWhere);
+              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, false);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
-        throw new SemanticException("aggregate functions are not supported in WHERE clause");
-      }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInFilter(suffixExpression, prefixPaths, schemaTree, isWhere));
+            removeWildcardInFilter(suffixExpression, prefixPaths, schemaTree, false));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -547,7 +535,7 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
       List<PartialPath> concatPaths = new ArrayList<>();
-      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
+      if (!filterPath.getFirstNode().equals(SqlConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
       } else {
         // do nothing in the case of "where root.d1.s1 > 5"
@@ -557,7 +545,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> noStarPaths = new ArrayList<>();
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if (actualPaths.size() == 0) {
+        if (actualPaths.isEmpty()) {
           return Collections.singletonList(new NullOperand());
         }
         noStarPaths.addAll(actualPaths);
@@ -661,7 +649,7 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         List<Expression> concatedExpression =
             concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
-        if (concatedExpression != null && concatedExpression.size() != 0) {
+        if (concatedExpression != null && !concatedExpression.isEmpty()) {
           extendedExpressions.add(concatedExpression);
         }
       }
@@ -754,7 +742,7 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.size() == 0) {
+      if (noStarPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -1105,37 +1093,11 @@ public class ExpressionAnalyzer {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      String DeviceName =
-          getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
-      }
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getThirdExpression());
-      }
-      return DeviceName;
-    } else if (expression instanceof BinaryExpression) {
-      String leftDeviceName =
-          getDeviceNameInSourceExpression(((BinaryExpression) expression).getLeftExpression());
-      if (leftDeviceName != null) {
-        return leftDeviceName;
-      }
-      return getDeviceNameInSourceExpression(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      return getDeviceNameInSourceExpression(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDevice();
-    } else if (expression instanceof FunctionExpression) {
-      return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      return null;
-    } else {
+    if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type for source expression: " + expression.getExpressionType());
     }
+    return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
   public static Expression getMeasurementExpression(Expression expression) {
@@ -1185,6 +1147,7 @@ public class ExpressionAnalyzer {
       if (rawPath.isMeasurementAliasExists()) {
         measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
       }
+      measurementWithSchema.setTagMap(rawPath.getTagMap());
       return new TimeSeriesOperand(measurementWithSchema);
     } else if (expression instanceof LeafOperand) {
       return expression;
@@ -1222,5 +1185,104 @@ public class ExpressionAnalyzer {
       }
     }
     return predicate;
+  }
+
+  /**
+   * Bind DataType for TimeSeriesOperand in Expression with according ColumnHeaderName. eg:
+   *
+   * <p>columnHeaders: [[QueryId, TEXT], [DataNodeId, INT32]...]
+   *
+   * <p>dataNodeID > 1 -> DataNodeId > 1, `DataNodeID` will be a MeasurementPath with INT32
+   *
+   * <p>errorInput > 1, no according ColumnHeaderName of `errorInput`, throw exception
+   */
+  public static Expression bindTypeForTimeSeriesOperand(
+      Expression predicate, List<ColumnHeader> columnHeaders) {
+    if (predicate instanceof TernaryExpression) {
+      Expression firstExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders);
+      Expression secondExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getSecondExpression(), columnHeaders);
+      Expression thirdExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders);
+      return reconstructTernaryExpression(
+          predicate, firstExpression, secondExpression, thirdExpression);
+    } else if (predicate instanceof BinaryExpression) {
+      Expression leftExpression =
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders);
+      Expression rightExpression =
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getRightExpression(), columnHeaders);
+      return reconstructBinaryExpression(
+          predicate.getExpressionType(), leftExpression, rightExpression);
+    } else if (predicate instanceof UnaryExpression) {
+      Expression expression =
+          bindTypeForTimeSeriesOperand(
+              ((UnaryExpression) predicate).getExpression(), columnHeaders);
+      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
+    } else if (predicate instanceof FunctionExpression) {
+      List<Expression> expressions = predicate.getExpressions();
+      List<Expression> childrenExpressions = new ArrayList<>();
+      for (Expression expression : expressions) {
+        childrenExpressions.add(bindTypeForTimeSeriesOperand(expression, columnHeaders));
+      }
+      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
+    } else if (predicate instanceof TimeSeriesOperand) {
+      String oldPathString = ((TimeSeriesOperand) predicate).getPath().getFullPath();
+      // There are not too many TimeSeriesOperand and columnHeaders in our case,
+      // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
+      for (ColumnHeader columnHeader : columnHeaders) {
+        if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
+          try {
+            return reconstructTimeSeriesOperand(
+                new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
+          } catch (IllegalPathException ignored) {
+          }
+        }
+      }
+      throw new SemanticException(
+          String.format("please ensure input[%s] is correct", oldPathString));
+    } else if (predicate instanceof LeafOperand) {
+      return predicate;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static boolean isDeviceViewNeedSpecialProcess(Expression expression) {
+    if (expression instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) expression;
+      return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression());
+    } else if (expression instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) expression;
+      return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression())
+          || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      return isDeviceViewNeedSpecialProcess(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (((FunctionExpression) expression).isBuiltInScalarFunction()
+          && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              ((FunctionExpression) expression).getFunctionName().toLowerCase())) {
+        return true;
+      }
+      for (Expression child : expression.getExpressions()) {
+        if (isDeviceViewNeedSpecialProcess(child)) {
+          return true;
+        }
+      }
+      return false;
+    } else if (expression instanceof LeafOperand) {
+      return false;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
   }
 }

@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-
-import java.io.IOException;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
@@ -54,8 +49,6 @@ public class InternalMNode extends MNode {
    * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
    */
   protected int schemaTemplateId = NON_TEMPLATE;
-
-  protected Template schemaTemplate = null;
 
   private volatile boolean useTemplate = false;
 
@@ -171,7 +164,6 @@ public class InternalMNode extends MNode {
   public void moveDataToNewMNode(IMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
 
-    newMNode.setSchemaTemplate(schemaTemplate);
     newMNode.setUseTemplate(useTemplate);
     newMNode.setSchemaTemplateId(schemaTemplateId);
 
@@ -194,27 +186,14 @@ public class InternalMNode extends MNode {
     this.children = children;
   }
 
-  /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
-   */
-  @Override
-  public Template getUpperTemplate() {
-    IMNode cur = this;
-    while (cur != null) {
-      if (cur.getSchemaTemplate() != null) {
-        return cur.getSchemaTemplate();
-      }
-      cur = cur.getParent();
-    }
-
-    return null;
-  }
-
   @Override
   public int getSchemaTemplateId() {
     return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
+  }
+
+  @Override
+  public int getSchemaTemplateIdWithState() {
+    return schemaTemplateId;
   }
 
   @Override
@@ -254,18 +233,13 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    return schemaTemplate;
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    this.schemaTemplate = schemaTemplate;
   }
 
   @Override
@@ -279,27 +253,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeMNode(this);
-  }
-
-  @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitInternalMNode(this, context);
-  }
-
-  void serializeChildren(MLogWriter logWriter) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (IMNode child : children.values()) {
-      child.serializeTo(logWriter);
-    }
-  }
-
-  public static InternalMNode deserializeFrom(MNodePlan plan) {
-    return new InternalMNode(null, plan.getName());
   }
 }

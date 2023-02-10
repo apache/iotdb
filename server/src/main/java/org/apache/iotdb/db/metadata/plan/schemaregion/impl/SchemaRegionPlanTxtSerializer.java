@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -36,8 +35,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.ISetTemplatePlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IUnsetTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -87,13 +84,6 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
           .append(activateTemplateInClusterPlan.getTemplateSetLevel())
           .append(FIELD_SEPARATOR)
           .append(activateTemplateInClusterPlan.isAligned());
-      return null;
-    }
-
-    @Override
-    public Void visitActivateTemplate(
-        IActivateTemplatePlan activateTemplatePlan, StringBuilder stringBuilder) {
-      stringBuilder.append(activateTemplatePlan.getPrefixPath().getFullPath());
       return null;
     }
 
@@ -219,25 +209,6 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
         IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
         StringBuilder stringBuilder) {
       stringBuilder.append(rollbackPreDeleteTimeSeriesPlan.getPath().getFullPath());
-      return null;
-    }
-
-    @Override
-    public Void visitSetTemplate(ISetTemplatePlan setTemplatePlan, StringBuilder stringBuilder) {
-      stringBuilder
-          .append(setTemplatePlan.getPrefixPath())
-          .append(FIELD_SEPARATOR)
-          .append(setTemplatePlan.getTemplateName());
-      return null;
-    }
-
-    @Override
-    public Void visitUnsetTemplate(
-        IUnsetTemplatePlan unsetTemplatePlan, StringBuilder stringBuilder) {
-      stringBuilder
-          .append(unsetTemplatePlan.getPrefixPath())
-          .append(FIELD_SEPARATOR)
-          .append(unsetTemplatePlan.getTemplateName());
       return null;
     }
 

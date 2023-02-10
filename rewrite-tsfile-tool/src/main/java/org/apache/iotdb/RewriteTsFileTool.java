@@ -22,7 +22,7 @@ package org.apache.iotdb;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
+import org.apache.iotdb.db.engine.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -851,8 +851,9 @@ public class RewriteTsFileTool {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     while (readerIterator.hasNext()) {
       Tablet tablet = new Tablet(device, schemaList, MAX_TABLET_LENGTH);
-      Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-      AlignedChunkReader alignedChunkReader = chunkReaderAndChunkSize.left;
+      TsFileAlignedSeriesReaderIterator.NextAlignedChunkInfo readerInfo =
+          readerIterator.nextReader();
+      AlignedChunkReader alignedChunkReader = readerInfo.getReader();
       while (alignedChunkReader.hasNextSatisfiedPage()) {
         IBatchDataIterator batchDataIterator =
             alignedChunkReader.nextPageData().getBatchDataIterator();

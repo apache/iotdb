@@ -154,6 +154,11 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
+  public int getSchemaTemplateIdWithState() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     throw new UnsupportedOperationException();
   }
@@ -176,6 +181,11 @@ public abstract class RMNode implements IMNode {
   @Override
   public void unsetSchemaTemplate() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isAboveDatabase() {
+    return false;
   }
 
   @Override

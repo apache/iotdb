@@ -127,7 +127,7 @@ public class TimeRange implements Comparable<TimeRange> {
    */
   public void set(long min, long max) {
     if (min > max) {
-      throw new IllegalArgumentException("min should not be larger than max.");
+      throw new IllegalArgumentException("min:" + min + " should not be larger than max: " + max);
     }
     this.min = min;
     this.max = max;

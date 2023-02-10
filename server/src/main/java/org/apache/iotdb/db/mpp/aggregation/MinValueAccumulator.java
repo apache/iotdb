@@ -42,16 +42,16 @@ public class MinValueAccumulator implements Accumulator {
 
   // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow);
+        return addIntInput(column, curWindow, ignoringNull);
       case INT64:
-        return addLongInput(column, curWindow);
+        return addLongInput(column, curWindow, ignoringNull);
       case FLOAT:
-        return addFloatInput(column, curWindow);
+        return addFloatInput(column, curWindow, ignoringNull);
       case DOUBLE:
-        return addDoubleInput(column, curWindow);
+        return addDoubleInput(column, curWindow, ignoringNull);
       case TEXT:
       case BOOLEAN:
       default:
@@ -120,7 +120,26 @@ public class MinValueAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
-    minResult.setObject(finalResult.getObject(0));
+    initResult = true;
+    switch (seriesDataType) {
+      case INT32:
+        minResult.setInt(finalResult.getInt(0));
+        break;
+      case INT64:
+        minResult.setLong(finalResult.getLong(0));
+        break;
+      case FLOAT:
+        minResult.setFloat(finalResult.getFloat(0));
+        break;
+      case DOUBLE:
+        minResult.setDouble(finalResult.getDouble(0));
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in MinValue: %s", seriesDataType));
+    }
   }
 
   // columnBuilder should be single in MinValueAccumulator
@@ -200,18 +219,18 @@ public class MinValueAccumulator implements Accumulator {
     return minResult.getDataType();
   }
 
-  private int addIntInput(Column[] column, IWindow curWindow) {
+  private int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntResult(column[2].getInt(i));
       }
@@ -226,18 +245,18 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private int addLongInput(Column[] column, IWindow curWindow) {
+  private int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongResult(column[2].getLong(i));
       }
@@ -252,18 +271,18 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private int addFloatInput(Column[] column, IWindow curWindow) {
+  private int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatResult(column[2].getFloat(i));
       }
@@ -278,18 +297,18 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private int addDoubleInput(Column[] column, IWindow curWindow) {
+  private int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleResult(column[2].getDouble(i));
       }

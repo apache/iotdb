@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.exception.sync.PipeSinkNotExistException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.SyncOperation;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
@@ -37,13 +38,14 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlan;
+import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
-import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -51,6 +53,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,13 +72,9 @@ public class SyncManager {
   private final IManager configManager;
   private final ClusterSyncInfo clusterSyncInfo;
 
-  private final OperatePipeProcedureRollbackProcessor rollbackProcessor;
-
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
-    this.rollbackProcessor =
-        new OperatePipeProcedureRollbackProcessor(configManager.getNodeManager());
   }
 
   public void lockSyncMetadata() {
@@ -147,6 +147,12 @@ public class SyncManager {
 
   public TSStatus dropPipe(String pipeName) {
     return getConsensusManager().write(new DropPipePlan(pipeName)).getStatus();
+  }
+
+  public TSStatus recordPipeMessage(String pipeName, PipeMessage pipeMessage) {
+    return getConsensusManager()
+        .write(new RecordPipeMessagePlan(pipeName, pipeMessage))
+        .getStatus();
   }
 
   public TShowPipeResp showPipe(String pipeName) {
@@ -249,7 +255,7 @@ public class SyncManager {
         failedRollbackDataNodeId.add(responseEntry.getKey());
       }
     }
-    rollbackProcessor.retryRollbackReq(failedRollbackDataNodeId, request);
+    configManager.getRetryFailedTasksThread().retryRollbackReq(failedRollbackDataNodeId, request);
   }
 
   /**
@@ -278,9 +284,25 @@ public class SyncManager {
     return clientHandler.getResponseMap();
   }
 
+  /**
+   * When some Nodes' states changed during a heartbeat loop, the eventbus in LoadManager will post
+   * the different NodeStatstics event to SyncManager and ClusterSchemaManager.
+   *
+   * @param nodeStatisticsEvent nodeStatistics that changed in a heartbeat loop
+   */
+  @Subscribe
+  @AllowConcurrentEvents
+  public void handleNodeStatistics(NodeStatisticsEvent nodeStatisticsEvent) {
+    // TODO
+  }
+
   // endregion
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ProcedureManager getProcedureManager() {
+    return configManager.getProcedureManager();
   }
 }

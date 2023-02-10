@@ -49,9 +49,8 @@ public class SyncLogWriter implements AutoCloseable {
     this.fileName = fileName;
   }
 
-  public void getOutputStream() throws IOException {
+  public void initOutputStream() throws IOException {
     if (outputStream == null) {
-      //      File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
       File logFile = new File(dir, fileName);
       if (!logFile.getParentFile().exists()) {
         logFile.getParentFile().mkdirs();
@@ -61,26 +60,26 @@ public class SyncLogWriter implements AutoCloseable {
   }
 
   public synchronized void addPipeSink(PipeSink pipeSink) throws IOException {
-    getOutputStream();
+    initOutputStream();
     ReadWriteIOUtils.write((byte) SyncOperation.CREATE_PIPESINK.ordinal(), outputStream);
     pipeSink.serialize(outputStream);
   }
 
   public synchronized void dropPipeSink(String pipeSinkName) throws IOException {
-    getOutputStream();
+    initOutputStream();
     ReadWriteIOUtils.write((byte) SyncOperation.DROP_PIPESINK.ordinal(), outputStream);
     ReadWriteIOUtils.write(pipeSinkName, outputStream);
   }
 
   public synchronized void addPipe(PipeInfo pipeInfo) throws IOException {
-    getOutputStream();
+    initOutputStream();
     ReadWriteIOUtils.write((byte) SyncOperation.CREATE_PIPE.ordinal(), outputStream);
     pipeInfo.serialize(outputStream);
   }
 
   public synchronized void operatePipe(String pipeName, SyncOperation syncOperation)
       throws IOException {
-    getOutputStream();
+    initOutputStream();
     ReadWriteIOUtils.write((byte) syncOperation.ordinal(), outputStream);
     ReadWriteIOUtils.write(pipeName, outputStream);
   }

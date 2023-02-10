@@ -266,6 +266,10 @@ public class TimeChunkWriter {
     return TSDataType.VECTOR;
   }
 
+  public long getPointNum() {
+    return statistics.getCount() + pageWriter.getPointNumber();
+  }
+
   /**
    * write the page to specified IOWriter.
    *
@@ -313,5 +317,9 @@ public class TimeChunkWriter {
 
   public TimePageWriter getPageWriter() {
     return pageWriter;
+  }
+
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
   }
 }

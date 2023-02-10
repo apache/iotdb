@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -59,20 +58,10 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   protected static final int SLIMIT = 10;
   protected static final int SOFFSET = 2;
 
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(5)
-        .setUdfTransformerMemoryBudgetInMB(5)
-        .setUdfReaderMemoryBudgetInMB(5);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
     registerUDF();
@@ -80,14 +69,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void createTimeSeries() {
@@ -152,6 +134,26 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute(
           "create function validate as 'org.apache.iotdb.db.query.udf.example.ValidateTester'");
     } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithUnquotedAttributes() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.executeQuery("select sum_sec(s1, 'interval'=3) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+      try {
+        statement.executeQuery(
+            "select sum_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+    } catch (Exception throwable) {
       fail(throwable.getMessage());
     }
   }

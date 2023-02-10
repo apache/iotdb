@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
@@ -57,7 +57,7 @@ public class GroupByTagNodeSerdeTest {
         new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
     CrossSeriesAggregationDescriptor s1MaxTime =
         new CrossSeriesAggregationDescriptor(
-            AggregationType.MAX_TIME.name().toLowerCase(),
+            TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
             new FunctionExpression(
@@ -67,7 +67,7 @@ public class GroupByTagNodeSerdeTest {
                     new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
     CrossSeriesAggregationDescriptor s1Avg =
         new CrossSeriesAggregationDescriptor(
-            AggregationType.AVG.name().toLowerCase(),
+            TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
             new FunctionExpression(
@@ -77,12 +77,12 @@ public class GroupByTagNodeSerdeTest {
                     new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
     AggregationDescriptor s1MaxTimePartial =
         new AggregationDescriptor(
-            AggregationType.MAX_TIME.name().toLowerCase(),
+            TAggregationType.MAX_TIME.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
     AggregationDescriptor s1AvgTimePartial =
         new AggregationDescriptor(
-            AggregationType.AVG.name().toLowerCase(),
+            TAggregationType.AVG.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))));
     Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =

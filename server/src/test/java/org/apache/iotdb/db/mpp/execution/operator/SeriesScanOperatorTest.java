@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.Sets;
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -55,6 +58,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SeriesScanOperatorTest {
+
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.SeriesScanOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -88,43 +92,44 @@ public class SeriesScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = seriesScanOperator.next();
         assertEquals(1, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
+          if ((long) count < 200) {
+            assertEquals(20000 + (long) count, tsBlock.getColumn(0).getInt(i));
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
+            assertEquals(10000 + (long) count, tsBlock.getColumn(0).getInt(i));
           } else {
-            assertEquals(expectedTime, tsBlock.getColumn(0).getInt(i));
+            assertEquals(count, tsBlock.getColumn(0).getInt(i));
           }
         }
-        count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

@@ -87,7 +87,7 @@ By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can ch
 
 **Where can I find IoTDB data files?**
 
-By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data```.
+By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data/datanode```.
 
 **How do I know how many time series are stored in IoTDB?**
 
@@ -114,7 +114,7 @@ If you are using Linux, you can use the following shell command:
 
 **Can I use Hadoop and Spark to read TsFile in IoTDB?**
 
-Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark) and [Grafana](https://github.com/apache/iotdb/tree/master/grafana) visualization tool.
+Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark-tsfile) and [Grafana](https://github.com/apache/iotdb/tree/master/grafana-plugin) visualization tool.
 
 **How does IoTDB handle duplicate points?**
 
@@ -150,3 +150,7 @@ The default IoTDB's Cli time display format is readable (e.g. ```1970-01-01T08:0
 > $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableISO8601
 ```
 
+**How to handle error `IndexOutOfBoundsException` from `org.apache.ratis.grpc.server.GrpcLogAppender`?**
+
+It is an internal error introduced by Ratis 2.4.1 dependency, and we can safely ignore this exception as it will
+not affect normal operations. We will fix this message in the incoming releases.

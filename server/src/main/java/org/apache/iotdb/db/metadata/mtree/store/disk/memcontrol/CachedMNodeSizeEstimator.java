@@ -46,6 +46,7 @@ public class CachedMNodeSizeEstimator extends BasicMNodSizeEstimator {
   private static final int INTERNAL_NODE_BASE_SIZE =
       BasicMNodSizeEstimator.INTERNAL_NODE_BASE_SIZE + CACHED_MNODE_CONTAINER_SIZE_DELTA;
 
+  @Override
   public int estimateSize(IMNode node) {
     int size = NODE_BASE_SIZE + node.getName().length();
     if (node.isMeasurement()) {

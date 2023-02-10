@@ -19,19 +19,17 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
-import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
@@ -53,7 +51,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
@@ -73,8 +70,13 @@ public class SessionManager implements SessionManagerMBean {
   // The statementId is unique in one IoTDB instance.
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
+  private static final AuthorStatement AUTHOR_STATEMENT = new AuthorStatement(StatementType.AUTHOR);
+
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+
+  private static final boolean enableAuditLog =
+      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   protected SessionManager() {
     // singleton
@@ -95,42 +97,43 @@ public class SessionManager implements SessionManagerMBean {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    try {
-      loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
-      if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // check the version compatibility
-        if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
-          openSessionResp
-              .sessionId(-1)
-              .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-              .setMessage(
-                  "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        } else {
-          supplySession(session, username, zoneId, clientVersion);
-
-          openSessionResp
-              .sessionId(session.getId())
-              .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              .setMessage("Login successfully");
-
-          LOGGER.info(
-              "{}: Login status: {}. User : {}, opens Session-{}",
-              IoTDBConstant.GLOBAL_DB_NAME,
-              openSessionResp.getMessage(),
-              username,
-              session);
-        }
+    loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
+    if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // check the version compatibility
+      if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
+        openSessionResp
+            .sessionId(-1)
+            .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+        supplySession(session, username, zoneId, clientVersion);
 
-        openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
+        openSessionResp
+            .sessionId(session.getId())
+            .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setMessage("Login successfully");
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            session);
+        if (enableAuditLog) {
+          AuditLogger.log(
+              String.format(
+                  "%s: Login status: %s. User : %s, opens Session-%s",
+                  IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
+              AUTHOR_STATEMENT);
+        }
       }
-    } catch (ConfigNodeConnectionException e) {
-      LOGGER.error("Failed to connect to ConfigNode, because ", e);
-      openSessionResp
-          .sessionId(-1)
-          .setCode(TSStatusCode.AUTHENTICATION_ERROR.getStatusCode())
-          .setMessage(e.getMessage());
+    } else {
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format("User %s opens Session failed with an incorrect password", username),
+            AUTHOR_STATEMENT);
+      }
+      openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
     }
 
     return openSessionResp;
@@ -147,13 +150,18 @@ public class SessionManager implements SessionManagerMBean {
     //    }
     IClientSession session1 = currSession.get();
     if (session1 != null && session != session1) {
-      AUDIT_LOGGER.error(
-          "The client-{} is trying to close another session {}, pls check if it's a bug",
-          session,
-          session1);
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "The client-%s is trying to close another session %s, pls check if it's a bug",
+                session, session1),
+            AUTHOR_STATEMENT);
+      }
       return false;
     } else {
-      AUDIT_LOGGER.info("Session-{} is closing", session);
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
+      }
       return true;
     }
   }
@@ -183,13 +191,6 @@ public class SessionManager implements SessionManagerMBean {
       return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN,
           "Log in failed. Either you are not authorized or the session has timed out.");
-    }
-
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "{}: receive close operation from Session {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          currSession.get());
     }
 
     try {
@@ -250,40 +251,6 @@ public class SessionManager implements SessionManagerMBean {
 
   public long requestQueryId() {
     return QueryResourceManager.getInstance().assignQueryId();
-  }
-
-  /** Check whether specific user has the authorization to given plan. */
-  public boolean checkAuthorization(PhysicalPlan plan, String username) throws AuthException {
-    if (!plan.isAuthenticationRequired()) {
-      return true;
-    }
-
-    String targetUser = null;
-    if (plan instanceof AuthorPlan) {
-      targetUser = ((AuthorPlan) plan).getUserName();
-    }
-    return AuthorityChecker.check(
-        username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
-  }
-
-  /** Check whether specific Session has the authorization to given plan. */
-  public TSStatus checkAuthority(PhysicalPlan plan, IClientSession session) {
-    try {
-      if (!checkAuthorization(plan, session.getUsername())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION,
-            "No permissions for this operation, please add privilege "
-                + PrivilegeType.values()[
-                    AuthorityChecker.translateToPermissionId(plan.getOperatorType())]);
-      }
-    } catch (AuthException e) {
-      LOGGER.warn("meet error while checking authorization.", e);
-      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
-    } catch (Exception e) {
-      return onQueryException(
-          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    }
-    return null;
   }
 
   /**

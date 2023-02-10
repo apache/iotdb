@@ -51,39 +51,23 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 用户可以根据以下操作对 IoTDB 进行简单的试用，若以下操作均无误，则说明 IoTDB 安装成功。
 
 ### 启动 IoTDB
+IoTDB 是一个基于分布式系统的数据库。要启动 IoTDB ，你可以先启动单机版（一个 ConfigNode 和一个 DataNode）来检查安装。
 
-用户可以使用 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+用户可以使用 sbin 文件夹下的 start-standalone 脚本启动 IoTDB。
 
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> nohup sbin/start-server.sh -f >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -d
+> bash sbin/start-standalone.sh
 ```
-可选参数:
-- 默认不含任何参数时, iotdb 将在后台启动，并且不在控制台打印日志
-- "-v": 查看iotdb版本
-- "-f": 在控制台前台启动iotdb (v0.14前是默认设置)
-- "-d": 在后台启动iotdb，控制台不打印日志
-- "-p \<pidfile\>": 将pid保存到指定的文件中
-- "-h": 查看帮助
-- "printgc"(必须是最后一个参数): 打印GC日志 (从v0.14起，该参数将被-g取代)
-- "-g": 打印GC日志
-- "-c \<config folder\>": 设置IOTDB_CONF变量的值，从而修改配置文件所在文件夹
-- "-D <a=b>": 设置Java的系统环境变量或其他参数
-- "-H \<filePath\> 当OOM异常时存储堆快照到\<filePath\> (仅 Linux/Mac生效, 且要求iotdb内存小于16GB)"
-- "-E <\filePath\> save error file of JVM to \<filePath\> (仅 Linux/Mac生效)"
-- "-X \<command\> 等价于JVM中 -XX:\<command\>"
 
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
 
+注意：目前，要使用单机模式，你需要保证所有的地址设置为 127.0.0.1，副本数设置为1。并且，推荐使用 SimpleConsensus，因为这会带来额外的效率。这些现在都是默认配置。
 ### 使用 Cli 工具
 
 IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使用 Cli 工具进行写入、查询数据的基本步骤。
@@ -95,7 +79,7 @@ IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使�
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 Windows 系统启动命令如下：
@@ -114,7 +98,7 @@ Windows 系统启动命令如下：
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
 |_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 IoTDB>
 ```
 
@@ -252,19 +236,32 @@ IoTDB> exit
 
 ### 停止 IoTDB
 
-用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-server 脚本停止 IoTDB。
+用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-standalone 脚本停止 IoTDB。
 
 Linux 系统与 MacOS 系统停止命令如下：
 
 ```
-> sbin/stop-server.sh
+> sudo bash sbin/stop-standalone.sh
 ```
 
 Windows 系统停止命令如下：
 
 ```
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
+注意：在 Linux 下，执行停止脚本时，请尽量加上 sudo 语句，不然停止可能会失败。更多的解释在分布式/分布式部署中。
+
+### IoTDB 的权限管理
+
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
+
+您可以通过以下命令修改其密码：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 ## 基础配置
 

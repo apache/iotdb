@@ -32,13 +32,15 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
+import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.sync.common.ClusterSyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.SenderManager;
 import org.apache.iotdb.db.sync.transport.server.ReceiverManager;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -106,8 +109,12 @@ public class SyncService implements IService {
 
   // region Interfaces and Implementation of Transport Layer
 
-  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
-    return receiverManager.handshake(identityInfo);
+  public TSStatus handshake(
+      TSyncIdentityInfo identityInfo,
+      String remoteAddress,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    return receiverManager.handshake(identityInfo, remoteAddress, partitionFetcher, schemaFetcher);
   }
 
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
@@ -340,32 +347,28 @@ public class SyncService implements IService {
     }
   }
 
-  public synchronized void recordMessage(String pipeName, PipeMessage message) {
+  public void recordMessage(String pipeName, PipeMessage message) {
     if (!pipes.containsKey(pipeName)) {
-      logger.warn(String.format("No running PIPE for message %s.", message));
+      logger.warn("No running PIPE for message {}.", message);
       return;
     }
     TSStatus status = null;
     switch (message.getType()) {
       case ERROR:
-        logger.error("{}", message);
+        logger.error(
+            "Error occurred when executing PIPE [{}] because {}.", pipeName, message.getMessage());
         status = syncInfoFetcher.recordMsg(pipeName, message);
-        try {
-          stopPipe(pipeName);
-        } catch (PipeException e) {
-          logger.error(
-              String.format("Stop PIPE %s when meeting error in sender service.", pipeName), e);
-        }
         break;
       case WARN:
-        logger.warn("{}", message);
+        logger.error(
+            "Warn occurred when executing PIPE [{}] because {}.", pipeName, message.getMessage());
         status = syncInfoFetcher.recordMsg(pipeName, message);
         break;
       default:
-        logger.error(String.format("Unknown message type: %s", message));
+        logger.error("Unknown message type: {}", message);
     }
     if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(String.format("Failed to record message: %s", message));
+      logger.error("Failed to record message: {}", message);
     }
   }
 
@@ -391,14 +394,14 @@ public class SyncService implements IService {
   public List<TShowPipeInfo> showPipeForReceiver(String pipeName) {
     boolean showAll = StringUtils.isEmpty(pipeName);
     List<TShowPipeInfo> list = new ArrayList<>();
-    for (TSyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
+    for (SyncIdentityInfo identityInfo : receiverManager.getAllTSyncIdentityInfos()) {
       if (showAll || pipeName.equals(identityInfo.getPipeName())) {
         TShowPipeInfo tPipeInfo =
             new TShowPipeInfo(
                 identityInfo.getCreateTime(),
                 identityInfo.getPipeName(),
                 SyncConstant.ROLE_RECEIVER,
-                identityInfo.getAddress(),
+                identityInfo.getRemoteAddress(),
                 PipeStatus.RUNNING.name(),
                 String.format("Database='%s'", identityInfo.getDatabase()),
                 // TODO: implement receiver message
@@ -417,13 +420,13 @@ public class SyncService implements IService {
   private void startExternalPipeManager(String pipeName, boolean startExtPipe)
       throws PipeException {
     if (!(pipes.get(pipeName) instanceof TsFilePipe)) {
-      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. " + pipeName);
+      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. {}", pipeName);
       return;
     }
 
     PipeSink pipeSink = pipes.get(pipeName).getPipeSink();
     if (!(pipeSink instanceof ExternalPipeSink)) {
-      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink." + pipeSink);
+      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink. {}", pipeSink);
       return;
     }
 
@@ -432,9 +435,8 @@ public class SyncService implements IService {
         ExtPipePluginRegister.getInstance().getWriteFactory(extPipeSinkTypeName);
     if (externalPipeSinkWriterFactory == null) {
       logger.error(
-          String.format(
-              "startExternalPipeManager(), can not found ExternalPipe plugin for %s.",
-              extPipeSinkTypeName));
+          "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+          extPipeSinkTypeName);
       throw new PipeException("Can not found ExternalPipe plugin for " + extPipeSinkTypeName + ".");
     }
 
@@ -478,7 +480,7 @@ public class SyncService implements IService {
     try {
       recover();
     } catch (Exception e) {
-      logger.error("Recover from disk error.", e);
+      logger.error("Recovery error.", e);
       throw new StartupException(e);
     }
   }

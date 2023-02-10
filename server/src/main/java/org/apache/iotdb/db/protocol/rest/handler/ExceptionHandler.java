@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
@@ -69,7 +68,7 @@ public class ExceptionHandler {
     } else if (e instanceof ParseCancellationException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.SQL_PARSE_ERROR.getStatusCode());
-    } else if (e instanceof SQLParserException || e instanceof StatementAnalyzeException) {
+    } else if (e instanceof StatementAnalyzeException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.METADATA_ERROR.getStatusCode());
     } else if (e instanceof SemanticException) {

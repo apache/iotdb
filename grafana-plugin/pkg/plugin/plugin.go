@@ -125,9 +125,9 @@ type queryParam struct {
 
 type QueryDataReq struct {
 	Expression []string `json:"expression"`
-	PrefixPath []string `json:"prefixPath"`
-	StartTime  int64    `json:"startTime"`
-	EndTime    int64    `json:"endTime"`
+	PrefixPath []string `json:"prefix_path"`
+	StartTime  int64    `json:"start_time"`
+	EndTime    int64    `json:"end_time"`
 	Condition  string   `json:"condition"`
 	Control    string   `json:"control"`
 }
@@ -136,7 +136,7 @@ type QueryDataResponse struct {
 	Expressions []string    `json:"expressions"`
 	Timestamps  []int64     `json:"timestamps"`
 	Values      [][]interface{} `json:"values"`
-	ColumnNames interface{} `json:"columnNames"`
+	ColumnNames interface{} `json:"column_names"`
 	Code        int32       `json:"code"`
 	Message     string      `json:"message"`
 }

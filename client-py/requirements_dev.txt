@@ -18,10 +18,10 @@
 
 -r requirements.txt
 # Pytest to run tests
-pytest==6.2.2
+pytest==7.2.0
 thrift==0.14.1
 flake8==3.9.0
 black==20.8b1
 # For releases
 twine==3.4.1
-wheel==0.36.2
+wheel==0.38.1

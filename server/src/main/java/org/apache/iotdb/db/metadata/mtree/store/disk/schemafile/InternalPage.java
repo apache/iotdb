@@ -79,7 +79,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   @Override
   public int insertRecord(String key, Integer pointer) throws RecordDuplicatedException {
     // TODO: remove debug parameter INTERNAL_SPLIT_VALVE
-    if (spareSize < 8 + 4 + key.getBytes().length + INTERNAL_SPLIT_VALVE) {
+    if (spareSize < COMPOUND_POINT_LENGTH + 4 + key.getBytes().length + INTERNAL_SPLIT_VALVE) {
       return -1;
     }
 
@@ -267,7 +267,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       this.pageBuffer.position(this.spareOffset);
       dstBuffer.put(this.pageBuffer);
 
-      // migrate p1 to p_n-1, offset of each pointer has not to be modified
+      // migrate p1 to p_n-1, offset of each pointer shall not be modified
       dstBuffer.position(PAGE_HEADER_SIZE);
       this.pageBuffer.position(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH);
       this.pageBuffer.limit(PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * this.memberNum);
@@ -344,6 +344,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       for (int vi = splitPos; vi <= this.memberNum; vi++) {
         if (vi == pos + 1) {
           // directly points to the new key, do nothing
+          // offset of mPtr always be corrected below, MIN_VALUE as placeholder
           mPtr = compoundPointer(pk, Short.MIN_VALUE);
           mKey = key;
         } else {
@@ -351,8 +352,8 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
           ai = vi > pos ? vi - 1 : vi;
           mPtr = getPointerByIndex(ai);
           mKey = getKeyByIndex(ai);
-          // this.memberNum --;
-          this.spareSize -= COMPOUND_POINT_LENGTH + mKey.getBytes().length + 4;
+          // this.spareSize and this.memNumber will always be corrected below during compaction,
+          //  therefore unnecessary to count here
         }
 
         memberNum++;
@@ -417,7 +418,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, spare_offset:%d, spare_size:%d\n", pageIndex, spareOffset, spareSize));
+                "page_id:%d, spare_offset:%d, spare_size:%d%n", pageIndex, spareOffset, spareSize));
     builder.append(
         String.format(
             "[IndexEntrySegment, total_ptrs:%d, spare_size:%d, sub_index:%d, ",
@@ -431,7 +432,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
               "(%s, %s, %s),",
               getKeyByIndex(i), keyOffset(getPointerByIndex(i)), pageIndex(getPointerByIndex(i))));
     }
-    builder.append("]");
+    builder.append("]\n");
     return builder.toString();
   }
 
@@ -534,8 +535,8 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    *
    * <ul>
    *   <li>16 bits: reserved
-   *   <li>32 bits: page index, which indicate segment actually
-   *   <li>16 bits: key offset, which denote keys in corresponding segment
+   *   <li>32 bits: page index, which points to target content
+   *   <li>16 bits: key offset, which denotes where key is in this page/segment.
    * </ul>
    */
   private long compoundPointer(int pageIndex, short offset) {

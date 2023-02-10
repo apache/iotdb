@@ -42,7 +42,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
   /** manage wal folders */
   protected FolderManager folderManager;
 
-  public AbstractNodeAllocationStrategy() {
+  protected AbstractNodeAllocationStrategy() {
     try {
       folderManager =
           new FolderManager(

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -41,6 +45,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
@@ -49,6 +54,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -65,8 +72,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,7 +115,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap = new TreeMap<>();
+      Map<String, PlanNode> deviceToSubPlanMap =
+          queryStatement.getResultDeviceOrder() == Ordering.ASC
+              ? new TreeMap<>()
+              : new TreeMap<>(Collections.reverseOrder());
       for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
@@ -117,6 +131,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                         ? analysis.getDeviceToWhereExpression().get(deviceName)
                         : null,
                     analysis.getDeviceToAggregationExpressions().get(deviceName),
+                    analysis.getDeviceToGroupByExpression() != null
+                        ? analysis.getDeviceToGroupByExpression().get(deviceName)
+                        : null,
                     analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
@@ -127,7 +144,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               deviceToSubPlanMap,
               analysis.getDeviceViewOutputExpressions(),
               analysis.getDeviceViewInputIndexesMap(),
-              queryStatement.getResultTimeOrder());
+              queryStatement.getSortItemList());
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -137,6 +154,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getSourceTransformExpressions(),
                   analysis.getWhereExpression(),
                   analysis.getAggregationExpressions(),
+                  analysis.getGroupByExpression(),
                   null,
                   context));
     }
@@ -174,6 +192,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Set<Expression> sourceTransformExpressions,
       Expression whereExpression,
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
@@ -195,7 +214,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     } else {
       // aggregation query
       boolean isRawDataSource =
-          analysis.hasValueFilter() || needTransform(sourceTransformExpressions);
+          analysis.hasValueFilter()
+              || needTransform(sourceTransformExpressions)
+              || analysis.hasGroupByParameter();
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -219,7 +240,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder =
             planBuilder.planAggregation(
                 aggregationExpressions,
+                groupByExpression,
                 analysis.getGroupByTimeParameter(),
+                analysis.getGroupByParameter(),
+                queryStatement.isOutputEndTime(),
                 curStep,
                 queryStatement.getResultTimeOrder());
 
@@ -352,6 +376,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         createMultiTimeSeriesStatement.getAliasList(),
         createMultiTimeSeriesStatement.getTagsList(),
         createMultiTimeSeriesStatement.getAttributesList());
+  }
+
+  @Override
+  public PlanNode visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
+      MPPQueryContext context) {
+    return new InternalCreateMultiTimeSeriesNode(
+        context.getQueryId().genPlanNodeId(),
+        internalCreateMultiTimeSeriesStatement.getDeviceMap());
   }
 
   @Override
@@ -690,6 +723,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
+  public PlanNode visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement,
+      MPPQueryContext context) {
+    Map<PartialPath, Pair<Integer, Integer>> templateActivationMap = new HashMap<>();
+    for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
+        internalBatchActivateTemplateStatement.getDeviceMap().entrySet()) {
+      templateActivationMap.put(
+          entry.getKey(),
+          new Pair<>(entry.getValue().left.getId(), entry.getValue().right.getNodeLength() - 1));
+    }
+    return new InternalBatchActivateTemplateNode(
+        context.getQueryId().genPlanNodeId(), templateActivationMap);
+  }
+
+  @Override
   public PlanNode visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
@@ -699,6 +747,18 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getSpecifiedTemplateRelatedPathPatternList(),
                 analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
+    return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowQueries(
+      ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    planBuilder =
+        planBuilder
+            .planShowQueries(analysis, showQueriesStatement) // push Filter down
+            .planOffset(showQueriesStatement.getRowOffset())
+            .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();
   }
 }

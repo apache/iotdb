@@ -99,7 +99,7 @@ public class SystemInfo {
     } else {
       logger.info(
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}), REJECT_THERSHOLD ({})",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
           REJECT_THERSHOLD);
@@ -133,6 +133,8 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - dataRegionInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
       dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
+      // report after reset sg status, because slow write may not reach the report threshold
+      dataRegionInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
     }
 
@@ -140,13 +142,13 @@ public class SystemInfo {
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-            dataRegionInfo.getDataRegion().getStorageGroupName(),
+            dataRegionInfo.getDataRegion().getDatabaseName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -155,7 +157,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -163,7 +165,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-          dataRegionInfo.getDataRegion().getStorageGroupName(),
+          dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -180,11 +182,13 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    long originSize = this.compactionMemoryCost.get();
-    while (originSize + memoryCost > memorySizeForCompaction
-        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-      Thread.sleep(100);
-      originSize = this.compactionMemoryCost.get();
+    if (config.isEnableMemControl()) {
+      long originSize = this.compactionMemoryCost.get();
+      while (originSize + memoryCost > memorySizeForCompaction
+          || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+        Thread.sleep(100);
+        originSize = this.compactionMemoryCost.get();
+      }
     }
   }
 
@@ -193,7 +197,11 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    return memorySizeForCompaction;
+    if (config.isEnableMemControl()) {
+      return memorySizeForCompaction;
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 
   public void allocateWriteMemory() {

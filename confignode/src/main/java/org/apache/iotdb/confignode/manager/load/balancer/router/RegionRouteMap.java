@@ -82,6 +82,11 @@ public class RegionRouteMap {
     this.regionPriorityMap = regionPriorityMap;
   }
 
+  public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
+    this.regionLeaderMap.remove(regionGroupId);
+    this.regionPriorityMap.remove(regionGroupId);
+  }
+
   public void serialize(OutputStream stream, TProtocol protocol) throws IOException {
     try {
       ReadWriteIOUtils.write(regionLeaderMap.size(), stream);

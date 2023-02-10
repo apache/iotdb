@@ -56,7 +56,7 @@ public abstract class WALEntry implements SerializedSize {
    */
   protected final WALFlushListener walFlushListener;
 
-  public WALEntry(long memTableId, WALEntryValue value, boolean wait) {
+  protected WALEntry(long memTableId, WALEntryValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
     if (value instanceof IMemTable) {
@@ -93,6 +93,8 @@ public abstract class WALEntry implements SerializedSize {
       case ROLL_WAL_LOG_WRITER_SIGNAL:
       case WAL_FILE_INFO_END_MARKER:
         return new WALSignalEntry(type);
+      default:
+        break;
     }
 
     // handle info
@@ -118,8 +120,8 @@ public abstract class WALEntry implements SerializedSize {
   }
 
   /**
-   * This deserialization method is only for multi-leader consensus and just deserializes
-   * InsertRowNode and InsertTabletNode
+   * This deserialization method is only for iot consensus and just deserializes InsertRowNode and
+   * InsertTabletNode
    */
   public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(

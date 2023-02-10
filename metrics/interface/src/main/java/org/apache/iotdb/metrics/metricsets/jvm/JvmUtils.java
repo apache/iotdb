@@ -25,17 +25,17 @@ import java.util.function.ToLongFunction;
 
 public class JvmUtils {
   static double getUsageValue(
-      MemoryPoolMXBean memoryPoolMXBean, ToLongFunction<MemoryUsage> getter) {
-    MemoryUsage usage = getUsage(memoryPoolMXBean);
+      MemoryPoolMXBean memoryPoolMxBean, ToLongFunction<MemoryUsage> getter) {
+    MemoryUsage usage = getUsage(memoryPoolMxBean);
     if (usage == null) {
       return Double.NaN;
     }
     return getter.applyAsLong(usage);
   }
 
-  private static MemoryUsage getUsage(MemoryPoolMXBean memoryPoolMXBean) {
+  private static MemoryUsage getUsage(MemoryPoolMXBean memoryPoolMxBean) {
     try {
-      return memoryPoolMXBean.getUsage();
+      return memoryPoolMxBean.getUsage();
     } catch (InternalError e) {
       // Defensive for potential InternalError with some specific JVM options. Based on its Javadoc,
       // MemoryPoolMXBean.getUsage() should return null, not throwing InternalError, so it seems to

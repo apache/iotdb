@@ -22,11 +22,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
@@ -71,13 +69,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() {
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
@@ -223,7 +216,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   public Response node(List<String> requestBody, SecurityContext securityContext)
       throws NotFoundException {
     try {
-      if (requestBody != null && requestBody.size() > 0) {
+      if (requestBody != null && !requestBody.isEmpty()) {
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
         Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());

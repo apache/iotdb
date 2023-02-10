@@ -109,13 +109,13 @@ public class IoTDBNullValueFillIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(sqls);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -203,7 +203,7 @@ public class IoTDBNullValueFillIT {
           "1,root.sg1.d2,1,2,1.0,2.0,true,t2,"
         };
     resultSetEqualTest(
-        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) order by time desc align by device",
+        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) order by device,time desc align by device",
         expectedAlignByDeviceHeader,
         retArray);
   }

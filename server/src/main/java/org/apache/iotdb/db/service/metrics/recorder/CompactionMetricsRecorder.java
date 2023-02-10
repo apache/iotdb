@@ -21,12 +21,13 @@ package org.apache.iotdb.db.service.metrics.recorder;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
-import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionTaskStatus;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
@@ -44,13 +45,9 @@ public class CompactionMetricsRecorder {
             Metric.DATA_WRITTEN.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "compaction",
-            Tag.NAME.toString(),
-            compactionType.toString(),
+            "compaction_" + compactionType.toString(),
             Tag.TYPE.toString(),
-            aligned ? "ALIGNED" : "NOT_ALIGNED",
-            Tag.TYPE.toString(),
-            processChunkType.toString());
+            (aligned ? "ALIGNED" : "NOT_ALIGNED") + "_" + processChunkType.toString());
     MetricService.getInstance()
         .count(
             byteNum / 1024L,
@@ -68,6 +65,44 @@ public class CompactionMetricsRecorder {
             byteNum,
             Metric.DATA_READ.toString(),
             MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+  }
+
+  public static void updateSummary(CompactionTaskSummary summary) {
+    MetricService.getInstance()
+        .count(
+            summary.getProcessPointNum(),
+            "Compacted_Point_Num",
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getProcessChunkNum(),
+            "Compacted_Chunk_Num",
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getDirectlyFlushChunkNum(),
+            "Directly_Flush_Chunk_Num",
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getDeserializeChunkCount(),
+            "Deserialized_Chunk_Num",
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            "compaction");
+    MetricService.getInstance()
+        .count(
+            summary.getMergedChunkNum(),
+            "Merged_Chunk_Num",
+            MetricLevel.NORMAL,
             Tag.NAME.toString(),
             "compaction");
   }

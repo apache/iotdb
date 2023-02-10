@@ -39,11 +39,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -78,27 +77,17 @@ import static org.junit.Assert.assertEquals;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSnapshotIT {
-
-  protected static String originalConfigNodeConsensusProtocolClass;
-
-  protected static int originalRatisSnapshotTriggerThreshold;
   private static final int testRatisSnapshotTriggerThreshold = 100;
-
-  protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    originalRatisSnapshotTriggerThreshold =
-        ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
-    ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold)
+        .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(2, 2);
@@ -106,18 +95,11 @@ public class IoTDBConfigNodeSnapshotIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
-  public void testPartitionInfoSnapshot()
-      throws IOException, IllegalPathException, TException, InterruptedException {
+  public void testPartitionInfoSnapshot() throws Exception {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;
@@ -133,9 +115,8 @@ public class IoTDBConfigNodeSnapshotIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        TSetStorageGroupReq setStorageGroupReq =
-            new TSetStorageGroupReq(new TStorageGroupSchema(storageGroup));
-        TSStatus status = client.setStorageGroup(setStorageGroupReq);
+        TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(storageGroup);
+        TSStatus status = client.setDatabase(storageGroupSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
@@ -163,12 +144,15 @@ public class IoTDBConfigNodeSnapshotIT {
                 new TTimePartitionSlot(testTimePartitionInterval * k);
 
             // Create DataPartition
-            Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+            Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
                 new HashMap<>();
             partitionSlotsMap.put(storageGroup, new HashMap<>());
             partitionSlotsMap
                 .get(storageGroup)
-                .put(seriesPartitionSlot, Collections.singletonList(timePartitionSlot));
+                .put(
+                    seriesPartitionSlot,
+                    new TTimeSlotList()
+                        .setTimePartitionSlots(Collections.singletonList(timePartitionSlot)));
             TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
             TDataPartitionTableResp dataPartitionTableResp =
                 client.getOrCreateDataPartitionTable(dataPartitionReq);

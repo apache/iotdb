@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.region;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import org.slf4j.Logger;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /** Create regions for specific StorageGroups */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
@@ -58,6 +62,21 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     regionGroupMap
         .computeIfAbsent(storageGroup, regionReplicaSets -> new ArrayList<>())
         .add(regionReplicaSet);
+  }
+
+  public void planLog(Logger LOGGER) {
+    for (Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry : regionGroupMap.entrySet()) {
+      String storageGroup = regionGroupEntry.getKey();
+      for (TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
+        LOGGER.info(
+            "[CreateRegionGroups] RegionGroup: {}, belonged StorageGroup: {}, on DataNodes: {}",
+            regionReplicaSet.getRegionId(),
+            storageGroup,
+            regionReplicaSet.getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList()));
+      }
+    }
   }
 
   public void serializeForProcedure(DataOutputStream stream) throws IOException {

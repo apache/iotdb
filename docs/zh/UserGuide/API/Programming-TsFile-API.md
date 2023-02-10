@@ -35,7 +35,7 @@ cd tsfile/
 mvn clean package -Dmaven.test.skip=true
 ```
 
-命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中导入 `target/tsfile-0.14.0-SNAPSHOT.jar`.
+命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中导入 `target/tsfile-1.0.0.jar`.
 	
 * 使用 Maven 依赖：
 
@@ -92,7 +92,7 @@ mvn clean install -Dmaven.test.skip=true
  <dependency>
    <groupId>org.apache.iotdb</groupId>
    <artifactId>tsfile</artifactId>
-   <version>0.14.0-SNAPSHOT</version>
+   <version>1.0.0</version>
  </dependency>
  ```
 

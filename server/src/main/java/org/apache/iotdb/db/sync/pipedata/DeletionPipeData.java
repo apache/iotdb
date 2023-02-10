@@ -21,8 +21,8 @@ package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.sync.receiver.load.DeletionLoader;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.DeletionLoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -65,6 +65,7 @@ public class DeletionPipeData extends PipeData {
         + deletion.serializeWithoutFileOffset(stream);
   }
 
+  @Override
   public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
     super.deserialize(stream);
     database = ReadWriteIOUtils.readString(stream);

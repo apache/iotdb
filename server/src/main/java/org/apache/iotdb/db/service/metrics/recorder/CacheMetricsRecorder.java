@@ -26,7 +26,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 public class CacheMetricsRecorder {
 
   /**
-   * record the result of cache
+   * Record the result of cache
    *
    * @param result whether hit
    * @param name the name of object that cached

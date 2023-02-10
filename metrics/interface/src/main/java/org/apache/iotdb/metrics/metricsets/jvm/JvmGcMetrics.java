@@ -85,21 +85,21 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             .orElse(0.0);
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
-    metricService.getOrCreateAutoGauge(
-        "jvm.gc.max.data.size.bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
+    metricService.createAutoGauge(
+        "jvm_gc_max_data_size_bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
-    metricService.getOrCreateAutoGauge(
-        "jvm.gc.live.data.size.bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
+    metricService.createAutoGauge(
+        "jvm_gc_live_data_size_bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
 
     Counter allocatedBytes =
-        metricService.getOrCreateCounter("jvm.gc.memory.allocated.bytes", MetricLevel.IMPORTANT);
+        metricService.getOrCreateCounter("jvm_gc_memory_allocated_bytes", MetricLevel.IMPORTANT);
 
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
             : metricService.getOrCreateCounter(
-                "jvm.gc.memory.promoted.bytes", MetricLevel.IMPORTANT);
+                "jvm_gc_memory_promoted_bytes", MetricLevel.IMPORTANT);
 
     // start watching for GC notifications
     final AtomicLong heapPoolSizeAfterGc = new AtomicLong();
@@ -120,9 +120,9 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             long duration = gcInfo.getDuration();
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm.gc.concurrent.phase.time";
+              timerName = "jvm_gc_concurrent_phase_time";
             } else {
-              timerName = "jvm.gc.pause";
+              timerName = "jvm_gc_pause";
             }
             Timer timer =
                 metricService.getOrCreateTimer(
@@ -153,7 +153,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
               final long oldBefore = before.get(oldGenPoolName).getUsed();
               final long oldAfter = after.get(oldGenPoolName).getUsed();
               final long delta = oldAfter - oldBefore;
-              if (delta > 0L) {
+              if (delta > 0L && promotedBytes != null) {
                 promotedBytes.inc(delta);
               }
 
@@ -193,6 +193,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             try {
               notificationEmitter.removeNotificationListener(notificationListener);
             } catch (ListenerNotFoundException ignore) {
+              // do nothing
             }
           });
     }
@@ -204,12 +205,12 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       return;
     }
 
-    metricService.remove(MetricType.GAUGE, "jvm.gc.max.data.size.bytes");
-    metricService.remove(MetricType.GAUGE, "jvm.gc.live.data.size.bytes");
-    metricService.remove(MetricType.COUNTER, "jvm.gc.memory.allocated.bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_max_data_size_bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_live_data_size_bytes");
+    metricService.remove(MetricType.COUNTER, "jvm_gc_memory_allocated_bytes");
 
     if (oldGenPoolName != null) {
-      metricService.remove(MetricType.COUNTER, "jvm.gc.memory.promoted.bytes");
+      metricService.remove(MetricType.COUNTER, "jvm_gc_memory_promoted_bytes");
     }
 
     // start watching for GC notifications
@@ -227,9 +228,9 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             String gcAction = notificationInfo.getGcAction();
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm.gc.concurrent.phase.time";
+              timerName = "jvm_gc_concurrent_phase_time";
             } else {
-              timerName = "jvm.gc.pause";
+              timerName = "jvm_gc_pause";
             }
             metricService.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
           };
@@ -246,6 +247,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             try {
               notificationEmitter.removeNotificationListener(notificationListener);
             } catch (ListenerNotFoundException ignore) {
+              // do nothing
             }
           });
     }

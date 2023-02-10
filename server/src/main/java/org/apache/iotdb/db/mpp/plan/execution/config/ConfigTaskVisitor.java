@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateContinuousQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateFunctionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CreateTriggerTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DeleteTimeSeriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropContinuousQueryTask;
@@ -31,7 +32,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.MigrateRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -55,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.UnsetSche
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.SetSystemStatusTask;
@@ -73,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
@@ -81,7 +85,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
@@ -92,6 +96,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -104,6 +109,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
@@ -132,8 +138,13 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
-    return new SetStorageGroupTask(statement);
+  public IConfigTask visitSetDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+    return new DatabaseSchemaTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitAlterDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+    return new DatabaseSchemaTask(statement);
   }
 
   @Override
@@ -170,11 +181,19 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitShowVariables(
+      ShowVariablesStatement showVariablesStatement, TaskContext context) {
+    return new ShowVariablesTask();
+  }
+
+  @Override
   public IConfigTask visitShowCluster(
       ShowClusterStatement showClusterStatement, TaskContext context) {
-    return showClusterStatement.isDetails()
-        ? new ShowClusterDetailsTask(showClusterStatement)
-        : new ShowClusterTask(showClusterStatement);
+    if (showClusterStatement.isDetails()) {
+      return new ShowClusterDetailsTask(showClusterStatement);
+    } else {
+      return new ShowClusterTask(showClusterStatement);
+    }
   }
 
   @Override
@@ -207,6 +226,11 @@ public class ConfigTaskVisitor
   public IConfigTask visitSetSystemStatus(
       SetSystemStatusStatement setSystemStatusStatement, TaskContext context) {
     return new SetSystemStatusTask(setSystemStatusStatement);
+  }
+
+  @Override
+  public IConfigTask visitKillQuery(KillQueryStatement killQueryStatement, TaskContext context) {
+    return new KillQueryTask(killQueryStatement);
   }
 
   @Override
@@ -375,6 +399,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitGetTimeSlotList(
       GetTimeSlotListStatement getTimeSlotListStatement, TaskContext context) {
     return new GetTimeSlotListTask(getTimeSlotListStatement);
+  }
+
+  @Override
+  public IConfigTask visitMigrateRegion(
+      MigrateRegionStatement migrateRegionStatement, TaskContext context) {
+    return new MigrateRegionTask(migrateRegionStatement);
   }
 
   @Override

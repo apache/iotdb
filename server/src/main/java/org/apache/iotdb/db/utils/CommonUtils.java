@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -91,8 +91,8 @@ public class CommonUtils {
           }
           return d;
         case TEXT:
-          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
             if (value.length() == 1) {
               return new Binary(value);
             } else {
@@ -214,10 +214,10 @@ public class CommonUtils {
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
     value = value.toLowerCase();
-    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE.equals(value)) {
+    if (SqlConstant.BOOLEAN_FALSE_NUM.equals(value) || SqlConstant.BOOLEAN_FALSE.equals(value)) {
       return false;
     }
-    if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
+    if (SqlConstant.BOOLEAN_TRUE_NUM.equals(value) || SqlConstant.BOOLEAN_TRUE.equals(value)) {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");

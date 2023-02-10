@@ -39,6 +39,8 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,16 +64,21 @@ public class ShowFunctionsTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    List<UDFInformation> udfInformations = new ArrayList<>();
     if (allUDFInformation != null && !allUDFInformation.isEmpty()) {
       for (ByteBuffer udfInformationByteBuffer : allUDFInformation) {
         UDFInformation udfInformation = UDFInformation.deserialize(udfInformationByteBuffer);
-        appendUDFInformation(builder, udfInformation);
+        udfInformations.add(udfInformation);
       }
     }
     // native and built-in functions
-    UDFManagementService.getInstance()
-        .getAllBuiltInTimeSeriesGeneratingInformation()
-        .forEach(udfInformation -> appendUDFInformation(builder, udfInformation));
+    udfInformations.addAll(
+        UDFManagementService.getInstance().getAllBuiltInTimeSeriesGeneratingInformation());
+
+    udfInformations.sort(Comparator.comparing(UDFInformation::getFunctionName));
+    for (UDFInformation udfInformation : udfInformations) {
+      appendUDFInformation(builder, udfInformation);
+    }
     appendNativeFunctions(builder);
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

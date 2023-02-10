@@ -30,7 +30,7 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
 
   protected final ColumnTransformer rightTransformer;
 
-  public BinaryColumnTransformer(
+  protected BinaryColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType);
     this.leftTransformer = leftTransformer;

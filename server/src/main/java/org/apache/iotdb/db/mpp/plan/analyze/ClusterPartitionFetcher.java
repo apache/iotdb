@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -37,9 +38,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -56,12 +58,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
+
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -70,10 +74,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private final PartitionCache partitionCache;
 
   private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      ConfigNodeClientManager.getInstance();
 
   private static final class ClusterPartitionFetcherHolder {
+
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
 
     private ClusterPartitionFetcherHolder() {}
@@ -115,8 +119,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (TException | IOException e) {
-      logger.error("Get Schema Partition error", e);
+    } catch (ClientManagerException | TException e) {
+      logger.warn("Get Schema Partition error", e);
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -147,7 +151,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -164,7 +168,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               constructSchemaNodeManagementPartitionReq(patternTree, level));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaNodeManagementPartition():" + e.getMessage());
     }
@@ -173,12 +177,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
-      if (null == dataPartition) {
+    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+    if (null == dataPartition) {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+            client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
@@ -188,9 +192,33 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               "An error occurred when executing getDataPartition():"
                   + dataPartitionTableResp.getStatus().getMessage());
         }
+      } catch (ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getDataPartition():" + e.getMessage());
       }
-      return dataPartition;
-    } catch (TException | IOException e) {
+    }
+    return dataPartition;
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    // In this method, we must fetch from config node because it contains -oo or +oo
+    // and there is no need to update cache because since we will never fetch it from cache, the
+    // update operation will be only time waste
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      TDataPartitionTableResp dataPartitionTableResp =
+          client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+      if (dataPartitionTableResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return parseDataPartitionResp(dataPartitionTableResp);
+      } else {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getDataPartition():"
+                + dataPartitionTableResp.getStatus().getMessage());
+      }
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -199,11 +227,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    // Do not use data partition cache
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
-      if (null == dataPartition) {
+    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+    if (null == dataPartition) {
+      // Do not use data partition cache
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
@@ -215,26 +243,27 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               "An error occurred when executing getOrCreateDataPartition():"
                   + dataPartitionTableResp.getStatus().getMessage());
         }
+      } catch (ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
-      return dataPartition;
-    } catch (TException | IOException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
+    return dataPartition;
   }
 
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(dataPartitionQueryParams, true);
-      DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
-      if (null == dataPartition) {
-        TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(
-                constructDataPartitionReq(splitDataPartitionQueryParams));
+
+    Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
+        splitDataPartitionQueryParam(dataPartitionQueryParams, true);
+    DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
+
+    if (null == dataPartition) {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+        TDataPartitionTableResp dataPartitionTableResp = client.getOrCreateDataPartitionTable(req);
 
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -246,12 +275,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getMessage(),
                   dataPartitionTableResp.getStatus().getCode()));
         }
+      } catch (ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
-      return dataPartition;
-    } catch (TException | IOException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
+    return dataPartition;
   }
 
   @Override
@@ -278,10 +307,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String devicePath = dataPartitionQueryParam.getDevicePath();
       if (deviceToStorageGroupMap.containsKey(devicePath)) {
         String storageGroup = deviceToStorageGroupMap.get(devicePath);
-        if (!result.containsKey(storageGroup)) {
-          result.put(storageGroup, new ArrayList<>());
-        }
-        result.get(storageGroup).add(dataPartitionQueryParam);
+        result.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(dataPartitionQueryParam);
       }
     }
     return result;
@@ -321,21 +347,73 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
+  private static class ComplexTimeSlotList {
+    Set<TTimePartitionSlot> timeSlotList;
+    boolean needLeftAll;
+    boolean needRightAll;
+
+    private ComplexTimeSlotList(boolean needLeftAll, boolean needRightAll) {
+      timeSlotList = new HashSet<>();
+      this.needLeftAll = needLeftAll;
+      this.needRightAll = needRightAll;
+    }
+
+    private void putTimeSlot(List<TTimePartitionSlot> slotList) {
+      timeSlotList.addAll(slotList);
+    }
+  }
+
   private TDataPartitionReq constructDataPartitionReq(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
       // for each sg
-      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> deviceToTimePartitionMap =
-          new HashMap<>();
+      Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
+
+      Map<TSeriesPartitionSlot, ComplexTimeSlotList> seriesSlotTimePartitionMap = new HashMap<>();
+
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
-        deviceToTimePartitionMap.put(
+        seriesSlotTimePartitionMap
+            .computeIfAbsent(
+                partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
+                k ->
+                    new ComplexTimeSlotList(
+                        queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
+            .putTimeSlot(queryParam.getTimePartitionSlotList());
+      }
+      seriesSlotTimePartitionMap.forEach(
+          (k, v) ->
+              deviceToTimePartitionMap.put(
+                  k,
+                  new TTimeSlotList(
+                      new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
+      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
+    }
+    return new TDataPartitionReq(partitionSlotsMap);
+  }
+
+  /** For query, DataPartitionQueryParam is shared by each device */
+  private TDataPartitionReq constructDataPartitionReqForQuery(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
+    TTimeSlotList sharedTTimeSlotList = null;
+    for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
+        sgNameToQueryParamsMap.entrySet()) {
+      // for each sg
+      Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
+
+      for (DataPartitionQueryParam queryParam : entry.getValue()) {
+        if (sharedTTimeSlotList == null) {
+          sharedTTimeSlotList =
+              new TTimeSlotList(
+                  queryParam.getTimePartitionSlotList(),
+                  queryParam.isNeedLeftAll(),
+                  queryParam.isNeedRightAll());
+        }
+        deviceToTimePartitionMap.putIfAbsent(
             partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
-            queryParam.getTimePartitionSlotList().stream()
-                .map(timePartitionSlot -> new TTimePartitionSlot(timePartitionSlot.getStartTime()))
-                .collect(Collectors.toList()));
+            sharedTTimeSlotList);
       }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }

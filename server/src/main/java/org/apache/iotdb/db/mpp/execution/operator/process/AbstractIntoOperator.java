@@ -34,9 +34,12 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +50,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
@@ -56,45 +65,185 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected final OperatorContext operatorContext;
   protected final Operator child;
 
+  protected TsBlock cachedTsBlock;
+
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
   protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
   private DataNodeInternalClient client;
 
-  public AbstractIntoOperator(
+  private final ExecutorService writeOperationExecutor;
+  private ListenableFuture<TSStatus> writeOperationFuture;
+
+  protected boolean finished = false;
+
+  private final long maxRetainedSize;
+  private final long maxReturnSize;
+
+  protected final List<Type> typeConvertors;
+
+  protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
-      List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
-      Map<String, InputLocation> sourceColumnToInputLocationMap) {
+      List<TSDataType> inputColumnTypes,
+      Map<String, InputLocation> sourceColumnToInputLocationMap,
+      ExecutorService intoOperationExecutor,
+      long maxStatementSize) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.insertTabletStatementGenerators = insertTabletStatementGenerators;
+    this.typeConvertors =
+        inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
+
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
+    this.writeOperationExecutor = intoOperationExecutor;
+
+    this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
+    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
+
+  @Override
+  public OperatorContext getOperatorContext() {
+    return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean writeDone = writeOperationDone();
+    if (writeDone && childBlocked.isDone()) {
+      return NOT_BLOCKED;
+    } else if (childBlocked.isDone()) {
+      return writeOperationFuture;
+    } else if (writeDone) {
+      return childBlocked;
+    } else {
+      return successfulAsList(Arrays.asList(writeOperationFuture, childBlocked));
+    }
+  }
+
+  private boolean writeOperationDone() {
+    if (writeOperationFuture == null) {
+      return true;
+    }
+
+    return writeOperationFuture.isDone();
+  }
+
+  @Override
+  public boolean hasNext() {
+    return !finished;
+  }
+
+  @Override
+  public TsBlock next() {
+    checkLastWriteOperation();
+
+    if (!processTsBlock(cachedTsBlock)) {
+      return null;
+    }
+    cachedTsBlock = null;
+
+    if (child.hasNextWithTimer()) {
+      TsBlock inputTsBlock = child.nextWithTimer();
+      processTsBlock(inputTsBlock);
+
+      // call child.next only once
+      return null;
+    } else {
+      return tryToReturnResultTsBlock();
+    }
+  }
+
+  /**
+   * Check whether the last write operation was executed successfully, and throw an exception if the
+   * execution failed, otherwise continue to execute the operator.
+   */
+  private void checkLastWriteOperation() {
+    if (writeOperationFuture == null) {
+      return;
+    }
+
+    try {
+      if (!writeOperationFuture.isDone()) {
+        throw new IllegalStateException(
+            "The operator cannot continue until the last write operation is done.");
+      }
+
+      TSStatus executionStatus = writeOperationFuture.get();
+      if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        String message =
+            String.format(
+                "Error occurred while inserting tablets in SELECT INTO: %s",
+                executionStatus.getMessage());
+        throw new IntoProcessException(message);
+      }
+
+      for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+        generator.reset();
+      }
+
+      writeOperationFuture = null;
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          "{}: interrupted when processing write operation future with exception {}", this, e);
+      Thread.currentThread().interrupt();
+      throw new IntoProcessException(e.getMessage());
+    } catch (ExecutionException e) {
+      throw new IntoProcessException(e.getMessage());
+    }
+  }
+
+  /**
+   * Write the data of the input TsBlock into Statement.
+   *
+   * <p>If the Statement is full, submit one write task and return false.
+   *
+   * <p>If TsBlock is empty, or all data has been written to Statement, return true.
+   */
+  protected abstract boolean processTsBlock(TsBlock inputTsBlock);
+
+  protected abstract TsBlock tryToReturnResultTsBlock();
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, Boolean> targetDeviceToAlignedMap) {
+      Map<String, Boolean> targetDeviceToAlignedMap,
+      List<Type> sourceTypeConvertors) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
-    for (PartialPath targetDevice : targetPathToSourceInputLocationMap.keySet()) {
+    for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
+        targetPathToSourceInputLocationMap.entrySet()) {
+      PartialPath targetDevice = entry.getKey();
       InsertTabletStatementGenerator generator =
           new InsertTabletStatementGenerator(
               targetDevice,
-              targetPathToSourceInputLocationMap.get(targetDevice),
+              entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice.toString()));
+              targetDeviceToAlignedMap.get(targetDevice.toString()),
+              sourceTypeConvertors);
       insertTabletStatementGenerators.add(generator);
     }
     return insertTabletStatementGenerators;
   }
 
-  protected void insertMultiTabletsInternally(boolean needCheck) {
+  /** Return true if write task is submitted successfully. */
+  protected boolean insertMultiTabletsInternally(boolean needCheck) {
+    InsertMultiTabletsStatement insertMultiTabletsStatement =
+        constructInsertMultiTabletsStatement(needCheck);
+    if (insertMultiTabletsStatement == null) {
+      return false;
+    }
+
+    executeInsertMultiTabletsStatement(insertMultiTabletsStatement);
+    return true;
+  }
+
+  protected InsertMultiTabletsStatement constructInsertMultiTabletsStatement(boolean needCheck) {
     if (insertTabletStatementGenerators == null
         || (needCheck && !existFullStatement(insertTabletStatementGenerators))) {
-      return;
+      return null;
     }
 
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
@@ -104,28 +253,23 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       }
     }
     if (insertTabletStatementList.isEmpty()) {
-      return;
+      return null;
     }
 
     InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
     insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return insertMultiTabletsStatement;
+  }
 
+  protected void executeInsertMultiTabletsStatement(
+      InsertMultiTabletsStatement insertMultiTabletsStatement) {
     if (client == null) {
       client = new DataNodeInternalClient(operatorContext.getSessionInfo());
     }
-    TSStatus executionStatus = client.insertTablets(insertMultiTabletsStatement);
-    if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && executionStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      String message =
-          String.format(
-              "Error occurred while inserting tablets in SELECT INTO: %s",
-              executionStatus.getMessage());
-      throw new IntoProcessException(message);
-    }
 
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
-      generator.reset();
-    }
+    writeOperationFuture =
+        Futures.submit(
+            () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
   private boolean existFullStatement(
@@ -149,18 +293,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
-  }
-
-  @Override
-  public boolean hasNext() {
-    return child.hasNext();
+  public boolean isFinished() {
+    return finished;
   }
 
   @Override
@@ -168,27 +302,25 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (client != null) {
       client.close();
     }
+    if (writeOperationFuture != null) {
+      writeOperationFuture.cancel(true);
+    }
     child.close();
   }
 
   @Override
-  public boolean isFinished() {
-    return child.isFinished();
-  }
-
-  @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return maxReturnSize + maxRetainedSize + child.calculateMaxPeekMemory();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return child.calculateMaxReturnSize();
+    return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return child.calculateRetainedSizeAfterCallingNext();
+    return maxRetainedSize + child.calculateRetainedSizeAfterCallingNext();
   }
 
   public static class InsertTabletStatementGenerator {
@@ -210,11 +342,14 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     private final Map<String, AtomicInteger> writtenCounter;
 
+    private final List<Type> sourceTypeConvertors;
+
     public InsertTabletStatementGenerator(
         PartialPath devicePath,
         Map<String, InputLocation> measurementToInputLocationMap,
         Map<String, TSDataType> measurementToDataTypeMap,
-        Boolean isAligned) {
+        Boolean isAligned,
+        List<Type> sourceTypeConvertors) {
       this.devicePath = devicePath;
       this.isAligned = isAligned;
       this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
@@ -224,6 +359,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       for (String measurement : measurements) {
         writtenCounter.put(measurement, new AtomicInteger(0));
       }
+      this.sourceTypeConvertors = sourceTypeConvertors;
       this.reset();
     }
 
@@ -270,7 +406,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         times[rowCount] = tsBlock.getTimeByIndex(lastReadIndex);
 
         for (int i = 0; i < measurements.length; ++i) {
-          Column valueColumn = tsBlock.getValueColumns()[inputLocations[i].getValueColumnIndex()];
+          int valueColumnIndex = inputLocations[i].getValueColumnIndex();
+          Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
+          Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
 
           // if the value is NULL
           if (valueColumn.isNull(lastReadIndex)) {
@@ -280,24 +418,30 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
           bitMaps[i].unmark(rowCount);
           writtenCounter.get(measurements[i]).getAndIncrement();
-          switch (valueColumn.getDataType()) {
+          switch (dataTypes[i]) {
             case INT32:
-              ((int[]) columns[i])[rowCount] = valueColumn.getInt(lastReadIndex);
+              ((int[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
               break;
             case INT64:
-              ((long[]) columns[i])[rowCount] = valueColumn.getLong(lastReadIndex);
+              ((long[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getLong(valueColumn, lastReadIndex);
               break;
             case FLOAT:
-              ((float[]) columns[i])[rowCount] = valueColumn.getFloat(lastReadIndex);
+              ((float[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getFloat(valueColumn, lastReadIndex);
               break;
             case DOUBLE:
-              ((double[]) columns[i])[rowCount] = valueColumn.getDouble(lastReadIndex);
+              ((double[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getDouble(valueColumn, lastReadIndex);
               break;
             case BOOLEAN:
-              ((boolean[]) columns[i])[rowCount] = valueColumn.getBoolean(lastReadIndex);
+              ((boolean[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBoolean(valueColumn, lastReadIndex);
               break;
             case TEXT:
-              ((Binary[]) columns[i])[rowCount] = valueColumn.getBinary(lastReadIndex);
+              ((Binary[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBinary(valueColumn, lastReadIndex);
               break;
             default:
               throw new UnSupportedDataTypeException(

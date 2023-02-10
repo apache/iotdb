@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
@@ -60,8 +61,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
 
@@ -79,19 +78,28 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Send asynchronous requests to the specified DataNodes
+   * Send asynchronous requests to the specified DataNodes with default retry num
    *
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
    * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
   public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
+    sendAsyncRequest(clientHandler, MAX_RETRY_NUM);
+  }
+
+  public void sendAsyncRequestToDataNodeWithRetry(
+      AsyncClientHandler<?, ?> clientHandler, int retryNum) {
+    sendAsyncRequest(clientHandler, retryNum);
+  }
+
+  private void sendAsyncRequest(AsyncClientHandler<?, ?> clientHandler, int retryNum) {
     if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
 
     DataNodeRequestType requestType = clientHandler.getRequestType();
-    for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {
+    for (int retry = 0; retry < retryNum; retry++) {
       // Always Reset CountDownLatch first
       clientHandler.resetCountDownLatch();
 
@@ -316,6 +324,12 @@ public class AsyncDataNodeClientPool {
               (CountPathsUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case KILL_QUERY_INSTANCE:
+          client.killQueryInstance(
+              (String) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
@@ -341,7 +355,7 @@ public class AsyncDataNodeClientPool {
   }
 
   public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
-      throws IOException {
+      throws ClientManagerException {
     return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 

@@ -25,7 +25,7 @@ The example is to show how to send data from localhost to IoTDB through Kafka.
 ```
 ## Usage
 ### Version usage
-IoTDB: 0.14.0-SNAPSHOT  
+IoTDB: 1.0.0  
 Kafka: 2.8.0
 ### Dependencies with Maven
 
@@ -39,7 +39,7 @@ Kafka: 2.8.0
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
 </dependencies>
 ```

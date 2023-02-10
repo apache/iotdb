@@ -22,15 +22,12 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 public class LocalSyncManager implements ISyncManager {
 
@@ -47,7 +44,7 @@ public class LocalSyncManager implements ISyncManager {
   /** tsfile */
   @Override
   public void syncRealTimeDeletion(Deletion deletion) {
-    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getStorageGroupName(), dataRegionId);
+    syncPipe.collectRealTimeDeletion(deletion, dataRegion.getDatabaseName(), dataRegionId);
   }
 
   @Override
@@ -80,13 +77,15 @@ public class LocalSyncManager implements ISyncManager {
 
   public static List<PartialPath> splitPathPatternByDevice(PartialPath pathPattern)
       throws MetadataException {
-    Set<PartialPath> devices = LocalSchemaProcessor.getInstance().getBelongedDevices(pathPattern);
-    List<PartialPath> resultPathPattern = new LinkedList<>();
-    for (PartialPath device : devices) {
-      pathPattern.alterPrefixPath(device).stream()
-          .filter(i -> !i.equals(device))
-          .forEach(resultPathPattern::add);
-    }
-    return resultPathPattern;
+    //    Set<PartialPath> devices =
+    // LocalSchemaProcessor.getInstance().getBelongedDevices(pathPattern);
+    //    List<PartialPath> resultPathPattern = new LinkedList<>();
+    //    for (PartialPath device : devices) {
+    //      pathPattern.alterPrefixPath(device).stream()
+    //          .filter(i -> !i.equals(device))
+    //          .forEach(resultPathPattern::add);
+    //    }
+    //    return resultPathPattern;
+    throw new UnsupportedOperationException();
   }
 }

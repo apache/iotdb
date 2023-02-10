@@ -71,7 +71,8 @@ logger = logging.getLogger("IoTDB")
 
 
 class Session(object):
-    SUCCESS_CODE = 200
+    SUCCESS_STATUS = 200
+    REDIRECTION_RECOMMEND = 400
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
@@ -99,7 +100,7 @@ class Session(object):
         self.__statement_id = None
         self.__zone_id = zone_id
 
-    def open(self, enable_rpc_compression):
+    def open(self, enable_rpc_compression=False):
         if not self.__is_close:
             return
         self.__transport = TTransport.TFramedTransport(
@@ -122,7 +123,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_0_13"},
+            configuration={"version": "V_1_0"},
         )
 
         try:
@@ -351,13 +352,29 @@ class Session(object):
         data_set.close_operation_handle()
         return result
 
-    def delete_data(self, paths_list, timestamp):
+    def delete_data(self, paths_list, end_time):
         """
-        delete all data <= time in multiple time series
+        delete all data <= end_time in multiple time series
         :param paths_list: time series list that the data in.
-        :param timestamp: data with time stamp less than or equal to time will be deleted.
+        :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, timestamp)
+        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
+        try:
+            status = self.__client.deleteData(request)
+            logger.debug(
+                "delete data from {}, message: {}".format(paths_list, status.message)
+            )
+        except TTransport.TException as e:
+            logger.exception("data deletion fails because: ", e)
+
+    def delete_data_in_range(self, paths_list, start_time, end_time):
+        """
+        delete data >= start_time and data <= end_time in multiple timeseries
+        :param paths_list: time series list that the data in.
+        :param start_time: delete range start time.
+        :param end_time: delete range end time.
+        """
+        request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
             status = self.__client.deleteData(request)
             logger.debug(
@@ -1030,7 +1047,7 @@ class Session(object):
         verify success of operation
         :param status: execution result status
         """
-        if status.code == Session.SUCCESS_CODE:
+        if status.code == Session.SUCCESS_STATUS or status.code == Session.REDIRECTION_RECOMMEND:
             return 0
 
         logger.error("error status is %s", status)

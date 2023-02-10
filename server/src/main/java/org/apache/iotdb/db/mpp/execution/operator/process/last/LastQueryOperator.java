@@ -43,7 +43,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final List<UpdateLastCacheOperator> children;
+  private final List<AbstractUpdateLastCacheOperator> children;
 
   private final int inputOperatorsCount;
 
@@ -53,7 +53,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   public LastQueryOperator(
       OperatorContext operatorContext,
-      List<UpdateLastCacheOperator> children,
+      List<AbstractUpdateLastCacheOperator> children,
       TsBlockBuilder builder) {
     this.operatorContext = operatorContext;
     this.children = children;
@@ -104,12 +104,12 @@ public class LastQueryOperator implements ProcessOperator {
     while ((System.nanoTime() - start < maxRuntime)
         && (currentIndex < endIndex)
         && !tsBlockBuilder.isFull()) {
-      if (children.get(currentIndex).hasNext()) {
-        TsBlock tsBlock = children.get(currentIndex).next();
+      if (children.get(currentIndex).hasNextWithTimer()) {
+        TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
         if (tsBlock == null) {
           return null;
         } else if (!tsBlock.isEmpty()) {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, 0);
+          LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
         }
       }
       currentIndex++;
@@ -127,7 +127,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override
@@ -160,10 +160,10 @@ public class LastQueryOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long sum = 0;
+    long max = 0;
     for (Operator operator : children) {
-      sum += operator.calculateRetainedSizeAfterCallingNext();
+      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
-    return sum;
+    return max;
   }
 }

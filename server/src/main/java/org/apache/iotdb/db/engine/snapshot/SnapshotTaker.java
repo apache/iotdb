@@ -58,11 +58,14 @@ public class SnapshotTaker {
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
     String snapshotId = snapshotDir.getName();
-    return takeFullSnapshot(snapshotDirPath, snapshotId, flushBeforeSnapshot);
+    return takeFullSnapshot(snapshotDirPath, snapshotId, snapshotId, flushBeforeSnapshot);
   }
 
   public boolean takeFullSnapshot(
-      String snapshotDirPath, String snapshotId, boolean flushBeforeSnapshot)
+      String snapshotDirPath,
+      String tempSnapshotId,
+      String finalSnapshotId,
+      boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
@@ -81,7 +84,7 @@ public class SnapshotTaker {
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
       boolean success;
-      snapshotLogger.logSnapshotId(snapshotId);
+      snapshotLogger.logSnapshotId(finalSnapshotId);
 
       try {
         readLockTheFile();
@@ -93,8 +96,8 @@ public class SnapshotTaker {
             dataRegion.writeUnlock();
           }
         }
-        success = createSnapshot(seqFiles, snapshotId);
-        success = createSnapshot(unseqFiles, snapshotId) && success;
+        success = createSnapshot(seqFiles, tempSnapshotId);
+        success = success && createSnapshot(unseqFiles, tempSnapshotId);
       } finally {
         readUnlockTheFile();
       }
@@ -102,23 +105,23 @@ public class SnapshotTaker {
       if (!success) {
         LOGGER.warn(
             "Failed to take snapshot for {}-{}, clean up",
-            dataRegion.getStorageGroupName(),
+            dataRegion.getDatabaseName(),
             dataRegion.getDataRegionId());
-        cleanUpWhenFail(snapshotId);
+        cleanUpWhenFail(finalSnapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
-            dataRegion.getStorageGroupName(),
+            dataRegion.getDatabaseName(),
             dataRegion.getDataRegionId(),
-            snapshotDir.getParentFile().getAbsolutePath() + File.separator + snapshotId);
+            snapshotDir.getParentFile().getAbsolutePath() + File.separator + finalSnapshotId);
       }
 
       return success;
     } catch (Exception e) {
       LOGGER.error(
           "Exception occurs when taking snapshot for {}-{}",
-          dataRegion.getStorageGroupName(),
+          dataRegion.getDatabaseName(),
           dataRegion.getDataRegionId(),
           e);
       return false;
@@ -222,6 +225,10 @@ public class SnapshotTaker {
       stringBuilder.append(File.separator);
     }
     stringBuilder.append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    stringBuilder.append(File.separator);
+    stringBuilder.append(dataRegion.getDatabaseName());
+    stringBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR);
+    stringBuilder.append(dataRegion.getDataRegionId());
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);

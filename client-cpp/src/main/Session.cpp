@@ -42,7 +42,8 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
         verifySuccess(status.subStatus);
         return;
     }
-    if (status.code != TSStatusCode::SUCCESS_STATUS) {
+    if (status.code != TSStatusCode::SUCCESS_STATUS
+        && status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
         throw ExecutionException(to_string(status.code) + ": " + status.message);
     }
 }
@@ -792,6 +793,8 @@ string Session::getVersionString(Version::Version version) {
             return "V_0_12";
         case Version::V_0_13:
             return "V_0_13";
+        case Version::V_1_0:
+            return "V_1_0";
         default:
             return "V_0_12";
     }
@@ -1991,7 +1994,7 @@ bool Session::checkTemplateExists(const string& template_name) {
         return isExisted;
     }
     catch (const exception &e) {
-        if ( strstr(e.what(), "Undefined template name:") != NULL ) {
+        if ( strstr(e.what(), "get template info error") != NULL ) {
             return false;
         }
         log_debug(e.what());

@@ -42,12 +42,8 @@ public class AsyncConfigNodeHeartbeatClientPool {
    */
   public void getConfigNodeHeartBeat(
       TEndPoint endPoint, long timestamp, ConfigNodeHeartbeatHandler handler) {
-    AsyncConfigNodeHeartbeatServiceClient client;
     try {
-      client = clientManager.purelyBorrowClient(endPoint);
-      if (client != null) {
-        client.getConfigNodeHeartBeat(timestamp, handler);
-      }
+      clientManager.borrowClient(endPoint).getConfigNodeHeartBeat(timestamp, handler);
     } catch (Exception ignore) {
       // Just ignore
     }

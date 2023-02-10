@@ -285,6 +285,7 @@ public class TsFileGeneratorUtils {
       List<Integer> measurementIndex,
       int pointNum,
       int startTime,
+      String value,
       int chunkGroupSize,
       int pageSize)
       throws IOException, WriteProcessException {
@@ -323,8 +324,7 @@ public class TsFileGeneratorUtils {
                       + "d"
                       + (deviceIndex.get(i) + alignDeviceOffset));
           for (IMeasurementSchema schema : alignedMeasurementSchemas) {
-            DataPoint dPoint =
-                new StringDataPoint(schema.getMeasurementId(), new Binary("textValue"));
+            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
             tsRecord.addTuple(dPoint);
           }
           // write
@@ -341,6 +341,7 @@ public class TsFileGeneratorUtils {
       List<Integer> measurementIndex,
       int pointNum,
       int startTime,
+      String value,
       int chunkGroupSize,
       int pageSize)
       throws IOException, WriteProcessException {
@@ -373,8 +374,7 @@ public class TsFileGeneratorUtils {
           TSRecord tsRecord =
               new TSRecord(time, testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex.get(i));
           for (IMeasurementSchema schema : measurementSchemas) {
-            DataPoint dPoint =
-                new StringDataPoint(schema.getMeasurementId(), new Binary("textValue"));
+            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
             tsRecord.addTuple(dPoint);
           }
           // write

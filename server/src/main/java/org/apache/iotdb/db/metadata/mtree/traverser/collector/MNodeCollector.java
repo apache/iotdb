@@ -20,14 +20,9 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
 
 /**
  * This class defines any node in MTree as potential target node. On finding a path matching the
@@ -35,71 +30,18 @@ import java.util.Set;
  * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
-public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
+// TODO: set R to IMNodeInfo
+public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
 
-  // traverse for specific database
-  protected StorageGroupFilter storageGroupFilter = null;
-
-  // level query option
-  protected int targetLevel = -1;
-
-  private Set<IMNode> processedNodes = new HashSet<>();
-
-  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected MNodeCollector(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
-  @Override
-  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
-    if (storageGroupFilter != null
-        && node.isStorageGroup()
-        && !storageGroupFilter.satisfy(node.getFullPath())) {
-      return;
-    }
-    super.traverse(node, idx, level);
+  protected final R transferToResult(IMNode node) {
+    return collectMNode(node);
   }
 
-  @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (targetLevel >= 0) {
-      // move the cursor the given level when matched
-      if (level < targetLevel) {
-        return false;
-      }
-      Deque<IMNode> stack = new ArrayDeque<>();
-      while (level > targetLevel) {
-        node = traverseContext.pop();
-        stack.push(node);
-        level--;
-      }
-      // record processed node so they will not be processed twice
-      if (!processedNodes.contains(node)) {
-        processedNodes.add(node);
-        transferToResult(node);
-      }
-      while (!stack.isEmpty()) {
-        traverseContext.push(stack.pop());
-      }
-      return true;
-    } else {
-      transferToResult(node);
-    }
-    return false;
-  }
-
-  protected abstract void transferToResult(IMNode node);
-
-  public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
-    this.storageGroupFilter = storageGroupFilter;
-  }
-
-  public void setTargetLevel(int targetLevel) {
-    this.targetLevel = targetLevel;
-  }
+  protected abstract R collectMNode(IMNode node);
 }
