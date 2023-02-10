@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -27,37 +28,33 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GroupByVariationParameter extends GroupByParameter {
+public class GroupBySeriesParameter extends GroupByParameter {
 
-  double delta;
+  private final Expression keepExpression;
 
-  public GroupByVariationParameter(boolean ignoringNull, double delta) {
-    super(WindowType.EVENT_WINDOW, ignoringNull);
-    this.delta = delta;
+  public GroupBySeriesParameter(boolean ignoringNull, Expression keepExpression) {
+    super(WindowType.SERIES_WINDOW, ignoringNull);
+    this.keepExpression = keepExpression;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(delta, byteBuffer);
+    Expression.serialize(keepExpression, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(delta, stream);
-  }
-
-  public void setDelta(double delta) {
-    this.delta = delta;
-  }
-
-  public double getDelta() {
-    return delta;
+    Expression.serialize(keepExpression, stream);
   }
 
   public static GroupByParameter deserialize(ByteBuffer buffer) {
     boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
-    double delta = ReadWriteIOUtils.readDouble(buffer);
-    return new GroupByVariationParameter(ignoringNull, delta);
+    Expression keepExpression = Expression.deserialize(buffer);
+    return new GroupBySeriesParameter(ignoringNull, keepExpression);
+  }
+
+  public Expression getKeepExpression() {
+    return keepExpression;
   }
 
   @Override
@@ -71,11 +68,11 @@ public class GroupByVariationParameter extends GroupByParameter {
     if (!super.equals(obj)) {
       return false;
     }
-    return this.delta == ((GroupByVariationParameter) obj).getDelta();
+    return this.keepExpression == ((GroupBySeriesParameter) obj).getKeepExpression();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), delta);
+    return Objects.hash(super.hashCode(), keepExpression);
   }
 }

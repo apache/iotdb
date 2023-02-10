@@ -160,6 +160,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
       // aggregators.
       if (lastReadRowIndex != 0) {
+        // todo update the keep value in group by series, it will be removed in the future
+        windowManager.setKeep(lastReadRowIndex);
         hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {

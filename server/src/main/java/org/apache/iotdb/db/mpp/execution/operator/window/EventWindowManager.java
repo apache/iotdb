@@ -83,16 +83,6 @@ public abstract class EventWindowManager implements IWindowManager {
   }
 
   @Override
-  public boolean satisfiedCurWindow(TsBlock inputTsBlock) {
-    return true;
-  }
-
-  @Override
-  public boolean isTsBlockOutOfBound(TsBlock inputTsBlock) {
-    return false;
-  }
-
-  @Override
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
@@ -124,11 +114,6 @@ public abstract class EventWindowManager implements IWindowManager {
     }
     resultTsBlockBuilder.declarePosition();
     return columnBuilders;
-  }
-
-  @Override
-  public boolean notInitedLastTimeWindow() {
-    return false;
   }
 
   @Override

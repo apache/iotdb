@@ -79,7 +79,9 @@ public interface IWindowManager {
    * @param inputTsBlock a TsBlock
    * @return whether the current window overlaps with TsBlock
    */
-  boolean satisfiedCurWindow(TsBlock inputTsBlock);
+  default boolean satisfiedCurWindow(TsBlock inputTsBlock) {
+    return true;
+  };
 
   /**
    * Used to determine whether there are extra points for the next window
@@ -87,7 +89,9 @@ public interface IWindowManager {
    * @param inputTsBlock a TsBlock
    * @return whether there are extra points for the next window
    */
-  boolean isTsBlockOutOfBound(TsBlock inputTsBlock);
+  default boolean isTsBlockOutOfBound(TsBlock inputTsBlock) {
+    return false;
+  };
 
   /**
    * According to the Aggregator list, we could obtain all the aggregation result column type list.
@@ -132,7 +136,9 @@ public interface IWindowManager {
    *
    * @return whether the window is TimeWindow and the last TimeWindow has not been initialized
    */
-  boolean notInitedLastTimeWindow();
+  default boolean notInitedLastTimeWindow() {
+    return false;
+  };
 
   /**
    * When endTime is required in resultSet, operator should skip the points in last window directly
@@ -148,4 +154,9 @@ public interface IWindowManager {
    * ignoringNull is false, null will be considered as a normal value in window.
    */
   boolean isIgnoringNull();
+
+  // todo: used for keep value temporarily,it will be removed in the future.
+  default void setKeep(long keep) {
+    return;
+  }
 }

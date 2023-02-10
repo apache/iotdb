@@ -154,6 +154,7 @@ keyWords
     | RUNNING
     | SCHEMA
     | SELECT
+    | SERIES
     | SERIESSLOTID
     | SET
     | SETTLE
