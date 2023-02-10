@@ -1246,35 +1246,35 @@ public class RegerDelta {
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\Metro-Traffic_ratio.csv");
     dataset_block_size.add(512);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\Nifty-Stocks_ratio.csv");
     dataset_block_size.add(256);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_block_size.add(512);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_block_size.add(128);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\TH-Climate_ratio.csv");
     dataset_block_size.add(512);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\TY-Transport_ratio.csv");
     dataset_block_size.add(512);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\TY-Fuel_ratio.csv");
     dataset_block_size.add(64);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
+            "\\compression_ratio\\regression_delta_ratio\\GW-Magnetic_ratio.csv");
     dataset_block_size.add(128);
 
 //    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
@@ -1305,6 +1305,7 @@ public class RegerDelta {
     for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
+      System.out.println(inputPath);
       String Output =output_path_list.get(file_i);
 
       int repeatTime = 1; // set repeat time
@@ -1360,8 +1361,8 @@ public class RegerDelta {
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          for(int repeat=0;repeat<repeatTime2;repeat++)
-            data_decoded = ReorderingRegressionDecoder(buffer);
+//          for(int repeat=0;repeat<repeatTime2;repeat++)
+//            data_decoded = ReorderingRegressionDecoder(buffer);
           e = System.nanoTime();
           decodeTime += ((e-s)/repeatTime2);
         }
@@ -1373,7 +1374,7 @@ public class RegerDelta {
 
         String[] record = {
                 f.toString(),
-                "REGER",
+                "REGER-DELTA",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),
