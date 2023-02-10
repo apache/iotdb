@@ -642,8 +642,12 @@ public abstract class PageManager implements IPageManager {
    * @param expSize expected size calculated from next new record
    * @param batchSize size of children within one {@linkplain #writeNewChildren(IMNode)}
    * @return estimated size
+   * @throws MetadataException
    */
-  private static short reEstimateSegSize(int expSize, int batchSize) {
+  private static short reEstimateSegSize(int expSize, int batchSize) throws MetadataException {
+    if (batchSize < SEG_SIZE_METRIC[0]) {
+      return reEstimateSegSize(expSize);
+    }
     int base_tier = 0;
     for (int i = 0; i < SEG_SIZE_LST.length; i++) {
       if (SEG_SIZE_LST[i] >= expSize) {
