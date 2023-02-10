@@ -366,7 +366,7 @@ public class MemoryPool {
     return reservedBytes;
   }
 
-  public void clearMemoryReservationMap(
+  public synchronized void clearMemoryReservationMap(
       String queryId, String fragmentInstanceId, String planNodeId) {
     if (queryMemoryReservations.get(queryId) == null
         || queryMemoryReservations.get(queryId).get(fragmentInstanceId) == null) {
