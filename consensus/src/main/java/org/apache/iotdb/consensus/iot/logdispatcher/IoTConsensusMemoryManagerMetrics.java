@@ -48,14 +48,14 @@ public class IoTConsensusMemoryManagerMetrics implements IMetricSet {
         iotConsensusMemoryManager,
         IoTConsensusMemoryManager::getQueueMemorySizeInByte,
         Tag.NAME.toString(),
-        "IoTConsensus_Queue");
+        "IoTConsensusQueue");
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
         iotConsensusMemoryManager,
         IoTConsensusMemoryManager::getSyncMemorySizeInByte,
         Tag.NAME.toString(),
-        "IoTConsensus_Sync");
+        "IoTConsensusSync");
   }
 
   @Override
@@ -63,8 +63,8 @@ public class IoTConsensusMemoryManagerMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensus");
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensus_Queue");
+        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensusQueue");
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensus_Sync");
+        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "IoTConsensusSync");
   }
 }
