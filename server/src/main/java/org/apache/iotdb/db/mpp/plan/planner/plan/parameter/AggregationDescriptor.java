@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -123,17 +122,6 @@ public class AggregationDescriptor {
       inputColumnNames.add(funcName + "(" + getParametersString() + ")");
     }
     return inputColumnNames;
-  }
-
-  public Map<String, Expression> getInputColumnCandidateMap() {
-    Map<String, Expression> inputColumnNameToExpressionMap = new HashMap<>();
-    for (Expression inputExpression : inputExpressions) {
-      List<String> inputColumnNames = getInputColumnNames();
-      for (String inputColumnName : inputColumnNames) {
-        inputColumnNameToExpressionMap.put(inputColumnName, inputExpression);
-      }
-    }
-    return inputColumnNameToExpressionMap;
   }
 
   /** Keep the lower case of function name for partial result, and origin value for others. */

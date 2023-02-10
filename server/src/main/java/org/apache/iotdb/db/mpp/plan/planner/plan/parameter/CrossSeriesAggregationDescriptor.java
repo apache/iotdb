@@ -125,16 +125,6 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   }
 
   @Override
-  public Map<String, Expression> getInputColumnCandidateMap() {
-    Map<String, Expression> inputColumnNameToExpressionMap = super.getInputColumnCandidateMap();
-    List<String> outputColumnNames = getOutputColumnNames();
-    for (String outputColumnName : outputColumnNames) {
-      inputColumnNameToExpressionMap.put(outputColumnName, outputExpression);
-    }
-    return inputColumnNameToExpressionMap;
-  }
-
-  @Override
   public CrossSeriesAggregationDescriptor deepClone() {
     return new CrossSeriesAggregationDescriptor(this, outputExpression, expressionNumOfOneInput);
   }
