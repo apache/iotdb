@@ -73,4 +73,8 @@ public class PipelineDriverFactory {
   public void setDependencyPipeline(int dependencyPipelineIndex) {
     this.dependencyPipelineIndex = dependencyPipelineIndex;
   }
+
+  public int getDependencyPipelineIndex() {
+    return dependencyPipelineIndex;
+  }
 }
