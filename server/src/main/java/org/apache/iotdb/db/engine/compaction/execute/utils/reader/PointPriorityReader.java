@@ -65,7 +65,7 @@ public class PointPriorityReader {
   }
 
   public TimeValuePair currentPoint() {
-    if (shouldReadPointFromQueue && currentPointElement == null) {
+    if (currentPointElement == null) {
       // if the current point is overlapped with other pages, then get the highest priority point
       // from queue
       currentPoint = pointQueue.peek().timeValuePair;

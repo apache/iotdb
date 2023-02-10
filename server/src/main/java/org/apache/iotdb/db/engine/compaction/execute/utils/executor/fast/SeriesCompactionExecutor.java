@@ -283,10 +283,12 @@ public abstract class SeriesCompactionExecutor {
 
       // write data points of the current page into chunk writer
       TimeValuePair point;
-      while (pointPriorityReader.hasNext()
-          && pointPriorityReader.currentPoint().getTimestamp()
-              <= pageElement.pageHeader.getEndTime()) {
-        compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
+      while (pointPriorityReader.hasNext()) {
+        point = pointPriorityReader.currentPoint();
+        if (point.getTimestamp() > pageElement.pageHeader.getEndTime()) {
+          break;
+        }
+        compactionWriter.write(point, subTaskId);
         pointPriorityReader.next();
       }
     }
@@ -376,10 +378,14 @@ public abstract class SeriesCompactionExecutor {
 
       int oldSize = candidateOverlappedPages.size();
       // write currentPage.point.time < nextPage.startTime to chunk writer
-      while (pointPriorityReader.hasNext()
-          && pointPriorityReader.currentPoint().getTimestamp() < nextPageElement.startTime) {
+      TimeValuePair currentPoint;
+      while (pointPriorityReader.hasNext()) {
+        currentPoint = pointPriorityReader.currentPoint();
+        if (currentPoint.getTimestamp() >= nextPageElement.startTime) {
+          break;
+        }
         // write data point to chunk writer
-        compactionWriter.write(pointPriorityReader.currentPoint(), subTaskId);
+        compactionWriter.write(currentPoint, subTaskId);
         pointPriorityReader.next();
         if (candidateOverlappedPages.size() > oldSize) {
           // during the process of writing overlapped points, if the first page is compacted
