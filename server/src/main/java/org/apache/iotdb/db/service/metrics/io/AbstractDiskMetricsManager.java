@@ -20,19 +20,17 @@
 package org.apache.iotdb.db.service.metrics.io;
 
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractDiskMetricsManager {
-  public abstract Map<String, Double> getReadOpsRateForDisk();
-
-  public abstract Map<String, Double> getWriteOpsRateForDisk();
-
-  public abstract Map<String, Double> getReadThroughputForDisk();
-
-  public abstract Map<String, Double> getWriteThroughPutForDisk();
 
   public abstract Map<String, Long> getReadDataSizeForDisk();
 
   public abstract Map<String, Long> getWriteDataSizeForDisk();
+
+  public abstract Map<String, Integer> getReadOperationCountForDisk();
+
+  public abstract Map<String, Integer> getWriteOperationCountForDisk();
 
   public abstract Map<String, Long> getReadCostTimeForDisk();
 
@@ -50,13 +48,9 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract long getWriteDataSizeForDataNode();
 
-  public abstract double getReadThroughputForDataNode();
+  public abstract long getReadOpsCountForDataNode();
 
-  public abstract double getWriteThroughputForDataNode();
-
-  public abstract long getReadOpsRateForDataNode();
-
-  public abstract long getWriteOpsRateForDataNode();
+  public abstract long getWriteOpsCountForDataNode();
 
   public abstract long getReadCostTimeForDataNode();
 
@@ -66,6 +60,8 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract long getAvgWriteCostTimeOfEachOpsForDataNode();
 
+  public abstract Set<String> getDiskIDs();
+
   /**
    * Return different implementation of DiskMetricsManager according to OS type.
    *
@@ -74,7 +70,7 @@ public abstract class AbstractDiskMetricsManager {
   public static AbstractDiskMetricsManager getDiskMetricsManager() {
     String os = System.getProperty("os.name");
     if (os == null) {
-      throw new RuntimeException("Cannot get the os type");
+      throw new RuntimeException("Cannot get the name of operation system");
     }
 
     if (os.startsWith("windows")) {

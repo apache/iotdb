@@ -20,27 +20,9 @@
 package org.apache.iotdb.db.service.metrics.io;
 
 import java.util.Map;
+import java.util.Set;
 
 public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
-  @Override
-  public Map<String, Double> getReadOpsRateForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getWriteOpsRateForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getReadThroughputForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getWriteThroughPutForDisk() {
-    return null;
-  }
 
   @Override
   public Map<String, Long> getReadDataSizeForDisk() {
@@ -49,6 +31,16 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public Map<String, Long> getWriteDataSizeForDisk() {
+    return null;
+  }
+
+  @Override
+  public Map<String, Integer> getReadOperationCountForDisk() {
+    return null;
+  }
+
+  @Override
+  public Map<String, Integer> getWriteOperationCountForDisk() {
     return null;
   }
 
@@ -93,22 +85,12 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public double getReadThroughputForDataNode() {
+  public long getReadOpsCountForDataNode() {
     return 0;
   }
 
   @Override
-  public double getWriteThroughputForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getReadOpsRateForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getWriteOpsRateForDataNode() {
+  public long getWriteOpsCountForDataNode() {
     return 0;
   }
 
@@ -130,5 +112,10 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   @Override
   public long getAvgWriteCostTimeOfEachOpsForDataNode() {
     return 0;
+  }
+
+  @Override
+  public Set<String> getDiskIDs() {
+    return null;
   }
 }

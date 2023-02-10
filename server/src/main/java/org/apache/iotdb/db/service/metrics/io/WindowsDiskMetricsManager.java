@@ -19,67 +19,61 @@
 
 package org.apache.iotdb.db.service.metrics.io;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
+/** Disk Metrics Manager for Windows system, not implemented yet. */
 public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
-  @Override
-  public Map<String, Double> getReadOpsRateForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getWriteOpsRateForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getReadThroughputForDisk() {
-    return null;
-  }
-
-  @Override
-  public Map<String, Double> getWriteThroughPutForDisk() {
-    return null;
-  }
 
   @Override
   public Map<String, Long> getReadDataSizeForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Long> getWriteDataSizeForDisk() {
-    return null;
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, Integer> getReadOperationCountForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, Integer> getWriteOperationCountForDisk() {
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Long> getReadCostTimeForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Long> getWriteCostTimeForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Double> getAvgSectorSizeOfEachReadForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, Double> getAvgSectorSizeOfEachWriteForDisk() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
@@ -93,22 +87,12 @@ public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public double getReadThroughputForDataNode() {
+  public long getReadOpsCountForDataNode() {
     return 0;
   }
 
   @Override
-  public double getWriteThroughputForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getReadOpsRateForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getWriteOpsRateForDataNode() {
+  public long getWriteOpsCountForDataNode() {
     return 0;
   }
 
@@ -130,5 +114,10 @@ public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
   @Override
   public long getAvgWriteCostTimeOfEachOpsForDataNode() {
     return 0;
+  }
+
+  @Override
+  public Set<String> getDiskIDs() {
+    return Collections.emptySet();
   }
 }
