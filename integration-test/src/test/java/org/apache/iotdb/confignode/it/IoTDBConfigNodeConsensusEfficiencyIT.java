@@ -32,7 +32,10 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -73,19 +76,19 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
 
   // The total number of partitions is equals to
   // testSeriesPartitionNum * testTimePartitionNum
-  private static final int testSeriesPartitionNum = 10000;
-  private static final int testTimePartitionNum = 100;
+  private static final int testSeriesPartitionNum = 100;
+  private static final int testTimePartitionNum = 10;
 
   // The total number of consensus logs is equals to
   // (testSeriesPartitionNum / testSeriesPartitionBatchSize) *
   // (testTimePartitionNum / testTimePartitionBatchSize)
-  private static final int testSeriesPartitionBatchSize = 100;
+  private static final int testSeriesPartitionBatchSize = 10;
   private static final int testTimePartitionBatchSize = 10;
 
   // Modify testConsensusProtocolClass to indicate the test consensusProtocolClass
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /* Add @BeforeClass before test */
+  @BeforeClass
   public static void setUp() throws SQLException {
     EnvFactory.getEnv()
         .getConfig()
@@ -110,12 +113,12 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
     }
   }
 
-  /* Add @AfterClass before test */
+  @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  /* Add @Test before test */
+  @Test
   public void consensusEfficiencyIT() throws InterruptedException {
     long totalTime = 0;
     int logsCount =
