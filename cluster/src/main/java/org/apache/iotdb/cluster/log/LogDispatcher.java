@@ -41,7 +41,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.TException;
@@ -80,7 +79,7 @@ public class LogDispatcher {
   protected RaftMember member;
   private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   protected boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  protected List<Pair<Node, BlockingQueue<SendLogRequest>>> nodesLogQueuesList = new ArrayList<>();
+  protected Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueuesMap = new HashMap<>();
   protected Map<Node, Boolean> nodesEnabled;
   protected Map<Node, RateLimiter> nodesRateLimiter = new HashMap<>();
   protected Map<Node, Double> nodesRate = new HashMap<>();
@@ -99,7 +98,7 @@ public class LogDispatcher {
     createQueueAndBindingThreads();
   }
 
-  protected void updateRateLimiter() {
+  public void updateRateLimiter() {
     logger.info("Node rates: {}", nodesRate);
     for (Entry<Node, Double> nodeDoubleEntry : nodesRate.entrySet()) {
       nodesRateLimiter.get(nodeDoubleEntry.getKey()).setRate(nodeDoubleEntry.getValue());
@@ -115,7 +114,7 @@ public class LogDispatcher {
         logBlockingQueue =
             new ArrayBlockingQueue<>(
                 ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
-        nodesLogQueuesList.add(new Pair<>(node, logBlockingQueue));
+        nodesLogQueuesMap.put(node, logBlockingQueue);
         FlowMonitorManager.INSTANCE.register(node);
         nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
         nodesRate.put(node, baseRate * i);
@@ -125,14 +124,14 @@ public class LogDispatcher {
     updateRateLimiter();
 
     for (i = 0; i < bindingThreadNum; i++) {
-      for (Pair<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesList) {
+      for (Entry<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesMap.entrySet()) {
         executorServices
             .computeIfAbsent(
-                pair.left,
+                pair.getKey(),
                 n ->
                     IoTDBThreadPoolFactory.newCachedThreadPool(
-                        "LogDispatcher-" + member.getName() + "-" + pair.left.nodeIdentifier))
-            .submit(newDispatcherThread(pair.left, pair.right));
+                        "LogDispatcher-" + member.getName() + "-" + pair.getKey().nodeIdentifier))
+            .submit(newDispatcherThread(pair.getKey(), pair.getValue()));
       }
     }
   }
@@ -191,30 +190,30 @@ public class LogDispatcher {
       verifiers = member.getTrustValueHolder().chooseVerifiers();
     }
 
-    for (Pair<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesList) {
-      if (nodesEnabled != null && !this.nodesEnabled.getOrDefault(entry.left, false)) {
+    for (Entry<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesMap.entrySet()) {
+      if (nodesEnabled != null && !this.nodesEnabled.getOrDefault(entry.getKey(), false)) {
         continue;
       }
 
-      if (clusterConfig.isUseVGRaft() && ClusterUtils.isNodeIn(entry.left, verifiers)) {
-        request = transformRequest(entry.left, request);
+      if (clusterConfig.isUseVGRaft() && ClusterUtils.isNodeIn(entry.getKey(), verifiers)) {
+        request = transformRequest(entry.getKey(), request);
         request.setVerifier(true);
       }
 
-      BlockingQueue<SendLogRequest> nodeLogQueue = entry.right;
+      BlockingQueue<SendLogRequest> nodeLogQueue = entry.getValue();
       try {
         boolean addSucceeded = addToQueue(nodeLogQueue, request);
 
         if (!addSucceeded) {
           logger.debug(
               "Log queue[{}] of {} is full, ignore the request to this node",
-              entry.left,
+              entry.getKey(),
               member.getName());
         }
       } catch (IllegalStateException e) {
         logger.debug(
             "Log queue[{}] of {} is full, ignore the request to this node",
-            entry.left,
+            entry.getKey(),
             member.getName());
       }
     }
@@ -486,8 +485,7 @@ public class LogDispatcher {
           Statistic.RAFT_CONCURRENT_SENDER.add(concurrentSender);
           result = client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier);
           FlowMonitorManager.INSTANCE.report(
-              receiver,
-              logRequest.appendEntryRequest.entry.remaining());
+              receiver, logRequest.appendEntryRequest.entry.remaining());
           nodesRateLimiter.get(receiver).acquire(logRequest.appendEntryRequest.entry.remaining());
 
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENT.calOperationCostTimeFromStart(
@@ -529,8 +527,7 @@ public class LogDispatcher {
         try {
           client.appendEntry(logRequest.appendEntryRequest, logRequest.isVerifier, handler);
           FlowMonitorManager.INSTANCE.report(
-              receiver,
-              logRequest.appendEntryRequest.entry.remaining());
+              receiver, logRequest.appendEntryRequest.entry.remaining());
           nodesRateLimiter.get(receiver).acquire(logRequest.appendEntryRequest.entry.remaining());
         } catch (TException e) {
           handler.onError(e);
@@ -592,5 +589,13 @@ public class LogDispatcher {
         }
       }
     }
+  }
+
+  public Map<Node, Double> getNodesRate() {
+    return nodesRate;
+  }
+
+  public Map<Node, BlockingQueue<SendLogRequest>> getNodesLogQueuesMap() {
+    return nodesLogQueuesMap;
   }
 }

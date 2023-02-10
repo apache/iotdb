@@ -21,8 +21,8 @@ package org.apache.iotdb.cluster.expr.flowcontrol;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,5 +71,9 @@ public class FlowMonitorManager {
     } else {
       logger.warn("Flow monitor {} is not registered", node);
     }
+  }
+
+  public double averageFlow(Node node, int windowsToUse) {
+    return monitorMap.get(node).averageFlow(windowsToUse);
   }
 }

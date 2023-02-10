@@ -25,11 +25,11 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 
 public class FragmentedLogDispatcher extends LogDispatcher {
@@ -47,8 +47,8 @@ public class FragmentedLogDispatcher extends LogDispatcher {
     request.getVotingLog().getLog().setEnqueueTime(System.nanoTime());
 
     int i = 0;
-    for (Pair<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesList) {
-      BlockingQueue<SendLogRequest> nodeLogQueue = entry.right;
+    for (Entry<Node, BlockingQueue<SendLogRequest>> entry : nodesLogQueuesMap.entrySet()) {
+      BlockingQueue<SendLogRequest> nodeLogQueue = entry.getValue();
       SendLogRequest fragmentedRequest = new SendLogRequest(request);
       fragmentedRequest.setVotingLog(new VotingLog(request.getVotingLog()));
       fragmentedRequest
@@ -60,7 +60,7 @@ public class FragmentedLogDispatcher extends LogDispatcher {
       if (!addSucceeded) {
         logger.debug(
             "Log queue[{}] of {} is full, ignore the request to this node",
-            entry.left,
+            entry.getKey(),
             member.getName());
       }
     }

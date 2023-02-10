@@ -34,13 +34,13 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.Date;
-import java.util.Deque;
+import java.util.Iterator;
 
 public class FlowMonitor {
 
   private static final Logger logger = LoggerFactory.getLogger(FlowMonitor.class);
   private static final String FILE_SUFFIX = ".flow";
-  private Deque<Pair<Long, Long>> windows;
+  private ArrayDeque<Pair<Long, Long>> windows;
   private long currWindowStart;
   private long currWindowSum;
   private long windowInterval;
@@ -49,8 +49,7 @@ public class FlowMonitor {
   private BufferedWriter writer;
   private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  public FlowMonitor(int maxWindowSize, long windowInterval, Node node)
-      throws IOException {
+  public FlowMonitor(int maxWindowSize, long windowInterval, Node node) throws IOException {
     this.maxWindowSize = maxWindowSize;
     this.windows = new ArrayDeque<>(maxWindowSize);
     this.windowInterval = windowInterval;
@@ -62,7 +61,9 @@ public class FlowMonitor {
     String path =
         IoTDBDescriptor.getInstance().getConfig().getSystemDir()
             + File.separator
-            + node.getInternalIp() + "-" + node.nodeIdentifier
+            + node.getInternalIp()
+            + "-"
+            + node.nodeIdentifier
             + FILE_SUFFIX;
     File file = new File(path);
     file.delete();
@@ -126,5 +127,21 @@ public class FlowMonitor {
     }
     // update the current window
     currWindowSum += val;
+  }
+
+  public double averageFlow(int windowsToUse) {
+    long flowSum = currWindowSum;
+    long intervalSum = System.currentTimeMillis() - currWindowStart;
+    Iterator<Pair<Long, Long>> windowIterator = windows.descendingIterator();
+    for (int i = 1; i < windowsToUse; i++) {
+      if (windowIterator.hasNext()) {
+        Pair<Long, Long> window = windowIterator.next();
+        flowSum += window.right;
+        intervalSum += windowInterval;
+      } else {
+        break;
+      }
+    }
+    return flowSum * 1.0 / intervalSum * 1000;
   }
 }

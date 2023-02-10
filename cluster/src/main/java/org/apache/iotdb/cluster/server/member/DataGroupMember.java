@@ -1023,7 +1023,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             prevLastLogIndex,
             logManager.getMaxHaveAppliedCommitIndex(),
             logRelay != null ? logRelay.first() : null,
-            votingLogList.report());
+            votingLogList.report(),
+            getLogDispatcher().getNodesRate().toString());
     if (character == NodeCharacter.LEADER && config.isUseIndirectBroadcasting()) {
       dataMemberReport.setDirectToIndirectFollowerMap(
           ((IndirectLogDispatcher) getLogDispatcher()).getDirectToIndirectFollowerMap());

@@ -207,6 +207,7 @@ public class NodeReport {
     long headerLatency;
     private Map<Node, List<Node>> directToIndirectFollowerMap;
     private String votingListReport;
+    private String flowLimiterReport;
 
     public DataMemberReport(
         NodeCharacter character,
@@ -223,7 +224,8 @@ public class NodeReport {
         long prevLastLogIndex,
         long maxAppliedLogIndex,
         RelayEntry nextToRelay,
-        String votingListReport) {
+        String votingListReport,
+        String flowLimiterReport) {
       super(
           character,
           leader,
@@ -240,6 +242,7 @@ public class NodeReport {
       this.header = header;
       this.headerLatency = headerLatency;
       this.votingListReport = votingListReport;
+      this.flowLimiterReport = flowLimiterReport;
     }
 
     @Override
@@ -279,7 +282,9 @@ public class NodeReport {
               + ", logIncrement="
               + (lastLogIndex - prevLastLogIndex)
               + ", "
-              + votingListReport;
+              + votingListReport
+              + ", "
+              + flowLimiterReport;
       if (directToIndirectFollowerMap != null) {
         s = s + ", relayMap=" + directToIndirectFollowerMap;
       }

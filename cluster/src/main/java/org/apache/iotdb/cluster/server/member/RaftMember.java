@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.expr.craft.FragmentedLog;
 import org.apache.iotdb.cluster.expr.craft.FragmentedLogDispatcher;
+import org.apache.iotdb.cluster.expr.flowcontrol.FlowBalancer;
 import org.apache.iotdb.cluster.expr.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.cluster.expr.vgraft.KeyManager;
 import org.apache.iotdb.cluster.expr.vgraft.TrustValueHolder;
@@ -300,6 +301,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   //  VG-Raft related
   private TrustValueHolder trustValueHolder = null;
+  private FlowBalancer flowBalancer;
 
   protected RaftMember(IStateMachine stateMachine) {
     this.stateMachine = stateMachine;
@@ -329,6 +331,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     startBackGroundThreads();
     setSkipElection(false);
     FlowMonitorManager.INSTANCE.register(thisNode);
+    flowBalancer = new FlowBalancer(logDispatcher, this);
+    flowBalancer.start();
     logger.info("{} started", name);
   }
 
@@ -451,6 +455,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     catchUpService = null;
     heartBeatService = null;
     appendLogThreadPool = null;
+
+    flowBalancer.stop();
     logger.info("Member {} stopped", name);
   }
 
