@@ -126,7 +126,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     levelOfSG = storageGroupPath.getNodeLength() - 1;
 
     // recover measurement
-    MeasurementCollector<?> collector =
+    try (MeasurementCollector<?> collector =
         new MeasurementCollector<Void>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
           @Override
@@ -135,8 +135,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             SchemaStatisticsManager.getInstance().addTimeseries(1);
             return null;
           }
-        };
-    collector.traverse();
+        }) {
+      collector.traverse();
+    }
   }
 
   /**
