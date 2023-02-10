@@ -3,18 +3,18 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+// import org.slf4j.Logger;
+// import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
+// import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ACEncoder extends Encoder {
-  private static final Logger logger = LoggerFactory.getLogger(ACEncoder.class);
+  // private static final Logger logger = LoggerFactory.getLogger(ACEncoder.class);
 
-  private int n, m;
+  private int n;
   private int[] frequency;
   private byte byteBuffer;
   private int numberLeftInBuffer = 0;
@@ -23,34 +23,91 @@ public class ACEncoder extends Encoder {
   private List<Binary> records;
   private List<Byte> tmp;
 
-  private String trans(BigInteger a, int n) {
-    String s = a.toString(2);
-    int m = s.length();
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < n - m; i++) sb.append("0");
-    sb.append(s);
-    return sb.toString();
-  }
+	private long Rbit=32;
+	private long bytemax=(1<<8)-1;
+  private long Rmax=((long)1)<<(Rbit+8);
+  private long Rmin=((long)1)<<Rbit;
 
-  private int lcp(String s, String t) {
-    for (int i = 0; i < s.length() && i < t.length(); i++) {
-      if (s.charAt(i) != t.charAt(i)) return i;
-    }
-    return Math.min(s.length(), t.length());
-  }
+	private long L,H,R,d,nn;
+
+  private void encode_epc(long cf,long f,long T) {
+		R/=T;
+		L+=cf*R;
+		R*=f;
+		while(R<=Rmin) {
+			H=L+R-1;
+			if(nn!=0) {
+				if(H<=Rmax) {
+					tmp.add((byte)d);
+					// writeByte((byte)d, out);
+					for(int i=1;i<=nn-1;i++) {
+						tmp.add((byte)bytemax);
+						// writeByte((byte)bytemax, out);
+					}
+					nn=0;
+					L+=Rmax;
+				}
+				else if(L>=Rmax) {
+					tmp.add((byte)(d+1));
+					// writeByte((byte)(d+1), out);
+					for(int i=1;i<=nn-1;i++) {
+						tmp.add((byte)0);
+						// writeByte((byte)0, out);
+					}
+					nn=0;
+				}
+				else {
+					nn++;
+					L=(L<<8)&(Rmax-1);
+					R<<=8;
+					continue;
+				}
+			}
+			if(((L^H)>>Rbit)==0) {
+				tmp.add((byte)(L>>Rbit));
+				// writeByte((byte)(L>>Rbit), out);
+			}
+			else {
+				L-=Rmax;
+				d=L>>Rbit;
+				nn=1;
+			}
+			L=((L<<8)&(Rmax-1))|(L&Rmax);
+			R<<=8;
+		}
+	}
+
+	private void finish_encode_epc() {
+		if(nn!=0) {
+			if(L<Rmax) {
+				tmp.add((byte)d);
+				// writeByte((byte)d, out);
+				for(int i=1;i<=nn-1;i++) {
+					tmp.add((byte)bytemax);
+					// writeByte((byte)bytemax, out);
+				}
+			}
+			else {
+				tmp.add((byte)(d+1));
+				// writeByte((byte)(d+1), out);
+				for(int i=1;i<=nn-1;i++) {
+					tmp.add((byte)0);
+					// writeByte((byte)0, out);
+				}
+			}
+		}
+		long i=Rbit+8;
+		do {
+			i-=8;
+			tmp.add((byte)(L>>i&bytemax));
+			// writeByte((byte)(L>>i), out);
+		}while(i>0);
+	}
 
   private int ByteToInt(byte b) {
     int res = (int) b;
     if (res < 0) res += 1 << 8;
     return res;
-  }
-
-  private byte[] ListToArray(List<Byte> a) {
-    byte[] b = new byte[a.size()];
-    for (int i = 0; i < a.size(); i++) {
-      b[i] = a.get(i);
-    }
-    return b;
   }
 
   public ACEncoder() {
@@ -84,50 +141,27 @@ public class ACEncoder extends Encoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) {
-    BigInteger C = new BigInteger("0"), A = new BigInteger("1");
-    int[] what = new int[n];
-    int idx = 0, lgm, exp = 0;
-    for (int i = 0; i <= 256; i++) for (int j = 0; j < frequency[i]; j++) what[idx++] = i;
-    m = 1;
-    lgm = 0;
-    while (m < n) {
-      m <<= 1;
-      lgm++;
-    }
-    for (int i = 0; i < m - n; i++) frequency[what[(int) (Math.random() * n)]]++;
-    for (int i = 1; i <= 256; i++) frequency[i] += frequency[i - 1];
-    for (Binary value : records) {
-      for (int i = 0; i < value.getLength(); i++) {
-        int x = ByteToInt(value.getValues()[i]);
-        logger.info("common!aoao:{}", x);
-        C =
-            C.multiply(BigInteger.valueOf(m))
-                .add(A.multiply(BigInteger.valueOf(x == 0 ? 0 : frequency[x - 1])));
-        A = A.multiply(BigInteger.valueOf(frequency[x] - (x == 0 ? 0 : frequency[x - 1])));
-        exp += lgm;
-      }
-      int x = 256;
-      logger.info("common!aoao:{}", x);
-      C =
-          C.multiply(BigInteger.valueOf(m))
-              .add(A.multiply(BigInteger.valueOf(x == 0 ? 0 : frequency[x - 1])));
-      A = A.multiply(BigInteger.valueOf(frequency[x] - (x == 0 ? 0 : frequency[x - 1])));
-      exp += lgm;
-    }
-    String CS = trans(C, exp), AS = trans(C.add(A), exp);
-    int len = lcp(CS, AS);
-    exp -= len;
-    for (int j = 0; j < len; j++) tmp.add((byte) (CS.charAt(j) == '0' ? 0 : 1));
-    tmp.add((byte) 1);
     writeInt(n, out);
-    writeInt(m, out);
-    logger.info("n:OK!{}", n);
-    for (int i = 0; i <= 256; i++) writeInt(frequency[i], out);
-    byte[] tmp2 = ListToArray(tmp);
-    writeInt(tmp2.length, out);
-    for (int i = 0; i < tmp2.length; i++) {
-      writeBit(tmp2[i] == 0 ? false : true, out);
-    }
+		for(int i=1;i<=256;i++) {
+			frequency[i]+=frequency[i-1];
+		}
+		for(int i=0;i<=256;i++) {
+			writeInt(frequency[i], out);
+		}
+		L=Rmax;R=Rmax;
+		for(Binary rec:records) {
+			for(int i=0;i<rec.getLength();i++) {
+				int x=ByteToInt(rec.getValues()[i]);
+				encode_epc((x==0?0:frequency[x-1]), frequency[x]-(x==0?0:frequency[x-1]), n);
+			}
+			int x=256;
+			encode_epc((x==0?0:frequency[x-1]), frequency[x]-(x==0?0:frequency[x-1]), n);
+		}
+		finish_encode_epc();
+		writeInt(tmp.size(), out);
+		for(byte b:tmp) {
+			writeByte(b, out);
+		}
     reset();
     clearBuffer(out);
   }
