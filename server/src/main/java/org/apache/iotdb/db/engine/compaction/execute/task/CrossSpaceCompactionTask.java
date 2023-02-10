@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -90,6 +90,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
+    this.crossTask = true;
+    this.innerSeqTask = false;
     createSummary();
   }
 
@@ -232,7 +234,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
-        CompactionMetricsRecorder.updateSummary(summary);
+        CompactionMetricsManager.getInstance().updateSummary(summary);
 
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
 

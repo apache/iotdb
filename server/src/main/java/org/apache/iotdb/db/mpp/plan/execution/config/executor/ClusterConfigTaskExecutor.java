@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
@@ -77,6 +78,9 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -682,12 +686,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> merge(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      // Send request to some API server
-      tsStatus = client.merge();
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        // Send request to some API server
+        tsStatus = client.merge();
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        StorageEngine.getInstance().mergeAll();
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (StorageEngineException e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -701,12 +714,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      // Send request to some API server
-      tsStatus = client.flush(tFlushReq);
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        // Send request to some API server
+        tsStatus = client.flush(tFlushReq);
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        StorageEngine.getInstance().operateFlush(tFlushReq);
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -720,12 +742,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> clearCache(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      // Send request to some API server
-      tsStatus = client.clearCache();
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        // Send request to some API server
+        tsStatus = client.clearCache();
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        StorageEngine.getInstance().clearCache();
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -739,12 +770,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      // Send request to some API server
-      tsStatus = client.loadConfiguration();
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        // Send request to some API server
+        tsStatus = client.loadConfiguration();
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -758,12 +798,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      // Send request to some API server
-      tsStatus = client.setSystemStatus(status.getStatus());
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        // Send request to some API server
+        tsStatus = client.setSystemStatus(status.getStatus());
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
