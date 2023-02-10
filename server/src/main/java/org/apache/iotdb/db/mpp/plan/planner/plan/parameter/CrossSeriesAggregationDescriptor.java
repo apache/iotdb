@@ -38,8 +38,10 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   private String outputParametersString;
 
   /**
-   * Records how many Expressions are in one input, used for calculation of inputColumnNames .e.g
-   * input[count_if(root.db.d1.s1, 3), count_if(root.db.d2.s1, 3)], expressionNumOfOneInput = 2
+   * Records how many Expressions are in one input, used for calculation of inputColumnNames
+   *
+   * <p>.e.g input[count_if(root.db.d1.s1, 3), count_if(root.db.d2.s1, 3)], expressionNumOfOneInput
+   * = 2
    */
   private final int expressionNumOfOneInput;
 
