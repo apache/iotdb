@@ -32,6 +32,7 @@ public class PointElement {
   public PageElement pageElement;
 
   public PointElement(PageElement pageElement) throws IOException {
+    pageElement.deserializePage();
     this.pageElement = pageElement;
     if (pageElement.iChunkReader instanceof ChunkReader) {
       this.pointReader = pageElement.batchData.getTsBlockSingleColumnIterator();
@@ -41,6 +42,15 @@ public class PointElement {
     this.timeValuePair = pointReader.nextTimeValuePair();
     this.timestamp = timeValuePair.getTimestamp();
     this.priority = pageElement.priority;
+  }
+
+  public boolean hasNext() throws IOException {
+    return pointReader.hasNextTimeValuePair();
+  }
+
+  public void next() throws IOException {
+    timeValuePair = pointReader.nextTimeValuePair();
+    timestamp = timeValuePair.getTimestamp();
   }
 
   public void setPoint(TimeValuePair timeValuePair) {

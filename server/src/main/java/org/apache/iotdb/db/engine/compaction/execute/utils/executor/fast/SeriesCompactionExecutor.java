@@ -79,7 +79,7 @@ public abstract class SeriesCompactionExecutor {
 
   private final Map<TsFileResource, List<Modification>> modificationCacheMap;
 
-  private final PointPriorityReader pointPriorityReader = new PointPriorityReader(this::removePage);
+  private final PointPriorityReader pointPriorityReader;
 
   protected String deviceId;
 
@@ -97,6 +97,7 @@ public abstract class SeriesCompactionExecutor {
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
+      boolean isAligned,
       int subTaskId,
       FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
@@ -105,6 +106,7 @@ public abstract class SeriesCompactionExecutor {
     this.readerCacheMap = readerCacheMap;
     this.modificationCacheMap = modificationCacheMap;
     this.summary = summary;
+    pointPriorityReader = new PointPriorityReader(this::removePage, isAligned);
 
     chunkMetadataQueue =
         new PriorityQueue<>(
@@ -280,6 +282,7 @@ public abstract class SeriesCompactionExecutor {
       pointPriorityReader.addNewPage(pageElement);
 
       // write data points of the current page into chunk writer
+      TimeValuePair point;
       while (pointPriorityReader.hasNext()
           && pointPriorityReader.currentPoint().getTimestamp()
               <= pageElement.pageHeader.getEndTime()) {

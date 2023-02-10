@@ -65,7 +65,14 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
       String deviceId,
       int subTaskId,
       FastCompactionTaskSummary summary) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
+    super(
+        compactionWriter,
+        readerCacheMap,
+        modificationCacheMap,
+        deviceId,
+        false,
+        subTaskId,
+        summary);
     this.sortResources = sortedSourceFiles;
   }
 

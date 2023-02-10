@@ -67,7 +67,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary) {
-    super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
+    super(
+        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     // get source files which are sorted by the startTime of current device from old to new,
