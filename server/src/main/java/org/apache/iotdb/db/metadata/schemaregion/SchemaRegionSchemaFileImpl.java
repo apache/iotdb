@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -35,6 +37,8 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
+import org.apache.iotdb.db.metadata.logfile.MLogDescription;
+import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -78,6 +82,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,6 +139,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private boolean usingMLog = true;
 
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
+  private MLogDescriptionWriter logDescriptionWriter;
+  /* Next index of MLog*/
+  private long idx = 0;
 
   private final SchemaStatisticsManager schemaStatisticsManager =
       SchemaStatisticsManager.getInstance();
@@ -219,9 +227,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private void flushCallback() {
     if (usingMLog && !isRecovering) {
       try {
-        logWriter.reset();
+        logDescriptionWriter.updateCheckPoint(idx);
       } catch (IOException e) {
-        logger.error("Cannot reset MLog because {}", e.getMessage(), e);
+        logger.warn(
+            "Update {} failed because {}",
+            MetadataConstant.METADATA_LOG_DESCRIPTION,
+            e.getMessage(),
+            e);
       }
     }
   }
@@ -253,7 +265,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   private void initMLog() throws IOException {
-    int lineNumber = initFromLog();
+    idx = initFromLog();
 
     logWriter =
         new SchemaLogWriter<>(
@@ -261,11 +273,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             MetadataConstant.METADATA_LOG,
             new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
             config.getSyncMlogPeriodInMs() == 0);
+    logDescriptionWriter =
+        new MLogDescriptionWriter(schemaRegionDirPath, MetadataConstant.METADATA_LOG_DESCRIPTION);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
+      idx++;
     }
   }
 
@@ -289,29 +304,42 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   /**
    * Init from metadata log file.
    *
-   * @return line number of the logFile
+   * @return next index of the logFile
    */
   @SuppressWarnings("squid:S3776")
-  private int initFromLog() throws IOException {
+  private long initFromLog() throws IOException {
     File logFile =
         SystemFileFactory.INSTANCE.getFile(
             schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG);
+    File logDescriptionFile =
+        SystemFileFactory.INSTANCE.getFile(
+            schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG_DESCRIPTION);
 
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
-      int idx = 0;
+      long startIndex = 0;
+      if (logDescriptionFile.exists()) {
+        try (FileInputStream fileInputStream = new FileInputStream(logDescriptionFile)) {
+          MLogDescription mLogDescription = new MLogDescription();
+          mLogDescription.deserialize(fileInputStream);
+          startIndex = mLogDescription.getCheckPoint();
+          logger.info("MLog recovery check point: {}", startIndex);
+        } catch (IOException e) {
+          logger.warn("Can not get check point in MLogDescription file, use default value 0.");
+        }
+      }
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
               MetadataConstant.METADATA_LOG,
               new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
-        idx = applyMLog(mLogReader);
+        long nextIndex = applyMLog(mLogReader, startIndex);
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
             storageGroupFullPath);
-        return idx;
+        return nextIndex;
       } catch (Exception e) {
         e.printStackTrace();
         throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
@@ -321,20 +349,26 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
-  private int applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader) {
-    int idx = 0;
+  /**
+   * Redo metadata log file.
+   *
+   * @param startIndex start index to redo MLog
+   * @return next index of the logFile
+   */
+  private long applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader, long startIndex) {
+    long nextIndex = 0;
     ISchemaRegionPlan plan;
     RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
     RecoverOperationResult operationResult;
     while (mLogReader.hasNext()) {
       try {
         plan = mLogReader.next();
-        idx++;
+        nextIndex++;
       } catch (Exception e) {
         logger.error("Parse mlog error at lineNumber {} because:", idx, e);
         break;
       }
-      if (plan == null) {
+      if (nextIndex <= startIndex || plan == null) {
         continue;
       }
       operationResult = plan.accept(recoverPlanOperator, this);
@@ -351,7 +385,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           "The mlog.bin has been corrupted. Please remove it or fix it, and then restart IoTDB");
     }
 
-    return idx;
+    return nextIndex;
   }
 
   /** function for clearing metadata components of one schema region */
@@ -365,6 +399,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
+      }
+      if (logDescriptionWriter != null) {
+        logDescriptionWriter.close();
+        logDescriptionWriter = null;
       }
       tagManager.clear();
 
@@ -538,6 +576,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           logger.error("Exception occurs during timeseries recovery.");
           throw new MetadataException(e2.getMessage());
         }
+      } catch (AliasAlreadyExistException | PathAlreadyExistException e) {
+        // skip
       }
     }
   }

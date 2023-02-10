@@ -518,7 +518,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
-      if (flushCallback != null) {
+      if (updatedStorageGroupMNode != null || !nodesToPersist.isEmpty()) {
         flushCallback.run();
       }
     } catch (Throwable e) {

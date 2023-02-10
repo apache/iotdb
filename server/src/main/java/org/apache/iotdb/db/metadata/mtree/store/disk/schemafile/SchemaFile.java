@@ -133,10 +133,11 @@ public class SchemaFile implements ISchemaFile {
   // load or init
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
-    String dirPath = getDirPath(sgName, schemaRegionId);
     File pmtFile =
         SystemFileFactory.INSTANCE.getFile(
-            dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME);
+            getDirPath(sgName, schemaRegionId)
+                + File.separator
+                + MetadataConstant.SCHEMA_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
