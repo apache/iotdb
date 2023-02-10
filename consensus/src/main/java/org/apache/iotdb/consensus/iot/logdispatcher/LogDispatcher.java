@@ -67,7 +67,7 @@ public class LogDispatcher {
   private boolean stopped = false;
 
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
-  private final AtomicLong logEntriesFromConsensusRequest = new AtomicLong(0);
+  private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
@@ -179,8 +179,8 @@ public class LogDispatcher {
     return logEntriesFromWAL.get();
   }
 
-  public long getLogEntriesFromConsensusRequest() {
-    return logEntriesFromConsensusRequest.get();
+  public long getLogEntriesFromQueue() {
+    return logEntriesFromQueue.get();
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -330,7 +330,7 @@ public class LogDispatcher {
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
-          logEntriesFromConsensusRequest.addAndGet(
+          logEntriesFromQueue.addAndGet(
               batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));

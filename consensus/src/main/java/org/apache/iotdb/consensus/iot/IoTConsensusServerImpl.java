@@ -730,8 +730,8 @@ public class IoTConsensusServerImpl {
     return logDispatcher.getLogEntriesFromWAL();
   }
 
-  public long getLogEntriesFromConsensusRequest() {
-    return logDispatcher.getLogEntriesFromConsensusRequest();
+  public long getLogEntriesFromQueue() {
+    return logDispatcher.getLogEntriesFromQueue();
   }
 
   public boolean needBlockWrite() {

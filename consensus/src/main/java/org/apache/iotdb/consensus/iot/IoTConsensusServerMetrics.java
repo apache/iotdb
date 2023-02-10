@@ -77,13 +77,13 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             impl,
-            IoTConsensusServerImpl::getLogEntriesFromConsensusRequest,
+            IoTConsensusServerImpl::getLogEntriesFromQueue,
             Tag.NAME.toString(),
             "ioTConsensusServerImpl",
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "LogEntriesFromConsensusRequest");
+            "LogEntriesFromQueue");
   }
 
   @Override
@@ -127,6 +127,6 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             Tag.REGION.toString(),
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
-            "LogEntriesFromConsensusRequest");
+            "LogEntriesFromQueue");
   }
 }

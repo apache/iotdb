@@ -58,7 +58,7 @@ public class Batch {
   public void addTLogEntry(TLogEntry entry) {
     logEntries.add(entry);
     if (entry.fromWAL) {
-      logEntriesNumFromWAL += 1;
+      logEntriesNumFromWAL++;
     }
     // TODO Maybe we need to add in additional fields for more accurate calculations
     serializedSize +=
