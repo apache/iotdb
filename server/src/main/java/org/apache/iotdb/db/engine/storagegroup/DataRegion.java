@@ -112,6 +112,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -2172,7 +2173,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
         CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
