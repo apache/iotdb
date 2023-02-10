@@ -20,7 +20,6 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -29,7 +28,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,18 +38,22 @@ import java.sql.Statement;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-// TODO: extends AbstractSchemaIT
-@RunWith(IoTDBTestRunner.class)
-public class IoTDBCreateAlignedTimeseriesIT {
+public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
+
+  public IoTDBCreateAlignedTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
@@ -83,7 +85,6 @@ public class IoTDBCreateAlignedTimeseriesIT {
   }
 
   @Test
-  @Category({ClusterIT.class})
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
