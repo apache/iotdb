@@ -2211,7 +2211,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPathPatternList(), node.getTemplateId()));
   }
 
-  private List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
+  public List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
       PlanNode node, LocalExecutionPlanContext context) {
     // children after pipelining
     LinkedList<Operator> parentPipelineChildren = new LinkedList<>();
@@ -2325,7 +2325,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return childNumInEachPipeline;
   }
 
-  private List<Operator> dealWithConsumeChildrenOneByOneNode(
+  public List<Operator> dealWithConsumeChildrenOneByOneNode(
       PlanNode node, LocalExecutionPlanContext context) {
     List<Operator> parentPipelineChildren = new ArrayList<>();
     int originExchangeNum = context.getExchangeSumNum();
