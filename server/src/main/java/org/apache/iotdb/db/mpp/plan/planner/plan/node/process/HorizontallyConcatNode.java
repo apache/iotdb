@@ -55,7 +55,7 @@ public class HorizontallyConcatNode extends MultiChildProcessNode {
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     return new HorizontallyConcatNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        children.subList(startIndex, endIndex));
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override

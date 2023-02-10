@@ -67,7 +67,7 @@ public class TimeJoinNode extends MultiChildProcessNode {
     return new TimeJoinNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         getMergeOrder(),
-        children.subList(startIndex, endIndex));
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override
