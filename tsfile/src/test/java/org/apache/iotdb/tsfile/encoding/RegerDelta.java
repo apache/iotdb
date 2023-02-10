@@ -896,9 +896,9 @@ public class RegerDelta {
     for (byte b : value0_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] timestamp_min_byte = float2bytes(raw_length.get(3));
+    byte[] timestamp_min_byte = int2Bytes(raw_length.get(3));
     for (byte b : timestamp_min_byte) encoded_result.add(b);
-    byte[] value_min_byte = float2bytes(raw_length.get(4));
+    byte[] value_min_byte = int2Bytes(raw_length.get(4));
     for (byte b : value_min_byte) encoded_result.add(b);
 
     // encode interval
