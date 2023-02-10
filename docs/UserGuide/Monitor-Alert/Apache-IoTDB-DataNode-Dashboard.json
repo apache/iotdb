@@ -63,7 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1675061569475,
+  "iteration": 1675999111798,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1501,10 +1501,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1579,7 +1575,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(compaction_task_count_total{instance=\"$instance\", name = \"inner_compaction\", type=\"sequence\"}[1m]))*60",
+          "expr": "sum(rate(compaction_task_count{instance=\"$instance\", name = \"inner_unseq\"}[1m]))*60",
           "interval": "",
           "legendFormat": "sequence",
           "range": true,
@@ -1591,8 +1587,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(compaction_task_count_total{instance=\"$instance\", name = \"inner_compaction\", type=\"unsequence\"}[1m]))*60",
+          "exemplar": true,
+          "expr": "sum(rate(compaction_task_count{instance=\"$instance\", name = \"inner_seq\"}[1m]))*60",
           "hide": false,
+          "interval": "",
           "legendFormat": "unsequence",
           "range": true,
           "refId": "B"
@@ -1603,8 +1601,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(compaction_task_count_total{instance=\"$instance\", name = \"cross_compaction\", type=\"cross\"}[1m]))*60",
+          "exemplar": true,
+          "expr": "sum(rate(compaction_task_count{instance=\"$instance\", name = \"cross\"}[1m]))*60",
           "hide": false,
+          "interval": "",
           "legendFormat": "cross",
           "range": true,
           "refId": "C"
@@ -4794,8 +4794,8 @@
     ]
   },
   "time": {
-    "from": "2023-01-30T05:44:55.019Z",
-    "to": "2023-01-30T07:44:55.023Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
