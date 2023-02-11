@@ -80,7 +80,6 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     hasSynced = false;
     // serialize plan to binary data
     serializer.serialize(schemaPlan, fileOutputStream);
-
     if (forceEachWrite) {
       syncBufferToDisk();
     }
