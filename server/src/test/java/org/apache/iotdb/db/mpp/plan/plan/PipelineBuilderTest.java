@@ -115,8 +115,8 @@ public class PipelineBuilderTest {
     assertEquals(ExchangeOperator.class, childrenOperator.get(2).getClass());
 
     // Validate the changes of node structure
-    assertEquals("root.sg.d1.s1", timeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
-    assertEquals("root.sg.d0.s1", timeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+    assertEquals("root.sg.d0.s1", timeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+    assertEquals("root.sg.d1.s1", timeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     assertEquals(TimeJoinNode.class, timeJoinNode.getChildren().get(2).getClass());
 
     // Validate the second pipeline

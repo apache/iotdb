@@ -217,9 +217,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2214,7 +2212,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
       PlanNode node, LocalExecutionPlanContext context) {
     // children after pipelining
-    LinkedList<Operator> parentPipelineChildren = new LinkedList<>();
+    List<Operator> parentPipelineChildren = new ArrayList<>();
     int finalExchangeNum = context.getExchangeSumNum();
     if (context.getDegreeOfParallelism() == 1) {
       // If dop = 1, we don't create extra pipeline
@@ -2224,23 +2222,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     } else {
       // Keep it since we may change the structure of origin children nodes
-      LinkedList<PlanNode> afterwardsNodes = new LinkedList<>();
-      // 1. exclude ExchangeOperator first
-      Iterator<PlanNode> childrenIterator = node.getChildren().listIterator();
-      while (childrenIterator.hasNext()) {
-        PlanNode childSource = childrenIterator.next();
-        if (childSource instanceof ExchangeNode) {
-          Operator childOperation = childSource.accept(this, context);
-          finalExchangeNum += 1;
-          parentPipelineChildren.add(childOperation);
-          afterwardsNodes.add(childSource);
-          // Remove exchangeNode directly for later use
-          childrenIterator.remove();
+      List<PlanNode> afterwardsNodes = new ArrayList<>();
+      // 1. Separate localChildren from all nodes
+      int exchangeNodeIndex = node.getChildren().size();
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        // We do this based on that exchangeNode should appear at last
+        if (node instanceof ExchangeNode) {
+          exchangeNodeIndex = i;
+          break;
         }
       }
-
+      List<PlanNode> localChildren = node.getChildren().subList(0, exchangeNodeIndex);
       // 2. divide every childNumInEachPipeline localChildren to different pipeline
-      List<PlanNode> localChildren = node.getChildren();
       int[] childNumInEachPipeline =
           getChildNumInEachPipeline(localChildren.size(), context.getDegreeOfParallelism());
       // If dop > size(children) + 1, we can allocate extra dop to child node
@@ -2256,8 +2249,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         if (i == 0 && context.getDegreeOfParallelism() < localChildren.size() + 1) {
           for (int j = startIndex; j < endIndex; j++) {
             Operator childOperation = localChildren.get(j).accept(this, context);
-            parentPipelineChildren.addFirst(childOperation);
-            afterwardsNodes.addFirst(localChildren.get(j));
+            parentPipelineChildren.add(childOperation);
+            afterwardsNodes.add(localChildren.get(j));
           }
           continue;
         }
@@ -2299,6 +2292,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         afterwardsNodes.add(partialParentNode);
         context.addExchangeOperator(sourceOperator);
         finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
+      }
+      // 3. deal with exchangeNode
+      for (int i = exchangeNodeIndex; i < node.getChildren().size(); i++) {
+        PlanNode exchangeNode = node.getChildren().get(i);
+        Operator childOperation = exchangeNode.accept(this, context);
+        finalExchangeNum += 1;
+        parentPipelineChildren.add(childOperation);
+        afterwardsNodes.add(exchangeNode);
       }
       ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
     }

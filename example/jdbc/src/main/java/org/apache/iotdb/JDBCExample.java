@@ -26,8 +26,19 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JDBCExample {
+  private static final String CREATE_TEMPLATE_SQL =
+      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, 'MAX_POINT_NUMBER'='%d'";
+  private static final String INSERT_TEMPLATE_SQL =
+      "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
+  private static List<String> sqls = new ArrayList<>();
+  private static final int TIMESTAMP = 10;
+  private static final String VALUE = "1.2345678901";
+  private static final float DELTA_FLOAT = 0.0000001f;
+  private static final double DELTA_DOUBLE = 0.0000001d;
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -36,35 +47,24 @@ public class JDBCExample {
                 "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      // set JDBC fetchSize
-      statement.setFetchSize(10000);
-
-      try {
-        statement.execute("CREATE DATABASE root.sg1");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      } catch (IoTDBSQLException e) {
-        System.out.println(e.getMessage());
+      sqls.add("CREATE DATABASE root.vehicle.f0");
+      sqls.add("CREATE DATABASE root.vehicle.d0");
+      for (int i = 0; i < 10; i++) {
+        sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "rle", "FLOAT", "RLE", i));
+        sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "2f", "FLOAT", "TS_2DIFF", i));
+        sqls.add(String.format(CREATE_TEMPLATE_SQL, "d0", "s" + i + "rle", "DOUBLE", "RLE", i));
+        sqls.add(String.format(CREATE_TEMPLATE_SQL, "d0", "s" + i + "2f", "DOUBLE", "TS_2DIFF", i));
+      }
+      for (int i = 0; i < 10; i++) {
+        sqls.add(String.format(INSERT_TEMPLATE_SQL, "f0", "s" + i + "rle", TIMESTAMP, VALUE));
+        sqls.add(String.format(INSERT_TEMPLATE_SQL, "f0", "s" + i + "2f", TIMESTAMP, VALUE));
+        sqls.add(String.format(INSERT_TEMPLATE_SQL, "d0", "s" + i + "rle", TIMESTAMP, VALUE));
+        sqls.add(String.format(INSERT_TEMPLATE_SQL, "d0", "s" + i + "2f", TIMESTAMP, VALUE));
       }
 
-      for (int i = 0; i <= 100; i++) {
-        statement.addBatch(prepareInsertStatment(i));
+      for (String sql : sqls) {
+        statement.execute(sql);
       }
-      statement.executeBatch();
-      statement.clearBatch();
-
-      ResultSet resultSet = statement.executeQuery("select ** from root where time <= 10");
-      outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(**) from root");
-      outputResult(resultSet);
-      resultSet =
-          statement.executeQuery(
-              "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
-      outputResult(resultSet);
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
     }
