@@ -111,7 +111,7 @@ public class SeriesWindowManager implements IWindowManager {
     }
 
     if (isFirstSkip) {
-      isFirstSkip = false;
+      if (i != size) isFirstSkip = false;
       seriesWindow.setKeep(seriesWindow.getKeep() + k);
     } else if (i < size) {
       // we can create a new window beginning at index i of inputTsBlock
