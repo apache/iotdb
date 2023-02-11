@@ -59,8 +59,7 @@ public class MergeSortNode extends MultiChildProcessNode {
     return new MergeSortNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         getMergeOrderParameter(),
-        // TODO figure out the relation of outputColumns and children node
-        outputColumns.subList(startIndex, endIndex));
+        outputColumns);
   }
 
   @Override

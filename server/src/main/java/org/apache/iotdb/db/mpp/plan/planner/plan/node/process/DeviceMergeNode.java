@@ -65,11 +65,8 @@ public class DeviceMergeNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new DeviceMergeNode(
-        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        getMergeOrderParameter(),
-        // TODO figure out the relation of devices and children node
-        devices.subList(startIndex, endIndex));
+    throw new UnsupportedOperationException(
+        "DeviceMergeNode should have only one local child in single data region.");
   }
 
   @Override

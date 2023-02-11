@@ -75,7 +75,7 @@ public abstract class PlanNode implements IConsensusRequest {
    */
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     throw new UnsupportedOperationException(
-        String.format("Can't Create subNode for %s", this.getClass().toString()));
+        String.format("Can't create subNode for %s", this.getClass().toString()));
   }
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {

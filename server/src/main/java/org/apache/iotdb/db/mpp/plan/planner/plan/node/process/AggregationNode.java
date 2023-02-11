@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -36,6 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,16 +169,9 @@ public class AggregationNode extends MultiChildProcessNode {
   }
 
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new AggregationNode(
+    return new HorizontallyConcatNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        children.subList(startIndex, endIndex),
-        // TODO figure out the relation of aggregationDescriptorList and children node
-        getAggregationDescriptorList().subList(startIndex, endIndex),
-        getGroupByTimeParameter(),
-        getGroupByParameter(),
-        getGroupByExpression(),
-        outputEndTime,
-        getScanOrder());
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override
@@ -192,6 +187,18 @@ public class AggregationNode extends MultiChildProcessNode {
             .collect(Collectors.toList()));
 
     return outputColumnNames;
+  }
+
+  public static List<SeriesAggregationSourceNode> findAggregationSourceNode(PlanNode node) {
+    if (node == null) {
+      return new ArrayList<>();
+    }
+    if (node instanceof SeriesAggregationSourceNode) {
+      return Collections.singletonList((SeriesAggregationSourceNode) node);
+    }
+    List<SeriesAggregationSourceNode> ret = new ArrayList<>();
+    node.getChildren().forEach(child -> ret.addAll(findAggregationSourceNode(child)));
+    return ret;
   }
 
   @Override

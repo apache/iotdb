@@ -28,9 +28,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang3.Validate;
-
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.Validate;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -101,14 +100,9 @@ public class GroupByTagNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new GroupByTagNode(
+    return new HorizontallyConcatNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
-        this.groupByTimeParameter,
-        this.scanOrder,
-        // TODO figure out the relation of aggregationDescriptorList and children node
-        this.tagKeys,
-        this.tagValuesToAggregationDescriptors,
-        this.outputColumnNames);
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override
