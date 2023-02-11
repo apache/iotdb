@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.driver.Driver;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
@@ -189,8 +188,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
     List<DriverTask> submittedTasks = new ArrayList<>();
     for (DriverTask task : tasks) {
-      Driver driver = (Driver) task.getDriver();
-      if (driver.hasDependency()) {
+      IDriver driver = task.getDriver();
+      if (driver.getDependencyDriverIndex() != -1) {
         SettableFuture<?> blockedDependencyFuture =
             tasks.get(driver.getDependencyDriverIndex()).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(

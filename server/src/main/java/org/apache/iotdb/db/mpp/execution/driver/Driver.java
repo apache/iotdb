@@ -29,10 +29,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
+import javax.annotation.concurrent.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
 import java.util.Optional;
@@ -104,10 +103,6 @@ public abstract class Driver implements IDriver {
 
   /** release resource this driver used */
   protected abstract void releaseResource();
-
-  public boolean hasDependency() {
-    return driverContext.getDependencyDriverIndex() != -1;
-  }
 
   public int getDependencyDriverIndex() {
     return driverContext.getDependencyDriverIndex();

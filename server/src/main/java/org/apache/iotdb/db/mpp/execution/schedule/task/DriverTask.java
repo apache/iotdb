@@ -267,5 +267,10 @@ public class DriverTask implements IDIndexedAccessible {
     public ISinkHandle getSinkHandle() {
       return null;
     }
+
+    @Override
+    public int getDependencyDriverIndex() {
+      return -1;
+    }
   }
 }
