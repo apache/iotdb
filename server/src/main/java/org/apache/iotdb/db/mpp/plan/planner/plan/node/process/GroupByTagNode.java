@@ -28,8 +28,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
+
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
