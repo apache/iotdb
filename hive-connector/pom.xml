@@ -33,7 +33,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <compile.version>1.8</compile.version>
         <orc-core.version>1.6.0</orc-core.version>
-        <hive-storage-api.version>2.6.1</hive-storage-api.version>
+        <hive-storage-api.version>2.7.3</hive-storage-api.version>
     </properties>
     <dependencies>
         <dependency>
