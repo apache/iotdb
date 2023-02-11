@@ -38,142 +38,6 @@ public class DiskMetrics implements IMetricSet {
     // metrics for disks
     Set<String> diskIDs = diskMetricsManager.getDiskIDs();
     for (String diskID : diskIDs) {
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SIZE.toString(),
-          Tag.NAME.toString(),
-          "read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SIZE.toString(),
-          Tag.NAME.toString(),
-          "write",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_OPS.toString(),
-          Tag.NAME.toString(),
-          "read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_OPS.toString(),
-          Tag.NAME.toString(),
-          "write",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "write",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "avg_read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "avg_write",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SECTOR_SIZE.toString(),
-          Tag.NAME.toString(),
-          "read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SECTOR_SIZE.toString(),
-          Tag.NAME.toString(),
-          "write",
-          Tag.NAME.toString(),
-          diskID);
-    }
-
-    // metrics for datanode and config node
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_OPS.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_OPS.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "avg_read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "avg_write");
-  }
-
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    // metrics for disks
-    Set<String> diskIDs = diskMetricsManager.getDiskIDs();
-    for (String diskID : diskIDs) {
       metricService.createAutoGauge(
           Metric.DISK_IO_SIZE.toString(),
           MetricLevel.IMPORTANT,
@@ -247,19 +111,19 @@ public class DiskMetrics implements IMetricSet {
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_SECTOR_SIZE.toString(),
+          Metric.DISK_IO_SECTOR_NUM.toString(),
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgSectorSizeOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgSectorCountOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.NAME.toString(),
           "read",
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_SECTOR_SIZE.toString(),
+          Metric.DISK_IO_SECTOR_NUM.toString(),
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgSectorSizeOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.NAME.toString(),
           "write",
           Tag.NAME.toString(),
@@ -335,6 +199,142 @@ public class DiskMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getAvgWriteCostTimeOfEachOpsForDataNode,
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "avg_write");
+  }
+
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    // metrics for disks
+    Set<String> diskIDs = diskMetricsManager.getDiskIDs();
+    for (String diskID : diskIDs) {
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_SIZE.toString(),
+          Tag.NAME.toString(),
+          "read",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_SIZE.toString(),
+          Tag.NAME.toString(),
+          "write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_OPS.toString(),
+          Tag.NAME.toString(),
+          "read",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_OPS.toString(),
+          Tag.NAME.toString(),
+          "write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_TIME.toString(),
+          Tag.NAME.toString(),
+          "read",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_TIME.toString(),
+          Tag.NAME.toString(),
+          "write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_TIME.toString(),
+          Tag.NAME.toString(),
+          "avg_read",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_TIME.toString(),
+          Tag.NAME.toString(),
+          "avg_write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_SECTOR_NUM.toString(),
+          Tag.NAME.toString(),
+          "read",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.DISK_IO_SECTOR_NUM.toString(),
+          Tag.NAME.toString(),
+          "write",
+          Tag.NAME.toString(),
+          diskID);
+    }
+
+    // metrics for datanode and config node
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_SIZE.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "read");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_SIZE.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "write");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_OPS.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "read");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_OPS.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "write");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_TIME.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "read");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_TIME.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "write");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_TIME.toString(),
+        Tag.NAME.toString(),
+        "datanode",
+        Tag.NAME.toString(),
+        "avg_read");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_TIME.toString(),
         Tag.NAME.toString(),
         "datanode",
         Tag.NAME.toString(),

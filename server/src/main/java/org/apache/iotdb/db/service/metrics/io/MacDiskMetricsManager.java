@@ -67,12 +67,12 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Double> getAvgSectorSizeOfEachReadForDisk() {
+  public Map<String, Double> getAvgSectorCountOfEachReadForDisk() {
     return Collections.emptyMap();
   }
 
   @Override
-  public Map<String, Double> getAvgSectorSizeOfEachWriteForDisk() {
+  public Map<String, Double> getAvgSectorCountOfEachWriteForDisk() {
     return Collections.emptyMap();
   }
 

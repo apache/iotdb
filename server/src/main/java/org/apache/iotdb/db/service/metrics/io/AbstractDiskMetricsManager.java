@@ -40,9 +40,9 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk();
 
-  public abstract Map<String, Double> getAvgSectorSizeOfEachReadForDisk();
+  public abstract Map<String, Double> getAvgSectorCountOfEachReadForDisk();
 
-  public abstract Map<String, Double> getAvgSectorSizeOfEachWriteForDisk();
+  public abstract Map<String, Double> getAvgSectorCountOfEachWriteForDisk();
 
   public abstract long getReadDataSizeForDataNode();
 
