@@ -110,4 +110,8 @@ public class SchemaLogWriter<T> implements AutoCloseable {
   public synchronized void close() throws IOException {
     fileOutputStream.close();
   }
+
+  public long position() throws IOException {
+    return fileOutputStream.getChannel().position();
+  }
 }

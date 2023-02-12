@@ -29,8 +29,8 @@ import java.nio.channels.FileChannel;
  * The data structure of the MLog description file.
  *
  * <ul>
- *   <li>1 long (8 bytes): check point of MLog started from 0, which means that MLog entries with an
- *       index less than the checkpoint do not need to be redone
+ *   <li>1 long (8 bytes): check point of MLog started from 0, which means that MLog entries with
+ *       offset less than the checkpoint do not need to be redone
  * </ul>
  */
 public class MLogDescription {

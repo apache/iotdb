@@ -40,7 +40,6 @@ public class MLogDescriptionWriter {
     fileChannel =
         FileChannel.open(new File(schemaDir, logFileName).toPath(), StandardOpenOption.WRITE);
     mLogDescription = new MLogDescription();
-    mLogDescription.serialize(fileChannel);
   }
 
   public synchronized void updateCheckPoint(long checkPoint) throws IOException {

@@ -37,7 +37,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
-import org.apache.iotdb.db.metadata.logfile.MLogDescription;
+import org.apache.iotdb.db.metadata.logfile.MLogDescriptionReader;
 import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
@@ -82,7 +82,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -140,8 +139,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
   private MLogDescriptionWriter logDescriptionWriter;
-  /* Next index of MLog*/
-  private long idx = 0;
 
   private final SchemaStatisticsManager schemaStatisticsManager =
       SchemaStatisticsManager.getInstance();
@@ -227,7 +224,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private void flushCallback() {
     if (usingMLog && !isRecovering) {
       try {
-        logDescriptionWriter.updateCheckPoint(idx);
+        logDescriptionWriter.updateCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
             "Update {} failed because {}",
@@ -265,7 +262,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   private void initMLog() throws IOException {
-    idx = initFromLog();
+    initFromLog();
 
     logWriter =
         new SchemaLogWriter<>(
@@ -280,7 +277,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
-      idx++;
     }
   }
 
@@ -301,13 +297,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
-  /**
-   * Init from metadata log file.
-   *
-   * @return next index of the logFile
-   */
+  /** Init from metadata log file. */
   @SuppressWarnings("squid:S3776")
-  private long initFromLog() throws IOException {
+  private void initFromLog() throws IOException {
     File logFile =
         SystemFileFactory.INSTANCE.getFile(
             schemaRegionDirPath + File.separator + MetadataConstant.METADATA_LOG);
@@ -318,59 +310,51 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
-      long startIndex = 0;
-      if (logDescriptionFile.exists()) {
-        try (FileInputStream fileInputStream = new FileInputStream(logDescriptionFile)) {
-          MLogDescription mLogDescription = new MLogDescription();
-          mLogDescription.deserialize(fileInputStream);
-          startIndex = mLogDescription.getCheckPoint();
-          logger.info("MLog recovery check point: {}", startIndex);
-        } catch (IOException e) {
-          logger.warn("Can not get check point in MLogDescription file, use default value 0.");
-        }
+      long mLogOffset = 0;
+      try {
+        MLogDescriptionReader mLogDescriptionReader =
+            new MLogDescriptionReader(
+                schemaRegionDirPath, MetadataConstant.METADATA_LOG_DESCRIPTION);
+        mLogOffset = mLogDescriptionReader.readCheckPoint();
+        logger.info("MLog recovery check point: {}", mLogOffset);
+      } catch (IOException e) {
+        logger.warn(
+            "Can not get check point in MLogDescription file because {}, use default value 0.",
+            e.getMessage());
       }
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
               MetadataConstant.METADATA_LOG,
               new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()))) {
-        long nextIndex = applyMLog(mLogReader, startIndex);
+        applyMLog(mLogReader, mLogOffset);
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
             storageGroupFullPath);
-        return nextIndex;
       } catch (Exception e) {
         e.printStackTrace();
         throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
       }
-    } else {
-      return 0;
     }
   }
 
   /**
    * Redo metadata log file.
    *
-   * @param startIndex start index to redo MLog
-   * @return next index of the logFile
+   * @param offset start position to redo MLog
    */
-  private long applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader, long startIndex) {
-    long nextIndex = 0;
+  private void applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader, long offset) {
     ISchemaRegionPlan plan;
     RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
     RecoverOperationResult operationResult;
+    try {
+      mLogReader.skip(offset);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     while (mLogReader.hasNext()) {
-      try {
-        plan = mLogReader.next();
-        nextIndex++;
-      } catch (Exception e) {
-        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
-        break;
-      }
-      if (nextIndex <= startIndex || plan == null) {
-        continue;
-      }
+      plan = mLogReader.next();
       operationResult = plan.accept(recoverPlanOperator, this);
       if (operationResult.isFailed()) {
         logger.error(
@@ -384,8 +368,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       throw new IllegalStateException(
           "The mlog.bin has been corrupted. Please remove it or fix it, and then restart IoTDB");
     }
-
-    return nextIndex;
   }
 
   /** function for clearing metadata components of one schema region */
@@ -578,6 +560,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         }
       } catch (AliasAlreadyExistException | PathAlreadyExistException e) {
         // skip
+        done = true;
       }
     }
   }
