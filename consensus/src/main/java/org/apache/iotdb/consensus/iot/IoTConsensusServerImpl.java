@@ -726,6 +726,14 @@ public class IoTConsensusServerImpl {
     return config;
   }
 
+  public long getLogEntriesFromWAL() {
+    return logDispatcher.getLogEntriesFromWAL();
+  }
+
+  public long getLogEntriesFromQueue() {
+    return logDispatcher.getLogEntriesFromQueue();
+  }
+
   public boolean needBlockWrite() {
     return reader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
   }
