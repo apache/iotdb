@@ -47,9 +47,9 @@ import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorag
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -131,7 +131,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -275,80 +274,123 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+  public TSStatus setDatabase(TStorageGroupSchema databaseSchema) {
     TSStatus errorResp = null;
 
     // Set default configurations if necessary
-    if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
-    } else if (storageGroupSchema.getTTL() <= 0) {
+    if (!databaseSchema.isSetTTL()) {
+      databaseSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    } else if (databaseSchema.getTTL() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to create database. The TTL should be positive.");
     }
 
-    if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
-      storageGroupSchema.setSchemaReplicationFactor(
-          CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
-    } else if (storageGroupSchema.getSchemaReplicationFactor() <= 0) {
+    if (!databaseSchema.isSetSchemaReplicationFactor()) {
+      databaseSchema.setSchemaReplicationFactor(CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
+    } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The schemaReplicationFactor should be positive.");
     }
 
-    if (!storageGroupSchema.isSetDataReplicationFactor()) {
-      storageGroupSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
-    } else if (storageGroupSchema.getDataReplicationFactor() <= 0) {
+    if (!databaseSchema.isSetDataReplicationFactor()) {
+      databaseSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
+    } else if (databaseSchema.getDataReplicationFactor() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The dataReplicationFactor should be positive.");
     }
 
-    if (!storageGroupSchema.isSetTimePartitionInterval()) {
-      storageGroupSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
-    } else if (storageGroupSchema.getTimePartitionInterval() <= 0) {
+    if (!databaseSchema.isSetTimePartitionInterval()) {
+      databaseSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
+    } else if (databaseSchema.getTimePartitionInterval() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The timePartitionInterval should be positive.");
     }
 
-    if (!storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
-      storageGroupSchema.setMinSchemaRegionGroupNum(
+    if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
+      databaseSchema.setMinSchemaRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupNumPerDatabase());
-    } else if (storageGroupSchema.getMinSchemaRegionGroupNum() <= 0) {
+    } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The schemaRegionGroupNum should be positive.");
     }
 
-    if (!storageGroupSchema.isSetMinDataRegionGroupNum()) {
-      storageGroupSchema.setMinDataRegionGroupNum(
+    if (!databaseSchema.isSetMinDataRegionGroupNum()) {
+      databaseSchema.setMinDataRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultDataRegionGroupNumPerDatabase());
-    } else if (storageGroupSchema.getMinDataRegionGroupNum() <= 0) {
+    } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetStorageGroupRequest {} with result {}", req, errorResp);
+      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
       return errorResp;
     }
 
     // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
-    storageGroupSchema.setMaxSchemaRegionGroupNum(storageGroupSchema.getMinSchemaRegionGroupNum());
-    storageGroupSchema.setMaxDataRegionGroupNum(storageGroupSchema.getMinDataRegionGroupNum());
+    databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
+    databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
-    SetStorageGroupPlan setReq = new SetStorageGroupPlan(storageGroupSchema);
-    TSStatus resp = configManager.setStorageGroup(setReq);
+    DatabaseSchemaPlan setPlan =
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
+    TSStatus resp = configManager.setDatabase(setPlan);
 
     // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
-    LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+    LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
+
+    return resp;
+  }
+
+  @Override
+  public TSStatus alterDatabase(TStorageGroupSchema databaseSchema) {
+    TSStatus errorResp = null;
+
+    // TODO: Support alter the following fields
+    if (databaseSchema.isSetTTL()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+    }
+    if (databaseSchema.isSetSchemaReplicationFactor()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER SchemaReplicationFactor yet.");
+    }
+    if (databaseSchema.isSetDataReplicationFactor()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
+    }
+    if (databaseSchema.isSetTimePartitionInterval()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage(
+                  "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
+    }
+
+    if (errorResp != null) {
+      LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);
+      return errorResp;
+    }
+
+    DatabaseSchemaPlan alterPlan =
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, databaseSchema);
+    TSStatus resp = configManager.alterDatabase(alterPlan);
+
+    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
+    LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
 
     return resp;
   }

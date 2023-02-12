@@ -287,6 +287,8 @@ public class ConfigNodeConfig {
   /** The getOrCreatePartitionTable interface will log new created Partition if set true */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
+  private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1099,5 +1101,13 @@ public class ConfigNodeConfig {
 
   public void setEnablePrintingNewlyCreatedPartition(boolean enablePrintingNewlyCreatedPartition) {
     isEnablePrintingNewlyCreatedPartition = enablePrintingNewlyCreatedPartition;
+  }
+
+  public long getForceWalPeriodForConfigNodeSimpleInMs() {
+    return forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
+    this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
   }
 }

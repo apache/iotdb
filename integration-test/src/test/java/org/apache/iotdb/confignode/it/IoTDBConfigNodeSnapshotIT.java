@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -116,9 +115,8 @@ public class IoTDBConfigNodeSnapshotIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        TSetStorageGroupReq setStorageGroupReq =
-            new TSetStorageGroupReq(new TStorageGroupSchema(storageGroup));
-        TSStatus status = client.setStorageGroup(setStorageGroupReq);
+        TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(storageGroup);
+        TSStatus status = client.setDatabase(storageGroupSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
