@@ -238,6 +238,8 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | 副本组Batch中来自WAL的日志项数量 |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | 副本组Batch中来自队列的日志项数量  |
 | stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
 | stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时         |
 | stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时             |
@@ -279,8 +281,11 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ------ | ------------------------------------ | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"             | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
 | mem    | name="chunkMetaData_{{name}}"        | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
-| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte          |
+| mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="IoTConsensusQueue"             | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte             |
+| mem    | name="IoTConsensusSync"              | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte             |
+| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
+| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
 
 #### 4.2.6. 合并统计
 
