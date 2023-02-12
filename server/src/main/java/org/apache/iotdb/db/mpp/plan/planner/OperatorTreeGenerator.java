@@ -2227,7 +2227,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       int exchangeNodeIndex = node.getChildren().size();
       for (int i = 0; i < node.getChildren().size(); i++) {
         // We do this based on that exchangeNode should appear at last
-        if (node instanceof ExchangeNode) {
+        if (node.getChildren().get(i) instanceof ExchangeNode) {
           exchangeNodeIndex = i;
           break;
         }

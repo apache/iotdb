@@ -46,25 +46,19 @@ public class JDBCExample {
             DriverManager.getConnection(
                 "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.fans");
+      statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.fans.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE");
 
-      sqls.add("CREATE DATABASE root.vehicle.f0");
-      sqls.add("CREATE DATABASE root.vehicle.d0");
-      for (int i = 0; i < 10; i++) {
-        sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "rle", "FLOAT", "RLE", i));
-        sqls.add(String.format(CREATE_TEMPLATE_SQL, "f0", "s" + i + "2f", "FLOAT", "TS_2DIFF", i));
-        sqls.add(String.format(CREATE_TEMPLATE_SQL, "d0", "s" + i + "rle", "DOUBLE", "RLE", i));
-        sqls.add(String.format(CREATE_TEMPLATE_SQL, "d0", "s" + i + "2f", "DOUBLE", "TS_2DIFF", i));
-      }
-      for (int i = 0; i < 10; i++) {
-        sqls.add(String.format(INSERT_TEMPLATE_SQL, "f0", "s" + i + "rle", TIMESTAMP, VALUE));
-        sqls.add(String.format(INSERT_TEMPLATE_SQL, "f0", "s" + i + "2f", TIMESTAMP, VALUE));
-        sqls.add(String.format(INSERT_TEMPLATE_SQL, "d0", "s" + i + "rle", TIMESTAMP, VALUE));
-        sqls.add(String.format(INSERT_TEMPLATE_SQL, "d0", "s" + i + "2f", TIMESTAMP, VALUE));
-      }
+      for (int time = 1; time < 10; time++) {
 
-      for (String sql : sqls) {
+        String sql =
+            String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 10);
+        statement.execute(sql);
+        sql = String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 5);
         statement.execute(sql);
       }
+
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
     }
