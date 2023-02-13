@@ -68,10 +68,7 @@ public abstract class AbstractDiskMetricsManager {
    * @return
    */
   public static AbstractDiskMetricsManager getDiskMetricsManager() {
-    String os = System.getProperty("os.name");
-    if (os == null) {
-      throw new RuntimeException("Cannot get the name of operation system");
-    }
+    String os = System.getProperty("os.name").toLowerCase();
 
     if (os.startsWith("windows")) {
       return new WindowsDiskMetricsManager();
