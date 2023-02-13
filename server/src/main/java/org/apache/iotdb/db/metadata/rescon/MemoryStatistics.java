@@ -100,7 +100,10 @@ public class MemoryStatistics {
   }
 
   public void clearSchemaRegion(int schemaRegionId) {
-    memoryUsage.getAndUpdate(v -> v -= memoryUsagePerRegion.remove(schemaRegionId));
+    Long releaseMemory = memoryUsagePerRegion.remove(schemaRegionId);
+    if (releaseMemory != null) {
+      memoryUsage.getAndUpdate(v -> v -= releaseMemory);
+    }
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
       logger.info("Current series number {} come back to normal level", memoryUsage);
       allowToCreateNewSeries = true;
