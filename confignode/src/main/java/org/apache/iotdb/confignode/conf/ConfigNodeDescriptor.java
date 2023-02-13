@@ -215,6 +215,20 @@ public class ConfigNodeDescriptor {
                     "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
                 .trim()));
 
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDefaultSchemaRegionGroupNumPerDatabase(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "default_schema_region_group_num_per_database",
+                    String.valueOf(conf.getDefaultSchemaRegionGroupNumPerDatabase()))
+                .trim()));
+
     conf.setSchemaRegionPerDataNode(
         Double.parseDouble(
             properties
@@ -223,29 +237,17 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
-    conf.setSchemaRegionGroupExtensionPolicy(
-        RegionGroupExtensionPolicy.parse(
-            properties.getProperty(
-                "schema_region_group_extension_policy",
-                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
-
-    conf.setSchemaRegionGroupPerDatabase(
-        Integer.parseInt(
-            properties.getProperty(
-                "schema_region_group_per_database",
-                String.valueOf(conf.getSchemaRegionGroupPerDatabase()).trim())));
-
     conf.setDataRegionGroupExtensionPolicy(
         RegionGroupExtensionPolicy.parse(
             properties.getProperty(
                 "data_region_group_extension_policy",
                 conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
 
-    conf.setDataRegionGroupPerDatabase(
+    conf.setDefaultDataRegionGroupNumPerDatabase(
         Integer.parseInt(
             properties.getProperty(
-                "data_region_group_per_database",
-                String.valueOf(conf.getDataRegionGroupPerDatabase()).trim())));
+                "default_data_region_group_num_per_database",
+                String.valueOf(conf.getDefaultDataRegionGroupNumPerDatabase()).trim())));
 
     conf.setDataRegionPerProcessor(
         Double.parseDouble(
@@ -253,12 +255,6 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
                 .trim()));
-
-    if (properties.getProperty("least_data_region_group_num") != null) {
-      conf.setLeastDataRegionGroupNum(
-          Integer.parseInt(properties.getProperty("least_data_region_group_num")));
-      conf.setLeastDataRegionGroupNumSetByUser(true);
-    }
 
     try {
       conf.setRegionAllocateStrategy(
@@ -759,6 +755,22 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_ratis_log_max_size",
                     String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
+
+    conf.setEnablePrintingNewlyCreatedPartition(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_printing_newly_created_partition",
+                    String.valueOf(conf.isEnablePrintingNewlyCreatedPartition()))
+                .trim()));
+
+    conf.setForceWalPeriodForConfigNodeSimpleInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "force_wal_period_for_confignode_simple_in_ms",
+                    String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
                 .trim()));
   }
 

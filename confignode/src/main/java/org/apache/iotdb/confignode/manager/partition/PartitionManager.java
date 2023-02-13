@@ -59,9 +59,9 @@ import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -107,11 +107,8 @@ public class PartitionManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getSchemaRegionGroupExtensionPolicy();
-  private static final int SCHEMA_REGION_GROUP_PER_DATABASE =
-      CONF.getSchemaRegionGroupPerDatabase();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
-  private static final int DATA_REGION_GROUP_PER_DATABASE = CONF.getDataRegionGroupPerDatabase();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -318,7 +315,16 @@ public class PartitionManager {
       }
     }
 
-    return (DataPartitionResp) getDataPartition(req);
+    resp = (DataPartitionResp) getDataPartition(req);
+    if (!resp.isAllPartitionsExist()) {
+      LOGGER.error(
+          "Lacked some data partition allocation result in the response of getOrCreateDataPartition method");
+      resp.setStatus(
+          new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some data partition allocation result in the response"));
+      return resp;
+    }
+    return resp;
   }
 
   // ======================================================
@@ -366,7 +372,7 @@ public class PartitionManager {
       LOGGER.error(prompt);
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(prompt);
-    } catch (StorageGroupNotExistsException e) {
+    } catch (DatabaseNotExistsException e) {
       String prompt = "ConfigNode failed to extend Region because some StorageGroup doesn't exist.";
       LOGGER.error(prompt);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
@@ -378,22 +384,21 @@ public class PartitionManager {
 
   private TSStatus customExtendRegionGroupIfNecessary(
       Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
-      throws StorageGroupNotExistsException, NotEnoughDataNodeException {
+      throws DatabaseNotExistsException, NotEnoughDataNodeException {
 
     // Map<StorageGroup, Region allotment>
     Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
-      final String storageGroup = entry.getKey();
-      float allocatedRegionGroupCount =
-          partitionInfo.getRegionGroupCount(storageGroup, consensusGroupType);
+      final String database = entry.getKey();
+      int minRegionGroupNum =
+          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      int allocatedRegionGroupCount =
+          partitionInfo.getRegionGroupCount(database, consensusGroupType);
 
-      if (allocatedRegionGroupCount == 0) {
-        allotmentMap.put(
-            storageGroup,
-            TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
-                ? SCHEMA_REGION_GROUP_PER_DATABASE
-                : DATA_REGION_GROUP_PER_DATABASE);
+      // Extend RegionGroups until allocatedRegionGroupCount == minRegionGroupNum
+      if (allocatedRegionGroupCount < minRegionGroupNum) {
+        allotmentMap.put(database, minRegionGroupNum - allocatedRegionGroupCount);
       }
     }
 
@@ -402,39 +407,37 @@ public class PartitionManager {
 
   private TSStatus autoExtendRegionGroupIfNecessary(
       Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Map<StorageGroup, Region allotment>
     Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
-      final String storageGroup = entry.getKey();
+      final String database = entry.getKey();
       final int unassignedPartitionSlotsCount = entry.getValue();
 
       float allocatedRegionGroupCount =
-          partitionInfo.getRegionGroupCount(storageGroup, consensusGroupType);
+          partitionInfo.getRegionGroupCount(database, consensusGroupType);
       // The slotCount equals to the sum of assigned slot count and unassigned slot count
       float slotCount =
-          (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(storageGroup)
+          (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(database)
               + unassignedPartitionSlotsCount;
       float maxRegionGroupCount =
-          getClusterSchemaManager().getMaxRegionGroupNum(storageGroup, consensusGroupType);
+          getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
-      // 1. The number of current RegionGroup of the StorageGroup is less than the least number
-      int leastRegionGroupNum =
-          TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
-              ? CONF.getLeastSchemaRegionGroupNum()
-              : CONF.getLeastDataRegionGroupNum();
-      if (allocatedRegionGroupCount < leastRegionGroupNum) {
+      // 1. The number of current RegionGroup of the StorageGroup is less than the minimum number
+      int minRegionGroupNum =
+          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      if (allocatedRegionGroupCount < minRegionGroupNum) {
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
-        // no less than the leastRegionGroupNum
+        // no less than the minRegionGroupNum
         int delta =
             (int)
                 Math.min(
-                    unassignedPartitionSlotsCount, leastRegionGroupNum - allocatedRegionGroupCount);
-        allotmentMap.put(storageGroup, delta);
+                    unassignedPartitionSlotsCount, minRegionGroupNum - allocatedRegionGroupCount);
+        allotmentMap.put(database, delta);
         continue;
       }
 
@@ -453,15 +456,15 @@ public class PartitionManager {
                         Math.ceil(
                             slotCount * maxRegionGroupCount / maxSlotCount
                                 - allocatedRegionGroupCount)));
-        allotmentMap.put(storageGroup, delta);
+        allotmentMap.put(database, delta);
         continue;
       }
 
       // 3. All RegionGroups in the specified StorageGroup are disabled currently
       if (allocatedRegionGroupCount
-              == filterRegionGroupThroughStatus(storageGroup, RegionGroupStatus.Disabled).size()
+              == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
           && allocatedRegionGroupCount < maxRegionGroupCount) {
-        allotmentMap.put(storageGroup, 1);
+        allotmentMap.put(database, 1);
       }
     }
 
@@ -470,7 +473,7 @@ public class PartitionManager {
 
   private TSStatus generateAndAllocateRegionGroups(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
     if (!allotmentMap.isEmpty()) {
       CreateRegionGroupsPlan createRegionGroupsPlan =
           getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
@@ -562,10 +565,10 @@ public class PartitionManager {
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
    * @return Number of Regions currently owned by the specific StorageGroup
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
    */
   public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
-      throws StorageGroupNotExistsException {
+      throws DatabaseNotExistsException {
     return partitionInfo.getRegionGroupCount(storageGroup, type);
   }
 

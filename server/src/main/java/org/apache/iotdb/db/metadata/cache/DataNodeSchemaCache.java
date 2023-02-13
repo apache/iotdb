@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -33,8 +35,10 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -59,6 +63,7 @@ public class DataNodeSchemaCache {
             .weigher(
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
+            .recordStats()
             .build();
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
@@ -133,6 +138,46 @@ public class DataNodeSchemaCache {
       schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
     }
     return schemaTree;
+  }
+
+  public List<Integer> compute(ISchemaComputation schemaComputation) {
+    PartialPath devicePath = schemaComputation.getDevicePath();
+    String[] measurements = schemaComputation.getMeasurements();
+    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    boolean isFirstMeasurement = true;
+    PartialPath fullPath;
+    for (int i = 0, length = measurements.length; i < length; i++) {
+      String measurement = measurements[i];
+      fullPath = devicePath.concatNode(measurement);
+      SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
+      if (schemaCacheEntry == null) {
+        indexOfMissingMeasurements.add(i);
+      } else {
+        if (isFirstMeasurement) {
+          schemaComputation.computeDevice(schemaCacheEntry.isAligned());
+          isFirstMeasurement = false;
+        }
+        schemaComputation.computeMeasurement(
+            i,
+            new IMeasurementSchemaInfo() {
+              @Override
+              public String getName() {
+                return measurement;
+              }
+
+              @Override
+              public MeasurementSchema getSchema() {
+                return schemaCacheEntry.getMeasurementSchema();
+              }
+
+              @Override
+              public String getAlias() {
+                throw new UnsupportedOperationException();
+              }
+            });
+      }
+    }
+    return indexOfMissingMeasurements;
   }
 
   public void put(ClusterSchemaTree schemaTree) {

@@ -191,6 +191,7 @@ keyWords
     | USER
     | USING
     | VALUES
+    | VARIATION
     | VERIFY
     | VERSION
     | WHERE

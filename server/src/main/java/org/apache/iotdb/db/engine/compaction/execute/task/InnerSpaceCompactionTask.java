@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -90,11 +90,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       isHoldingReadLock[i] = false;
     }
     if (sequence) {
-      tsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
     } else {
-      tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     }
     this.hashCode = this.toString().hashCode();
+    this.innerSeqTask = sequence;
+    this.crossTask = false;
     collectSelectedFilesInfo();
     createSummary();
   }
@@ -246,7 +248,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       TsFileMetricManager.getInstance()
           .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
 
-      CompactionMetricsRecorder.updateSummary(summary);
+      CompactionMetricsManager.getInstance().updateSummary(summary);
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(

@@ -38,7 +38,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -76,7 +75,7 @@ public class IoTDBPartitionGetterIT {
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
-  private static final int testLeastDataRegionGroupNum = 5;
+  private static final int testDataRegionGroupPerDatabase = 5;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -96,7 +95,7 @@ public class IoTDBPartitionGetterIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
     // .setSeriesSlotNum(testSeriesPartitionSlotNum);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -113,8 +112,7 @@ public class IoTDBPartitionGetterIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set StorageGroups */
       for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        TSStatus status = client.setStorageGroup(setReq);
+        TSStatus status = client.setDatabase(new TStorageGroupSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
@@ -293,7 +291,7 @@ public class IoTDBPartitionGetterIT {
           (int)
               Math.ceil(
                   (double) totalCpuCoreNum / (double) (storageGroupNum * testReplicationFactor));
-      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testLeastDataRegionGroupNum);
+      leastDataRegionGroupNum = Math.min(leastDataRegionGroupNum, testDataRegionGroupPerDatabase);
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;

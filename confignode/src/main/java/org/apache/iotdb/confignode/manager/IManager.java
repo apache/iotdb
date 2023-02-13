@@ -36,9 +36,9 @@ import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorag
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -274,11 +274,18 @@ public interface IManager {
   DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupPlan);
 
   /**
-   * Set StorageGroup
+   * Set Database
    *
-   * @return status
+   * @return TSStatus
    */
-  TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan);
+  TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan);
+
+  /**
+   * Alter Database
+   *
+   * @return TSStatus
+   */
+  TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
    * Delete StorageGroups

@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -238,8 +237,7 @@ public class PartitionCache {
         for (String storageGroupName : storageGroupNamesNeedCreated) {
           TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
           storageGroupSchema.setName(storageGroupName);
-          TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-          TSStatus tsStatus = client.setStorageGroup(req);
+          TSStatus tsStatus = client.setDatabase(storageGroupSchema);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
           } else {

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -91,8 +90,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       // Set StorageGroups
       for (int i = 0; i < storageGroupNum; i++) {
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
+        status = client.setDatabase(new TStorageGroupSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
@@ -142,8 +140,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         // Set StorageGroups
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-        status = client.setStorageGroup(setReq);
+        status = client.setDatabase(new TStorageGroupSchema(sg + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         // Create a DataRegionGroup for each StorageGroup

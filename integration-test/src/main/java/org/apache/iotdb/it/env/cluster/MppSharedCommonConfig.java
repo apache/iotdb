@@ -194,9 +194,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    cnConfig.setSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
-    dnConfig.setSchemaRegionGroupPerDatabase(schemaRegionGroupPerDatabase);
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    cnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
+    dnConfig.setDefaultSchemaRegionGroupNumPerDatabase(schemaRegionGroupPerDatabase);
     return this;
   }
 
@@ -208,9 +208,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    cnConfig.setDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
-    dnConfig.setDataRegionGroupPerDatabase(dataRegionGroupPerDatabase);
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    cnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
+    dnConfig.setDefaultDataRegionGroupNumPerDatabase(dataRegionGroupPerDatabase);
     return this;
   }
 
@@ -317,13 +317,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    cnConfig.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
-    dnConfig.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     cnConfig.setQueryThreadCount(queryThreadCount);
     dnConfig.setQueryThreadCount(queryThreadCount);
@@ -341,6 +334,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    dnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
     return this;
   }
 }

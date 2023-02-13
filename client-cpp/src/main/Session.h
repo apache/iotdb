@@ -127,7 +127,7 @@ public:
 
 namespace Version {
     enum Version {
-        V_0_12, V_0_13
+        V_0_12, V_0_13, V_1_0
     };
 }
 
@@ -985,7 +985,7 @@ private:
     std::string getVersionString(Version::Version version);
 
 public:
-    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_0_13) {
+    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_1_0) {
         this->host = host;
         this->rpcPort = rpcPort;
     }
@@ -997,7 +997,7 @@ public:
         this->username = username;
         this->password = password;
         this->zoneId = "UTC+08:00";
-        this->version = Version::V_0_13;
+        this->version = Version::V_1_0;
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
@@ -1008,7 +1008,7 @@ public:
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
-        this->version = Version::V_0_13;
+        this->version = Version::V_1_0;
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
@@ -1019,7 +1019,7 @@ public:
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
-        this->version = Version::V_0_13;
+        this->version = Version::V_1_0;
     }
 
     ~Session();

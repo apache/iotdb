@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
@@ -122,7 +123,8 @@ public class SinkHandleTest {
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
-    //            localFragmentInstanceId.getInstanceId(),
+    //
+    // FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
     //            localPlanNodeId,
     //            mockTsBlockSize * numOfMockTsBlock,
     //            Long.MAX_VALUE);
@@ -170,7 +172,8 @@ public class SinkHandleTest {
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock * mockTsBlockSize);
     Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkHandle);
@@ -207,7 +210,8 @@ public class SinkHandleTest {
     MemoryPool mockMemoryPool =
         Utils.createMockBlockedMemoryPool(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock,
             mockTsBlockSize);
@@ -269,7 +273,8 @@ public class SinkHandleTest {
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
-    //            localFragmentInstanceId.getInstanceId(),
+    //
+    // FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
     //            localPlanNodeId,
     //            mockTsBlockSize * numOfMockTsBlock,
     //            Long.MAX_VALUE);
@@ -310,7 +315,8 @@ public class SinkHandleTest {
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock * mockTsBlockSize);
 
@@ -326,7 +332,8 @@ public class SinkHandleTest {
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(3))
     //        .reserve(
     //            queryId,
-    //            localFragmentInstanceId.getInstanceId(),
+    //
+    // FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
     //            localPlanNodeId,
     //            mockTsBlockSize * numOfMockTsBlock,
     //            Long.MAX_VALUE);
@@ -386,7 +393,8 @@ public class SinkHandleTest {
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .free(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock * mockTsBlockSize);
     Mockito.verify(mockSinkHandleListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkHandle);
@@ -409,7 +417,8 @@ public class SinkHandleTest {
     MemoryPool mockMemoryPool =
         Utils.createMockBlockedMemoryPool(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock,
             mockTsBlockSize);
@@ -472,7 +481,8 @@ public class SinkHandleTest {
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
-    //            localFragmentInstanceId.getInstanceId(),
+    //
+    // FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
     //            localPlanNodeId,
     //            mockTsBlockSize * numOfMockTsBlock,
     //            Long.MAX_VALUE);

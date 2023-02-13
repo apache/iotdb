@@ -2224,8 +2224,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
-                tsFileManager.getSequenceListByTimePartition(0),
-                tsFileManager.getUnsequenceListByTimePartition(0))
+                tsFileManager.getOrCreateSequenceListByTimePartition(0),
+                tsFileManager.getOrCreateUnsequenceListByTimePartition(0))
             .get(0);
     Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(1, sourceFiles.getUnseqFiles().size());
@@ -2251,8 +2251,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         0,
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
-                tsFileManager.getSequenceListByTimePartition(0),
-                tsFileManager.getUnsequenceListByTimePartition(0))
+                tsFileManager.getOrCreateSequenceListByTimePartition(0),
+                tsFileManager.getOrCreateUnsequenceListByTimePartition(0))
             .size());
 
     // Target file of the first task should not be selected to participate in other inner compaction
@@ -2271,8 +2271,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     // compaction task
     List<CrossCompactionTaskResource> pairs =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
-            tsFileManager.getSequenceListByTimePartition(0),
-            tsFileManager.getUnsequenceListByTimePartition(0));
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, pairs.size());
     Assert.assertEquals(2, pairs.get(0).getSeqFiles().size());
     Assert.assertEquals(1, pairs.get(0).getUnseqFiles().size());

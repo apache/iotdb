@@ -43,9 +43,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
@@ -53,7 +53,7 @@ import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
@@ -134,7 +134,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     String storageGroupName = plan.getSchema().getName();
     StorageGroupPartitionTable storageGroupPartitionTable =
         new StorageGroupPartitionTable(storageGroupName);
@@ -614,12 +614,12 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
    * @return Number of Regions currently owned by the specific StorageGroup
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
    */
   public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
-      throws StorageGroupNotExistsException {
+      throws DatabaseNotExistsException {
     if (!isStorageGroupExisted(storageGroup)) {
-      throw new StorageGroupNotExistsException(storageGroup);
+      throw new DatabaseNotExistsException(storageGroup);
     }
 
     return storageGroupPartitionTables.get(storageGroup).getRegionGroupCount(type);

@@ -16,30 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteTimeseriesSchemaFileIT extends IoTDBDeleteTimeseriesIT {
+public interface IMeasurementSchemaInfo {
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-    super.setUp();
-  }
+  String getName();
 
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
-  }
+  MeasurementSchema getSchema();
+
+  String getAlias();
 }

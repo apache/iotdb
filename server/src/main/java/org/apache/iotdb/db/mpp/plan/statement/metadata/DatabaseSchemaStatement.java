@@ -29,45 +29,93 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class SetStorageGroupStatement extends Statement implements IConfigStatement {
+public class DatabaseSchemaStatement extends Statement implements IConfigStatement {
+
+  private final DatabaseSchemaStatementType subType;
+
   private PartialPath storageGroupPath;
-  private Long ttl = null;
+  private Long TTL = null;
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
   private Long timePartitionInterval = null;
+  private Integer schemaRegionGroupNum = null;
+  private Integer dataRegionGroupNum = null;
 
-  public SetStorageGroupStatement() {
+  public DatabaseSchemaStatement(DatabaseSchemaStatementType subType) {
     super();
-    statementType = StatementType.SET_STORAGE_GROUP;
+    this.subType = subType;
+    statementType = StatementType.STORAGE_GROUP_SCHEMA;
+  }
+
+  public DatabaseSchemaStatementType getSubType() {
+    return subType;
   }
 
   public PartialPath getStorageGroupPath() {
     return storageGroupPath;
   }
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetStorageGroup(this, context);
-  }
-
   public void setStorageGroupPath(PartialPath storageGroupPath) {
     this.storageGroupPath = storageGroupPath;
   }
 
-  public void setTtl(Long ttl) {
-    this.ttl = ttl;
+  public Long getTTL() {
+    return TTL;
+  }
+
+  public void setTTL(Long TTL) {
+    this.TTL = TTL;
+  }
+
+  public Integer getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
   public void setSchemaReplicationFactor(Integer schemaReplicationFactor) {
     this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
+  public Integer getDataReplicationFactor() {
+    return dataReplicationFactor;
+  }
+
   public void setDataReplicationFactor(Integer dataReplicationFactor) {
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
+  public Long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
   public void setTimePartitionInterval(Long timePartitionInterval) {
     this.timePartitionInterval = timePartitionInterval;
+  }
+
+  public Integer getSchemaRegionGroupNum() {
+    return schemaRegionGroupNum;
+  }
+
+  public void setSchemaRegionGroupNum(Integer schemaRegionGroupNum) {
+    this.schemaRegionGroupNum = schemaRegionGroupNum;
+  }
+
+  public Integer getDataRegionGroupNum() {
+    return dataRegionGroupNum;
+  }
+
+  public void setDataRegionGroupNum(Integer dataRegionGroupNum) {
+    this.dataRegionGroupNum = dataRegionGroupNum;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    switch (subType) {
+      case CREATE:
+        return visitor.visitSetDatabase(this, context);
+      case ALTER:
+      default:
+        return visitor.visitAlterDatabase(this, context);
+    }
   }
 
   @Override
@@ -82,35 +130,28 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
         : Collections.emptyList();
   }
 
-  public Long getTTL() {
-    return ttl;
-  }
-
-  public Integer getSchemaReplicationFactor() {
-    return schemaReplicationFactor;
-  }
-
-  public Integer getDataReplicationFactor() {
-    return dataReplicationFactor;
-  }
-
-  public Long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
   @Override
   public String toString() {
     return "SetStorageGroupStatement{"
         + "storageGroupPath="
         + storageGroupPath
         + ", ttl="
-        + ttl
+        + TTL
         + ", schemaReplicationFactor="
         + schemaReplicationFactor
         + ", dataReplicationFactor="
         + dataReplicationFactor
         + ", timePartitionInterval="
         + timePartitionInterval
+        + ", schemaRegionGroupNum="
+        + schemaRegionGroupNum
+        + ", dataRegionGroupNum="
+        + dataRegionGroupNum
         + '}';
+  }
+
+  public enum DatabaseSchemaStatementType {
+    CREATE,
+    ALTER
   }
 }

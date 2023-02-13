@@ -38,7 +38,7 @@ statement
 ddlStatement
     : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
+    | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
@@ -83,7 +83,12 @@ storageGroupAttributesClause
     ;
 
 storageGroupAttributeClause
-    : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
+    : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL | SCHEMA_REGION_GROUP_NUM | DATA_REGION_GROUP_NUM) '=' INTEGER_LITERAL
+    ;
+
+// Alter StorageGroup
+alterStorageGroup
+    : ALTER (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause
     ;
 
 // Create Timeseries
@@ -291,7 +296,7 @@ stopTrigger
 
 // Show Storage Group
 showStorageGroup
-    : SHOW (STORAGE GROUP | DATABASES) prefixPath?
+    : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
     ;
 
 // Show Devices
@@ -475,6 +480,12 @@ groupByAttributeClause
     : TIME? LR_BRACKET (timeRange COMMA)? interval=DURATION_LITERAL (COMMA step=DURATION_LITERAL)? RR_BRACKET
     | LEVEL operator_eq INTEGER_LITERAL (COMMA INTEGER_LITERAL)*
     | TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
+    | VARIATION LR_BRACKET expression (COMMA delta=number)? (COMMA attributePair)? RR_BRACKET
+    ;
+
+number
+    :INTEGER_LITERAL
+    |realLiteral
     ;
 
 timeRange
