@@ -159,6 +159,9 @@ public class TSFileConfig implements Serializable {
 
   private int patternMatchingThreshold = 1000000;
 
+  /** Default predict method for Sprintz encoding scheme * */
+  private String sprintzPredictScheme = "delta";
+
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -474,5 +477,13 @@ public class TSFileConfig implements Serializable {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public String getSprintzPredictScheme() {
+    return sprintzPredictScheme;
+  }
+
+  public void setSprintzPredictScheme(String scheme) {
+    this.sprintzPredictScheme = scheme;
   }
 }

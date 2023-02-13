@@ -133,6 +133,45 @@ public abstract class Decoder {
         return new BWDecoder();
       case AC:
         return new ACDecoder();
+      case SPRINTZ:
+        switch (dataType) {
+          case INT32:
+            return new IntSprintzDecoder();
+          case INT64:
+            return new LongSprintzDecoder();
+          case FLOAT:
+            return new FloatSprintzDecoder();
+          case DOUBLE:
+            return new DoubleSprintzDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case RAKE:
+        switch (dataType) {
+          case INT32:
+            return new IntRAKEDecoder();
+          case INT64:
+            return new LongRAKEDecoder();
+          case FLOAT:
+            return new FloatRAKEDecoder();
+          case DOUBLE:
+            return new DoubleRAKEDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case RLBE:
+        switch (dataType) {
+          case INT32:
+            return new IntRLBEDecoder();
+          case INT64:
+            return new LongRLBEDecoder();
+          case FLOAT:
+            return new FloatRLBEDecoder();
+          case DOUBLE:
+            return new DoubleRLBEDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

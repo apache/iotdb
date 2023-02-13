@@ -33,7 +33,10 @@ public enum TSEncoding {
   HUFFMAN((byte) 11),
   MTF((byte) 12),
   BW((byte) 13),
-  AC((byte) 14);
+  AC((byte) 14),
+  SPRINTZ((byte) 15),
+  RAKE((byte) 16),
+  RLBE((byte) 17);
 
   private final byte type;
 
@@ -83,6 +86,12 @@ public enum TSEncoding {
         return TSEncoding.BW;
       case 14:
         return TSEncoding.AC;
+      case 15:
+        return TSEncoding.SPRINTZ;
+      case 16:
+        return TSEncoding.RAKE;
+      case 17:
+        return TSEncoding.RLBE;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

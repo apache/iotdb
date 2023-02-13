@@ -173,7 +173,10 @@ namespace TSEncoding {
         HUFFMAN = (char) 11,
         MTF = (char) 12,
         BW = (char) 13,
-        AC = (char) 14
+        AC = (char) 14,
+        SPRINTZ = (char) 15,
+        RAKE = (char) 16,
+        RLBE = (char) 17
     };
 }
 

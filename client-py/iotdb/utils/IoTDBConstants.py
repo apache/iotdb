@@ -65,6 +65,9 @@ class TSEncoding(Enum):
     MTF = 12
     BW = 13
     AC = 14
+    SPRINTZ = 15
+    RAKE = 16
+    RLBE = 17
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

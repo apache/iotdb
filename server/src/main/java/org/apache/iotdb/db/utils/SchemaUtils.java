@@ -68,6 +68,9 @@ public class SchemaUtils {
     intSet.add(TSEncoding.GORILLA);
     intSet.add(TSEncoding.ZIGZAG);
     intSet.add(TSEncoding.FREQ);
+    intSet.add(TSEncoding.SPRINTZ);
+    intSet.add(TSEncoding.RAKE);
+    intSet.add(TSEncoding.RLBE);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -78,6 +81,9 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
     floatSet.add(TSEncoding.FREQ);
+    floatSet.add(TSEncoding.SPRINTZ);
+    floatSet.add(TSEncoding.RAKE);
+    floatSet.add(TSEncoding.RLBE);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
