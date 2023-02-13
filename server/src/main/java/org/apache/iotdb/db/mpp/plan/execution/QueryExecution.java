@@ -285,24 +285,24 @@ public class QueryExecution implements IQueryExecution {
     final long startTime = System.nanoTime();
     if (rawStatement instanceof LoadTsFileStatement) {
       this.scheduler =
-              new LoadTsFileScheduler(
-                      distributedPlan, context, stateMachine, syncInternalServiceClientManager);
+          new LoadTsFileScheduler(
+              distributedPlan, context, stateMachine, syncInternalServiceClientManager);
       this.scheduler.start();
       return;
     }
 
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
-            new ClusterScheduler(
-                    context,
-                    stateMachine,
-                    distributedPlan.getInstances(),
-                    context.getQueryType(),
-                    executor,
-                    writeOperationExecutor,
-                    scheduledExecutor,
-                    syncInternalServiceClientManager,
-                    asyncInternalServiceClientManager);
+        new ClusterScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            syncInternalServiceClientManager,
+            asyncInternalServiceClientManager);
     this.scheduler.start();
     PerformanceOverviewMetricsManager.getInstance()
         .recordScheduleCost(System.nanoTime() - startTime);
