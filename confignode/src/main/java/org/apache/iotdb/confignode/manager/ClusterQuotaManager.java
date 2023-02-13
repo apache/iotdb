@@ -66,6 +66,11 @@ public class ClusterQuotaManager {
   }
 
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+    if (!checkSpaceQuota(req)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+          "The used quota exceeds the preset quota. Please set a larger value.");
+    }
     ConsensusWriteResponse response =
         configManager
             .getConsensusManager()
@@ -90,6 +95,21 @@ public class ClusterQuotaManager {
       res.setMessage(response.getErrorMessage());
       return res;
     }
+  }
+
+  /** If the new quota is smaller than the quota already used, the setting fails. */
+  private boolean checkSpaceQuota(TSetSpaceQuotaReq req) {
+    for (String storageGroup : req.getStorageGroup()) {
+      if (quotaInfo.getSpaceQuotaLimit().containsKey(storageGroup)) {
+        TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(storageGroup);
+        if (spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()
+            || spaceQuota.getTimeserieNum() > req.getSpaceLimit().getTimeserieNum()
+            || spaceQuota.getDiskSize() > req.getSpaceLimit().getDiskSize()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
