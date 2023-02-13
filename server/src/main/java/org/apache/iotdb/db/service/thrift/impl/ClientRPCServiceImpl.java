@@ -53,9 +53,9 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -70,6 +70,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -396,6 +397,70 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  private TSExecuteStatementResp executeAggregationQueryInternal(
+      TSAggregationQueryReq req, SelectResult setResult) {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      Statement s =
+          StatementGenerator.createStatement(req, SESSION_MANAGER.getCurrSession().getZoneId());
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException("error code: " + result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          resp.setMoreData(!finished);
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+
+    } catch (Exception e) {
+      finished = true;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
+    } finally {
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
+      if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_LAST_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
+        COORDINATOR.cleanupQueryExecution(queryId);
+      }
+    }
+  }
+
   @Override
   public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
     return executeStatementV2(req);
@@ -419,6 +484,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) {
     return executeLastDataQueryInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req) {
+    return executeAggregationQueryInternal(req, SELECT_RESULT);
   }
 
   @Override
@@ -581,8 +651,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Step 1: Create SetStorageGroupStatement
-      SetStorageGroupStatement statement =
-          (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
+      DatabaseSchemaStatement statement =
+          (DatabaseSchemaStatement) StatementGenerator.createStatement(storageGroup);
       if (enableAuditLog) {
         AuditLogger.log(String.format("create database %s", storageGroup), statement);
       }
@@ -1447,6 +1517,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
     return executeLastDataQueryInternal(req, OLD_SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeAggregationQuery(TSAggregationQueryReq req) {
+    return executeAggregationQueryInternal(req, OLD_SELECT_RESULT);
   }
 
   @Override

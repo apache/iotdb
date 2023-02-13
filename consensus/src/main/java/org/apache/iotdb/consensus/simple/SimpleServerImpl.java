@@ -68,6 +68,11 @@ public class SimpleServerImpl implements IStateMachine {
   }
 
   @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    return request;
+  }
+
+  @Override
   public DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
   }

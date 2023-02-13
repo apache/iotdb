@@ -39,7 +39,7 @@ public class GroupByTimeComponent extends StatementNode {
   private boolean isSlidingStepByMonth = false;
 
   // if it is left close and right open interval
-  private boolean leftCRightO;
+  private boolean leftCRightO = true;
 
   public GroupByTimeComponent() {}
 

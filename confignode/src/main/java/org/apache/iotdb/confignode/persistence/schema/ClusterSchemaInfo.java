@@ -34,10 +34,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTe
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -52,7 +52,7 @@ import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -118,13 +118,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Cache StorageGroupSchema
+   * Cache DatabaseSchema
    *
-   * @param plan SetStorageGroupPlan
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to set
-   *     StorageGroup in MTreeAboveSG.
+   * @param plan DatabaseSchemaPlan
+   * @return SUCCESS_STATUS if the Database is set successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
@@ -138,6 +137,66 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getStorageGroupNodeByStorageGroupPath(partialPathName)
           .setStorageGroupSchema(storageGroupSchema);
 
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Alter DatabaseSchema
+   *
+   * @param plan DatabaseSchemaPlan
+   * @return SUCCESS_STATUS if the DatabaseSchema is altered successfully.
+   */
+  public TSStatus alterDatabase(DatabaseSchemaPlan plan) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      TStorageGroupSchema alterSchema = plan.getSchema();
+      PartialPath partialPathName = new PartialPath(alterSchema.getName());
+
+      TStorageGroupSchema currentSchema =
+          mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+      // TODO: Support alter other fields
+      if (alterSchema.isSetMinSchemaRegionGroupNum()) {
+        currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
+        currentSchema.setMaxSchemaRegionGroupNum(
+            Math.max(
+                currentSchema.getMinSchemaRegionGroupNum(),
+                currentSchema.getMaxSchemaRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinSchemaRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxSchemaRegionGroupNum());
+      }
+      if (alterSchema.isSetMinDataRegionGroupNum()) {
+        currentSchema.setMinDataRegionGroupNum(alterSchema.getMinDataRegionGroupNum());
+        currentSchema.setMaxDataRegionGroupNum(
+            Math.max(
+                currentSchema.getMinDataRegionGroupNum(),
+                currentSchema.getMaxDataRegionGroupNum()));
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The minimum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMinDataRegionGroupNum());
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.getMaxDataRegionGroupNum());
+      }
+
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -353,7 +412,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    *
    * @return List<StorageGroupName>, all storageGroups' name
    */
-  public List<String> getStorageGroupNames() {
+  public List<String> getDatabaseNames() {
     List<String> storageGroups = new ArrayList<>();
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -365,6 +424,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return storageGroups;
+  }
+
+  /**
+   * Only leader use this interface. Check if the specified Database already exists.
+   *
+   * @param databaseName The specified Database's name
+   * @throws IllegalPathException If the specified Database's name is illegal
+   */
+  public boolean isDatabaseExisted(String databaseName) throws IllegalPathException {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      return mTree.isStorageGroupAlreadySet(new PartialPath(databaseName));
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
   }
 
   /**
@@ -387,17 +461,17 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    *
    * @param storageGroup StorageGroupName
    * @return The specific StorageGroupSchema
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
    */
-  public TStorageGroupSchema getMatchedStorageGroupSchemaByName(String storageGroup)
-      throws StorageGroupNotExistsException {
+  public TStorageGroupSchema getMatchedDatabaseSchemaByName(String storageGroup)
+      throws DatabaseNotExistsException {
     storageGroupReadWriteLock.readLock().lock();
     try {
       return mTree
           .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
           .getStorageGroupSchema();
     } catch (MetadataException e) {
-      throw new StorageGroupNotExistsException(storageGroup);
+      throw new DatabaseNotExistsException(storageGroup);
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -409,7 +483,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param rawPathList StorageGroups' path patterns or full paths
    * @return All StorageGroupSchemas that matches to the specific StorageGroup patterns
    */
-  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+  public Map<String, TStorageGroupSchema> getMatchedDatabaseSchemasByName(
       List<String> rawPathList) {
     Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
     storageGroupReadWriteLock.readLock().lock();
@@ -431,16 +505,44 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the maxRegionGroupNum of specific StorageGroup.
+   * Only leader use this interface. Get the maxRegionGroupNum of specified Database.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMaxRegionGroupNum(String storageGroup, TConsensusGroupType consensusGroupType) {
+  public int getMinRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
     storageGroupReadWriteLock.readLock().lock();
     try {
-      PartialPath path = new PartialPath(storageGroup);
+      PartialPath path = new PartialPath(database);
+      TStorageGroupSchema storageGroupSchema =
+          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+      switch (consensusGroupType) {
+        case SchemaRegion:
+          return storageGroupSchema.getMinSchemaRegionGroupNum();
+        case DataRegion:
+        default:
+          return storageGroupSchema.getMinDataRegionGroupNum();
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn(ERROR_NAME, e);
+      return -1;
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Only leader use this interface. Get the maxRegionGroupNum of specified Database.
+   *
+   * @param database DatabaseName
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
+   */
+  public int getMaxRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      PartialPath path = new PartialPath(database);
       TStorageGroupSchema storageGroupSchema =
           mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
       switch (consensusGroupType) {

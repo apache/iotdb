@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,11 +33,10 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -64,9 +64,9 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class VerticallyConcatOperatorTest {
-  private static final String VERTICALLY_CONCAT_OPERATOR_TEST_SG =
-      "root.VerticallyConcatOperatorTest";
+public class HorizontallyConcatOperatorTest {
+  private static final String HORIZONTALLY_CONCAT_OPERATOR_TEST_SG =
+      "root.HorizontallyConcatOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -80,7 +80,7 @@ public class VerticallyConcatOperatorTest {
         deviceIds,
         seqResources,
         unSeqResources,
-        VERTICALLY_CONCAT_OPERATOR_TEST_SG);
+        HORIZONTALLY_CONCAT_OPERATOR_TEST_SG);
   }
 
   @After
@@ -112,13 +112,13 @@ public class VerticallyConcatOperatorTest {
       driverContext.addOperatorContext(
           2, planNodeId2, SeriesAggregationScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), VerticallyConcatOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), HorizontallyConcatOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
           new MeasurementPath(
-              VERTICALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<AggregationType> aggregationTypes =
-          Arrays.asList(AggregationType.COUNT, AggregationType.SUM, AggregationType.FIRST_VALUE);
+              HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      List<TAggregationType> aggregationTypes =
+          Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
       GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 10, 1, 1, true);
       List<Aggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
@@ -143,7 +143,7 @@ public class VerticallyConcatOperatorTest {
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(
-              VERTICALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+              HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId2,
@@ -162,8 +162,8 @@ public class VerticallyConcatOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      VerticallyConcatOperator verticallyConcatOperator =
-          new VerticallyConcatOperator(
+      HorizontallyConcatOperator horizontallyConcatOperator =
+          new HorizontallyConcatOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesAggregationScanOperator1, seriesAggregationScanOperator2),
               Arrays.asList(
@@ -175,8 +175,8 @@ public class VerticallyConcatOperatorTest {
                   TSDataType.INT32));
 
       int count = 0;
-      while (verticallyConcatOperator.hasNext()) {
-        TsBlock tsBlock = verticallyConcatOperator.next();
+      while (horizontallyConcatOperator.hasNext()) {
+        TsBlock tsBlock = horizontallyConcatOperator.next();
         assertEquals(6, tsBlock.getValueColumnCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
           assertEquals(count, tsBlock.getTimeByIndex(i));

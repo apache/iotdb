@@ -66,11 +66,11 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
@@ -164,8 +164,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetDataNodeConfiguration:
           plan = new GetDataNodeConfigurationPlan();
           break;
-        case SetStorageGroup:
-          plan = new SetStorageGroupPlan();
+        case CreateDatabase:
+          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase);
+          break;
+        case AlterDatabase:
+          plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase);
           break;
         case SetTTL:
           plan = new SetTTLPlan();
@@ -182,10 +185,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case AdjustMaxRegionGroupNum:
           plan = new AdjustMaxRegionGroupNumPlan();
           break;
-        case CountStorageGroup:
+        case CountDatabase:
           plan = new CountStorageGroupPlan();
           break;
-        case GetStorageGroup:
+        case GetDatabase:
           plan = new GetStorageGroupPlan();
           break;
         case CreateRegionGroups:
@@ -221,10 +224,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateProcedure:
           plan = new UpdateProcedurePlan();
           break;
-        case PreDeleteStorageGroup:
+        case PreDeleteDatabase:
           plan = new PreDeleteStorageGroupPlan();
           break;
-        case DeleteStorageGroup:
+        case DeleteDatabase:
           plan = new DeleteStorageGroupPlan();
           break;
         case ListUser:

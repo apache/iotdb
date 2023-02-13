@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -33,8 +34,10 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
@@ -48,9 +51,9 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
@@ -62,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -98,6 +102,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -175,6 +180,60 @@ public class StatementGenerator {
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
     return lastQueryStatement;
+  }
+
+  public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId)
+      throws IllegalPathException {
+    QueryStatement queryStatement = new QueryStatement();
+
+    FromComponent fromComponent = new FromComponent();
+    fromComponent.addPrefixPath(new PartialPath("", false));
+    queryStatement.setFromComponent(fromComponent);
+
+    SelectComponent selectComponent = new SelectComponent(zoneId);
+    List<PartialPath> selectPaths = new ArrayList<>();
+    for (String pathStr : req.getPaths()) {
+      selectPaths.add(new PartialPath(pathStr));
+    }
+    List<TAggregationType> aggregations = req.getAggregations();
+    for (int i = 0; i < aggregations.size(); i++) {
+      selectComponent.addResultColumn(
+          new ResultColumn(
+              new FunctionExpression(
+                  aggregations.get(i).toString(),
+                  new LinkedHashMap<>(),
+                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
+              ResultColumn.ColumnType.AGGREGATION));
+    }
+    queryStatement.setSelectComponent(selectComponent);
+
+    if (req.isSetInterval()) {
+      GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+      groupByTimeComponent.setStartTime(req.getStartTime());
+      groupByTimeComponent.setEndTime(req.getEndTime());
+      groupByTimeComponent.setInterval(req.getInterval());
+      if (req.isSetSlidingStep()) {
+        groupByTimeComponent.setSlidingStep(req.getSlidingStep());
+      } else {
+        groupByTimeComponent.setSlidingStep(req.getInterval());
+      }
+      queryStatement.setGroupByTimeComponent(groupByTimeComponent);
+    } else if (req.isSetStartTime()) {
+      WhereCondition whereCondition = new WhereCondition();
+      GreaterEqualExpression leftPredicate =
+          new GreaterEqualExpression(
+              new TimestampOperand(),
+              new ConstantOperand(TSDataType.INT64, Long.toString(req.getStartTime())));
+      LessThanExpression rightPredicate =
+          new LessThanExpression(
+              new TimestampOperand(),
+              new ConstantOperand(TSDataType.INT64, Long.toString(req.getEndTime())));
+      LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
+      whereCondition.setPredicate(predicate);
+      queryStatement.setWhereCondition(whereCondition);
+    }
+
+    return queryStatement;
   }
 
   public static Statement createStatement(TSInsertRecordReq insertRecordReq)
@@ -364,7 +423,8 @@ public class StatementGenerator {
 
   public static Statement createStatement(String storageGroup) throws IllegalPathException {
     // construct create database statement
-    SetStorageGroupStatement statement = new SetStorageGroupStatement();
+    DatabaseSchemaStatement statement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
     return statement;
   }

@@ -278,7 +278,8 @@ public class IoTDBConstant {
   // client version number
   public enum ClientVersion {
     V_0_12,
-    V_0_13
+    V_0_13,
+    V_1_0
   }
 
   // select into

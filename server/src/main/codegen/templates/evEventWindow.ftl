@@ -48,14 +48,17 @@ public class ${className} extends Event${dataType.dataType?cap_first}Window {
     if (!initializedEventValue) {
       return true;
     }
+    if(column.isNull(index)){
+      return valueIsNull;
+    }
     <#if compareType.compareType == "equal">
         <#if dataType.dataType == "Binary">
-    return column.get${dataType.dataType?cap_first}(index).equals(eventValue);
+    return !valueIsNull&&column.get${dataType.dataType?cap_first}(index).equals(eventValue);
         <#else>
-    return column.get${dataType.dataType?cap_first}(index) == eventValue;
+    return !valueIsNull&&column.get${dataType.dataType?cap_first}(index) == eventValue;
         </#if>
     <#else>
-    return Math.abs(column.get${dataType.dataType?cap_first}(index) - eventValue) <= eventWindowParameter.getDelta();
+    return !valueIsNull&&Math.abs(column.get${dataType.dataType?cap_first}(index) - eventValue) <= eventWindowParameter.getDelta();
     </#if>
   }
 }

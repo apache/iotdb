@@ -54,7 +54,7 @@ public class IoTDBInterpreterIT {
   static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
 
   @BeforeClass
-  public static void open() throws InterruptedException {
+  public static void open() {
     EnvFactory.getEnv().initClusterEnvironment();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, EnvFactory.getEnv().getIP());
@@ -345,7 +345,7 @@ public class IoTDBInterpreterIT {
   public void testShowAllTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW ALL TTL", null);
-    String gt = "Database\tTTL(ms)\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
+    String gt = "Database\tTTL\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -355,7 +355,7 @@ public class IoTDBInterpreterIT {
   public void testShowTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW TTL ON root.test.wf01", null);
-    String gt = "Database\tTTL(ms)\n" + "root.test.wf01\t12345";
+    String gt = "Database\tTTL\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -365,9 +365,9 @@ public class IoTDBInterpreterIT {
   public void testShowStorageGroup() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW DATABASES", null);
     String gt =
-        "Database\tTTL(ms)\tSchemaReplicationFactor\tDataReplicationFactor\tTimePartitionInterval\tSchemaRegionNum\tDataRegionNum\n"
-            + "root.test.wf02\tnull\t1\t1\t604800000\t1\t1\n"
-            + "root.test.wf01\tnull\t1\t1\t604800000\t1\t1";
+        "Database\tTTL\tSchemaReplicationFactor\tDataReplicationFactor\tTimePartitionInterval\n"
+            + "root.test.wf02\tnull\t1\t1\t604800000\n"
+            + "root.test.wf01\tnull\t1\t1\t604800000";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());

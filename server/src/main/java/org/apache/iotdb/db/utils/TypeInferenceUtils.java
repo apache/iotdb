@@ -140,6 +140,10 @@ public class TypeInferenceUtils {
 
   private static boolean verifyIsAggregationDataTypeMatched(
       String aggrFuncName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return true;
+    }
     switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -173,6 +177,10 @@ public class TypeInferenceUtils {
   }
 
   private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+    // input is NullOperand, needn't check
+    if (dataType == null) {
+      return;
+    }
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
         if (dataType.isNumeric()) {

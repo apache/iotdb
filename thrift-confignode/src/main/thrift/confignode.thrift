@@ -145,11 +145,7 @@ struct TSetDataNodeStatusReq {
   2: required string status
 }
 
-// StorageGroup
-struct TSetStorageGroupReq {
-  1: required TStorageGroupSchema storageGroup
-}
-
+// Database
 struct TDeleteStorageGroupReq {
   1: required string prefixPath
 }
@@ -190,8 +186,10 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupNum
-  7: optional i32 maxDataRegionGroupNum
+  6: optional i32 minSchemaRegionGroupNum
+  7: optional i32 maxSchemaRegionGroupNum
+  8: optional i32 minDataRegionGroupNum
+  9: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -339,10 +337,9 @@ struct TClusterParameters {
   9: required string readConsistencyLevel
   10: required double schemaRegionPerDataNode
   11: required double dataRegionPerProcessor
-  12: required i32 leastDataRegionGroupNum
-  13: required i32 seriesPartitionSlotNum
-  14: required string seriesPartitionExecutorClass
-  15: required double diskSpaceWarningThreshold
+  12: required i32 seriesPartitionSlotNum
+  13: required string seriesPartitionExecutorClass
+  14: required double diskSpaceWarningThreshold
 }
 
 struct TConfigNodeRegisterReq {
@@ -493,7 +490,11 @@ struct TStorageGroupInfo {
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 dataRegionNum
+  7: required i32 minSchemaRegionNum
+  8: required i32 maxSchemaRegionNum
+  9: required i32 dataRegionNum
+  10: required i32 minDataRegionNum
+  11: required i32 maxDataRegionNum
 }
 
 struct TShowStorageGroupResp {
@@ -785,18 +786,30 @@ service IConfigNodeRPCService {
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
-  // StorageGroup
+  // Database
   // ======================================================
 
   /**
-   * Set a new StorageGroup, all fields in TStorageGroupSchema can be customized
+   * Set a new Databse, all fields in TStorageGroupSchema can be customized
    * while the undefined fields will automatically use default values
    *
-   * @return SUCCESS_STATUS if the new StorageGroup set successfully
-   *         PATH_ILLEGAL if the new StorageGroup's name is illegal
-   *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup already exist
+   * @return SUCCESS_STATUS if the new Database set successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_ALREADY_EXISTS if the Database already exist
    */
-  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
+  common.TSStatus setDatabase(TStorageGroupSchema databaseSchema)
+
+  /**
+   * Alter a Database's schema, including
+   * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
+   *
+   * @return SUCCESS_STATUS if the specified DatabaseSchema is altered successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
+   */
+  common.TSStatus alterDatabase(TStorageGroupSchema databaseSchema)
 
   /**
    * Generate a DeleteStorageGroupProcedure to delete a specific StorageGroup

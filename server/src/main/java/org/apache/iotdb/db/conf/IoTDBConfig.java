@@ -410,7 +410,7 @@ public class IoTDBConfig {
       InnerUnsequenceCompactionSelector.SIZE_TIERED;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
-      InnerUnseqCompactionPerformer.READ_POINT;
+      InnerUnseqCompactionPerformer.FAST;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
@@ -418,7 +418,7 @@ public class IoTDBConfig {
    */
   private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
 
-  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
+  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.FAST;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -875,7 +875,7 @@ public class IoTDBConfig {
    * series partition
    */
   private String seriesPartitionExecutorClass =
-      "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
   /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
@@ -955,12 +955,6 @@ public class IoTDBConfig {
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
-
-  /**
-   * Whether the schema memory allocation is default config. Used for cluster mode initialization
-   * judgement
-   */
-  private boolean isDefaultSchemaMemoryConfig = true;
 
   /** Memory allocated for schemaRegion */
   private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
@@ -2847,6 +2841,7 @@ public class IoTDBConfig {
     return cachedMNodeSizeInSchemaFileMode;
   }
 
+  @TestOnly
   public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
     this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
   }
@@ -3160,14 +3155,6 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
-  boolean isDefaultSchemaMemoryConfig() {
-    return isDefaultSchemaMemoryConfig;
-  }
-
-  void setDefaultSchemaMemoryConfig(boolean defaultSchemaMemoryConfig) {
-    isDefaultSchemaMemoryConfig = defaultSchemaMemoryConfig;
-  }
-
   public long getAllocateMemoryForSchemaRegion() {
     return allocateMemoryForSchemaRegion;
   }
@@ -3232,6 +3219,24 @@ public class IoTDBConfig {
     return loadTsFileProportion;
   }
 
+  public static String getEnvironmentVariables() {
+    return "\n\t"
+        + IoTDBConstant.IOTDB_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_HOME, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_CONF
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_CONF, "null")
+        + ";"
+        + "\n\t"
+        + IoTDBConstant.IOTDB_DATA_HOME
+        + "="
+        + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
+        + ";";
+  }
+
   public void setCompactionProportion(double compactionProportion) {
     this.compactionProportion = compactionProportion;
   }
@@ -3270,7 +3275,7 @@ public class IoTDBConfig {
   }
 
   public String getConfigMessage() {
-    String configMessage = "";
+    StringBuilder configMessage = new StringBuilder();
     String configContent;
     String[] notShowArray = {
       "NODE_NAME_MATCHER",
@@ -3294,12 +3299,17 @@ public class IoTDBConfig {
         } else {
           configContent = configField.get(this).toString();
         }
-        configMessage = configMessage + configField.getName() + "=" + configContent + "; ";
+        configMessage
+            .append("\n\t")
+            .append(configField.getName())
+            .append("=")
+            .append(configContent)
+            .append(";");
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
-    return configMessage;
+    return configMessage.toString();
   }
 
   public long getDataRatisConsensusSnapshotTriggerThreshold() {

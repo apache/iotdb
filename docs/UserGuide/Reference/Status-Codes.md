@@ -133,6 +133,7 @@ Here is a list of Status Code and related message:
 | 904         | CONSENSUS_NOT_INITIALIZED         | Consensus is not initialized and cannot provide service                                   |
 | 905         | REGION_LEADER_CHANGE_ERROR        | Region leader migration failed                                                            |
 | 906         | NO_AVAILABLE_REGION_GROUP         | Cannot find an available region group                                                     |
+| 907         | LACK_DATA_PARTITION_ALLOCATION    | Lacked some data partition allocation result in the response                              |
 | 1000        | DATANODE_ALREADY_REGISTERED       | DataNode already registered in cluster                                                    |
 | 1001        | NO_ENOUGH_DATANODE                | The number of DataNode is not enough, cannot remove DataNode or create enough replication |
 | 1002        | ADD_CONFIGNODE_ERROR              | Add ConfigNode error                                                                      |

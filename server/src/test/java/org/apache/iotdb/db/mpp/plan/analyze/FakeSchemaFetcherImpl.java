@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
@@ -56,13 +56,12 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean aligned) {
-    return schemaTree;
-  }
+  public void fetchAndComputeSchemaWithAutoCreate(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
+
+  @Override
+  public void fetchAndComputeSchemaWithAutoCreate(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
 
   /**
    * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
@@ -112,15 +111,6 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     a.addAliasChild("status", s2);
 
     return root;
-  }
-
-  @Override
-  public ISchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned) {
-    return null;
   }
 
   @Override

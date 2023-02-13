@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -90,11 +90,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       isHoldingReadLock[i] = false;
     }
     if (sequence) {
-      tsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
     } else {
-      tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+      tsFileResourceList = tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     }
     this.hashCode = this.toString().hashCode();
+    this.innerSeqTask = sequence;
+    this.crossTask = false;
     collectSelectedFilesInfo();
     createSummary();
   }
@@ -131,9 +133,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
-      LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] Close the logger", storageGroupName, dataRegionId);
-      compactionLogger.close();
+
       LOGGER.info(
           "{}-{} [Compaction] compaction with {}",
           storageGroupName,
@@ -177,6 +177,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             targetTsFileList,
             timePartition,
             false);
+      }
+
+      if (targetTsFileResource.isDeleted()) {
+        compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
@@ -231,17 +235,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       // inner space compaction task has only one target file
-      if (targetTsFileList.get(0) != null) {
+      if (!targetTsFileResource.isDeleted()) {
         TsFileMetricManager.getInstance()
-            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+            .addFile(targetTsFileResource.getTsFile().length(), sequence);
 
-        // set target resources to CLOSED, so that they can be selected to compact
-        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
+        // set target resource to CLOSED, so that it can be selected to compact
+        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      } else {
+        // target resource is empty after compaction, then delete it
+        targetTsFileResource.remove();
       }
       TsFileMetricManager.getInstance()
           .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
 
-      CompactionMetricsRecorder.updateSummary(summary);
+      CompactionMetricsManager.getInstance().updateSummary(summary);
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(

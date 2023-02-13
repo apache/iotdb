@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -79,10 +80,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -113,6 +114,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 
 public class LogicalPlanBuilder {
 
@@ -142,7 +144,8 @@ public class LogicalPlanBuilder {
     }
     expressions.forEach(
         expression -> {
-          if (!expression.getExpressionString().equals(DEVICE)) {
+          if (!expression.getExpressionString().equals(DEVICE)
+              && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
@@ -487,10 +490,10 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<AggregationType> splitAggregations =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     String inputExpressionStr = aggregationDescriptor.getInputExpressions().get(0).toString();
-    for (AggregationType aggregation : splitAggregations) {
+    for (TAggregationType aggregation : splitAggregations) {
       String functionName = aggregation.toString().toLowerCase();
       TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
       typeProvider.setType(
@@ -501,10 +504,10 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<AggregationType> splitAggregations =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (AggregationType aggregationType : splitAggregations) {
+    for (TAggregationType aggregationType : splitAggregations) {
       String functionName = aggregationType.toString().toLowerCase();
       typeProvider.setType(
           String.format("%s(%s)", functionName, path.getFullPath()),
@@ -616,7 +619,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planAggregation(
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       GroupByTimeParameter groupByTimeParameter,
+      GroupByParameter groupByParameter,
+      boolean outputEndTime,
       AggregationStep curStep,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
@@ -632,12 +638,18 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
+    if (outputEndTime) {
+      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
             groupByTimeParameter,
+            groupByParameter,
+            groupByExpression,
+            outputEndTime,
             scanOrder);
     return this;
   }

@@ -52,6 +52,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   // points out of current window.
   private boolean needSkip = false;
 
+  // child.hasNext() may return true even there is no more data, the operator may exit without
+  // updating the cached data in aggregator.
+  // We need hasCachedDataInAggregator to prevent operator exit when there is cached data in
+  // aggregators.
+  private boolean hasCachedDataInAggregator = false;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -66,7 +72,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean hasMoreData() {
-    return !(inputTsBlock == null || inputTsBlock.isEmpty()) || child.hasNextWithTimer();
+    return !(inputTsBlock == null || inputTsBlock.isEmpty())
+        || child.hasNextWithTimer()
+        || hasCachedDataInAggregator;
   }
 
   @Override
@@ -118,12 +126,13 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     updateResultTsBlock();
+    // After updating, the data in aggregators is consumed.
+    hasCachedDataInAggregator = false;
 
     return true;
   }
 
   private boolean calculateFromRawData() {
-
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
       return false;
@@ -143,7 +152,15 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        lastReadRowIndex =
+            Math.max(
+                lastReadRowIndex,
+                aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
+      }
+      // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
+      // aggregators.
+      if (lastReadRowIndex != 0) {
+        hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;

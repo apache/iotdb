@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -296,11 +296,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
         sealChunk(fileWriter, iChunkWriter, subTaskId);
         lastCheckIndex = 0;
-        CompactionMetricsRecorder.recordWriteInfo(
-            isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            isAlign,
-            iChunkWriter.estimateMaxSeriesMemSize());
+        CompactionMetricsManager.getInstance()
+            .recordWriteInfo(
+                isCrossSpace
+                    ? CompactionType.CROSS_COMPACTION
+                    : CompactionType.INNER_UNSEQ_COMPACTION,
+                ProcessChunkType.DESERIALIZE_CHUNK,
+                isAlign,
+                iChunkWriter.estimateMaxSeriesMemSize());
       }
     }
   }

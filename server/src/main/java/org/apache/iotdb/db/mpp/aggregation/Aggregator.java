@@ -66,7 +66,7 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public int processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock, boolean ignoringNull) {
     long startTime = System.nanoTime();
     try {
       checkArgument(
@@ -82,7 +82,9 @@ public class Aggregator {
         controlTimeAndValueColumn[1] = tsBlock.getTimeColumn();
         controlTimeAndValueColumn[2] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
         lastReadReadIndex =
-            Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
+            Math.max(
+                lastReadReadIndex,
+                accumulator.addInput(controlTimeAndValueColumn, curWindow, ignoringNull));
       }
       return lastReadReadIndex;
     } finally {

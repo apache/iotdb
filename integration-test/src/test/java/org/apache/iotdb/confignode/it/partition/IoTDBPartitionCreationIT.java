@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -68,7 +67,7 @@ public class IoTDBPartitionCreationIT {
   private static final String sg = "root.sg";
   private static final int testSeriesPartitionBatchSize = 1;
   private static final int testTimePartitionBatchSize = 1;
-  private static final int testLeastDataRegionGroupNum = 4;
+  private static final int testDataRegionGroupPerDatabase = 4;
   private static final TEndPoint defaultEndPoint = new TEndPoint("-1", -1);
   private static final TDataNodeLocation defaultDataNode =
       new TDataNodeLocation(
@@ -90,7 +89,7 @@ public class IoTDBPartitionCreationIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -101,8 +100,7 @@ public class IoTDBPartitionCreationIT {
   private void setStorageGroup() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TSetStorageGroupReq setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
-      TSStatus status = client.setStorageGroup(setStorageGroupReq);
+      TSStatus status = client.setDatabase(new TStorageGroupSchema(sg));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }

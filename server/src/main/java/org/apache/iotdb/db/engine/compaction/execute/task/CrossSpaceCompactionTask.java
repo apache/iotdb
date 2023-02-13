@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
 
@@ -82,11 +83,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-    this.seqTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
-    this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+    this.seqTsFileResourceList =
+        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
+    this.unseqTsFileResourceList =
+        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
+    this.crossTask = true;
+    this.innerSeqTask = false;
     createSummary();
   }
 
@@ -148,9 +153,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.logFiles(selectedSequenceFiles, STR_SOURCE_FILES);
         compactionLogger.logFiles(selectedUnsequenceFiles, STR_SOURCE_FILES);
         compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-        // indicates that the cross compaction is complete and the result can be reused during a
-        // restart recovery
-        compactionLogger.close();
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
@@ -170,6 +172,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
+        // find empty target files and add log
+        for (TsFileResource targetResource : targetTsfileResourceList) {
+          if (targetResource.isDeleted()) {
+            compactionLogger.logFile(targetResource, STR_DELETED_TARGET_FILES);
+          }
+        }
+
         if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
             && !CompactionUtils.validateTsFileResources(
                 tsFileManager, storageGroupName, timePartition)) {
@@ -184,9 +193,24 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         releaseReadAndLockWrite(selectedSequenceFiles);
         releaseReadAndLockWrite(selectedUnsequenceFiles);
 
+        for (TsFileResource sequenceResource : selectedSequenceFiles) {
+          if (sequenceResource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(sequenceResource.getModFile().getSize());
+          }
+        }
+
+        for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
+          if (unsequenceResource.getModFile().exists()) {
+            TsFileMetricManager.getInstance().decreaseModFileNum(1);
+            TsFileMetricManager.getInstance()
+                .decreaseModFileSize(unsequenceResource.getModFile().getSize());
+          }
+        }
+
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         if (logFile.exists()) {
@@ -195,11 +219,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
-          if (targetResource != null) {
+          if (!targetResource.isDeleted()) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.CLOSED);
+          } else {
+            // target resource is empty after compaction, then delete it
+            targetResource.remove();
           }
         }
         TsFileMetricManager.getInstance()
@@ -207,7 +234,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
-        CompactionMetricsRecorder.updateSummary(summary);
+        CompactionMetricsManager.getInstance().updateSummary(summary);
 
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
 

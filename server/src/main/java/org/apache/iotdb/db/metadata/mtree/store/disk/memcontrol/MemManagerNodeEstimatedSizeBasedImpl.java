@@ -36,6 +36,7 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
   private long releaseThreshold;
   private long flushThreshold;
 
+  // memory size
   private final AtomicLong size = new AtomicLong(0);
 
   private final AtomicLong pinnedSize = new AtomicLong(0);

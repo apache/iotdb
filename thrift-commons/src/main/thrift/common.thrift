@@ -139,3 +139,16 @@ struct TSetSpaceQuotaReq {
   1: required list<string> storageGroup
   2: required TSpaceQuota spaceLimit
 }
+
+enum TAggregationType {
+  COUNT,
+  AVG,
+  SUM,
+  FIRST_VALUE,
+  LAST_VALUE,
+  MAX_TIME,
+  MIN_TIME,
+  MAX_VALUE,
+  MIN_VALUE,
+  EXTREME
+}

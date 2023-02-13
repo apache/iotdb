@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -77,7 +78,6 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
@@ -994,11 +994,11 @@ public class OperatorMemoryTest {
       List<AggregationDescriptor> aggregationDescriptors1 =
           Arrays.asList(
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.COUNT.name().toLowerCase(),
+                  TAggregationType.COUNT.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1026,11 +1026,11 @@ public class OperatorMemoryTest {
       List<AggregationDescriptor> aggregationDescriptors2 =
           Arrays.asList(
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.PARTIAL,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.COUNT.name().toLowerCase(),
+                  TAggregationType.COUNT.name().toLowerCase(),
                   AggregationStep.PARTIAL,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1068,11 +1068,11 @@ public class OperatorMemoryTest {
       List<AggregationDescriptor> aggregationDescriptors3 =
           Arrays.asList(
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.COUNT.name().toLowerCase(),
+                  TAggregationType.COUNT.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1104,11 +1104,11 @@ public class OperatorMemoryTest {
       List<AggregationDescriptor> aggregationDescriptors4 =
           Arrays.asList(
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.COUNT.name().toLowerCase(),
+                  TAggregationType.COUNT.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1142,15 +1142,15 @@ public class OperatorMemoryTest {
       List<AggregationDescriptor> aggregationDescriptors5 =
           Arrays.asList(
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))),
               new AggregationDescriptor(
-                  AggregationType.FIRST_VALUE.name().toLowerCase(),
+                  TAggregationType.FIRST_VALUE.name().toLowerCase(),
                   AggregationStep.SINGLE,
                   Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1241,11 +1241,11 @@ public class OperatorMemoryTest {
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
             new AggregationDescriptor(
-                AggregationType.FIRST_VALUE.name().toLowerCase(),
+                TAggregationType.FIRST_VALUE.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))),
             new AggregationDescriptor(
-                AggregationType.COUNT.name().toLowerCase(),
+                TAggregationType.COUNT.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1309,11 +1309,11 @@ public class OperatorMemoryTest {
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
             new AggregationDescriptor(
-                AggregationType.FIRST_VALUE.name().toLowerCase(),
+                TAggregationType.FIRST_VALUE.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))),
             new AggregationDescriptor(
-                AggregationType.COUNT.name().toLowerCase(),
+                TAggregationType.COUNT.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
@@ -1383,11 +1383,11 @@ public class OperatorMemoryTest {
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
             new AggregationDescriptor(
-                AggregationType.FIRST_VALUE.name().toLowerCase(),
+                TAggregationType.FIRST_VALUE.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))),
             new AggregationDescriptor(
-                AggregationType.COUNT.name().toLowerCase(),
+                TAggregationType.COUNT.name().toLowerCase(),
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 

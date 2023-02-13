@@ -169,7 +169,7 @@ public class NodeManager {
   }
 
   private void setRatisConfig(ConfigurationResp dataSet) {
-    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
 
     ratisConfig.setDataAppenderBufferSize(conf.getDataRegionRatisConsensusLogAppenderBufferSize());

@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -77,9 +76,9 @@ public class IoTDBCustomRegionGroupExtensionIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy)
-        .setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase)
+        .setDefaultSchemaRegionGroupNumPerDatabase(testSchemaRegionGroupPerDatabase)
         .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
-        .setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase)
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase)
         .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment
@@ -100,8 +99,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
         String curSg = sg + i;
 
         /* Set StorageGroup */
-        TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(curSg));
-        TSStatus status = client.setStorageGroup(setReq);
+        TSStatus status = client.setDatabase(new TStorageGroupSchema(curSg));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         /* Insert a DataPartition to create DataRegionGroups */
