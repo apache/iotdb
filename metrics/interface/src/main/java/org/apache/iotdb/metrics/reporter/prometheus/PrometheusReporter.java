@@ -183,7 +183,6 @@ public class PrometheusReporter implements Reporter {
     prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getMax());
     prometheusTextWriter.writeSample(
         name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
-    prometheusTextWriter.writeSample(name + "_avg", tags, snapshot.getMean());
     prometheusTextWriter.writeSample(name + "_count", tags, count);
 
     prometheusTextWriter.writeSample(
