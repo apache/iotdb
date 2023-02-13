@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -142,7 +143,17 @@ public class DataNodeSchemaCache {
   }
 
   public ClusterSchemaTree get(PartialPath fullPath) {
-    return get(fullPath.getDevicePath(), new String[] {fullPath.getMeasurement()});
+    SchemaCacheEntry schemaCacheEntry =
+        dualKeyCache.get(fullPath.getDevicePath(), fullPath.getMeasurement());
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    schemaTree.appendSingleMeasurement(
+        fullPath,
+        schemaCacheEntry.getMeasurementSchema(),
+        schemaCacheEntry.getTagMap(),
+        null,
+        schemaCacheEntry.isAligned());
+    schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
+    return schemaTree;
   }
 
   public List<Integer> compute(ISchemaComputation schemaComputation) {
