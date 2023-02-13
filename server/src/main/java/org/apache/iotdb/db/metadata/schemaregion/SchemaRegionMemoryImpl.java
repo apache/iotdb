@@ -136,8 +136,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean usingMLog = true;
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
-  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final SchemaStatisticsManager schemaStatisticsManager =
+      SchemaStatisticsManager.getInstance();
+  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
@@ -448,6 +449,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           System.currentTimeMillis() - tagSnapshotStartTime);
 
       long mtreeSnapshotStartTime = System.currentTimeMillis();
+      MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId.getId());
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,

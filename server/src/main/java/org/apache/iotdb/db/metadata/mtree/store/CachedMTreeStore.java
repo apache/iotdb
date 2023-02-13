@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -57,8 +58,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
-  private final ICacheManager cacheManager =
-      CacheMemoryManager.getInstance().createLRUCacheManager(this);
+  private final ICacheManager cacheManager;
 
   private ISchemaFile file;
 
@@ -68,12 +68,18 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
+  private final int schemaRegionId;
+
   public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId, Runnable flushCallback)
       throws MetadataException, IOException {
+    MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId);
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
-    cacheManager.initRootStatus(root);
     this.flushCallback = flushCallback;
+    this.schemaRegionId = schemaRegionId;
+    this.cacheManager =
+        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId);
+    cacheManager.initRootStatus(root);
     ensureMemoryStatus();
   }
 
@@ -306,7 +312,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public IEntityMNode setToEntity(IMNode node) {
     IEntityMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize(), schemaRegionId);
     }
     updateMNode(result);
     return result;
@@ -316,7 +322,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public IMNode setToInternal(IEntityMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
-      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize(), schemaRegionId);
     }
     updateMNode(result);
     return result;
@@ -333,12 +339,13 @@ public class CachedMTreeStore implements IMTreeStore {
     updateMNode(measurementMNode);
 
     if (existingAlias != null && alias != null) {
-      memManager.updatePinnedSize(alias.length() - existingAlias.length());
+      memManager.updatePinnedSize(alias.length() - existingAlias.length(), schemaRegionId);
     } else if (alias == null) {
       memManager.updatePinnedSize(
-          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
+          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()), schemaRegionId);
     } else {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memManager.updatePinnedSize(
+          IMNodeSizeEstimator.getAliasBaseSize() + alias.length(), schemaRegionId);
     }
   }
 
@@ -437,6 +444,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
       file = null;
+      MemoryStatistics.getInstance().clearSchemaRegion(schemaRegionId);
     } finally {
       lock.unlockWrite();
     }
@@ -463,10 +471,14 @@ public class CachedMTreeStore implements IMTreeStore {
   private CachedMTreeStore(
       File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
+    MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId);
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
-    cacheManager.initRootStatus(root);
     this.flushCallback = flushCallback;
+    this.schemaRegionId = schemaRegionId;
+    this.cacheManager =
+        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId);
+    cacheManager.initRootStatus(root);
     ensureMemoryStatus();
   }
 

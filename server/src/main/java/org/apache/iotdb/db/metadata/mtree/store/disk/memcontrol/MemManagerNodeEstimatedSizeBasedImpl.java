@@ -37,7 +37,7 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
   private long flushThreshold;
 
   // memory size
-  private final AtomicLong size = new AtomicLong(0);
+  private final AtomicLong unpinnedSize = new AtomicLong(0);
 
   private final AtomicLong pinnedSize = new AtomicLong(0);
 
@@ -45,7 +45,7 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   @Override
   public void init() {
-    size.getAndSet(0);
+    unpinnedSize.getAndSet(0);
     pinnedSize.getAndSet(0);
     releaseThreshold = (long) (memoryStatistics.getMemoryCapacity() * RELEASE_THRESHOLD_RATIO);
     flushThreshold = (long) (memoryStatistics.getMemoryCapacity() * FLUSH_THRESHOLD_RATION);
@@ -53,7 +53,7 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   @Override
   public boolean isEmpty() {
-    return size.get() == 0;
+    return unpinnedSize.get() == 0;
   }
 
   @Override
@@ -67,57 +67,67 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
   }
 
   @Override
-  public void requestPinnedMemResource(IMNode node) {
+  public void requestPinnedMemResource(IMNode node, int schemaRegionId) {
     int size = estimator.estimateSize(node);
-    memoryStatistics.requestMemory(size);
+    memoryStatistics.requestMemory(size, schemaRegionId);
     pinnedSize.getAndUpdate(v -> v += size);
   }
 
   @Override
-  public void upgradeMemResource(IMNode node) {
+  public void upgradeMemResource(IMNode node, int schemaRegionId) {
     int size = estimator.estimateSize(node);
     pinnedSize.getAndUpdate(v -> v += size);
-    this.size.getAndUpdate(v -> v -= size);
+    this.unpinnedSize.getAndUpdate(v -> v -= size);
   }
 
   @Override
-  public void releasePinnedMemResource(IMNode node) {
+  public void releasePinnedMemResource(IMNode node, int schemaRegionId) {
     int size = estimator.estimateSize(node);
-    this.size.getAndUpdate(v -> v += size);
+    this.unpinnedSize.getAndUpdate(v -> v += size);
     pinnedSize.getAndUpdate(v -> v -= size);
   }
 
   @Override
-  public void releaseMemResource(IMNode node) {
+  public void releaseMemResource(IMNode node, int schemaRegionId) {
     int size = estimator.estimateSize(node);
-    this.size.getAndUpdate(v -> v -= size);
-    memoryStatistics.releaseMemory(size);
+    this.unpinnedSize.getAndUpdate(v -> v -= size);
+    memoryStatistics.releaseMemory(size, schemaRegionId);
   }
 
   @Override
-  public void releaseMemResource(List<IMNode> evictedNodes) {
+  public void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId) {
     int size = 0;
     for (IMNode node : evictedNodes) {
       size += estimator.estimateSize(node);
     }
     int finalSize = size;
-    this.size.getAndUpdate(v -> v -= finalSize);
-    memoryStatistics.releaseMemory(size);
+    this.unpinnedSize.getAndUpdate(v -> v -= finalSize);
+    memoryStatistics.releaseMemory(size, schemaRegionId);
   }
 
   @Override
-  public void updatePinnedSize(int deltaSize) {
+  public void updatePinnedSize(int deltaSize, int schemaRegionId) {
     if (deltaSize > 0) {
-      memoryStatistics.requestMemory(deltaSize);
+      memoryStatistics.requestMemory(deltaSize, schemaRegionId);
     } else {
-      memoryStatistics.releaseMemory(deltaSize);
+      memoryStatistics.releaseMemory(-deltaSize, schemaRegionId);
     }
     pinnedSize.getAndUpdate(v -> v += deltaSize);
   }
 
   @Override
+  public void initSchemaRegion(int schemaRegionId) {
+    memoryStatistics.initSchemaRegion(schemaRegionId);
+  }
+
+  @Override
+  public void clearSchemaRegion(int schemaRegionId) {
+    memoryStatistics.clearSchemaRegion(schemaRegionId);
+  }
+
+  @Override
   public void clear() {
-    size.getAndSet(0);
+    unpinnedSize.getAndSet(0);
     pinnedSize.getAndSet(0);
   }
 
@@ -128,6 +138,6 @@ public class MemManagerNodeEstimatedSizeBasedImpl implements IMemManager {
 
   @Override
   public long getCachedSize() {
-    return size.get();
+    return unpinnedSize.get();
   }
 }

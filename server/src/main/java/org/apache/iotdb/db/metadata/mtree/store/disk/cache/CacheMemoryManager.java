@@ -65,9 +65,9 @@ public class CacheMemoryManager {
    * @param store CachedMTreeStore
    * @return LRUCacheManager
    */
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store) {
+  public ICacheManager createLRUCacheManager(CachedMTreeStore store, int schemaRegionId) {
     synchronized (storeList) {
-      ICacheManager cacheManager = new LRUCacheManager();
+      ICacheManager cacheManager = new LRUCacheManager(schemaRegionId);
       storeList.add(store);
       return cacheManager;
     }

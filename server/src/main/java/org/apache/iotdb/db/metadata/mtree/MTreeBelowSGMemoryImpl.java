@@ -115,7 +115,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       int schemaRegionId) {
-    store = new MemMTreeStore(storageGroupPath, true);
+    store = new MemMTreeStore(storageGroupPath, true, schemaRegionId);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
@@ -125,8 +125,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   private MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       MemMTreeStore store,
-      Function<IMeasurementMNode, Map<String, String>> tagGetter,
-      int schemaRegionId) {
+      Function<IMeasurementMNode, Map<String, String>> tagGetter) {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
@@ -181,9 +180,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
-        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
-        tagGetter,
-        schemaRegionId);
+        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess, schemaRegionId),
+        tagGetter);
   }
 
   // endregion

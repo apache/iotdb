@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +33,9 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
   private final AtomicInteger size = new AtomicInteger(0);
 
   private final AtomicInteger pinnedSize = new AtomicInteger(0);
+
+  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final CachedMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
 
   MemManagerNodeNumBasedImpl() {}
 
@@ -56,35 +60,56 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
   }
 
   @Override
-  public void requestPinnedMemResource(IMNode node) {
+  public void requestPinnedMemResource(IMNode node, int schemaRegionId) {
     pinnedSize.getAndIncrement();
+    memoryStatistics.requestMemory(estimator.estimateSize(node), schemaRegionId);
   }
 
   @Override
-  public void upgradeMemResource(IMNode node) {
+  public void upgradeMemResource(IMNode node, int schemaRegionId) {
     pinnedSize.getAndIncrement();
     size.getAndDecrement();
   }
 
   @Override
-  public void releasePinnedMemResource(IMNode node) {
+  public void releasePinnedMemResource(IMNode node, int schemaRegionId) {
     size.getAndIncrement();
     pinnedSize.getAndDecrement();
   }
 
   @Override
-  public void releaseMemResource(IMNode node) {
+  public void releaseMemResource(IMNode node, int schemaRegionId) {
     size.getAndDecrement();
+    memoryStatistics.releaseMemory(estimator.estimateSize(node), schemaRegionId);
   }
 
   @Override
-  public void releaseMemResource(List<IMNode> evictedNodes) {
+  public void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId) {
     size.getAndUpdate(value -> value -= evictedNodes.size());
+    int tmp = 0;
+    for (IMNode node : evictedNodes) {
+      tmp += estimator.estimateSize(node);
+    }
+    memoryStatistics.releaseMemory(tmp, schemaRegionId);
   }
 
   @Override
-  public void updatePinnedSize(int deltaSize) {
-    // do nothing
+  public void updatePinnedSize(int deltaSize, int schemaRegionId) {
+    if (deltaSize > 0) {
+      memoryStatistics.requestMemory(deltaSize, schemaRegionId);
+    } else {
+      memoryStatistics.releaseMemory(-deltaSize, schemaRegionId);
+    }
+  }
+
+  @Override
+  public void initSchemaRegion(int schemaRegionId) {
+    memoryStatistics.initSchemaRegion(schemaRegionId);
+  }
+
+  @Override
+  public void clearSchemaRegion(int schemaRegionId) {
+    memoryStatistics.clearSchemaRegion(schemaRegionId);
   }
 
   @Override

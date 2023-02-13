@@ -27,9 +27,10 @@ public class LRUCacheManager extends CacheManager {
 
   private static final int NUM_OF_LIST = 17;
 
-  private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
+  private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager() {
+  public LRUCacheManager(int schemaRegionId) {
+    super(schemaRegionId);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }

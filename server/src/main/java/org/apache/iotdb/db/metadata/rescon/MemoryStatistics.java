@@ -24,6 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MemoryStatistics {
@@ -34,6 +36,7 @@ public class MemoryStatistics {
   private long memoryCapacity;
 
   private final AtomicLong memoryUsage = new AtomicLong(0);
+  private final Map<Integer, Long> memoryUsagePerRegion = new ConcurrentHashMap<>();
 
   private volatile boolean allowToCreateNewSeries;
 
@@ -74,16 +77,30 @@ public class MemoryStatistics {
     return memoryUsage.get();
   }
 
-  public void requestMemory(long size) {
+  public void requestMemory(long size, int schemaRegionId) {
+    memoryUsagePerRegion.computeIfPresent(schemaRegionId, (k, v) -> v + size);
     memoryUsage.getAndUpdate(v -> v += size);
     if (memoryUsage.get() >= memoryCapacity) {
-      logger.warn("Current series number {} is too large...", memoryUsage);
+      logger.warn("Current series memory {} is too large...", memoryUsage);
       allowToCreateNewSeries = false;
     }
   }
 
-  public void releaseMemory(long size) {
+  public void releaseMemory(long size, int schemaRegionId) {
+    memoryUsagePerRegion.computeIfPresent(schemaRegionId, (k, v) -> v - size);
     memoryUsage.getAndUpdate(v -> v -= size);
+    if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
+      logger.info("Current series memory {} come back to normal level", memoryUsage);
+      allowToCreateNewSeries = true;
+    }
+  }
+
+  public void initSchemaRegion(int schemaRegionId) {
+    memoryUsagePerRegion.put(schemaRegionId, 0L);
+  }
+
+  public void clearSchemaRegion(int schemaRegionId) {
+    memoryUsage.getAndUpdate(v -> v -= memoryUsagePerRegion.remove(schemaRegionId));
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
       logger.info("Current series number {} come back to normal level", memoryUsage);
       allowToCreateNewSeries = true;
@@ -92,6 +109,7 @@ public class MemoryStatistics {
 
   public void clear() {
     memoryUsage.getAndSet(0);
+    memoryUsagePerRegion.clear();
     allowToCreateNewSeries = true;
   }
 }

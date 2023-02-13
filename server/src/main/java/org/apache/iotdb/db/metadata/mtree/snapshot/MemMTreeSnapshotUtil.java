@@ -106,11 +106,12 @@ public class MemMTreeSnapshotUtil {
   }
 
   public static IMNode loadSnapshot(
-      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
+      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      throws IOException {
     File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.MTREE_SNAPSHOT);
     try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
-      return deserializeFrom(inputStream, measurementProcess);
+      return deserializeFrom(inputStream, measurementProcess, schemaRegionId);
     } catch (Throwable e) {
       // This method is only invoked during recovery. If failed, the memory usage should be cleared
       // since the loaded schema will not be used.
@@ -153,17 +154,20 @@ public class MemMTreeSnapshotUtil {
   }
 
   private static IMNode deserializeFrom(
-      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
+      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
-    return inorderDeserialize(inputStream, measurementProcess);
+    return inorderDeserialize(inputStream, measurementProcess, schemaRegionId);
   }
 
   private static IMNode inorderDeserialize(
-      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
+      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      throws IOException {
     MNodeDeserializer deserializer = new MNodeDeserializer();
     Deque<IMNode> ancestors = new ArrayDeque<>();
     Deque<Integer> restChildrenNum = new ArrayDeque<>();
-    deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream, measurementProcess);
+    deserializeMNode(
+        ancestors, restChildrenNum, deserializer, inputStream, measurementProcess, schemaRegionId);
     int childrenNum;
     IMNode root = ancestors.peek();
     while (!ancestors.isEmpty()) {
@@ -172,7 +176,13 @@ public class MemMTreeSnapshotUtil {
         ancestors.pop();
       } else {
         restChildrenNum.push(childrenNum - 1);
-        deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream, measurementProcess);
+        deserializeMNode(
+            ancestors,
+            restChildrenNum,
+            deserializer,
+            inputStream,
+            measurementProcess,
+            schemaRegionId);
       }
     }
     return root;
@@ -183,7 +193,8 @@ public class MemMTreeSnapshotUtil {
       Deque<Integer> restChildrenNum,
       MNodeDeserializer deserializer,
       InputStream inputStream,
-      Consumer<IMeasurementMNode> measurementProcess)
+      Consumer<IMeasurementMNode> measurementProcess,
+      int schemaRegionId)
       throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
     IMNode node;
@@ -214,7 +225,7 @@ public class MemMTreeSnapshotUtil {
         throw new IOException("Unrecognized MNode type " + type);
     }
 
-    MEMORY_STATISTICS.requestMemory(ESTIMATOR.estimateSize(node));
+    MEMORY_STATISTICS.requestMemory(schemaRegionId, ESTIMATOR.estimateSize(node));
 
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());

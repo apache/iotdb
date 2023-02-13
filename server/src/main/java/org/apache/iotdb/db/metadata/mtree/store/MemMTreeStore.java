@@ -41,18 +41,18 @@ import org.apache.iotdb.db.metadata.template.Template;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
-  private IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
-  private AtomicLong localMemoryUsage = new AtomicLong(0);
+  private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
+  private MemoryStatistics memoryStatistics;
+  private int schemaRegionId;
 
   private IMNode root;
 
+  // Only used for ConfigMTree
   public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup) {
     if (isStorageGroup) {
       this.root =
@@ -65,8 +65,26 @@ public class MemMTreeStore implements IMTreeStore {
     }
   }
 
-  private MemMTreeStore(IMNode root) {
+  public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup, int schemaRegionId) {
+    if (isStorageGroup) {
+      this.root =
+          new StorageGroupMNode(
+              null,
+              rootPath.getTailNode(),
+              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    } else {
+      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    }
+    this.schemaRegionId = schemaRegionId;
+    this.memoryStatistics = MemoryStatistics.getInstance();
+    this.memoryStatistics.initSchemaRegion(schemaRegionId);
+  }
+
+  private MemMTreeStore(IMNode root, int schemaRegionId) {
     this.root = root;
+    this.schemaRegionId = schemaRegionId;
+    this.memoryStatistics = MemoryStatistics.getInstance();
+    this.memoryStatistics.initSchemaRegion(schemaRegionId);
   }
 
   @Override
@@ -186,8 +204,9 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    memoryStatistics.releaseMemory(localMemoryUsage.get());
-    localMemoryUsage.set(0);
+    if (memoryStatistics != null) {
+      memoryStatistics.clearSchemaRegion(schemaRegionId);
+    }
   }
 
   @Override
@@ -196,17 +215,22 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
-    return new MemMTreeStore(MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess));
+      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      throws IOException {
+    return new MemMTreeStore(
+        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, schemaRegionId),
+        schemaRegionId);
   }
 
   private void requestMemory(int size) {
-    memoryStatistics.requestMemory(size);
-    localMemoryUsage.getAndUpdate(v -> v += size);
+    if (memoryStatistics != null) {
+      memoryStatistics.requestMemory(size, schemaRegionId);
+    }
   }
 
   private void releaseMemory(int size) {
-    localMemoryUsage.getAndUpdate(v -> v -= size);
-    memoryStatistics.releaseMemory(size);
+    if (memoryStatistics != null) {
+      memoryStatistics.releaseMemory(size, schemaRegionId);
+    }
   }
 }

@@ -65,10 +65,15 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  */
 public abstract class CacheManager implements ICacheManager {
 
-  private IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
 
   // The nodeBuffer helps to quickly locate the volatile subtree
-  private NodeBuffer nodeBuffer = new NodeBuffer();
+  private final NodeBuffer nodeBuffer = new NodeBuffer();
+  private final int schemaRegionId;
+
+  public CacheManager(int schemaRegionId) {
+    this.schemaRegionId = schemaRegionId;
+  }
 
   public void initRootStatus(IMNode root) {
     pinMNodeWithMemStatusUpdate(root);
@@ -312,9 +317,9 @@ public abstract class CacheManager implements ICacheManager {
     node.setCacheEntry(null);
 
     if (cacheEntry.isPinned()) {
-      memManager.releasePinnedMemResource(node);
+      memManager.releasePinnedMemResource(node, schemaRegionId);
     }
-    memManager.releaseMemResource(node);
+    memManager.releaseMemResource(node, schemaRegionId);
   }
 
   private void removeRecursively(IMNode node) {
@@ -368,7 +373,7 @@ public abstract class CacheManager implements ICacheManager {
       collectEvictedMNodes(node, evictedMNodes);
     }
 
-    memManager.releaseMemResource(evictedMNodes);
+    memManager.releaseMemResource(evictedMNodes, schemaRegionId);
     return !evictedMNodes.isEmpty();
   }
 
@@ -409,10 +414,10 @@ public abstract class CacheManager implements ICacheManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first
     if (cacheEntry == null) {
-      memManager.requestPinnedMemResource(node);
+      memManager.requestPinnedMemResource(node, schemaRegionId);
       initCacheEntryForNode(node);
     } else if (!cacheEntry.isPinned()) {
-      memManager.upgradeMemResource(node);
+      memManager.upgradeMemResource(node, schemaRegionId);
     }
     doPin(node);
   }
@@ -456,7 +461,7 @@ public abstract class CacheManager implements ICacheManager {
       cacheEntry.unPin();
       if (!cacheEntry.isPinned()) {
         isPinStatusChanged = true;
-        memManager.releasePinnedMemResource(node);
+        memManager.releasePinnedMemResource(node, schemaRegionId);
       }
     }
 
@@ -481,9 +486,9 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     if (cacheEntry.isPinned()) {
-      memManager.releasePinnedMemResource(node);
+      memManager.releasePinnedMemResource(node, schemaRegionId);
     }
-    memManager.releaseMemResource(node);
+    memManager.releaseMemResource(node, schemaRegionId);
 
     Iterator<IMNode> iterator = getCachedMNodeContainer(node).getChildrenIterator();
     while (iterator.hasNext()) {

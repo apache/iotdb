@@ -32,17 +32,21 @@ public interface IMemManager {
 
   boolean isExceedFlushThreshold();
 
-  void requestPinnedMemResource(IMNode node);
+  void requestPinnedMemResource(IMNode node, int schemaRegionId);
 
-  void upgradeMemResource(IMNode node);
+  void upgradeMemResource(IMNode node, int schemaRegionId);
 
-  void releasePinnedMemResource(IMNode node);
+  void releasePinnedMemResource(IMNode node, int schemaRegionId);
 
-  void releaseMemResource(IMNode node);
+  void releaseMemResource(IMNode node, int schemaRegionId);
 
-  void releaseMemResource(List<IMNode> evictedNodes);
+  void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId);
 
-  void updatePinnedSize(int deltaSize);
+  void updatePinnedSize(int deltaSize, int schemaRegionId);
+
+  void initSchemaRegion(int schemaRegionId);
+
+  void clearSchemaRegion(int schemaRegionId);
 
   void clear();
 
