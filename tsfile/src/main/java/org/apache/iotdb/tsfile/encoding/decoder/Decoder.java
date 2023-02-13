@@ -127,6 +127,8 @@ public abstract class Decoder {
         return new FreqDecoder();
       case HUFFMAN:
         return new HuffmanDecoder();
+      case MTF:
+        return new MTFDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

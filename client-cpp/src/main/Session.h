@@ -170,7 +170,8 @@ namespace TSEncoding {
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
         FREQ = (char) 10,
-        HUFFMAN = (char) 11
+        HUFFMAN = (char) 11,
+        MTF = (char) 12
     };
 }
 

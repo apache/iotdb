@@ -62,6 +62,7 @@ class TSEncoding(Enum):
     ZIGZAG = 9
     FREQ = 10
     HUFFMAN = 11
+    MTF = 12
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

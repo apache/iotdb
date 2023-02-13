@@ -75,6 +75,8 @@ public abstract class TSEncodingBuilder {
         return new Zigzag();
       case HUFFMAN:
         return new Huffman();
+      case MTF:
+        return new Mtf();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -410,6 +412,22 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       if (type == TSDataType.TEXT) {
         return new HuffmanEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Mtf extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new MTFEncoder();
       }
       throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }
