@@ -33,7 +33,6 @@ public enum Metric {
   DISK_IO_SECTOR_NUM,
   PROCESS_IO_SIZE,
   PROCESS_IO_OPS,
-  PROCESS_IO_TIME,
   MEM,
   CACHE,
   CACHE_HIT,

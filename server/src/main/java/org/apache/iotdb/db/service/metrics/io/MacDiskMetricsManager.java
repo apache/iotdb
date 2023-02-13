@@ -26,6 +26,10 @@ import java.util.Set;
 /** Disk Metrics Manager for macOS, not implemented yet. */
 public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
 
+  public MacDiskMetricsManager() {
+    super();
+  }
+
   @Override
   public Map<String, Long> getReadDataSizeForDisk() {
     return Collections.emptyMap();
@@ -77,42 +81,42 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public long getReadDataSizeForDataNode() {
+  public Map<String, Long> getMergedWriteOperationForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, Long> getMergedReadOperationForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public long getActualReadDataSizeForProcess() {
     return 0;
   }
 
   @Override
-  public long getWriteDataSizeForDataNode() {
+  public long getActualWriteDataSizeForProcess() {
     return 0;
   }
 
   @Override
-  public long getReadOpsCountForDataNode() {
+  public long getReadOpsCountForProcess() {
     return 0;
   }
 
   @Override
-  public long getWriteOpsCountForDataNode() {
+  public long getWriteOpsCountForProcess() {
     return 0;
   }
 
   @Override
-  public long getReadCostTimeForDataNode() {
+  public long getAttemptReadSizeForProcess() {
     return 0;
   }
 
   @Override
-  public long getWriteCostTimeForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getAvgReadCostTimeOfEachOpsForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getAvgWriteCostTimeOfEachOpsForDataNode() {
+  public long getAttemptWriteSizeForProcess() {
     return 0;
   }
 

@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.service.metrics.io;
 
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,8 +38,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
+  private final Logger log = LoggerFactory.getLogger(AbstractDiskMetricsManager.class);
   private final String DISK_STATS_FILE_PATH = "/proc/diskstats";
   private final String DISK_ID_PATH = "/sys/block";
+  private final String PROCESS_IO_STAT_PATH;
   private final int DISK_ID_OFFSET = 3;
   private final int DISK_READ_COUNT_OFFSET = 4;
   private final int DISK_MERGED_READ_COUNT_OFFSET = 5;
@@ -49,12 +56,14 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private Set<String> diskIDSet;
   private long lastUpdateTime = 0L;
   private long updateInterval = 1L;
-  private String[] dataNodeProcessId;
-  private String[] configNodeProcessId;
+
+  // Disk IO status structure
   private final Map<String, Integer> lastReadOperationCountForDisk = new HashMap<>();
   private final Map<String, Integer> lastWriteOperationCountForDisk = new HashMap<>();
   private final Map<String, Long> lastReadTimeCostForDisk = new HashMap<>();
   private final Map<String, Long> lastWriteTimeCostForDisk = new HashMap<>();
+  private final Map<String, Long> lastMergedReadCountForDisk = new HashMap<>();
+  private final Map<String, Long> lastMergedWriteCountForDisk = new HashMap<>();
   private final Map<String, Long> lastReadSectorCountForDisk = new HashMap<>();
   private final Map<String, Long> lastWriteSectorCountForDisk = new HashMap<>();
   private final Map<String, Integer> incrementReadOperationCountForDisk = new HashMap<>();
@@ -63,8 +72,29 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final Map<String, Long> incrementWriteTimeCostForDisk = new HashMap<>();
   private final Map<String, Long> incrementReadSectorCountForDisk = new HashMap<>();
   private final Map<String, Long> incrementWriteSectorCountForDisk = new HashMap<>();
+  private final Map<String, Long> incrementMergedReadCountForDisk = new HashMap<>();
+  private final Map<String, Long> incrementMergedWriteCountForDisk = new HashMap<>();
 
-  public LinuxDiskMetricsManager() {}
+  // Process IO status structure
+  private long lastReallyReadSizeForProcess = 0L;
+  private long lastReallyWriteSizeForProcess = 0L;
+  private long lastAttemptReadSizeForProcess = 0L;
+  private long lastAttemptWriteSizeForProcess = 0L;
+  private long lastReadOpsCountForProcess = 0L;
+  private long lastWriteOpsCountForProcess = 0L;
+  private long incrementReallyReadSizeForProcess = 0L;
+  private long incrementReallyWriteSizeForProcess = 0L;
+  private long incrementAttemptReadSizeForProcess = 0L;
+  private long incrementAttemptWriteSizeForProcess = 0L;
+  private long incrementReadOpsCountForProcess = 0L;
+  private long incrementWriteOpsCountForProcess = 0L;
+
+  public LinuxDiskMetricsManager() {
+    super();
+    PROCESS_IO_STAT_PATH =
+        String.format(
+            "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
+  }
 
   @Override
   public Map<String, Long> getReadDataSizeForDisk() {
@@ -175,42 +205,50 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public long getReadDataSizeForDataNode() {
+  public Map<String, Long> getMergedWriteOperationForDisk() {
+    Map<String, Long> incrementMapPerMinute = new HashMap<>();
+    for (Map.Entry<String, Long> entry : incrementMergedWriteCountForDisk.entrySet()) {
+      incrementMapPerMinute.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+    }
+    return incrementMapPerMinute;
+  }
+
+  @Override
+  public Map<String, Long> getMergedReadOperationForDisk() {
+    Map<String, Long> incrementMapPerMinute = new HashMap<>();
+    for (Map.Entry<String, Long> entry : incrementMergedReadCountForDisk.entrySet()) {
+      incrementMapPerMinute.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+    }
+    return incrementMapPerMinute;
+  }
+
+  @Override
+  public long getActualReadDataSizeForProcess() {
+    return incrementReallyReadSizeForProcess / updateInterval * 1000L / 1024L;
+  }
+
+  @Override
+  public long getActualWriteDataSizeForProcess() {
+    return incrementReallyWriteSizeForProcess / updateInterval * 1000L / 1024L;
+  }
+
+  @Override
+  public long getReadOpsCountForProcess() {
+    return incrementReadOpsCountForProcess / updateInterval * 1000L;
+  }
+
+  @Override
+  public long getWriteOpsCountForProcess() {
+    return incrementWriteOpsCountForProcess / updateInterval * 1000L;
+  }
+
+  @Override
+  public long getAttemptReadSizeForProcess() {
     return 0;
   }
 
   @Override
-  public long getWriteDataSizeForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getReadOpsCountForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getWriteOpsCountForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getReadCostTimeForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getWriteCostTimeForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getAvgReadCostTimeOfEachOpsForDataNode() {
-    return 0;
-  }
-
-  @Override
-  public long getAvgWriteCostTimeOfEachOpsForDataNode() {
+  public long getAttemptWriteSizeForProcess() {
     return 0;
   }
 
@@ -229,14 +267,21 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     return diskIDSet;
   }
 
-  private void updateDiskInfo() {
+  private void updateInfo() {
     long currentTime = System.currentTimeMillis();
     updateInterval = currentTime - lastUpdateTime;
     lastUpdateTime = currentTime;
+    updateDiskInfo();
+    updateProcessInfo();
+  }
+
+  private void updateDiskInfo() {
     File diskStatsFile = new File(DISK_STATS_FILE_PATH);
     if (!diskStatsFile.exists()) {
+      log.warn("Cannot find disk io status file {}", DISK_STATS_FILE_PATH);
       return;
     }
+
     try (Scanner diskStatsScanner = new Scanner(Files.newInputStream(diskStatsFile.toPath()))) {
       while (diskStatsScanner.hasNextLine()) {
         String[] diskInfo = diskStatsScanner.nextLine().split("\\s+");
@@ -246,16 +291,16 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
         }
         int readOperationCount = Integer.parseInt(diskInfo[DISK_READ_COUNT_OFFSET]);
         int writeOperationCount = Integer.parseInt(diskInfo[DISK_WRITE_COUNT_OFFSET]);
-        int mergedReadOperationCount = Integer.parseInt(diskInfo[DISK_MERGED_READ_COUNT_OFFSET]);
-        int mergedWriteOperationCount = Integer.parseInt(diskInfo[DISK_MERGED_WRITE_COUNT_OFFSET]);
+        long mergedReadOperationCount = Long.parseLong(diskInfo[DISK_MERGED_READ_COUNT_OFFSET]);
+        long mergedWriteOperationCount = Long.parseLong(diskInfo[DISK_MERGED_WRITE_COUNT_OFFSET]);
         long sectorReadCount = Long.parseLong(diskInfo[DISK_SECTOR_READ_COUNT_OFFSET]);
         long sectorWriteCount = Long.parseLong(diskInfo[DISK_SECTOR_WRITE_COUNT_OFFSET]);
         long readTimeCost = Long.parseLong(diskInfo[DISK_READ_TIME_COST_OFFSET]);
         long writeTimeCost = Long.parseLong(diskInfo[DISK_WRITE_TIME_COST_OFFSET]);
-
+        long lastMergedReadCount = lastMergedReadCountForDisk.getOrDefault(diskId, 0L);
+        long lastMergedWriteCount = lastMergedReadCountForDisk.getOrDefault(diskId, 0L);
         int lastReadOperationCount = lastReadOperationCountForDisk.getOrDefault(diskId, 0);
         int lastWriteOperationCount = lastWriteOperationCountForDisk.getOrDefault(diskId, 0);
-        //        int lastMergedReadOperationCount = lastM
         long lastSectorReadCount = lastReadSectorCountForDisk.getOrDefault(diskId, 0L);
         long lastSectorWriteCount = lastWriteSectorCountForDisk.getOrDefault(diskId, 0L);
         long lastReadTime = lastReadTimeCostForDisk.getOrDefault(diskId, 0L);
@@ -299,21 +344,92 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
           incrementWriteTimeCostForDisk.put(diskId, 0L);
         }
 
+        if (lastMergedReadCount != 0) {
+          incrementMergedReadCountForDisk.put(
+              diskId, mergedReadOperationCount - lastMergedReadCount);
+        } else {
+          incrementMergedReadCountForDisk.put(diskId, 0L);
+        }
+
+        if (lastMergedWriteCount != 0) {
+          incrementMergedWriteCountForDisk.put(
+              diskId, mergedWriteOperationCount - lastMergedWriteCount);
+        } else {
+          incrementMergedWriteCountForDisk.put(diskId, 0L);
+        }
+
         lastReadOperationCountForDisk.put(diskId, readOperationCount);
         lastWriteOperationCountForDisk.put(diskId, writeOperationCount);
         lastReadSectorCountForDisk.put(diskId, sectorReadCount);
         lastWriteSectorCountForDisk.put(diskId, sectorWriteCount);
         lastReadTimeCostForDisk.put(diskId, readTimeCost);
         lastWriteTimeCostForDisk.put(diskId, writeTimeCost);
+        lastMergedReadCountForDisk.put(diskId, mergedReadOperationCount);
+        lastMergedWriteCountForDisk.put(diskId, mergedWriteOperationCount);
       }
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      log.error("Meets error while updating disk io info", e);
+    }
+  }
+
+  private void updateProcessInfo() {
+    File processStatInfoFile = new File(PROCESS_IO_STAT_PATH);
+    if (!processStatInfoFile.exists()) {
+      log.warn("Cannot find process io status file {}", PROCESS_IO_STAT_PATH);
+    }
+
+    try (Scanner processStatsScanner =
+        new Scanner(Files.newInputStream(processStatInfoFile.toPath()))) {
+      while (processStatsScanner.hasNextLine()) {
+        String infoLine = processStatsScanner.nextLine();
+        if (infoLine.startsWith("syscr")) {
+          long currentReadOpsCount = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastReadOpsCountForProcess != 0) {
+            incrementReadOpsCountForProcess = currentReadOpsCount - lastReadOpsCountForProcess;
+          }
+          lastReadOpsCountForProcess = currentReadOpsCount;
+        } else if (infoLine.startsWith("syscw")) {
+          long currentWriteOpsCount = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastWriteOpsCountForProcess != 0) {
+            incrementWriteOpsCountForProcess = currentWriteOpsCount - lastWriteOpsCountForProcess;
+          }
+          lastWriteOpsCountForProcess = currentWriteOpsCount;
+        } else if (infoLine.startsWith("read_bytes")) {
+          long currentReadSize = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastReallyReadSizeForProcess != 0) {
+            incrementReallyReadSizeForProcess = currentReadSize - lastReallyReadSizeForProcess;
+          }
+          lastReallyReadSizeForProcess = currentReadSize;
+        } else if (infoLine.startsWith("write_bytes")) {
+          long currentWriteSize = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastReallyWriteSizeForProcess != 0) {
+            incrementReallyWriteSizeForProcess = currentWriteSize - lastReallyWriteSizeForProcess;
+          }
+          lastReallyWriteSizeForProcess = currentWriteSize;
+        } else if (infoLine.startsWith("rchar")) {
+          long currentAttemptReadSize = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastAttemptReadSizeForProcess != 0) {
+            incrementAttemptReadSizeForProcess =
+                currentAttemptReadSize - lastAttemptReadSizeForProcess;
+          }
+          lastAttemptReadSizeForProcess = currentAttemptReadSize;
+        } else if (infoLine.startsWith("wchar")) {
+          long currentAttemptWriteSize = Long.parseLong(infoLine.split(":\\s")[1]);
+          if (lastAttemptWriteSizeForProcess != 0) {
+            incrementAttemptWriteSizeForProcess =
+                currentAttemptWriteSize - lastAttemptWriteSizeForProcess;
+          }
+          lastAttemptWriteSizeForProcess = currentAttemptWriteSize;
+        }
+      }
+    } catch (IOException e) {
+      log.error("Meets error while updating process io info", e);
     }
   }
 
   private void checkUpdate() {
     if (System.currentTimeMillis() - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
-      updateDiskInfo();
+      updateInfo();
     }
   }
 }

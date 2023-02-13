@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.io.AbstractDiskMetricsManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -32,6 +34,7 @@ import java.util.Set;
 public class DiskMetrics implements IMetricSet {
   private final AbstractDiskMetricsManager diskMetricsManager =
       AbstractDiskMetricsManager.getDiskMetricsManager();
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -72,6 +75,24 @@ public class DiskMetrics implements IMetricSet {
           x -> x.getWriteOperationCountForDisk().getOrDefault(diskID, 0),
           Tag.TYPE.toString(),
           "write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.createAutoGauge(
+          Metric.DISK_IO_OPS.toString(),
+          MetricLevel.IMPORTANT,
+          diskMetricsManager,
+          x -> x.getMergedReadOperationForDisk().getOrDefault(diskID, 0L),
+          Tag.TYPE.toString(),
+          "merged_write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.createAutoGauge(
+          Metric.DISK_IO_OPS.toString(),
+          MetricLevel.IMPORTANT,
+          diskMetricsManager,
+          x -> x.getMergedWriteOperationForDisk().getOrDefault(diskID, 0L),
+          Tag.TYPE.toString(),
+          "merged_read",
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -132,77 +153,59 @@ public class DiskMetrics implements IMetricSet {
 
     // metrics for datanode and config node
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        diskMetricsManager,
-        AbstractDiskMetricsManager::getReadDataSizeForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        diskMetricsManager,
-        AbstractDiskMetricsManager::getWriteDataSizeForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.createAutoGauge(
         Metric.PROCESS_IO_OPS.toString(),
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getReadOpsCountForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
+        AbstractDiskMetricsManager::getReadOpsCountForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
         "read");
     metricService.createAutoGauge(
         Metric.PROCESS_IO_OPS.toString(),
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getWriteOpsCountForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.createAutoGauge(
-        Metric.PROCESS_IO_TIME.toString(),
-        MetricLevel.IMPORTANT,
-        diskMetricsManager,
-        AbstractDiskMetricsManager::getReadCostTimeForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.createAutoGauge(
-        Metric.PROCESS_IO_TIME.toString(),
-        MetricLevel.IMPORTANT,
-        diskMetricsManager,
-        AbstractDiskMetricsManager::getWriteCostTimeForDataNode,
-        Tag.NAME.toString(),
-        "datanode",
+        AbstractDiskMetricsManager::getWriteOpsCountForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
         "write");
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_TIME.toString(),
+        Metric.PROCESS_IO_SIZE.toString(),
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getAvgReadCostTimeOfEachOpsForDataNode,
+        AbstractDiskMetricsManager::getActualReadDataSizeForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "avg_read");
+        "actual_read");
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_TIME.toString(),
+        Metric.PROCESS_IO_SIZE.toString(),
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getAvgWriteCostTimeOfEachOpsForDataNode,
+        AbstractDiskMetricsManager::getActualWriteDataSizeForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "datanode",
+        "actual_write");
+    metricService.createAutoGauge(
+        Metric.PROCESS_IO_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        diskMetricsManager,
+        AbstractDiskMetricsManager::getAttemptReadSizeForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "avg_write");
+        "attempt_read");
+    metricService.createAutoGauge(
+        Metric.PROCESS_IO_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        diskMetricsManager,
+        AbstractDiskMetricsManager::getAttemptWriteSizeForProcess,
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
+        Tag.NAME.toString(),
+        "attempt_write");
   }
 
   @Override
@@ -286,58 +289,44 @@ public class DiskMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PROCESS_IO_SIZE.toString(),
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
+        "actual_read");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PROCESS_IO_SIZE.toString(),
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "datanode",
+        "actual_write");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_SIZE.toString(),
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        "write");
+        "attempt_read");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PROCESS_IO_SIZE.toString(),
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
+        Tag.NAME.toString(),
+        "attempt_write");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PROCESS_IO_OPS.toString(),
-        Tag.NAME.toString(),
-        "datanode",
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
         "read");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PROCESS_IO_OPS.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "write");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
+        Tag.FROM.toString(),
+        diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
         "write");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "avg_read");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_TIME.toString(),
-        Tag.NAME.toString(),
-        "datanode",
-        Tag.NAME.toString(),
-        "avg_write");
   }
 }

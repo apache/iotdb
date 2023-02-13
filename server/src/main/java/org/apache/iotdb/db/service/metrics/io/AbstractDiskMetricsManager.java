@@ -19,10 +19,46 @@
 
 package org.apache.iotdb.db.service.metrics.io;
 
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.Set;
 
 public abstract class AbstractDiskMetricsManager {
+  private final Logger log = LoggerFactory.getLogger(AbstractDiskMetricsManager.class);
+  String processName;
+
+  protected AbstractDiskMetricsManager() {
+    try {
+      Process process = Runtime.getRuntime().exec("jps");
+      String pid = MetricConfigDescriptor.getInstance().getMetricConfig().getPid();
+      // In case of we cannot get the process name,
+      // process name is pid by default
+      processName = pid;
+      try (BufferedReader input =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = input.readLine()) != null) {
+          if (line.startsWith(pid + " ")) {
+            processName = line.split("\\s")[1];
+            break;
+          }
+        }
+      }
+    } catch (IOException e) {
+      log.warn("Failed to get the process name", e);
+    }
+  }
+
+  public String getProcessName() {
+    return processName;
+  }
 
   public abstract Map<String, Long> getReadDataSizeForDisk();
 
@@ -31,6 +67,10 @@ public abstract class AbstractDiskMetricsManager {
   public abstract Map<String, Integer> getReadOperationCountForDisk();
 
   public abstract Map<String, Integer> getWriteOperationCountForDisk();
+
+  public abstract Map<String, Long> getMergedWriteOperationForDisk();
+
+  public abstract Map<String, Long> getMergedReadOperationForDisk();
 
   public abstract Map<String, Long> getReadCostTimeForDisk();
 
@@ -44,21 +84,17 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Double> getAvgSectorCountOfEachWriteForDisk();
 
-  public abstract long getReadDataSizeForDataNode();
+  public abstract long getActualReadDataSizeForProcess();
 
-  public abstract long getWriteDataSizeForDataNode();
+  public abstract long getActualWriteDataSizeForProcess();
 
-  public abstract long getReadOpsCountForDataNode();
+  public abstract long getReadOpsCountForProcess();
 
-  public abstract long getWriteOpsCountForDataNode();
+  public abstract long getWriteOpsCountForProcess();
 
-  public abstract long getReadCostTimeForDataNode();
+  public abstract long getAttemptReadSizeForProcess();
 
-  public abstract long getWriteCostTimeForDataNode();
-
-  public abstract long getAvgReadCostTimeOfEachOpsForDataNode();
-
-  public abstract long getAvgWriteCostTimeOfEachOpsForDataNode();
+  public abstract long getAttemptWriteSizeForProcess();
 
   public abstract Set<String> getDiskIDs();
 
