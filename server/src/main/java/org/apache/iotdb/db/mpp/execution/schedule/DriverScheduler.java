@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -63,6 +64,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final double LEVEL_TIME_MULTIPLIER = 2;
 
@@ -79,13 +81,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final AtomicInteger nextDriverTaskHandleId = new AtomicInteger(0);
   private IMPPDataExchangeManager blockManager;
 
-  private static final int QUERY_MAX_CAPACITY =
-      IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
-  private static final int WORKER_THREAD_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
-  private static final int TASK_MAX_CAPACITY = QUERY_MAX_CAPACITY * WORKER_THREAD_NUM * 2;
-  private static final long QUERY_TIMEOUT_MS =
-      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+  private static final int QUERY_MAX_CAPACITY = config.getMaxAllowedConcurrentQueries();
+  private static final int WORKER_THREAD_NUM = config.getQueryThreadCount();
+  private static final int TASK_MAX_CAPACITY = QUERY_MAX_CAPACITY * config.getDegreeOfParallelism();
+  private static final long QUERY_TIMEOUT_MS = config.getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 
