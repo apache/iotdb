@@ -136,10 +136,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     }
 
     // build value column
-    for (int column = 0; column < readEndIndex; column++) {
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       Column valueColumn = tsBlock.getColumn(column);
       ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
-      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      for (int row = 0; row < readEndIndex; row++) {
         if (satisfyInfo[row] && hasValue[row]) {
           if (!valueColumn.isNull(row)) {
             valueBuilder.write(valueColumn, row);
