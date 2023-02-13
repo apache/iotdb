@@ -331,8 +331,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     startBackGroundThreads();
     setSkipElection(false);
     FlowMonitorManager.INSTANCE.register(thisNode);
-    flowBalancer = new FlowBalancer(logDispatcher, this);
-    flowBalancer.start();
+    if (config.isUseFollowerLoadBalance()) {
+      flowBalancer = new FlowBalancer(logDispatcher, this);
+      flowBalancer.start();
+    }
     logger.info("{} started", name);
   }
 
@@ -456,7 +458,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     heartBeatService = null;
     appendLogThreadPool = null;
 
-    flowBalancer.stop();
+    if (flowBalancer != null) {
+      flowBalancer.stop();
+    }
     logger.info("Member {} stopped", name);
   }
 

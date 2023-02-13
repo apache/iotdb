@@ -498,8 +498,10 @@ public class Timer {
 
   private static void printTo(Statistic currNode, StringBuilder out) {
     if (currNode != Statistic.ROOT && currNode.valid) {
-      indent(out, currNode.level);
-      out.append(currNode).append("\n");
+      if (currNode.counter.get() != 0) {
+        indent(out, currNode.level);
+        out.append(currNode).append("\n");
+      }
     }
     for (Statistic child : currNode.children) {
       printTo(child, out);

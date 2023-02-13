@@ -37,10 +37,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,11 +56,15 @@ public class ExprBench {
 
   private AtomicLong requestCounter = new AtomicLong();
   private AtomicLong latencySum = new AtomicLong();
+  private AtomicLong burstRequestCounter = new AtomicLong();
+  private AtomicLong burstLatencySum = new AtomicLong();
   private long maxLatency = 0;
   private int threadNum = 64;
   private int workloadSize = 64 * 1024;
   private int printInterval = 1000;
   private ClientManager clientPool;
+  private long maxRunningSecond;
+  private long burstInterval;
   private int maxRequestNum;
   private ExecutorService pool = Executors.newCachedThreadPool();
   private List<Node> nodeList = new ArrayList<>();
@@ -65,12 +73,16 @@ public class ExprBench {
   private List<EndPoint> endPoints = new ArrayList<>();
   private Map<EndPoint, RateLimiter> rateLimiterMap = new ConcurrentHashMap<>();
   private Map<EndPoint, Statistic> latencyMap = new ConcurrentHashMap<>();
+  private long startTime;
+  private volatile boolean duringBurst = false;
+  private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   public ExprBench(Node target) {
     clientPool = new ClientManager(false, Type.MetaGroupClient);
   }
 
   private static class EndPoint {
+
     private Node node;
     private int raftId;
 
@@ -86,6 +98,7 @@ public class ExprBench {
   }
 
   private static class Statistic {
+
     private AtomicLong sum = new AtomicLong();
     private AtomicLong cnt = new AtomicLong();
 
@@ -100,91 +113,142 @@ public class ExprBench {
     }
   }
 
+  private void benchmarkTask(int taskId) {
+    int endPointIdx = taskId % endPoints.size();
+    Client client = null;
+
+    ExecutNonQueryReq request = new ExecutNonQueryReq();
+    DummyPlan plan = new DummyPlan();
+    plan.setWorkload(new byte[workloadSize]);
+    plan.setNeedForward(true);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(workloadSize + 4096);
+    Map<EndPoint, Node> endPointLeaderMap = new HashMap<>();
+
+    Node target = null;
+    long currRequsetNum = -1;
+    while (true) {
+      EndPoint endPoint = endPoints.get(endPointIdx);
+      RateLimiter rateLimiter = rateLimiterMap.get(endPoint);
+      if (rateLimiter != null) {
+        rateLimiter.acquire(1);
+      }
+
+      target = endPointLeaderMap.getOrDefault(endPoint, endPoint.node);
+      int raftId = endPoint.raftId;
+      plan.setGroupIdentifier(ClusterUtils.nodeToString(endPoint.node) + "#" + raftId);
+
+      try {
+        client = clientPool.borrowSyncClient(target, ClientCategory.META);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+
+      byteBuffer.clear();
+      plan.serialize(byteBuffer);
+      byteBuffer.flip();
+      request.planBytes = byteBuffer;
+      request.setPlanBytesIsSet(true);
+
+      long reqLatency = System.nanoTime();
+      try {
+        TSStatus status = client.executeNonQueryPlan(request);
+        clientPool.returnSyncClient(client, target, ClientCategory.META);
+        if (status.isSetRedirectNode()) {
+          Node leader = new Node().setInternalIp(status.redirectNode.ip).setMetaPort(8880);
+          endPointLeaderMap.put(endPoint, leader);
+          logger.debug("Leader of {} is changed to {}", endPoint, leader);
+        }
+
+        currRequsetNum = requestCounter.incrementAndGet();
+        if (currRequsetNum > threadNum * 10L) {
+          reqLatency = System.nanoTime() - reqLatency;
+          maxLatency = Math.max(maxLatency, reqLatency);
+          latencySum.addAndGet(reqLatency);
+          latencyMap.get(endPoint).add(reqLatency);
+          if (duringBurst) {
+            burstRequestCounter.incrementAndGet();
+            burstLatencySum.addAndGet(reqLatency);
+          }
+        }
+      } catch (TException e) {
+        e.printStackTrace();
+      }
+
+      long elapsedTime = System.currentTimeMillis() - startTime;
+      if (currRequsetNum % printInterval == 0) {
+        System.out.println(
+            String.format(
+                "%s %d %d %f(%f) %f %f",
+                dateFormat.format(new Date(System.currentTimeMillis())),
+                elapsedTime,
+                currRequsetNum,
+                (currRequsetNum + 0.0) / elapsedTime,
+                currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime,
+                maxLatency / 1000.0,
+                (latencySum.get() + 0.0) / currRequsetNum));
+        System.out.println(latencyMap);
+      }
+
+      if (currRequsetNum >= maxRequestNum || elapsedTime / 1000 >= maxRunningSecond) {
+        break;
+      }
+    }
+  }
+
+  private void insertBurst() {
+    long burstStart = maxRunningSecond / 2 - burstInterval / 2;
+    long burstEnd = maxRunningSecond / 2 + burstInterval / 2;
+
+    long elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
+    while (elapsedTime < burstStart) {
+      try {
+        Thread.sleep(1000);
+        elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
+      } catch (InterruptedException e) {
+        logger.warn("Unexpected interruption");
+      }
+    }
+    duringBurst = true;
+    System.out.printf("Burst starts");
+    for (Entry<EndPoint, RateLimiter> endPointRateLimiterEntry : rateLimiterMap.entrySet()) {
+      RateLimiter rateLimiter = endPointRateLimiterEntry.getValue();
+      rateLimiter.setRate(rateLimiter.getRate() * 2);
+    }
+
+    while (elapsedTime < burstEnd) {
+      try {
+        Thread.sleep(1000);
+        elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
+      } catch (InterruptedException e) {
+        logger.warn("Unexpected interruption");
+      }
+    }
+    duringBurst = false;
+    System.out.printf("Burst ends");
+    for (Entry<EndPoint, RateLimiter> endPointRateLimiterEntry : rateLimiterMap.entrySet()) {
+      RateLimiter rateLimiter = endPointRateLimiterEntry.getValue();
+      rateLimiter.setRate(rateLimiter.getRate() / 2);
+    }
+  }
+
   public void benchmark() {
-    long startTime = System.currentTimeMillis();
+    startTime = System.currentTimeMillis();
     for (int i = 0; i < threadNum; i++) {
-      int finalI = i;
-      pool.submit(
-          () -> {
-            int endPointIdx = finalI % endPoints.size();
-            Client client = null;
-
-            ExecutNonQueryReq request = new ExecutNonQueryReq();
-            DummyPlan plan = new DummyPlan();
-            plan.setWorkload(new byte[workloadSize]);
-            plan.setNeedForward(true);
-
-            ByteBuffer byteBuffer = ByteBuffer.allocate(workloadSize + 4096);
-            Map<EndPoint, Node> endPointLeaderMap = new HashMap<>();
-
-            Node target = null;
-            long currRequsetNum = -1;
-            while (true) {
-
-              EndPoint endPoint = endPoints.get(endPointIdx);
-              RateLimiter rateLimiter = rateLimiterMap.get(endPoint);
-              if (rateLimiter != null) {
-                rateLimiter.acquire(1);
-              }
-
-              target = endPointLeaderMap.getOrDefault(endPoint, endPoint.node);
-              int raftId = endPoint.raftId;
-              plan.setGroupIdentifier(ClusterUtils.nodeToString(endPoint.node) + "#" + raftId);
-
-              try {
-                client = clientPool.borrowSyncClient(target, ClientCategory.META);
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-
-              byteBuffer.clear();
-              plan.serialize(byteBuffer);
-              byteBuffer.flip();
-              request.planBytes = byteBuffer;
-              request.setPlanBytesIsSet(true);
-
-              long reqLatency = System.nanoTime();
-              try {
-                TSStatus status = client.executeNonQueryPlan(request);
-                clientPool.returnSyncClient(client, target, ClientCategory.META);
-                if (status.isSetRedirectNode()) {
-                  Node leader = new Node().setInternalIp(status.redirectNode.ip).setMetaPort(8880);
-                  endPointLeaderMap.put(endPoint, leader);
-                  logger.debug("Leader of {} is changed to {}", endPoint, leader);
-                }
-
-                currRequsetNum = requestCounter.incrementAndGet();
-                if (currRequsetNum > threadNum * 10) {
-                  reqLatency = System.nanoTime() - reqLatency;
-                  maxLatency = Math.max(maxLatency, reqLatency);
-                  latencySum.addAndGet(reqLatency);
-                  latencyMap.get(endPoint).add(reqLatency);
-                }
-              } catch (TException e) {
-                e.printStackTrace();
-              }
-
-              if (currRequsetNum % printInterval == 0) {
-                long elapsedTime = System.currentTimeMillis() - startTime;
-                System.out.println(
-                    String.format(
-                        "%d %d %f(%f) %f %f",
-                        elapsedTime,
-                        currRequsetNum,
-                        (currRequsetNum + 0.0) / elapsedTime,
-                        currRequsetNum * workloadSize / (1024.0 * 1024.0) / elapsedTime,
-                        maxLatency / 1000.0,
-                        (latencySum.get() + 0.0) / currRequsetNum));
-                System.out.println(latencyMap);
-              }
-
-              if (currRequsetNum >= maxRequestNum) {
-                break;
-              }
-            }
-          });
+      int taskId = i;
+      pool.submit(() -> benchmarkTask(taskId));
     }
     pool.shutdown();
+    if (burstInterval > 0) {
+      insertBurst();
+    }
+    while (!pool.isTerminated()) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        logger.warn("Unexpected interruption");
+      }
+    }
   }
 
   public void setMaxRequestNum(int maxRequestNum) {
@@ -195,11 +259,13 @@ public class ExprBench {
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(50000);
     Node target = new Node();
     ExprBench bench = new ExprBench(target);
-    bench.maxRequestNum = Integer.parseInt(args[0]);
-    bench.threadNum = Integer.parseInt(args[1]);
-    bench.workloadSize = Integer.parseInt(args[2]) * 1024;
-    bench.printInterval = Integer.parseInt(args[3]);
-    String[] nodesSplit = args[4].split(",");
+    bench.maxRunningSecond = Integer.parseInt(args[0]);
+    bench.burstInterval = Integer.parseInt(args[1]);
+    bench.maxRequestNum = Integer.parseInt(args[2]);
+    bench.threadNum = Integer.parseInt(args[3]);
+    bench.workloadSize = Integer.parseInt(args[4]) * 1024;
+    bench.printInterval = Integer.parseInt(args[5]);
+    String[] nodesSplit = args[6].split(",");
     for (String s : nodesSplit) {
       String[] nodeSplit = s.split(":");
       Node node = new Node();
@@ -207,13 +273,13 @@ public class ExprBench {
       node.setMetaPort(Integer.parseInt(nodeSplit[1]));
       bench.nodeList.add(node);
     }
-    String[] raftFactorSplit = args[5].split(",");
+    String[] raftFactorSplit = args[7].split(",");
     bench.raftFactors = new int[raftFactorSplit.length];
     for (int i = 0; i < raftFactorSplit.length; i++) {
       bench.raftFactors[i] = Integer.parseInt(raftFactorSplit[i]);
     }
-    if (args.length >= 7) {
-      String[] ratesSplit = args[6].split(",");
+    if (args.length >= 9) {
+      String[] ratesSplit = args[8].split(",");
       bench.rateLimits = new int[ratesSplit.length];
       for (int i = 0; i < ratesSplit.length; i++) {
         bench.rateLimits[i] = Integer.parseInt(ratesSplit[i]);
@@ -236,5 +302,14 @@ public class ExprBench {
     bench.benchmark();
 
     System.out.println(bench.latencyMap);
+    if (bench.burstInterval > 0) {
+      long burstRequest = bench.burstRequestCounter.get();
+      long burstLatencySum = bench.burstLatencySum.get();
+      double burstAvgLatency = burstLatencySum * 1.0 / burstRequest;
+      double burstThroughput = burstRequest * 1.0 / bench.burstInterval;
+      System.out.printf(
+          "Statistics during burst: num request %d, throughput %f, latency %f",
+          burstRequest, burstThroughput, burstAvgLatency);
+    }
   }
 }

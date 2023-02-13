@@ -225,6 +225,10 @@ public class ClusterConfig {
 
   private int flowMonitorMaxWindowSize = 1000;
   private long flowMonitorWindowInterval = 1000;
+  private boolean useFollowerLoadBalance = false;
+  private int followerLoadBalanceWindowsToUse = 3;
+  private double followerLoadBalanceOverestimateFactor = 1.1;
+  private int logDispatcherBatchSize = 10;
 
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
@@ -712,5 +716,38 @@ public class ClusterConfig {
 
   public long getFlowMonitorWindowInterval() {
     return flowMonitorWindowInterval;
+  }
+
+  public boolean isUseFollowerLoadBalance() {
+    return useFollowerLoadBalance;
+  }
+
+  public void setUseFollowerLoadBalance(boolean useFollowerLoadBalance) {
+    this.useFollowerLoadBalance = useFollowerLoadBalance;
+  }
+
+  public int getFollowerLoadBalanceWindowsToUse() {
+    return followerLoadBalanceWindowsToUse;
+  }
+
+  public void setFollowerLoadBalanceWindowsToUse(int followerLoadBalanceWindowsToUse) {
+    this.followerLoadBalanceWindowsToUse = followerLoadBalanceWindowsToUse;
+  }
+
+  public double getFollowerLoadBalanceOverestimateFactor() {
+    return followerLoadBalanceOverestimateFactor;
+  }
+
+  public void setFollowerLoadBalanceOverestimateFactor(
+      double followerLoadBalanceOverestimateFactor) {
+    this.followerLoadBalanceOverestimateFactor = followerLoadBalanceOverestimateFactor;
+  }
+
+  public int getLogDispatcherBatchSize() {
+    return logDispatcherBatchSize;
+  }
+
+  public void setLogDispatcherBatchSize(int logDispatcherBatchSize) {
+    this.logDispatcherBatchSize = logDispatcherBatchSize;
   }
 }

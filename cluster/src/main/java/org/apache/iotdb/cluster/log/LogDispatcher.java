@@ -106,8 +106,6 @@ public class LogDispatcher {
   }
 
   void createQueueAndBindingThreads() {
-    double baseRate = 300_000_000.0;
-    int i = 1;
     for (Node node : member.getAllNodes()) {
       if (!ClusterUtils.isNodeEquals(node, member.getThisNode())) {
         BlockingQueue<SendLogRequest> logBlockingQueue;
@@ -117,13 +115,11 @@ public class LogDispatcher {
         nodesLogQueuesMap.put(node, logBlockingQueue);
         FlowMonitorManager.INSTANCE.register(node);
         nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
-        nodesRate.put(node, baseRate * i);
-        i += 100;
       }
     }
     updateRateLimiter();
 
-    for (i = 0; i < bindingThreadNum; i++) {
+    for (int i = 0; i < bindingThreadNum; i++) {
       for (Entry<Node, BlockingQueue<SendLogRequest>> pair : nodesLogQueuesMap.entrySet()) {
         executorServices
             .computeIfAbsent(
@@ -420,20 +416,24 @@ public class LogDispatcher {
           currBatch.get(0).getVotingLog().getLog().getCurrLogIndex(),
           currBatch.get(currBatch.size() - 1).getVotingLog().getLog().getCurrLogIndex());
       while (logIndex < currBatch.size()) {
-        long logSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+        long logSize = 0;
+        long logSizeLimit = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
         List<ByteBuffer> logList = new ArrayList<>();
         int prevIndex = logIndex;
 
         for (; logIndex < currBatch.size(); logIndex++) {
           long curSize = currBatch.get(logIndex).getAppendEntryRequest().entry.array().length;
-          if (logSize - curSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
+          if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
             break;
           }
-          logSize -= curSize;
+          logSize += curSize;
           logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
         }
 
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
+        FlowMonitorManager.INSTANCE.report(receiver, logSize);
+        nodesRateLimiter.get(receiver).acquire((int) logSize);
+
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         } else {

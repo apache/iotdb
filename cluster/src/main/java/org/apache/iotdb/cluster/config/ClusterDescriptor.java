@@ -397,6 +397,28 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "enable_instrumenting", String.valueOf(config.isEnableInstrumenting()))));
 
+    config.setUseFollowerLoadBalance(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_follower_load_balance", String.valueOf(config.isUseFollowerLoadBalance()))));
+
+    config.setFollowerLoadBalanceWindowsToUse(
+        Integer.parseInt(
+            properties.getProperty(
+                "follower_load_balance_windows_to_use",
+                String.valueOf(config.getFollowerLoadBalanceWindowsToUse()))));
+
+    config.setFollowerLoadBalanceOverestimateFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "follower_load_balance_overestimate_factor",
+                String.valueOf(config.getFollowerLoadBalanceOverestimateFactor()))));
+
+    config.setLogDispatcherBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "log_dispatcher_batch_size", String.valueOf(config.getLogDispatcherBatchSize()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

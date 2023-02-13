@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.expr.flowcontrol;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -42,7 +43,10 @@ public class FlowBalancer {
   private static final Logger logger = LoggerFactory.getLogger(FlowBalancer.class);
   private double maxFlow = 900_000_000;
   private double minFlow = 10_000_000;
-  private int windowsToUse = 3;
+  private int windowsToUse =
+      ClusterDescriptor.getInstance().getConfig().getFollowerLoadBalanceWindowsToUse();
+  private double overestimateFactor =
+      ClusterDescriptor.getInstance().getConfig().getFollowerLoadBalanceOverestimateFactor();
   private int flowBalanceIntervalMS = 1000;
   private FlowMonitorManager flowMonitorManager = FlowMonitorManager.INSTANCE;
   private LogDispatcher logDispatcher;
@@ -81,7 +85,7 @@ public class FlowBalancer {
     int followerNum = nodeNum - 1;
 
     double thisNodeFlow = flowMonitorManager.averageFlow(member.getThisNode(), windowsToUse);
-    double assumedFlow = thisNodeFlow * 1.1;
+    double assumedFlow = thisNodeFlow * overestimateFactor;
     logger.info("Flow of this node: {}", thisNodeFlow);
     Map<Node, BlockingQueue<SendLogRequest>> nodesLogQueuesMap =
         logDispatcher.getNodesLogQueuesMap();
@@ -108,7 +112,7 @@ public class FlowBalancer {
     int i = 0;
     for (; i < quorumFollowerNum; i++) {
       Node node = followers.get(i);
-      nodesRate.put(node, flowToQuorum);
+      nodesRate.put(node, maxFlow);
       remainingFlow -= flowToQuorum;
     }
     double flowToRemaining = remainingFlow / (followerNum - quorumFollowerNum);
