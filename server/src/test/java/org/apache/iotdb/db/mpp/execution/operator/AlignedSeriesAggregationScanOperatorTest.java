@@ -102,7 +102,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -128,7 +133,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, false),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  false),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -157,7 +167,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(aggregationTypes.get(i), dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  aggregationTypes.get(i),
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -189,7 +204,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(aggregationTypes.get(i), dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  aggregationTypes.get(i),
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -226,7 +246,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(aggregationTypes.get(i), dataType, false),
+              AccumulatorFactory.createAccumulator(
+                  aggregationTypes.get(i),
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  false),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -255,7 +280,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -283,7 +313,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -310,7 +345,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -343,7 +383,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(aggregationTypes.get(i), dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  aggregationTypes.get(i),
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -375,7 +420,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -408,7 +458,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(TAggregationType.COUNT, dataType, true),
+              AccumulatorFactory.createAccumulator(
+                  TAggregationType.COUNT,
+                  dataType,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  true),
               AggregationStep.SINGLE,
               inputLocations));
     }
@@ -448,7 +503,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -486,7 +546,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, false)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            false)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, false, groupByTimeParameter);
@@ -514,7 +579,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -540,7 +610,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -576,7 +651,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE, inputLocations)));
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);

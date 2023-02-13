@@ -357,7 +357,10 @@ public class LogicalPlanBuilder {
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
     AggregationDescriptor aggregationDescriptor =
         new AggregationDescriptor(
-            sourceExpression.getFunctionName(), curStep, sourceExpression.getExpressions());
+            sourceExpression.getFunctionName(),
+            curStep,
+            sourceExpression.getExpressions(),
+            sourceExpression.getFunctionAttributes());
     if (curStep.isOutputPartial()) {
       updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
     }
@@ -692,16 +695,18 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
-    for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
+    for (Map.Entry<Expression, Set<Expression>> entry : groupByLevelExpressions.entrySet()) {
       groupByLevelDescriptors.add(
           new CrossSeriesAggregationDescriptor(
-              ((FunctionExpression) groupedExpression).getFunctionName(),
+              ((FunctionExpression) entry.getKey()).getFunctionName(),
               curStep,
-              groupByLevelExpressions.get(groupedExpression).stream()
+              entry.getValue().stream()
                   .map(Expression::getExpressions)
                   .flatMap(List::stream)
                   .collect(Collectors.toList()),
-              groupedExpression.getExpressions().get(0)));
+              entry.getValue().size(),
+              ((FunctionExpression) entry.getKey()).getFunctionAttributes(),
+              entry.getKey().getExpressions().get(0)));
     }
     updateTypeProvider(groupByLevelExpressions.keySet());
     updateTypeProvider(
@@ -746,6 +751,7 @@ public class LogicalPlanBuilder {
                   functionName,
                   curStep,
                   groupedTimeseriesOperands.get(next),
+                  ((FunctionExpression) next).getFunctionAttributes(),
                   next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);
         } else {
@@ -809,7 +815,8 @@ public class LogicalPlanBuilder {
               return new AggregationDescriptor(
                   ((FunctionExpression) expression).getFunctionName(),
                   curStep,
-                  expression.getExpressions());
+                  expression.getExpressions(),
+                  ((FunctionExpression) expression).getFunctionAttributes());
             })
         .collect(Collectors.toList());
   }

@@ -238,6 +238,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="syncLag"                           | AutoGauge | 副本组写入进度与同步进度差        |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | 副本组Batch中来自WAL的日志项数量 |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | 副本组Batch中来自队列的日志项数量  |
 | stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
