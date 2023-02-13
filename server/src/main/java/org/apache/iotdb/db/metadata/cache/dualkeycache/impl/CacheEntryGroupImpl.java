@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
@@ -57,5 +58,18 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public boolean isEmpty() {
     return cacheEntryMap.isEmpty();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CacheEntryGroupImpl<?, ?, ?, ?> that = (CacheEntryGroupImpl<?, ?, ?, ?>) o;
+    return Objects.equals(firstKey, that.firstKey);
+  }
+
+  @Override
+  public int hashCode() {
+    return firstKey.hashCode();
   }
 }

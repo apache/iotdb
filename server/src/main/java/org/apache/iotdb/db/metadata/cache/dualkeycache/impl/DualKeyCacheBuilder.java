@@ -42,7 +42,7 @@ public class DualKeyCacheBuilder<FK, SK, V> {
         memoryCapacity);
   }
 
-  DualKeyCacheBuilder<FK, SK, V> cacheEvictionPolicy(DualKeyCachePolicy policy) {
+  public DualKeyCacheBuilder<FK, SK, V> cacheEvictionPolicy(DualKeyCachePolicy policy) {
     if (policy == DualKeyCachePolicy.LRU) {
       this.cacheEntryManager = new LRUCacheEntryManager<>();
       return this;
@@ -50,20 +50,23 @@ public class DualKeyCacheBuilder<FK, SK, V> {
     throw new IllegalStateException();
   }
 
-  DualKeyCacheBuilder<FK, SK, V> memoryCapacity(long memoryCapacity) {
+  public DualKeyCacheBuilder<FK, SK, V> memoryCapacity(long memoryCapacity) {
     this.memoryCapacity = memoryCapacity;
     return this;
   }
 
-  DualKeyCacheBuilder<FK, SK, V> firstKeySizeComputer(Function<FK, Integer> computer) {
+  public DualKeyCacheBuilder<FK, SK, V> firstKeySizeComputer(Function<FK, Integer> computer) {
+    this.firstKeySizeComputer = computer;
     return this;
   }
 
-  DualKeyCacheBuilder<FK, SK, V> secondKeySizeComputer(Function<SK, Integer> computer) {
+  public DualKeyCacheBuilder<FK, SK, V> secondKeySizeComputer(Function<SK, Integer> computer) {
+    this.secondKeySizeComputer = computer;
     return this;
   }
 
-  DualKeyCacheBuilder<FK, SK, V> valueSizeComputer(Function<V, Integer> computer) {
+  public DualKeyCacheBuilder<FK, SK, V> valueSizeComputer(Function<V, Integer> computer) {
+    this.valueSizeComputer = computer;
     return this;
   }
 }

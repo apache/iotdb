@@ -28,4 +28,6 @@ public interface IDualKeyCacheStats {
   double hitRate();
 
   double missRate();
+
+  long memoryUsage();
 }

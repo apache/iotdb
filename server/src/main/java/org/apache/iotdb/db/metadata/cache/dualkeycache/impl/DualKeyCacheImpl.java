@@ -61,8 +61,10 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         for (int i = 0; i < secondKeyList.length; i++) {
           computation.computeValue(i, null);
         }
+        cacheStats.recordMiss(secondKeyList.length);
       } else {
         T cacheEntry;
+        int hitCount = 0;
         for (int i = 0; i < secondKeyList.length; i++) {
           cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
           if (cacheEntry == null) {
@@ -70,8 +72,11 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           } else {
             computation.computeValue(i, cacheEntry.getValue());
             cacheEntryManager.access(cacheEntry);
+            hitCount++;
           }
         }
+        cacheStats.recordHit(hitCount);
+        cacheStats.recordMiss(secondKeyList.length - hitCount);
       }
     } finally {
       readWriteLock.readLock().unlock();
@@ -84,7 +89,7 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     try {
       int usedMemorySize = putToCache(firstKey, secondKey, value);
       cacheStats.increaseMemoryUsage(usedMemorySize);
-      if (isExceedMemoryThreshold()) {
+      if (cacheStats.isExceedMemoryCapacity()) {
         executeCacheEviction(usedMemorySize);
       }
     } finally {
@@ -99,7 +104,7 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         (k, cacheEntryGroup) -> {
           if (cacheEntryGroup == null) {
             cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
-            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(k));
+            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
           ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
           cacheEntryGroup.computeCacheEntry(
@@ -108,6 +113,7 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                 if (cacheEntry == null) {
                   cacheEntry =
                       cacheEntryManager.createCacheEntry(secondKey, value, finalCacheEntryGroup);
+                  cacheEntryManager.put(cacheEntry);
                   usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
                 } else {
                   V existingValue = cacheEntry.getValue();
@@ -115,6 +121,7 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                     cacheEntry.replaceValue(value);
                     usedMemorySize.getAndAdd(-sizeComputer.computeValueSize(existingValue));
                   }
+                  cacheEntryManager.access(cacheEntry);
                 }
                 usedMemorySize.getAndAdd(sizeComputer.computeValueSize(value));
                 return cacheEntry;

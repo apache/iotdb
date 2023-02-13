@@ -66,6 +66,7 @@ class CacheStats implements IDualKeyCacheStats {
       requestCount.set(0);
       hitCount.set(0);
     }
+    requestCount.getAndAdd(num);
   }
 
   @Override
@@ -94,6 +95,11 @@ class CacheStats implements IDualKeyCacheStats {
   @Override
   public double missRate() {
     return 1.0 - hitRate();
+  }
+
+  @Override
+  public long memoryUsage() {
+    return memoryUsage.get();
   }
 
   void reset() {
