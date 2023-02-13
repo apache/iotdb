@@ -36,12 +36,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
 
   // Don't break in advance
   @Override
-  protected int addIntInput(Column[] column, IWindow curWindow) {
+  protected int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -56,12 +56,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected int addLongInput(Column[] column, IWindow curWindow) {
+  protected int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -76,12 +76,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected int addFloatInput(Column[] column, IWindow curWindow) {
+  protected int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -96,12 +96,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected int addDoubleInput(Column[] column, IWindow curWindow) {
+  protected int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -116,12 +116,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected int addBooleanInput(Column[] column, IWindow curWindow) {
+  protected int addBooleanInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
@@ -136,12 +136,12 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected int addBinaryInput(Column[] column, IWindow curWindow) {
+  protected int addBinaryInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {

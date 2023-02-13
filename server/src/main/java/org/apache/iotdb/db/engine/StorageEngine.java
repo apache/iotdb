@@ -36,6 +36,9 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -559,7 +562,7 @@ public class StorageEngine implements IService {
     dataRegionMap.values().forEach(DataRegion::compact);
   }
 
-  public TSStatus operateFlush(TFlushReq req) {
+  public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().deleteOutdatedWALFiles();
@@ -574,7 +577,12 @@ public class StorageEngine implements IService {
         }
       }
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public void clearCache() {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {

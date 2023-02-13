@@ -60,6 +60,30 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "safeIndex");
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.IOT_CONSENSUS.toString(),
+            MetricLevel.IMPORTANT,
+            impl,
+            IoTConsensusServerImpl::getLogEntriesFromWAL,
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesFromWAL");
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.IOT_CONSENSUS.toString(),
+            MetricLevel.IMPORTANT,
+            impl,
+            IoTConsensusServerImpl::getLogEntriesFromQueue,
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesFromQueue");
   }
 
   @Override
@@ -84,5 +108,25 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getThisNode().getGroupId().toString(),
             Tag.TYPE.toString(),
             "safeIndex");
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesFromWAL");
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.NAME.toString(),
+            "ioTConsensusServerImpl",
+            Tag.REGION.toString(),
+            impl.getThisNode().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "LogEntriesFromQueue");
   }
 }

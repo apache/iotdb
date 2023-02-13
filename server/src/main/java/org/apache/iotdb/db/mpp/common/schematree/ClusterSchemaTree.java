@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeDeviceVisitor;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -152,6 +153,38 @@ public class ClusterSchemaTree implements ISchemaTree {
 
     return new DeviceSchemaInfo(
         devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
+  }
+
+  public List<Integer> compute(
+      ISchemaComputation schemaComputation, List<Integer> indexOfTargetMeasurements) {
+    PartialPath devicePath = schemaComputation.getDevicePath();
+    String[] measurements = schemaComputation.getMeasurements();
+
+    String[] nodes = devicePath.getNodes();
+    SchemaNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        return indexOfTargetMeasurements;
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    if (cur == null) {
+      return indexOfTargetMeasurements;
+    }
+    if (cur.isEntity()) {
+      schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
+    }
+    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    SchemaNode node;
+    for (int index : indexOfTargetMeasurements) {
+      node = cur.getChild(measurements[index]);
+      if (node == null) {
+        indexOfMissingMeasurements.add(index);
+      } else {
+        schemaComputation.computeMeasurement(index, node.getAsMeasurementNode());
+      }
+    }
+    return indexOfMissingMeasurements;
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {

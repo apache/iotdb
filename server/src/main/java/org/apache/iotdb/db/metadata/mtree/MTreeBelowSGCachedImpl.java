@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -113,13 +114,30 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public MTreeBelowSGCachedImpl(
       PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      Runnable flushCallback,
+      Consumer<IMeasurementMNode> measurementProcess,
       int schemaRegionId)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId);
+    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, flushCallback);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
+
+    // recover measurement
+    try (MeasurementCollector<?> collector =
+        new MeasurementCollector<Void>(
+            this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
+          @Override
+          protected Void collectMeasurement(IMeasurementMNode node) {
+            measurementProcess.accept(node);
+            SchemaStatisticsManager.getInstance().addTimeseries(1);
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
   }
 
   /**
@@ -192,11 +210,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       String storageGroupFullPath,
       int schemaRegionId,
       Consumer<IMeasurementMNode> measurementProcess,
-      Function<IMeasurementMNode, Map<String, String>> tagGetter)
+      Function<IMeasurementMNode, Map<String, String>> tagGetter,
+      Runnable flushCallback)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
-        CachedMTreeStore.loadFromSnapshot(snapshotDir, storageGroupFullPath, schemaRegionId),
+        CachedMTreeStore.loadFromSnapshot(
+            snapshotDir, storageGroupFullPath, schemaRegionId, flushCallback),
         measurementProcess,
         tagGetter);
   }

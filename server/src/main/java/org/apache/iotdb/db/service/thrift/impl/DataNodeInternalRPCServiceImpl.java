@@ -58,12 +58,8 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.BloomFilterCache;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -1096,6 +1092,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+        LOGGER.warn(
+            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            freeDiskRatio,
+            commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       }
@@ -1122,14 +1122,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    return storageEngine.operateFlush(req);
+    try {
+      storageEngine.operateFlush(req);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus clearCache() throws TException {
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
-    BloomFilterCache.getInstance().clear();
+    try {
+      storageEngine.clearCache();
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -1142,7 +1149,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus loadConfiguration() throws TException {
     try {
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
-    } catch (QueryProcessException e) {
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

@@ -29,6 +29,7 @@ public class ColumnHeaderConstant {
 
   // column names for query statement
   public static final String TIME = "Time";
+  public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
 

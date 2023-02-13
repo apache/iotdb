@@ -38,7 +38,14 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class VerticallyConcatOperator implements ProcessOperator {
+/**
+ * This operator is used to horizontally concatenate TsBlocks with the same timestamp column.
+ *
+ * <p>For example, TsBlock A is: [1, 1.0; 2, 2.0], TsBlock B is: [1, true; 2, false]
+ *
+ * <p>HorizontallyConcat(A,B) is: [1, 1.0, true; 2, 2.0, false]
+ */
+public class HorizontallyConcatOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
@@ -58,7 +65,7 @@ public class VerticallyConcatOperator implements ProcessOperator {
 
   private boolean finished;
 
-  public VerticallyConcatOperator(
+  public HorizontallyConcatOperator(
       OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
     checkArgument(
         children != null && !children.isEmpty(),
