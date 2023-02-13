@@ -2343,7 +2343,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     } else {
       List<Integer> childPipelineNums = new ArrayList<>();
-      int sumOfChildPipelines = 0;
+      List<Integer> childExchangeNums = new ArrayList<>();
+      int sumOfChildPipelines = 0, sumOfChildExchangeNums = 0;
       int dependencyChildNode = 0, dependencyPipeId = 0;
       for (PlanNode childNode : node.getChildren()) {
         if (childNode instanceof ExchangeNode) {
@@ -2374,6 +2375,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             while (sumOfChildPipelines > dopForChild) {
               dependencyPipeId = context.getPipelineNumber() - sumOfChildPipelines;
               sumOfChildPipelines -= childPipelineNums.get(dependencyChildNode);
+              sumOfChildExchangeNums -= childExchangeNums.get(dependencyChildNode);
               dependencyChildNode++;
             }
           }
@@ -2401,7 +2403,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
           parentPipelineChildren.add(sourceOperator);
           context.addExchangeOperator(sourceOperator);
-          finalExchangeNum = Math.max(finalExchangeNum, subContext.getExchangeSumNum() + 1);
+          int childExchangeNum = subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
+          sumOfChildExchangeNums += childExchangeNum;
+          childExchangeNums.add(childExchangeNum);
+          finalExchangeNum =
+              Math.max(finalExchangeNum, context.getExchangeSumNum() + sumOfChildExchangeNums);
         }
       }
     }

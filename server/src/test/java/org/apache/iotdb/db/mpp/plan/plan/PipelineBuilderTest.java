@@ -84,6 +84,9 @@ public class PipelineBuilderTest {
           String.format("root.sg.d%d.s1", i),
           timeJoinNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
+
+    // Validate the number exchange operator
+    assertEquals(0, context.getExchangeSumNum());
   }
 
   /**
@@ -126,6 +129,9 @@ public class PipelineBuilderTest {
         "root.sg.d2.s1", subTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
     assertEquals(
         "root.sg.d3.s1", subTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+
+    // Validate the number exchange operator
+    assertEquals(1, context.getExchangeSumNum());
   }
 
   /**
@@ -174,6 +180,9 @@ public class PipelineBuilderTest {
         "root.sg.d3.s1", subTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
     ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(2);
     assertEquals(exchangeOperator2.getSourceId(), subTimeJoinNode.getPlanNodeId());
+
+    // Validate the number exchange operator
+    assertEquals(2, context.getExchangeSumNum());
   }
 
   /**
@@ -227,6 +236,9 @@ public class PipelineBuilderTest {
     // Validate the forth pipeline
     ExchangeOperator exchangeOperator3 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("SeriesScanNode3", exchangeOperator3.getSourceId().getId());
+
+    // Validate the number exchange operator
+    assertEquals(3, context.getExchangeSumNum());
   }
 
   /**
@@ -285,6 +297,9 @@ public class PipelineBuilderTest {
     // Validate the fifth pipeline
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("SeriesScanNode3", exchangeOperator4.getSourceId().getId());
+
+    // Validate the number exchange operator
+    assertEquals(4, context.getExchangeSumNum());
   }
 
   /**
@@ -343,6 +358,9 @@ public class PipelineBuilderTest {
     // Validate the fifth pipeline
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("SeriesScanNode3", exchangeOperator4.getSourceId().getId());
+
+    // Validate the number exchange operator
+    assertEquals(4, context.getExchangeSumNum());
   }
 
   /**
@@ -370,6 +388,9 @@ public class PipelineBuilderTest {
           String.format("root.sg.d%d.s1", i),
           deviceViewNode.getChildren().get(i).getOutputColumnNames().get(0));
     }
+
+    // Validate the number exchange operator
+    assertEquals(0, context.getExchangeSumNum());
   }
 
   /**
@@ -423,6 +444,9 @@ public class PipelineBuilderTest {
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("AlignedSeriesScanNode3", exchangeOperator4.getSourceId().getId());
     assertEquals(2, context.getPipelineDriverFactories().get(3).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(1, context.getExchangeSumNum());
   }
 
   /**
@@ -476,6 +500,9 @@ public class PipelineBuilderTest {
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("AlignedSeriesScanNode3", exchangeOperator4.getSourceId().getId());
     assertEquals(1, context.getPipelineDriverFactories().get(3).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(2, context.getExchangeSumNum());
   }
 
   /**
@@ -529,6 +556,9 @@ public class PipelineBuilderTest {
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("AlignedSeriesScanNode3", exchangeOperator4.getSourceId().getId());
     assertEquals(0, context.getPipelineDriverFactories().get(3).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(3, context.getExchangeSumNum());
   }
 
   /**
@@ -582,6 +612,9 @@ public class PipelineBuilderTest {
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("AlignedSeriesScanNode3", exchangeOperator4.getSourceId().getId());
     assertEquals(-1, context.getPipelineDriverFactories().get(3).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(4, context.getExchangeSumNum());
   }
 
   /**
@@ -635,6 +668,9 @@ public class PipelineBuilderTest {
     ExchangeOperator exchangeOperator4 = (ExchangeOperator) childrenOperator.get(3);
     assertEquals("AlignedSeriesScanNode3", exchangeOperator4.getSourceId().getId());
     assertEquals(-1, context.getPipelineDriverFactories().get(3).getDependencyPipelineIndex());
+
+    // Validate the number exchange operator
+    assertEquals(4, context.getExchangeSumNum());
   }
 
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
