@@ -152,6 +152,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
     ChunkReader chunkReader = new ChunkReader(chunk);
     ByteBuffer chunkDataBuffer = chunk.getData();
@@ -181,6 +182,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)

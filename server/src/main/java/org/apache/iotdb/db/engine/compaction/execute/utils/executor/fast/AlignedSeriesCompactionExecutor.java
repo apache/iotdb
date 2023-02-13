@@ -200,6 +200,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
   void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     List<PageHeader> timePageHeaders = new ArrayList<>();
     List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
     List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
@@ -283,6 +284,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     chunkMetadataElement.chunk =
