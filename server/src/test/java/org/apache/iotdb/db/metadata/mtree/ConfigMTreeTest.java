@@ -228,6 +228,20 @@ public class ConfigMTreeTest {
     result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
+
+    root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
+    root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
+    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.ln"));
+
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true);
+    Assert.assertEquals(0, result.left.size());
+    Assert.assertEquals(5, result.right.size());
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg2")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.ln")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.test.`001.002.003`")));
   }
 
   @Test

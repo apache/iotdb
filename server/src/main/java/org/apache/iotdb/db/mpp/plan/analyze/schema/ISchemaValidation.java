@@ -17,17 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 
-import java.util.List;
+/** This interface defines the info and behaviour of a schema validation task. */
+public interface ISchemaValidation extends ISchemaComputationWithAutoCreation {
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  @Override
+  default void computeDevice(boolean isAligned) {
+    validateDeviceSchema(isAligned);
+  }
 
-  List<ISchemaValidation> getSchemaValidationList();
+  @Override
+  default void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+    validateMeasurementSchema(index, measurementSchemaInfo);
+  }
+
+  void validateDeviceSchema(boolean isAligned);
+
+  void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo);
 }

@@ -56,6 +56,15 @@ public class CacheMemoryManager {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
+  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
+  private final Object blockObject = new Object();
+
+  /**
+   * Create and allocate LRUCacheManager to the corresponding CachedMTreeStore.
+   *
+   * @param store CachedMTreeStore
+   * @return LRUCacheManager
+   */
   public ICacheManager createLRUCacheManager(CachedMTreeStore store) {
     synchronized (storeList) {
       ICacheManager cacheManager = new LRUCacheManager();
@@ -73,9 +82,32 @@ public class CacheMemoryManager {
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_RELEASE_POOL.getName());
   }
 
+  /**
+   * Check the current memory usage. If the release threshold is exceeded, trigger the task to
+   * perform an internal and external memory swap to release the memory.
+   */
   public void ensureMemoryStatus() {
     if (memManager.isExceedReleaseThreshold() && !hasReleaseTask) {
       registerReleaseTask();
+    }
+  }
+
+  /**
+   * If there is a ReleaseTask or FlushTask, block the current thread to wait up to
+   * MAX_WAITING_TIME_WHEN_RELEASING. The thread will be woken up if the ReleaseTask or FlushTask
+   * ends or the wait time exceeds MAX_WAITING_TIME_WHEN_RELEASING.
+   */
+  public void waitIfReleasing() {
+    synchronized (blockObject) {
+      if (hasReleaseTask || hasFlushTask) {
+        try {
+          blockObject.wait(MAX_WAITING_TIME_WHEN_RELEASING);
+        } catch (InterruptedException e) {
+          logger.warn(
+              "Interrupt because the release task and flush task did not finish within {} milliseconds.",
+              MAX_WAITING_TIME_WHEN_RELEASING);
+        }
+      }
     }
   }
 
@@ -120,9 +152,13 @@ public class CacheMemoryManager {
                   .toArray(CompletableFuture[]::new))
           .join();
       releaseCount++;
-      hasReleaseTask = false;
-      if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
-        registerFlushTask();
+      synchronized (blockObject) {
+        hasReleaseTask = false;
+        if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
+          registerFlushTask();
+        } else {
+          blockObject.notifyAll();
+        }
       }
     }
   }
@@ -164,8 +200,11 @@ public class CacheMemoryManager {
                               flushTaskExecutor))
                   .toArray(CompletableFuture[]::new))
           .join();
-      hasFlushTask = false;
       flushCount++;
+      synchronized (blockObject) {
+        hasFlushTask = false;
+        blockObject.notifyAll();
+      }
     }
   }
 

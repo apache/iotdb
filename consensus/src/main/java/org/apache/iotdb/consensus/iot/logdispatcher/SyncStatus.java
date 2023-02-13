@@ -64,7 +64,7 @@ public class SyncStatus {
         while (current.isSynced()) {
           controller.updateAndGet(current.getEndIndex());
           iterator.remove();
-          iotConsensusMemoryManager.free(current.getSerializedSize());
+          iotConsensusMemoryManager.free(current.getSerializedSize(), false);
           if (iterator.hasNext()) {
             current = iterator.next();
           } else {
@@ -83,7 +83,7 @@ public class SyncStatus {
       size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
-    iotConsensusMemoryManager.free(size);
+    iotConsensusMemoryManager.free(size, false);
   }
 
   /** Gets the first index that is not currently synchronized. */

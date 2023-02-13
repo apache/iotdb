@@ -16,18 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.logfile;
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+public class MLogDescriptionReader {
 
-import java.util.List;
+  private final File file;
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  public MLogDescriptionReader(String schemaDir, String logFileName) {
+    file = new File(schemaDir, logFileName);
+  }
 
-  List<ISchemaValidation> getSchemaValidationList();
+  private MLogDescription deserializeMLogDescription() throws IOException {
+    try (FileInputStream fileInputStream = new FileInputStream(file)) {
+      MLogDescription mLogDescription = new MLogDescription();
+      mLogDescription.deserialize(fileInputStream);
+      return mLogDescription;
+    }
+  }
+
+  public long readCheckPoint() throws IOException {
+    MLogDescription mLogDescription = deserializeMLogDescription();
+    return mLogDescription.getCheckPoint();
+  }
 }
