@@ -21,6 +21,8 @@ package org.apache.iotdb.db.metadata.cache.dualkeycache;
 
 public interface IDualKeyCache<FK, SK, V> {
 
+  V get(FK firstKey, SK secondKey);
+
   void compute(IDualKeyCacheComputation<FK, SK, V> computation);
 
   void put(FK firstKey, SK secondKey, V value);

@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
+class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
 
   private final Map<FK, ICacheEntryGroup<FK, SK, V, T>> firstKeyMap = new ConcurrentHashMap<>();
@@ -48,6 +48,30 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
     this.cacheStats = new CacheStats(memoryCapacity);
+  }
+
+  @Override
+  public V get(FK firstKey, SK secondKey) {
+    readWriteLock.readLock().lock();
+    try {
+      ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+      if (cacheEntryGroup == null) {
+        cacheStats.recordMiss(1);
+        return null;
+      } else {
+        T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
+        if (cacheEntry == null) {
+          cacheStats.recordMiss(1);
+          return null;
+        } else {
+          cacheEntryManager.access(cacheEntry);
+          cacheStats.recordHit(1);
+          return cacheEntry.getValue();
+        }
+      }
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   @Override

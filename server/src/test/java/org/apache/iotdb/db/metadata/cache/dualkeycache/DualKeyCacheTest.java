@@ -50,36 +50,58 @@ public class DualKeyCacheTest {
       }
     }
 
+    int firstKeyOfMissingEntry = -1, secondKeyOfMissingEntry = -1;
     for (int i = 0; i < firstKeyList.length; i++) {
       for (int j = 0; j < secondKeyList.length; j++) {
-        int finalI = i;
-        int finalJ = j;
-        dualKeyCache.compute(
-            new IDualKeyCacheComputation<String, String, String>() {
-              @Override
-              public String getFirstKey() {
-                return firstKeyList[finalI];
-              }
-
-              @Override
-              public String[] getSecondKeyList() {
-                return new String[] {secondKeyList[finalJ]};
-              }
-
-              @Override
-              public void computeValue(int index, String value) {
-                Assert.assertEquals(0, index);
-                if (value != null) {
-                  Assert.assertEquals(valueTable[finalI][finalJ], value);
-                }
-              }
-            });
+        String value = dualKeyCache.get(firstKeyList[i], secondKeyList[j]);
+        if (value == null) {
+          if (firstKeyOfMissingEntry == -1) {
+            firstKeyOfMissingEntry = i;
+            secondKeyOfMissingEntry = j;
+          } else {
+            Assert.fail();
+          }
+        } else {
+          Assert.assertEquals(valueTable[i][j], value);
+        }
       }
     }
 
     Assert.assertEquals(230, dualKeyCache.stats().memoryUsage());
     Assert.assertEquals(4, dualKeyCache.stats().requestCount());
     Assert.assertEquals(3, dualKeyCache.stats().hitCount());
+
+    dualKeyCache.put(
+        firstKeyList[firstKeyOfMissingEntry],
+        secondKeyList[secondKeyOfMissingEntry],
+        valueTable[firstKeyOfMissingEntry][secondKeyOfMissingEntry]);
+    Assert.assertEquals(230, dualKeyCache.stats().memoryUsage());
+
+    for (int i = 0; i < firstKeyList.length; i++) {
+      int finalI = i;
+      dualKeyCache.compute(
+          new IDualKeyCacheComputation<String, String, String>() {
+            @Override
+            public String getFirstKey() {
+              return firstKeyList[finalI];
+            }
+
+            @Override
+            public String[] getSecondKeyList() {
+              return secondKeyList;
+            }
+
+            @Override
+            public void computeValue(int index, String value) {
+              if (value != null) {
+                Assert.assertEquals(valueTable[finalI][index], value);
+              }
+            }
+          });
+    }
+
+    Assert.assertEquals(8, dualKeyCache.stats().requestCount());
+    Assert.assertEquals(6, dualKeyCache.stats().hitCount());
   }
 
   private int computeStringSize(String string) {
