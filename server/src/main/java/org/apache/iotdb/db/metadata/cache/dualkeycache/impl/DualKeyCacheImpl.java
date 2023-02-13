@@ -27,11 +27,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
 
-  private final Map<FK, ICacheEntryGroup<FK, SK, V, T>> firstKeyMap = new ConcurrentHashMap<>();
+  private final SegmentedConcurrentHashMap<FK, ICacheEntryGroup<FK, SK, V, T>> firstKeyMap =
+      new SegmentedConcurrentHashMap<>();
 
   private final ICacheEntryManager<FK, SK, V, T> cacheEntryManager;
 
@@ -155,10 +157,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     return usedMemorySize.get();
   }
 
-  private boolean isExceedMemoryThreshold() {
-    return false;
-  }
-
   private void executeCacheEviction(int targetSize) {
     int evictedSize;
     while (targetSize > 0) {
@@ -231,5 +229,43 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public IDualKeyCacheStats stats() {
     return cacheStats;
+  }
+
+  private static class SegmentedConcurrentHashMap<K, V> {
+
+    private static final int SLOT_NUM = 31;
+
+    private final Map<K, V>[] maps = new ConcurrentHashMap[SLOT_NUM];
+
+    V get(K key) {
+      return getBelongedMap(key).get(key);
+    }
+
+    V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+      return getBelongedMap(key).compute(key, remappingFunction);
+    }
+
+    void clear() {
+      synchronized (maps) {
+        for (int i = 0; i < SLOT_NUM; i++) {
+          maps[i] = null;
+        }
+      }
+    }
+
+    Map<K, V> getBelongedMap(K key) {
+      int slotIndex = key.hashCode() % SLOT_NUM;
+      slotIndex = slotIndex < 0 ? slotIndex + SLOT_NUM : slotIndex;
+      Map<K, V> map = maps[slotIndex];
+      if (map == null) {
+        synchronized (maps) {
+          if (maps[slotIndex] == null) {
+            map = new ConcurrentHashMap<>();
+            maps[slotIndex] = map;
+          }
+        }
+      }
+      return map;
+    }
   }
 }
