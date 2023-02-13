@@ -116,10 +116,9 @@ public class LocalExecutionPlanContext {
 
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
-    this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
+    this.driverContext =
+        new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
-    // TODO combine with SchemaDriverContext
-    this.getNextPipelineId();
   }
 
   public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {
