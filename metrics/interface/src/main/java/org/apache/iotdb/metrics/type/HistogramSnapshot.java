@@ -50,6 +50,7 @@ public interface HistogramSnapshot extends IMetric {
   default void constructValueMap(Map<String, Object> result) {
     result.put("max", getMax());
     result.put("sum", Arrays.stream(getValues()).sum());
+    result.put("avg", getMean());
 
     result.put("p0", getValue(0.0));
     result.put("p50", getValue(0.5));
