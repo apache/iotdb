@@ -1197,12 +1197,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else if (windowType == WindowType.SERIES_WINDOW) {
-      Expression keepExression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
+      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
       for (Expression expression : deviceToGroupByExpression.values()) {
-        checkGroupBySeriesExpressionType(analysis, expression, keepExression);
+        checkGroupBySeriesExpressionType(analysis, expression, keepExpression);
       }
       GroupByParameter groupByParameter =
-          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExression);
+          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else {
@@ -1286,12 +1286,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           && rightExpression instanceof ConstantOperand)) {
         throw new SemanticException(
             String.format(
-                "Please check the keep condition [%s].", keepExpression.getExpressionString()));
+                "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+                keepExpression.getExpressionString()));
       }
     } else {
       throw new SemanticException(
           String.format(
-              "Keep condition [%s] in group by series need to be constant or compare expression constructed by keep and a long number",
+              "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
               keepExpression.getExpressionString()));
     }
   }

@@ -38,8 +38,4 @@ public class GroupBySeriesComponent extends GroupByComponent {
   public Expression getKeepExpression() {
     return keepExpression;
   }
-
-  public boolean needCheckKeep() {
-    return !(keepExpression == null);
-  }
 }

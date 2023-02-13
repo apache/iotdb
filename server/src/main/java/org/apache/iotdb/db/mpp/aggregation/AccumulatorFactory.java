@@ -88,7 +88,7 @@ public class AccumulatorFactory {
     return accumulators;
   }
 
-  private static Function<Long, Boolean> initKeepEvaluator(Expression keepExpression) {
+  public static Function<Long, Boolean> initKeepEvaluator(Expression keepExpression) {
     // We have check semantic in FE,
     // keep expression must be ConstantOperand or CompareBinaryExpression here
     if (keepExpression instanceof ConstantOperand) {

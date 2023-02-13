@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -47,7 +45,8 @@ public class SeriesWindowManager implements IWindowManager {
   public SeriesWindowManager(SeriesWindowParameter seriesWindowParameter) {
     this.seriesWindow = new SeriesWindow(seriesWindowParameter);
     this.needSkip = false;
-    this.keepEvaluator = initKeepEvaluator(seriesWindowParameter.getKeepExpression());
+    this.keepEvaluator =
+        AccumulatorFactory.initKeepEvaluator(seriesWindowParameter.getKeepExpression());
   }
 
   @Override
@@ -172,36 +171,5 @@ public class SeriesWindowManager implements IWindowManager {
   @Override
   public void setKeep(long keep) {
     seriesWindow.setKeep(seriesWindow.getKeep() + keep);
-  }
-
-  private static Function<Long, Boolean> initKeepEvaluator(Expression keepExpression) {
-    // We have check semantic in FE,
-    // keep expression must be ConstantOperand or CompareBinaryExpression here
-    if (keepExpression instanceof ConstantOperand) {
-      return keep -> keep >= Long.parseLong(keepExpression.toString());
-    } else {
-      long constant =
-          Long.parseLong(
-              ((CompareBinaryExpression) keepExpression)
-                  .getRightExpression()
-                  .getExpressionString());
-      switch (keepExpression.getExpressionType()) {
-        case LESS_THAN:
-          return keep -> keep < constant;
-        case LESS_EQUAL:
-          return keep -> keep <= constant;
-        case GREATER_THAN:
-          return keep -> keep > constant;
-        case GREATER_EQUAL:
-          return keep -> keep >= constant;
-        case EQUAL_TO:
-          return keep -> keep == constant;
-        case NON_EQUAL:
-          return keep -> keep != constant;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + keepExpression.getExpressionType());
-      }
-    }
   }
 }
