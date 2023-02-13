@@ -181,6 +181,11 @@ class LRUCacheEntryManager<FK, SK, V>
     }
 
     synchronized void moveToHead(LRUCacheEntry cacheEntry) {
+      if (head == null) {
+        // this cache entry has been evicted
+        return;
+      }
+
       if (cacheEntry.pre == null) {
         // this entry is head
         return;
