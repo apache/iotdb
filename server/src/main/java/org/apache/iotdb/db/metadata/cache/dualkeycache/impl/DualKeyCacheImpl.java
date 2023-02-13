@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheStats;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
@@ -38,6 +39,8 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   private final CacheStats cacheStats;
 
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(true);
+
   DualKeyCacheImpl(
       ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
       ICacheSizeComputer<FK, SK, V> sizeComputer,
@@ -49,33 +52,43 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void compute(IDualKeyCacheComputation<FK, SK, V> computation) {
-    FK firstKey = computation.getFirstKey();
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = computation.getSecondKeyList();
-    if (cacheEntryGroup == null) {
-      for (int i = 0; i < secondKeyList.length; i++) {
-        computation.computeValue(i, null);
-      }
-    } else {
-      T cacheEntry;
-      for (int i = 0; i < secondKeyList.length; i++) {
-        cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
-        if (cacheEntry == null) {
+    readWriteLock.readLock().lock();
+    try {
+      FK firstKey = computation.getFirstKey();
+      ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+      SK[] secondKeyList = computation.getSecondKeyList();
+      if (cacheEntryGroup == null) {
+        for (int i = 0; i < secondKeyList.length; i++) {
           computation.computeValue(i, null);
-        } else {
-          computation.computeValue(i, cacheEntry.getValue());
-          cacheEntryManager.access(cacheEntry);
+        }
+      } else {
+        T cacheEntry;
+        for (int i = 0; i < secondKeyList.length; i++) {
+          cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
+          if (cacheEntry == null) {
+            computation.computeValue(i, null);
+          } else {
+            computation.computeValue(i, cacheEntry.getValue());
+            cacheEntryManager.access(cacheEntry);
+          }
         }
       }
+    } finally {
+      readWriteLock.readLock().unlock();
     }
   }
 
   @Override
   public void put(FK firstKey, SK secondKey, V value) {
-    int usedMemorySize = putToCache(firstKey, secondKey, value);
-    cacheStats.increaseMemoryUsage(usedMemorySize);
-    if (isExceedMemoryThreshold()) {
-      executeCacheEviction(usedMemorySize);
+    readWriteLock.readLock().lock();
+    try {
+      int usedMemorySize = putToCache(firstKey, secondKey, value);
+      cacheStats.increaseMemoryUsage(usedMemorySize);
+      if (isExceedMemoryThreshold()) {
+        executeCacheEviction(usedMemorySize);
+      }
+    } finally {
+      readWriteLock.readLock().unlock();
     }
   }
 
@@ -159,6 +172,15 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void invalidateAll() {
+    readWriteLock.writeLock().lock();
+    try {
+      executeInvalidateAll();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void executeInvalidateAll() {
     firstKeyMap.clear();
     cacheEntryManager.cleanUp();
     cacheStats.resetMemoryUsage();
@@ -166,12 +188,17 @@ public class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void cleanUp() {
-    invalidateAll();
-    cacheStats.reset();
+    readWriteLock.writeLock().lock();
+    try {
+      executeInvalidateAll();
+      cacheStats.reset();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 
   @Override
   public IDualKeyCacheStats stats() {
-    return null;
+    return cacheStats;
   }
 }
