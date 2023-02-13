@@ -37,13 +37,15 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
 public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
   private Filter valueFilter;
-  private PaginationController paginationController;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 

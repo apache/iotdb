@@ -42,6 +42,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
@@ -61,7 +63,7 @@ public class PageReader implements IPageReader {
   protected ByteBuffer valueBuffer;
 
   protected Filter filter;
-  private PaginationController paginationController;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;

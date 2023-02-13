@@ -38,13 +38,15 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
 public class MemPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
 
   private Filter valueFilter;
-  private PaginationController paginationController;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter filter) {
     this.tsBlock = tsBlock;

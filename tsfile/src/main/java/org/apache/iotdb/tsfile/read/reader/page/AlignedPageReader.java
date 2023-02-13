@@ -43,6 +43,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
+
 public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private static final Logger logger = LoggerFactory.getLogger(AlignedPageReader.class);
@@ -52,7 +54,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final int valueCount;
 
   private Filter filter;
-  private PaginationController paginationController;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private boolean isModified;
   private TsBlockBuilder builder;

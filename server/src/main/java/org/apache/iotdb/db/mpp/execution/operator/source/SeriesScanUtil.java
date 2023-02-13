@@ -65,6 +65,7 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class SeriesScanUtil {
 
@@ -115,7 +116,7 @@ public class SeriesScanUtil {
   private Filter queryFilter;
 
   //
-  protected PaginationController paginationController;
+  protected PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -136,7 +137,6 @@ public class SeriesScanUtil {
     if (!Objects.equals(queryFilter, globalTimeFilter)) {
       this.queryFilter = queryFilter;
     }
-    this.paginationController = new PaginationController(0L, 0L);
 
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();

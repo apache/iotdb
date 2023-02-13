@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.read.reader.series;
 
 public class PaginationController {
 
+  public static final PaginationController UNLIMITED_PAGINATION_CONTROLLER =
+      new PaginationController(0L, 0L);
+
   private final boolean hasLimit;
 
   private long curLimit;
