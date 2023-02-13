@@ -220,9 +220,9 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
-        } else if (functionExpression.isBuiltInScalarFunction()) {
+        } else if (functionExpression.isBuiltInFunction()) {
           context.cache.put(
-              functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
+              functionExpression, getBuiltInFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -259,7 +259,7 @@ public class ColumnTransformerVisitor
     return res;
   }
 
-  private ColumnTransformer getBuiltInScalarFunctionTransformer(
+  private ColumnTransformer getBuiltInFunctionTransformer(
       FunctionExpression expression, ColumnTransformerVisitorContext context) {
     ColumnTransformer childColumnTransformer =
         this.process(expression.getExpressions().get(0), context);

@@ -140,7 +140,11 @@ public class MemoryPool {
     return maxBytes;
   }
 
-  /** @return if reserve succeed, pair.right will be true, otherwise false */
+  /**
+   * Reserve memory with bytesToReserve.
+   *
+   * @return if reserve succeed, pair.right will be true, otherwise false
+   */
   public Pair<ListenableFuture<Void>, Boolean> reserve(
       String queryId,
       String fragmentInstanceId,
@@ -367,7 +371,7 @@ public class MemoryPool {
     return reservedBytes;
   }
 
-  public void clearMemoryReservationMap(
+  public synchronized void clearMemoryReservationMap(
       String queryId, String fragmentInstanceId, String planNodeId) {
     if (queryMemoryReservations.get(queryId) == null
         || queryMemoryReservations.get(queryId).get(fragmentInstanceId) == null) {

@@ -722,8 +722,21 @@ public class IoTConsensusServerImpl {
     return searchIndex.get();
   }
 
+  public long getSyncLag() {
+    long safeIndex = getCurrentSafelyDeletedSearchIndex();
+    return getSearchIndex() - safeIndex;
+  }
+
   public IoTConsensusConfig getConfig() {
     return config;
+  }
+
+  public long getLogEntriesFromWAL() {
+    return logDispatcher.getLogEntriesFromWAL();
+  }
+
+  public long getLogEntriesFromQueue() {
+    return logDispatcher.getLogEntriesFromQueue();
   }
 
   public boolean needBlockWrite() {

@@ -24,17 +24,17 @@ import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
-public class RequestMessage implements Message {
+class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
   private volatile ByteString serializedContent;
 
-  public RequestMessage(IConsensusRequest request) {
+  RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
     serializedContent = null;
   }
 
-  public IConsensusRequest getActualRequest() {
+  IConsensusRequest getActualRequest() {
     return actualRequest;
   }
 

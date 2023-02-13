@@ -342,7 +342,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), node.getSeriesPath().getSeriesType(), ascending),
+                        o.getAggregationType(),
+                        node.getSeriesPath().getSeriesType(),
+                        o.getInputExpressions(),
+                        o.getInputAttributes(),
+                        ascending),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
@@ -403,7 +407,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       aggregators.add(
           new Aggregator(
               AccumulatorFactory.createAccumulator(
-                  descriptor.getAggregationType(), seriesDataType, ascending),
+                  descriptor.getAggregationType(),
+                  seriesDataType,
+                  descriptor.getInputExpressions(),
+                  descriptor.getInputAttributes(),
+                  ascending),
               descriptor.getStep(),
               Collections.singletonList(new InputLocation[] {new InputLocation(0, seriesIndex)})));
     }
@@ -1188,7 +1196,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       aggregators.add(
           new Aggregator(
               AccumulatorFactory.createAccumulator(
-                  descriptor.getAggregationType(), seriesDataType, ascending),
+                  descriptor.getAggregationType(),
+                  seriesDataType,
+                  descriptor.getInputExpressions(),
+                  descriptor.getInputAttributes(),
+                  ascending),
               descriptor.getStep(),
               inputLocationList));
     }
@@ -1243,7 +1255,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
-                    aggregationDescriptor.getAggregationType(), seriesDataType, ascending),
+                    aggregationDescriptor.getAggregationType(),
+                    seriesDataType,
+                    aggregationDescriptor.getInputExpressions(),
+                    aggregationDescriptor.getInputAttributes(),
+                    ascending),
                 aggregationDescriptor.getStep(),
                 inputLocations));
       }
@@ -1299,6 +1315,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   .getTypeProvider()
                   // get the type of first inputExpression
                   .getType(descriptor.getInputExpressions().get(0).toString()),
+              descriptor.getInputExpressions(),
+              descriptor.getInputAttributes(),
               ascending,
               inputLocationList,
               descriptor.getStep()));
@@ -1372,6 +1390,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       .getTypeProvider()
                       // get the type of first inputExpression
                       .getType(descriptor.getInputExpressions().get(0).toString()),
+                  descriptor.getInputExpressions(),
+                  descriptor.getInputAttributes(),
                   ascending),
               descriptor.getStep(),
               inputLocationList));
