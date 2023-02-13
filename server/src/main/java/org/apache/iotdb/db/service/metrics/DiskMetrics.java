@@ -43,7 +43,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadDataSizeForDisk().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "read",
           Tag.NAME.toString(),
           diskID);
@@ -52,7 +52,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteDataSizeForDisk().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "write",
           Tag.NAME.toString(),
           diskID);
@@ -61,7 +61,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadOperationCountForDisk().getOrDefault(diskID, 0),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "read",
           Tag.NAME.toString(),
           diskID);
@@ -70,7 +70,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteOperationCountForDisk().getOrDefault(diskID, 0),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "write",
           Tag.NAME.toString(),
           diskID);
@@ -79,7 +79,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadCostTimeForDisk().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "read",
           Tag.NAME.toString(),
           diskID);
@@ -88,26 +88,26 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteCostTimeForDisk().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "write",
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_TIME.toString(),
+          Metric.DISK_IO_AVG_TIME.toString(),
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgReadCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.NAME.toString(),
-          "avg_read",
+          Tag.TYPE.toString(),
+          "read",
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_TIME.toString(),
+          Metric.DISK_IO_AVG_TIME.toString(),
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgWriteCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.NAME.toString(),
-          "avg_write",
+          Tag.TYPE.toString(),
+          "write",
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -115,7 +115,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "read",
           Tag.NAME.toString(),
           diskID);
@@ -124,7 +124,7 @@ public class DiskMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.NAME.toString(),
+          Tag.TYPE.toString(),
           "write",
           Tag.NAME.toString(),
           diskID);

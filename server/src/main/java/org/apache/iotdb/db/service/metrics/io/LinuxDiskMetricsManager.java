@@ -45,9 +45,10 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final int DISK_SECTOR_WRITE_COUNT_OFFSET = 10;
   private final int DISK_WRITE_TIME_COST_OFFSET = 11;
   private final int DISK_IO_TOTAL_TIME_OFFSET = 13;
-  private final long UPDATE_INTERVAL = 10000L;
+  private final long UPDATE_SMALLEST_INTERVAL = 10000L;
   private Set<String> diskIDSet;
   private long lastUpdateTime = 0L;
+  private long updateInterval = 1L;
   private String[] dataNodeProcessId;
   private String[] configNodeProcessId;
   private final Map<String, Integer> lastReadOperationCountForDisk = new HashMap<>();
@@ -71,7 +72,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     Map<String, Long> readDataMap = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementReadSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
-      readDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L);
+      readDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L / updateInterval * 1000L);
     }
     return readDataMap;
   }
@@ -82,7 +83,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     Map<String, Long> writeDataMap = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementWriteSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
-      writeDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L);
+      writeDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L / updateInterval * 1000L);
     }
     return writeDataMap;
   }
@@ -90,22 +91,38 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   @Override
   public Map<String, Integer> getReadOperationCountForDisk() {
     checkUpdate();
-    return incrementReadOperationCountForDisk;
+    Map<String, Integer> incrementMapPerSecond = new HashMap<>();
+    for (Map.Entry<String, Integer> entry : incrementReadOperationCountForDisk.entrySet()) {
+      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() / updateInterval * 1000L));
+    }
+    return incrementMapPerSecond;
   }
 
   @Override
   public Map<String, Integer> getWriteOperationCountForDisk() {
-    return incrementWriteOperationCountForDisk;
+    Map<String, Integer> incrementMapPerSecond = new HashMap<>();
+    for (Map.Entry<String, Integer> entry : incrementWriteOperationCountForDisk.entrySet()) {
+      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() / updateInterval * 1000L));
+    }
+    return incrementMapPerSecond;
   }
 
   @Override
   public Map<String, Long> getReadCostTimeForDisk() {
-    return incrementReadTimeCostForDisk;
+    Map<String, Long> incrementMapPerSecond = new HashMap<>();
+    for (Map.Entry<String, Long> entry : incrementReadTimeCostForDisk.entrySet()) {
+      incrementMapPerSecond.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+    }
+    return incrementMapPerSecond;
   }
 
   @Override
   public Map<String, Long> getWriteCostTimeForDisk() {
-    return incrementWriteTimeCostForDisk;
+    Map<String, Long> incrementMapPerSecond = new HashMap<>();
+    for (Map.Entry<String, Long> entry : incrementWriteTimeCostForDisk.entrySet()) {
+      incrementMapPerSecond.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+    }
+    return incrementMapPerSecond;
   }
 
   @Override
@@ -213,7 +230,9 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   private void updateDiskInfo() {
-    lastUpdateTime = System.currentTimeMillis();
+    long currentTime = System.currentTimeMillis();
+    updateInterval = currentTime - lastUpdateTime;
+    lastUpdateTime = currentTime;
     File diskStatsFile = new File(DISK_STATS_FILE_PATH);
     if (!diskStatsFile.exists()) {
       return;
@@ -293,7 +312,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   private void checkUpdate() {
-    if (System.currentTimeMillis() - lastUpdateTime > UPDATE_INTERVAL) {
+    if (System.currentTimeMillis() - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
       updateDiskInfo();
     }
   }
