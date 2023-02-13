@@ -799,7 +799,7 @@
           "refId": "A"
         }
       ],
-      "title": "QPS",
+      "title": "OPS",
       "type": "timeseries"
     },
     {
@@ -896,7 +896,7 @@
           "refId": "B"
         }
       ],
-      "title": "QPS Of Stage",
+      "title": "OPS Of Stage",
       "type": "timeseries"
     },
     {
@@ -993,7 +993,7 @@
           "refId": "B"
         }
       ],
-      "title": "QPS Of Schedule",
+      "title": "OPS Of Schedule",
       "type": "timeseries"
     },
     {

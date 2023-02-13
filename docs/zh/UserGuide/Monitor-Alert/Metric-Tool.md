@@ -574,7 +574,7 @@ static_configs:
     - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
     - `The Time Consumed Of Operation(99%)`：不同客户端操作耗时的P99
     - `The Time Consumed Of Operation(99.9%)`：不同客户端操作耗时的P999
-    - `The QPS of Interface`：系统接口每秒钟访问次数
+    - `The OPS of Interface`：系统接口每秒钟访问次数
     - `The Time Consumed Of Interface`：系统接口的平均耗时
     - `Cache Hit Rate`：缓存命中率
     - `Thrift Connection`：建立的 Thrift 连接个数
@@ -665,9 +665,9 @@ static_configs:
     - `System Memory`： 系统内存使用率，单位为%
     - `Write Point Per Second`：系统每秒中写入点数
 - `Performance`：系统性能
-    - `QPS`：系统接口和RPC每秒钟访问次数
-    - `QPS Of Stage`：Stage 各部分的每秒钟执行次数
-    - `QPS Of Schedule`：Schedule 各部分的每秒钟执行次数
+    - `OPS`：系统接口和RPC每秒钟访问次数
+    - `OPS Of Stage`：Stage 各部分的每秒钟执行次数
+    - `OPS Of Schedule`：Schedule 各部分的每秒钟执行次数
     - `Time Consumed Of Operation`：不同操作的耗时情况
     - `P99 Time Consumed of Interface`：不同接口的 P99 耗时情况
     - `Average Time Consumed of Interface`：不同接口的平均耗时情况

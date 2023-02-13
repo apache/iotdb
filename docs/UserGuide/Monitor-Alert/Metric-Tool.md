@@ -616,7 +616,7 @@ data source for Apache IoTDB Dashboard.
     - `The Time Consumed Of Operation(50%)`: Median time spent by different client operations
     - `The Time Consumed Of Operation(99%)`: The P99 of the time consumed by different client operations
     - `The Time Consumed Of Operation(99.9%)`: The P999 time spent by different client operations
-    - `The QPS of Interface`: system interface visits per second
+    - `The OPS of Interface`: system interface visits per second
     - `The Time Consumed Of Interface`: the average time consumed by the system interface
     - `Cache Hit Rate`: cache hit rate
     - `Thrift Connection`: the number of Thrift connections established
@@ -716,9 +716,9 @@ data source for Apache IoTDB Dashboard.
      - `System Memory`: System memory usage in %
      - `Write Point Per Second`: the number of points written by the system per second
 - `Performance`: system performance
-     - `QPS`: system interface and RPC visits per second
-     - `QPS Of Stage`: the number of executions per second of each part of the Stage
-     - `QPS Of Schedule`: the number of executions per second for each part of the Schedule
+     - `OPS`: system interface and RPC visits per second
+     - `OPS Of Stage`: the number of executions per second of each part of the Stage
+     - `OPS Of Schedule`: the number of executions per second for each part of the Schedule
      - `Time Consumed Of Operation`: the time consumption of different operations
      - `P99 Time Consumed of Interface`: P99 time consumption of different interfaces
      - `Average Time Consumed of Interface`: the average time consumption of different interfaces

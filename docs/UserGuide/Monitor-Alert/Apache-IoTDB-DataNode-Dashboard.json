@@ -572,7 +572,7 @@
               "refId": "A"
             }
           ],
-          "title": "The QPS Of Interface",
+          "title": "The OPS Of Interface",
           "type": "timeseries"
         },
         {
