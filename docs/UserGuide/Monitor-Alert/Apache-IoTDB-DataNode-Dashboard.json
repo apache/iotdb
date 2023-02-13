@@ -469,7 +469,7 @@
           "refId": "B"
         }
       ],
-      "title": "The Time Consumed Of Operation (50%)",
+      "title": "The Time Consumed of Operation (50%)",
       "type": "timeseries"
     },
     {
@@ -1492,7 +1492,7 @@
           "exemplar": true,
           "expr": "sum(rate(data_read_total{instance=~\"$instance\"}[1m]))*60 / sum(rate(data_written_total{instance=~\"$instance\"}[1m]))*60",
           "interval": "",
-          "legendFormat": "Write",
+          "legendFormat": "R/W Ratio",
           "range": true,
           "refId": "A"
         }
