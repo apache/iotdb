@@ -171,6 +171,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | The write process of main process in replica group                    |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | The sync index of replica group                                       |
+| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="syncLag"                           | AutoGauge | The sync lag of replica group                                         |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | The number of logEntries from wal in Batch                            |
 | mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | The number of logEntries from queue in Batch                          |
 | stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | The time consumed to get statemachine lock in main process            |
