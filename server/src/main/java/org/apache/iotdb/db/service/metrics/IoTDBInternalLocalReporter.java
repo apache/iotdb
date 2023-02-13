@@ -30,7 +30,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
@@ -133,7 +133,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       request.setValues(buffer);
       request.setIsAligned(false);
 
-      Statement s = StatementGenerator.createStatement(request);
+      InsertRowStatement s = StatementGenerator.createStatement(request);
       final long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);

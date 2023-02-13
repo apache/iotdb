@@ -27,7 +27,7 @@ import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -106,19 +106,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.SQL_PARSER;
-
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
-
+  // TODO @spricoder optimize the method adding metrics
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
   }
 
   public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct query statement
-    QueryStatement queryStatement = new QueryStatement();
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
     WhereCondition whereCondition = new WhereCondition();
@@ -144,19 +142,20 @@ public class StatementGenerator {
     LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
     whereCondition.setPredicate(predicate);
 
+    QueryStatement queryStatement = new QueryStatement();
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
     queryStatement.setWhereCondition(whereCondition);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
   public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct query statement
-    QueryStatement lastQueryStatement = new QueryStatement();
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
-    WhereCondition whereCondition = new WhereCondition();
 
     selectComponent.setHasLast(true);
 
@@ -170,20 +169,25 @@ public class StatementGenerator {
             new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
     // set query filter
+    WhereCondition whereCondition = new WhereCondition();
     GreaterEqualExpression predicate =
         new GreaterEqualExpression(
             new TimestampOperand(),
             new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
     whereCondition.setPredicate(predicate);
 
+    QueryStatement lastQueryStatement = new QueryStatement();
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
     lastQueryStatement.setWhereCondition(whereCondition);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+
     return lastQueryStatement;
   }
 
   public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     QueryStatement queryStatement = new QueryStatement();
 
     FromComponent fromComponent = new FromComponent();
@@ -232,12 +236,13 @@ public class StatementGenerator {
       whereCondition.setPredicate(predicate);
       queryStatement.setWhereCondition(whereCondition);
     }
-
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }
 
-  public static Statement createStatement(TSInsertRecordReq insertRecordReq)
+  public static InsertRowStatement createStatement(TSInsertRecordReq insertRecordReq)
       throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
@@ -245,11 +250,13 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
     insertStatement.fillValues(insertRecordReq.values);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertStringRecordReq insertRecordReq)
+  public static InsertRowStatement createStatement(TSInsertStringRecordReq insertRecordReq)
       throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
@@ -259,12 +266,13 @@ public class StatementGenerator {
     insertStatement.setValues(insertRecordReq.getValues().toArray(new Object[0]));
     insertStatement.setNeedInferType(true);
     insertStatement.setAligned(insertRecordReq.isAligned);
-
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertTabletReq insertTabletReq)
+  public static InsertTabletStatement createStatement(TSInsertTabletReq insertTabletReq)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(new PartialPath(insertTabletReq.getPrefixPath()));
@@ -287,10 +295,13 @@ public class StatementGenerator {
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertTabletsReq req) throws IllegalPathException {
+  public static InsertMultiTabletsStatement createStatement(TSInsertTabletsReq req)
+      throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertMultiTabletsStatement insertStatement = new InsertMultiTabletsStatement();
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
@@ -322,13 +333,14 @@ public class StatementGenerator {
       }
       insertTabletStatementList.add(insertTabletStatement);
     }
-
     insertStatement.setInsertTabletStatementList(insertTabletStatementList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertRecordsReq req)
+  public static InsertRowsStatement createStatement(TSInsertRecordsReq req)
       throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
@@ -346,11 +358,13 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertStringRecordsReq req)
+  public static InsertRowsStatement createStatement(TSInsertStringRecordsReq req)
       throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
@@ -370,11 +384,13 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertRecordsOfOneDeviceReq req)
+  public static InsertRowsOfOneDeviceStatement createStatement(TSInsertRecordsOfOneDeviceReq req)
       throws IllegalPathException, QueryProcessException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
     insertStatement.setDevicePath(new PartialPath(req.prefixPath));
@@ -393,11 +409,13 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(TSInsertStringRecordsOfOneDeviceReq req)
-      throws IllegalPathException, QueryProcessException {
+  public static InsertRowsOfOneDeviceStatement createStatement(
+      TSInsertStringRecordsOfOneDeviceReq req) throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
     insertStatement.setDevicePath(new PartialPath(req.prefixPath));
@@ -418,28 +436,24 @@ public class StatementGenerator {
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 
-  public static Statement createStatement(String storageGroup) throws IllegalPathException {
+  public static DatabaseSchemaStatement createStatement(String storageGroup)
+      throws IllegalPathException {
+    long startTime = System.nanoTime();
     // construct create database statement
     DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
-  private static PartialPath parseStorageGroupRawString(String storageGroup)
+  public static CreateTimeSeriesStatement createStatement(TSCreateTimeseriesReq req)
       throws IllegalPathException {
-    PartialPath storageGroupPath = new PartialPath(storageGroup);
-    if (storageGroupPath.getNodeLength() < 2) {
-      throw new IllegalPathException(storageGroup);
-    }
-    MetaFormatUtils.checkStorageGroup(storageGroup);
-    return storageGroupPath;
-  }
-
-  public static Statement createStatement(TSCreateTimeseriesReq req) throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
     statement.setPath(new PartialPath(req.path));
@@ -450,11 +464,13 @@ public class StatementGenerator {
     statement.setTags(req.tags);
     statement.setAttributes(req.attributes);
     statement.setAlias(req.measurementAlias);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
-  public static Statement createStatement(TSCreateAlignedTimeseriesReq req)
+  public static CreateAlignedTimeSeriesStatement createStatement(TSCreateAlignedTimeseriesReq req)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct create aligned timeseries statement
     CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDevicePath(new PartialPath(req.prefixPath));
@@ -477,11 +493,13 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAlias);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
-  public static Statement createStatement(TSCreateMultiTimeseriesReq req)
+  public static CreateMultiTimeSeriesStatement createStatement(TSCreateMultiTimeseriesReq req)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     // construct create multi timeseries statement
     List<PartialPath> paths = new ArrayList<>();
     for (String path : req.paths) {
@@ -508,20 +526,25 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAliasList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
-  public static Statement createStatement(List<String> storageGroups) throws IllegalPathException {
+  public static DeleteStorageGroupStatement createStatement(List<String> storageGroups)
+      throws IllegalPathException {
+    final long startTime = System.nanoTime();
     DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
     for (String path : storageGroups) {
       parseStorageGroupRawString(path);
     }
     statement.setPrefixPath(storageGroups);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
 
   public static DeleteDataStatement createStatement(TSDeleteDataReq req)
       throws IllegalPathException {
+    final long startTime = System.nanoTime();
     DeleteDataStatement statement = new DeleteDataStatement();
     List<PartialPath> pathList = new ArrayList<>();
     for (String path : req.getPaths()) {
@@ -530,79 +553,13 @@ public class StatementGenerator {
     statement.setPathList(pathList);
     statement.setDeleteStartTime(req.getStartTime());
     statement.setDeleteEndTime(req.getEndTime());
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
-  }
-
-  private static Statement invokeParser(String sql, ZoneId zoneId) {
-    long startTime = System.nanoTime();
-    try {
-      ASTVisitor astVisitor = new ASTVisitor();
-      astVisitor.setZoneId(zoneId);
-
-      CharStream charStream1 = CharStreams.fromString(sql);
-
-      SqlLexer lexer1 = new SqlLexer(charStream1);
-      lexer1.removeErrorListeners();
-      lexer1.addErrorListener(SqlParseError.INSTANCE);
-
-      CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-
-      IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
-      parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
-      parser1.removeErrorListeners();
-      parser1.addErrorListener(SqlParseError.INSTANCE);
-
-      ParseTree tree;
-      try {
-        // STAGE 1: try with simpler/faster SLL(*)
-        tree = parser1.singleStatement();
-        // if we get here, there was no syntax error and SLL(*) was enough;
-        // there is no need to try full LL(*)
-      } catch (Exception ex) {
-        CharStream charStream2 = CharStreams.fromString(sql);
-
-        SqlLexer lexer2 = new SqlLexer(charStream2);
-        lexer2.removeErrorListeners();
-        lexer2.addErrorListener(SqlParseError.INSTANCE);
-
-        CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
-
-        org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
-            new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
-        parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
-        parser2.removeErrorListeners();
-        parser2.addErrorListener(SqlParseError.INSTANCE);
-
-        // STAGE 2: parser with full LL(*)
-        tree = parser2.singleStatement();
-        // if we get here, it's LL not SLL
-      }
-      return astVisitor.visit(tree);
-    } finally {
-      QueryMetricsManager.getInstance().recordPlanCost(SQL_PARSER, System.nanoTime() - startTime);
-    }
-  }
-
-  private static void addMeasurementAndValue(
-      InsertRowStatement insertRowStatement, List<String> measurements, List<String> values) {
-    List<String> newMeasurements = new ArrayList<>(measurements.size());
-    List<Object> newValues = new ArrayList<>(values.size());
-
-    for (int i = 0; i < measurements.size(); ++i) {
-      String value = values.get(i);
-      if (value.isEmpty()) {
-        continue;
-      }
-      newMeasurements.add(measurements.get(i));
-      newValues.add(value);
-    }
-
-    insertRowStatement.setValues(newValues.toArray(new Object[0]));
-    insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
   public static CreateSchemaTemplateStatement createStatement(TSCreateSchemaTemplateReq req)
       throws MetadataException {
+    final long startTime = System.nanoTime();
     ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
     Map<String, List<String>> alignedPrefix = new HashMap<>();
     Map<String, List<TSDataType>> alignedDataTypes = new HashMap<>();
@@ -684,48 +641,152 @@ public class StatementGenerator {
       encodings.add(thisEncodings);
       compressors.add(thisCompressors);
     }
-    return new CreateSchemaTemplateStatement(
-        templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
+    CreateSchemaTemplateStatement statement =
+        new CreateSchemaTemplateStatement(
+            templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return statement;
   }
 
   public static Statement createStatement(TSQueryTemplateReq req) {
+    long startTime = System.nanoTime();
+    Statement result = null;
     switch (TemplateQueryType.values()[req.getQueryType()]) {
       case SHOW_MEASUREMENTS:
-        return new ShowNodesInSchemaTemplateStatement(req.getName());
+        result = new ShowNodesInSchemaTemplateStatement(req.getName());
+        break;
       case SHOW_TEMPLATES:
-        return new ShowSchemaTemplateStatement();
+        result = new ShowSchemaTemplateStatement();
+        break;
       case SHOW_SET_TEMPLATES:
-        return new ShowPathSetTemplateStatement(req.getName());
+        result = new ShowPathSetTemplateStatement(req.getName());
+        break;
       case SHOW_USING_TEMPLATES:
-        return new ShowPathsUsingTemplateStatement(
-            new PartialPath(SqlConstant.getSingleRootArray()), req.getName());
+        result =
+            new ShowPathsUsingTemplateStatement(
+                new PartialPath(SqlConstant.getSingleRootArray()), req.getName());
+        break;
       default:
-        return null;
+        break;
     }
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return result;
   }
 
   public static SetSchemaTemplateStatement createStatement(TSSetSchemaTemplateReq req)
       throws IllegalPathException {
-    return new SetSchemaTemplateStatement(
-        req.getTemplateName(), new PartialPath(req.getPrefixPath()));
-  }
-
-  public static DeleteTimeSeriesStatement createDeleteTimeSeriesStatement(
-      List<String> pathPatternStringList) throws IllegalPathException {
-    List<PartialPath> pathPatternList = new ArrayList<>();
-    for (String pathPatternString : pathPatternStringList) {
-      pathPatternList.add(new PartialPath(pathPatternString));
-    }
-    return new DeleteTimeSeriesStatement(pathPatternList);
+    long startTime = System.nanoTime();
+    SetSchemaTemplateStatement statement =
+        new SetSchemaTemplateStatement(req.getTemplateName(), new PartialPath(req.getPrefixPath()));
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return statement;
   }
 
   public static UnsetSchemaTemplateStatement createStatement(TSUnsetSchemaTemplateReq req)
       throws IllegalPathException {
-    return new UnsetSchemaTemplateStatement(
-        req.getTemplateName(), new PartialPath(req.getPrefixPath()));
+    final long startTime = System.nanoTime();
+    UnsetSchemaTemplateStatement statement =
+        new UnsetSchemaTemplateStatement(
+            req.getTemplateName(), new PartialPath(req.getPrefixPath()));
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return statement;
   }
 
   public static DropSchemaTemplateStatement createStatement(TSDropSchemaTemplateReq req) {
-    return new DropSchemaTemplateStatement(req.getTemplateName());
+    final long startTime = System.nanoTime();
+    DropSchemaTemplateStatement statement = new DropSchemaTemplateStatement(req.getTemplateName());
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return statement;
+  }
+
+  public static DeleteTimeSeriesStatement createDeleteTimeSeriesStatement(
+      List<String> pathPatternStringList) throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    List<PartialPath> pathPatternList = new ArrayList<>();
+    for (String pathPatternString : pathPatternStringList) {
+      pathPatternList.add(new PartialPath(pathPatternString));
+    }
+    DeleteTimeSeriesStatement statement = new DeleteTimeSeriesStatement(pathPatternList);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return statement;
+  }
+
+  private static Statement invokeParser(String sql, ZoneId zoneId) {
+    long startTime = System.nanoTime();
+    try {
+      ASTVisitor astVisitor = new ASTVisitor();
+      astVisitor.setZoneId(zoneId);
+
+      CharStream charStream1 = CharStreams.fromString(sql);
+
+      SqlLexer lexer1 = new SqlLexer(charStream1);
+      lexer1.removeErrorListeners();
+      lexer1.addErrorListener(SqlParseError.INSTANCE);
+
+      CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
+
+      IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
+      parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+      parser1.removeErrorListeners();
+      parser1.addErrorListener(SqlParseError.INSTANCE);
+
+      ParseTree tree;
+      try {
+        // STAGE 1: try with simpler/faster SLL(*)
+        tree = parser1.singleStatement();
+        // if we get here, there was no syntax error and SLL(*) was enough;
+        // there is no need to try full LL(*)
+      } catch (Exception ex) {
+        CharStream charStream2 = CharStreams.fromString(sql);
+
+        SqlLexer lexer2 = new SqlLexer(charStream2);
+        lexer2.removeErrorListeners();
+        lexer2.addErrorListener(SqlParseError.INSTANCE);
+
+        CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
+
+        org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
+            new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
+        parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
+        parser2.removeErrorListeners();
+        parser2.addErrorListener(SqlParseError.INSTANCE);
+
+        // STAGE 2: parser with full LL(*)
+        tree = parser2.singleStatement();
+        // if we get here, it's LL not SLL
+      }
+      return astVisitor.visit(tree);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordParseCost(System.nanoTime() - startTime);
+    }
+  }
+
+  private static void addMeasurementAndValue(
+      InsertRowStatement insertRowStatement, List<String> measurements, List<String> values) {
+    List<String> newMeasurements = new ArrayList<>(measurements.size());
+    List<Object> newValues = new ArrayList<>(values.size());
+
+    for (int i = 0; i < measurements.size(); ++i) {
+      String value = values.get(i);
+      if (value.isEmpty()) {
+        continue;
+      }
+      newMeasurements.add(measurements.get(i));
+      newValues.add(value);
+    }
+
+    insertRowStatement.setValues(newValues.toArray(new Object[0]));
+    insertRowStatement.setMeasurements(newMeasurements.toArray(new String[0]));
+  }
+
+  private static PartialPath parseStorageGroupRawString(String storageGroup)
+      throws IllegalPathException {
+    PartialPath storageGroupPath = new PartialPath(storageGroup);
+    if (storageGroupPath.getNodeLength() < 2) {
+      throw new IllegalPathException(storageGroup);
+    }
+    MetaFormatUtils.checkStorageGroup(storageGroup);
+    return storageGroupPath;
   }
 }

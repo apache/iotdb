@@ -281,7 +281,7 @@ public class LogicalPlannerTest {
             }
           });
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
-          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
+          StatementGenerator.createStatement(req);
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       Analyzer analyzer =
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
