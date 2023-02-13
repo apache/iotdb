@@ -26,19 +26,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
 
 public class JDBCExample {
-  private static final String CREATE_TEMPLATE_SQL =
-      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, 'MAX_POINT_NUMBER'='%d'";
-  private static final String INSERT_TEMPLATE_SQL =
-      "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
-  private static List<String> sqls = new ArrayList<>();
-  private static final int TIMESTAMP = 10;
-  private static final String VALUE = "1.2345678901";
-  private static final float DELTA_FLOAT = 0.0000001f;
-  private static final double DELTA_DOUBLE = 0.0000001d;
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -46,19 +35,36 @@ public class JDBCExample {
             DriverManager.getConnection(
                 "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.fans");
-      statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.fans.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE");
 
-      for (int time = 1; time < 10; time++) {
+      // set JDBC fetchSize
+      statement.setFetchSize(10000);
 
-        String sql =
-            String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 10);
-        statement.execute(sql);
-        sql = String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 5);
-        statement.execute(sql);
+      try {
+        statement.execute("CREATE DATABASE root.sg1");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      } catch (IoTDBSQLException e) {
+        System.out.println(e.getMessage());
       }
 
+      for (int i = 0; i <= 100; i++) {
+        statement.addBatch(prepareInsertStatment(i));
+      }
+      statement.executeBatch();
+      statement.clearBatch();
+
+      ResultSet resultSet = statement.executeQuery("select ** from root where time <= 10");
+      outputResult(resultSet);
+      resultSet = statement.executeQuery("select count(**) from root");
+      outputResult(resultSet);
+      resultSet =
+          statement.executeQuery(
+              "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+      outputResult(resultSet);
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
     }

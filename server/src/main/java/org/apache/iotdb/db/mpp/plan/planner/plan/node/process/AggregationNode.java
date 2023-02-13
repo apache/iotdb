@@ -168,6 +168,7 @@ public class AggregationNode extends MultiChildProcessNode {
         getScanOrder());
   }
 
+  @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     return new HorizontallyConcatNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
