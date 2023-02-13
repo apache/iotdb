@@ -23,10 +23,10 @@ public class PaginationController {
 
   private final boolean hasLimit;
 
-  private int curLimit;
-  private int curOffset;
+  private long curLimit;
+  private long curOffset;
 
-  public PaginationController(int limit, int offset) {
+  public PaginationController(long limit, long offset) {
     // row limit for result set. The default value is 0, which means no limit
     this.curLimit = limit;
     this.hasLimit = limit > 0;
@@ -39,7 +39,7 @@ public class PaginationController {
     return curOffset > 0;
   }
 
-  public boolean hasCurOffset(int rowCount) {
+  public boolean hasCurOffset(long rowCount) {
     return curOffset > rowCount;
   }
 
@@ -47,7 +47,7 @@ public class PaginationController {
     return !hasLimit || curLimit > 0;
   }
 
-  public void consumeOffset(int rowCount) {
+  public void consumeOffset(long rowCount) {
     curOffset -= rowCount;
   }
 

@@ -136,7 +136,7 @@ public class SeriesScanUtil {
     if (!Objects.equals(queryFilter, globalTimeFilter)) {
       this.queryFilter = queryFilter;
     }
-    this.paginationController = new PaginationController(0, 0);
+    this.paginationController = new PaginationController(0L, 0L);
 
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
@@ -169,8 +169,8 @@ public class SeriesScanUtil {
       Filter globalTimeFilter,
       Filter queryFilter,
       boolean ascending,
-      int limit,
-      int offset) {
+      long limit,
+      long offset) {
     this(seriesPath, allSensors, dataType, context, globalTimeFilter, queryFilter, ascending);
     this.paginationController = new PaginationController(limit, offset);
   }
@@ -339,7 +339,7 @@ public class SeriesScanUtil {
           skipCurrentChunk();
         }
       } else {
-        int rowCount = (int) firstChunkMetadata.getStatistics().getCount();
+        long rowCount = firstChunkMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentChunk();
           paginationController.consumeOffset(rowCount);
@@ -1054,7 +1054,7 @@ public class SeriesScanUtil {
           skipCurrentFile();
         }
       } else {
-        int rowCount = (int) firstTimeSeriesMetadata.getStatistics().getCount();
+        long rowCount = firstTimeSeriesMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentFile();
           paginationController.consumeOffset(rowCount);
