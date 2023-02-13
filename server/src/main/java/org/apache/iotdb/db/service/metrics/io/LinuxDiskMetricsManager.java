@@ -244,12 +244,12 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public long getAttemptReadSizeForProcess() {
-    return 0;
+    return incrementAttemptReadSizeForProcess / 1024L / updateInterval * 1000L;
   }
 
   @Override
   public long getAttemptWriteSizeForProcess() {
-    return 0;
+    return incrementAttemptWriteSizeForProcess / 1024L / updateInterval * 1000L;
   }
 
   @Override
@@ -298,7 +298,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
         long readTimeCost = Long.parseLong(diskInfo[DISK_READ_TIME_COST_OFFSET]);
         long writeTimeCost = Long.parseLong(diskInfo[DISK_WRITE_TIME_COST_OFFSET]);
         long lastMergedReadCount = lastMergedReadCountForDisk.getOrDefault(diskId, 0L);
-        long lastMergedWriteCount = lastMergedReadCountForDisk.getOrDefault(diskId, 0L);
+        long lastMergedWriteCount = lastMergedWriteCountForDisk.getOrDefault(diskId, 0L);
         int lastReadOperationCount = lastReadOperationCountForDisk.getOrDefault(diskId, 0);
         int lastWriteOperationCount = lastWriteOperationCountForDisk.getOrDefault(diskId, 0);
         long lastSectorReadCount = lastReadSectorCountForDisk.getOrDefault(diskId, 0L);
