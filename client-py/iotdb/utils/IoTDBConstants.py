@@ -63,6 +63,8 @@ class TSEncoding(Enum):
     FREQ = 10
     HUFFMAN = 11
     MTF = 12
+    BW = 13
+    AC = 14
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

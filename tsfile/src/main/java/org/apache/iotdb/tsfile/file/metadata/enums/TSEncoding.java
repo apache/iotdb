@@ -31,7 +31,9 @@ public enum TSEncoding {
   ZIGZAG((byte) 9),
   FREQ((byte) 10),
   HUFFMAN((byte) 11),
-  MTF((byte) 12);
+  MTF((byte) 12),
+  BW((byte) 13),
+  AC((byte) 14);
 
   private final byte type;
 
@@ -77,6 +79,10 @@ public enum TSEncoding {
         return TSEncoding.HUFFMAN;
       case 12:
         return TSEncoding.MTF;
+      case 13:
+        return TSEncoding.BW;
+      case 14:
+        return TSEncoding.AC;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

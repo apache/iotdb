@@ -171,7 +171,9 @@ namespace TSEncoding {
         ZIGZAG = (char) 9,
         FREQ = (char) 10,
         HUFFMAN = (char) 11,
-        MTF = (char) 12
+        MTF = (char) 12,
+        BW = (char) 13,
+        AC = (char) 14
     };
 }
 
