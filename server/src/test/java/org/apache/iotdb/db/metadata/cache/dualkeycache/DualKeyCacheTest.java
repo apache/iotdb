@@ -33,7 +33,7 @@ public class DualKeyCacheTest {
     IDualKeyCache<String, String, String> dualKeyCache =
         dualKeyCacheBuilder
             .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
-            .memoryCapacity(230)
+            .memoryCapacity(300)
             .firstKeySizeComputer(this::computeStringSize)
             .secondKeySizeComputer(this::computeStringSize)
             .valueSizeComputer(this::computeStringSize)
