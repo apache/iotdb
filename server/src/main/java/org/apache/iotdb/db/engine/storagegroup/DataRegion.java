@@ -3184,7 +3184,7 @@ public class DataRegion implements IDataRegionForQuery {
               folder = folder + File.separator + databaseName + File.separator + dataRegionId;
               countFolderDiskSize(folder, diskSize);
             });
-    return diskSize.get();
+    return diskSize.get() / 1024 / 1024;
   }
 
   /**
@@ -3199,7 +3199,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     for (File f : allFile) {
       if (f.isFile()) {
-        diskSize.addAndGet(f.length() / 1024 / 1024);
+        diskSize.addAndGet(f.length());
       } else if (f.isDirectory()) {
         countFolderDiskSize(f.getAbsolutePath(), diskSize);
       }

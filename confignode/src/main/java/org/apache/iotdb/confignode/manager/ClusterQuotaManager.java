@@ -189,7 +189,7 @@ public class ClusterQuotaManager {
           .forEach(
               dataRegionId -> {
                 if (regionDisk.containsKey(dataRegionId)) {
-                  regionDiskCount.addAndGet(regionDiskCount.get() + regionDisk.get(dataRegionId));
+                  regionDiskCount.addAndGet(regionDisk.get(dataRegionId));
                 }
               });
       quotaInfo.getSpaceQuotaUsage().get(entry.getKey()).setDiskSize(regionDiskCount.get());
