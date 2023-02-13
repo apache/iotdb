@@ -62,21 +62,21 @@ public class IoTDBGroupBySeriesIT {
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(11, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(12, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(13, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(14, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(15, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(16, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(17, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(18, null, null, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(19, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(20, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(21, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(22, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(23, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(24, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(25, 1, 100, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
         "flush"
       };
 
@@ -96,21 +96,21 @@ public class IoTDBGroupBySeriesIT {
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(11, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(12, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(13, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(14, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(15, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(16, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(17, null, null, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(18, null, null, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(19, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(20, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(21, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(22, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(23, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(24, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(25, 1, 100, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(130000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(140000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(150000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(160000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(170000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(180000000, null, null, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
         "flush"
       };
 
@@ -146,8 +146,8 @@ public class IoTDBGroupBySeriesIT {
           {"1", "2", "1.0", "2", "16.0"},
           {"5", "7", "2.0", "3", "36.0"},
           {"9", "10", "1.0", "2", "60.0"},
-          {"19", "20", "1.0", "2", "70.0"},
-          {"24", "25", "1.0", "2", "100.0"}
+          {"1900000000", "2000000000", "100000000.0", "2", "70.0"},
+          {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoringNull=false)";
@@ -162,7 +162,7 @@ public class IoTDBGroupBySeriesIT {
     String[][] res =
         new String[][] {
           {"1", "2", "1.0", "2", "16.0"},
-          {"5", "25", "20.0", "9", "100.0"}
+          {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoringNull=true)";
@@ -176,7 +176,7 @@ public class IoTDBGroupBySeriesIT {
   public void groupBySeriesTest3() {
     String[][] res =
         new String[][] {
-          {"5", "25", "20.0", "9", "100.0"},
+          {"5", "2500000000", "2499999995.0", "9", "100.0"},
         };
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=3,ignoringNull=true)";
@@ -341,7 +341,7 @@ public class IoTDBGroupBySeriesIT {
     String[][] res =
         new String[][] {
           {"1", "2", "1.0", "2", "16.0"},
-          {"5", "25", "20.0", "9", "100.0"}
+          {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by series(charging_status=1,KEEP>=2,ignoringNull=true) align by device";
@@ -356,8 +356,8 @@ public class IoTDBGroupBySeriesIT {
     String[][] res =
         new String[][] {
           {"9", "10", "1.0", "2", "60.0"},
-          {"19", "20", "1.0", "2", "70.0"},
-          {"24", "25", "1.0", "2", "100.0"}
+          {"1900000000", "2000000000", "100000000.0", "2", "70.0"},
+          {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoringNull=false) having last_value(soc)>50";

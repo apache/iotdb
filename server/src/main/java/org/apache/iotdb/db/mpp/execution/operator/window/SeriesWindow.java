@@ -25,19 +25,23 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class SeriesWindow implements IWindow {
 
-  private final SeriesWindowParameter seriesWindowParameter;
+  private final int controlColumnIndex;
+  private final boolean outputEndTime;
+  private final boolean ignoringNull;
   private long startTime;
   private long endTime;
   private long keep;
   private boolean timeInitialized;
 
   public SeriesWindow(SeriesWindowParameter seriesWindowParameter) {
-    this.seriesWindowParameter = seriesWindowParameter;
+    this.ignoringNull = seriesWindowParameter.isIgnoringNull();
+    this.controlColumnIndex = seriesWindowParameter.getControlColumnIndex();
+    this.outputEndTime = seriesWindowParameter.isNeedOutputEndTime();
   }
 
   @Override
   public Column getControlColumn(TsBlock tsBlock) {
-    return tsBlock.getColumn(seriesWindowParameter.getControlColumnIndex());
+    return tsBlock.getColumn(controlColumnIndex);
   }
 
   @Override
@@ -80,7 +84,7 @@ public class SeriesWindow implements IWindow {
   }
 
   public boolean ignoringNull() {
-    return seriesWindowParameter.isIgnoringNull();
+    return ignoringNull;
   }
 
   public long getKeep() {
@@ -100,6 +104,6 @@ public class SeriesWindow implements IWindow {
   }
 
   public boolean isOutputEndTime() {
-    return seriesWindowParameter.isNeedOutputEndTime();
+    return outputEndTime;
   }
 }

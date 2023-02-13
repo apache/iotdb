@@ -288,11 +288,11 @@ public class QueryStatement extends Statement {
     return isGroupByTime() || groupByComponent != null;
   }
 
-  public boolean isGroupByVariation() {
+  private boolean isGroupByVariation() {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
   }
 
-  public boolean isGroupBySeries() {
+  private boolean isGroupBySeries() {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
   }
 

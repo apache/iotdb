@@ -201,7 +201,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private void initWindowAndAggregators() {
-    windowManager.initCurWindow(inputTsBlock);
+    windowManager.initCurWindow();
     IWindow curWindow = windowManager.getCurWindow();
     for (Aggregator aggregator : aggregators) {
       aggregator.updateWindow(curWindow);

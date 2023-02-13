@@ -41,12 +41,8 @@ public interface IWindowManager {
    */
   boolean isCurWindowInit();
 
-  /**
-   * Used to initialize the status of window
-   *
-   * @param tsBlock a TsBlock
-   */
-  void initCurWindow(TsBlock tsBlock);
+  /** Used to initialize the status of window */
+  void initCurWindow();
 
   /**
    * Used to determine whether there is a next window
@@ -156,7 +152,5 @@ public interface IWindowManager {
   boolean isIgnoringNull();
 
   // todo: used for keep value temporarily,it will be removed in the future.
-  default void setKeep(long keep) {
-    return;
-  }
+  default void setKeep(long keep) {}
 }

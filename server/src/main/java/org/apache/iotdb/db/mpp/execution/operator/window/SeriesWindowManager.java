@@ -55,7 +55,7 @@ public class SeriesWindowManager implements IWindowManager {
   }
 
   @Override
-  public void initCurWindow(TsBlock tsBlock) {
+  public void initCurWindow() {
     this.initialized = true;
     this.seriesWindow.setTimeInitialized(false);
     this.seriesWindow.setKeep(0);
