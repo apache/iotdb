@@ -61,6 +61,7 @@ class TSEncoding(Enum):
     GORILLA = 8
     ZIGZAG = 9
     FREQ = 10
+    HUFFMAN = 11
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

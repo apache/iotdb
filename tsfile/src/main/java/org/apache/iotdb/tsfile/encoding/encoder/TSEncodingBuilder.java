@@ -73,6 +73,8 @@ public abstract class TSEncodingBuilder {
         return new Freq();
       case ZIGZAG:
         return new Zigzag();
+      case HUFFMAN:
+        return new Huffman();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -206,6 +208,8 @@ public abstract class TSEncodingBuilder {
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
+        case TEXT:
+          return new TextRleEncoder();
         default:
           throw new UnSupportedDataTypeException("RLE doesn't support data type: " + type);
       }
@@ -392,6 +396,22 @@ public abstract class TSEncodingBuilder {
         default:
           throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
       }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Huffman extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new HuffmanEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }
 
     @Override
