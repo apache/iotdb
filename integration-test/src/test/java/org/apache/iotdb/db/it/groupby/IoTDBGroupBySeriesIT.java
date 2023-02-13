@@ -213,12 +213,12 @@ public class IoTDBGroupBySeriesIT {
         while (resultSet.next()) {
           String startTime = resultSet.getString(1);
           String endTime = resultSet.getString(2);
-          String duration = resultSet.getString(3);
+          double duration = resultSet.getDouble(3);
           String countNum = resultSet.getString(4);
           String lastValue = resultSet.getString(5);
           assertEquals(res[count][0], startTime);
           assertEquals(res[count][1], endTime);
-          assertEquals(res[count][2], duration);
+          assertEquals(Double.parseDouble(res[count][2]), duration, 0.0000000001);
           assertEquals(res[count][3], countNum);
           assertEquals(res[count][4], lastValue);
           count++;
@@ -243,11 +243,11 @@ public class IoTDBGroupBySeriesIT {
         int count = 0;
         while (resultSet.next()) {
           String startTime = resultSet.getString(1);
-          String duration = resultSet.getString(2);
+          double duration = resultSet.getDouble(2);
           String countNum = resultSet.getString(3);
           String lastValue = resultSet.getString(4);
           assertEquals(res[count][0], startTime);
-          assertEquals(res[count][2], duration);
+          assertEquals(Double.parseDouble(res[count][2]), duration, 0.0000000001);
           assertEquals(res[count][3], countNum);
           assertEquals(res[count][4], lastValue);
           count++;
@@ -280,13 +280,13 @@ public class IoTDBGroupBySeriesIT {
           String startTime = resultSet.getString(1);
           String deviceName = resultSet.getString(2);
           String endTime = resultSet.getString(3);
-          String duration = resultSet.getString(4);
+          double duration = resultSet.getDouble(4);
           String countNum = resultSet.getString(5);
           String lastValue = resultSet.getString(6);
           assertEquals(res[count][0], startTime);
           assertEquals(res[count][1], endTime);
           assertEquals(device, deviceName);
-          assertEquals(res[count][2], duration);
+          assertEquals(Double.parseDouble(res[count][2]), duration, 0.0000000001);
           assertEquals(res[count][3], countNum);
           assertEquals(res[count][4], lastValue);
           count++;
@@ -318,12 +318,12 @@ public class IoTDBGroupBySeriesIT {
           }
           String startTime = resultSet.getString(1);
           String deviceName = resultSet.getString(2);
-          String duration = resultSet.getString(3);
+          double duration = resultSet.getDouble(3);
           String countNum = resultSet.getString(4);
           String lastValue = resultSet.getString(5);
           assertEquals(res[count][0], startTime);
           assertEquals(device, deviceName);
-          assertEquals(res[count][2], duration);
+          assertEquals(Double.parseDouble(res[count][2]), duration, 0.0000000001);
           assertEquals(res[count][3], countNum);
           assertEquals(res[count][4], lastValue);
           count++;
