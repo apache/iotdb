@@ -25,7 +25,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 class CacheStats implements IDualKeyCacheStats {
 
+  // prepare some buffer for high load scenarios
+  private static final double MEMORY_THRESHOLD_RATIO = 0.8;
+
   private final long memoryCapacity;
+  private final long memoryThreshold;
 
   private final AtomicLong memoryUsage = new AtomicLong(0);
 
@@ -34,10 +38,7 @@ class CacheStats implements IDualKeyCacheStats {
 
   CacheStats(long memoryCapacity) {
     this.memoryCapacity = memoryCapacity;
-  }
-
-  void updateMemory(int sizeDelta) {
-    memoryUsage.getAndAdd(sizeDelta);
+    this.memoryThreshold = (long) (memoryCapacity * MEMORY_THRESHOLD_RATIO);
   }
 
   void increaseMemoryUsage(int size) {
@@ -49,7 +50,7 @@ class CacheStats implements IDualKeyCacheStats {
   }
 
   boolean isExceedMemoryCapacity() {
-    return memoryUsage.get() > memoryCapacity;
+    return memoryUsage.get() > memoryThreshold;
   }
 
   void recordHit(int num) {
