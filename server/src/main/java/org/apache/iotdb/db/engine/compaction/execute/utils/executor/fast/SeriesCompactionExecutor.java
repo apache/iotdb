@@ -174,7 +174,6 @@ public abstract class SeriesCompactionExecutor {
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     readChunk(chunkMetadataElement);
-    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     boolean success;
     if (isAligned) {
       success =
@@ -314,6 +313,7 @@ public abstract class SeriesCompactionExecutor {
         if (currentTime >= nextChunkStartTime) {
           // read new overlap chunk and deserialize it
           ChunkMetadataElement overlappedChunkMetadata = chunkMetadataQueue.poll();
+          summary.CHUNK_OVERLAP_OR_MODIFIED++;
           readChunk(overlappedChunkMetadata);
           deserializeChunkIntoQueue(overlappedChunkMetadata);
           nextChunkStartTime =
