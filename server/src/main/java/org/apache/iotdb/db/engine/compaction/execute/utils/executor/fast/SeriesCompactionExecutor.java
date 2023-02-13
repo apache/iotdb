@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -91,6 +90,8 @@ public abstract class SeriesCompactionExecutor {
 
   private long nextPageStartTime = Long.MAX_VALUE;
 
+  protected boolean isAligned;
+
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
@@ -106,6 +107,7 @@ public abstract class SeriesCompactionExecutor {
     this.modificationCacheMap = modificationCacheMap;
     this.summary = summary;
     pointPriorityReader = new PointPriorityReader(this::checkShouldRemoveFile, isAligned);
+    this.isAligned = isAligned;
 
     chunkMetadataQueue =
         new PriorityQueue<>(
@@ -174,7 +176,7 @@ public abstract class SeriesCompactionExecutor {
     readChunk(chunkMetadataElement);
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     boolean success;
-    if (chunkMetadataElement.chunkMetadata instanceof AlignedChunkMetadata) {
+    if (isAligned) {
       success =
           compactionWriter.flushAlignedChunk(
               chunkMetadataElement.chunk,
@@ -193,7 +195,7 @@ public abstract class SeriesCompactionExecutor {
     if (success) {
       // flush chunk successfully, then remove this chunk
       updateSummary(chunkMetadataElement, ChunkStatus.DIRECTORY_FLUSH);
-      checkShouldRemoveChunk(chunkMetadataElement);
+      checkShouldRemoveFile(chunkMetadataElement);
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
       summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += 1;
@@ -223,6 +225,7 @@ public abstract class SeriesCompactionExecutor {
         nextChunkStartTime =
             chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
       }
+
       PageElement firstPageElement = pageQueue.poll();
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
       nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
@@ -253,7 +256,7 @@ public abstract class SeriesCompactionExecutor {
   private void compactWithNonOverlapPage(PageElement pageElement)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     boolean success;
-    if (pageElement.iChunkReader instanceof AlignedChunkReader) {
+    if (isAligned) {
       success =
           compactionWriter.flushAlignedPage(
               pageElement.pageData,
@@ -425,7 +428,7 @@ public abstract class SeriesCompactionExecutor {
    * Check if it is the last chunk in the file. If it is, it means the file has been finished
    * compacting and needs to be removed.
    */
-  private void checkShouldRemoveChunk(ChunkMetadataElement chunkMetadataElement)
+  private void checkShouldRemoveFile(ChunkMetadataElement chunkMetadataElement)
       throws IOException, IllegalPathException {
     if (chunkMetadataElement.isLastChunk) {
       // finish compacting the file, remove it from list
@@ -476,13 +479,13 @@ public abstract class SeriesCompactionExecutor {
     switch (status) {
       case READ_IN:
         summary.increaseProcessChunkNum(
-            chunkMetadataElement.isAligned
+            isAligned
                 ? ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
                         .getValueChunkMetadataList()
                         .size()
                     + 1
                 : 1);
-        if (chunkMetadataElement.isAligned) {
+        if (isAligned) {
           for (IChunkMetadata valueChunkMetadata :
               ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
                   .getValueChunkMetadataList()) {
@@ -497,7 +500,7 @@ public abstract class SeriesCompactionExecutor {
         }
         break;
       case DIRECTORY_FLUSH:
-        if (chunkMetadataElement.isAligned) {
+        if (isAligned) {
           summary.increaseDirectlyFlushChunkNum(
               ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
                       .getValueChunkMetadataList()
@@ -508,7 +511,7 @@ public abstract class SeriesCompactionExecutor {
         }
         break;
       case DESERIALIZE_CHUNK:
-        if (chunkMetadataElement.isAligned) {
+        if (isAligned) {
           summary.increaseDeserializedChunkNum(
               ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
                       .getValueChunkMetadataList()

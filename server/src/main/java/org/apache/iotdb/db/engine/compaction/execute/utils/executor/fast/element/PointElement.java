@@ -48,13 +48,9 @@ public class PointElement {
     return pointReader.hasNextTimeValuePair();
   }
 
-  public void next() throws IOException {
+  public TimeValuePair next() throws IOException {
     timeValuePair = pointReader.nextTimeValuePair();
     timestamp = timeValuePair.getTimestamp();
-  }
-
-  public void setPoint(TimeValuePair timeValuePair) {
-    this.timeValuePair = timeValuePair;
-    this.timestamp = timeValuePair.getTimestamp();
+    return timeValuePair;
   }
 }

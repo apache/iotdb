@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PointElement;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -44,8 +43,6 @@ public class PointPriorityReader {
   private final SeriesCompactionExecutor.RemovePage removePage;
 
   private TimeValuePair currentPoint;
-
-  private boolean shouldReadPointFromQueue = true;
 
   private long nextPointInOtherPage = Long.MAX_VALUE;
 
@@ -75,8 +72,6 @@ public class PointPriorityReader {
       if (isAligned) {
         fillAlignedNullValue();
       }
-
-      shouldReadPointFromQueue = false;
     }
     return currentPoint;
   }
@@ -126,14 +121,12 @@ public class PointPriorityReader {
 
   public void next() throws IllegalPathException, IOException, WriteProcessException {
     if (currentPointElement != null) {
-      IPointReader pointReader = currentPointElement.pointReader;
-      if (pointReader.hasNextTimeValuePair()) {
+
+      if (currentPointElement.hasNext()) {
         // get the point directly if it is not overlapped with other points
-        // currentPointElement.next();
-        currentPoint = pointReader.nextTimeValuePair();
+        currentPoint = currentPointElement.next();
         if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
           // if the point is overlapped with other points, then add it into priority queue
-          currentPointElement.setPoint(currentPoint);
           pointQueue.add(currentPointElement);
           currentPointElement = null;
         }
@@ -148,10 +141,8 @@ public class PointPriorityReader {
       while (!pointQueue.isEmpty() && pointQueue.peek().timestamp == lastTime) {
         // find the data points in other pages that has the same timestamp
         PointElement pointElement = pointQueue.poll();
-        IPointReader pointReader = pointElement.pointReader;
-        if (pointReader.hasNextTimeValuePair()) {
-          pointElement.setPoint(pointReader.nextTimeValuePair());
-          // pointElement.next();
+        if (pointElement.hasNext()) {
+          pointElement.next();
           nextPointInOtherPage =
               pointQueue.size() > 0 ? pointQueue.peek().timestamp : Long.MAX_VALUE;
           if (pointElement.timestamp < nextPointInOtherPage) {
@@ -166,7 +157,6 @@ public class PointPriorityReader {
         }
       }
     }
-    shouldReadPointFromQueue = true;
   }
 
   public boolean hasNext() {
@@ -178,12 +168,10 @@ public class PointPriorityReader {
     if (currentPointElement != null) {
       nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
       if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
-        currentPointElement.setPoint(currentPoint);
         pointQueue.add(currentPointElement);
         currentPointElement = null;
       }
     }
     pointQueue.add(new PointElement(pageElement));
-    shouldReadPointFromQueue = true;
   }
 }
