@@ -146,13 +146,15 @@ public class DataNodeSchemaCache {
     SchemaCacheEntry schemaCacheEntry =
         dualKeyCache.get(fullPath.getDevicePath(), fullPath.getMeasurement());
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    schemaTree.appendSingleMeasurement(
-        fullPath,
-        schemaCacheEntry.getMeasurementSchema(),
-        schemaCacheEntry.getTagMap(),
-        null,
-        schemaCacheEntry.isAligned());
-    schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
+    if (schemaCacheEntry != null) {
+      schemaTree.appendSingleMeasurement(
+          fullPath,
+          schemaCacheEntry.getMeasurementSchema(),
+          schemaCacheEntry.getTagMap(),
+          null,
+          schemaCacheEntry.isAligned());
+      schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
+    }
     return schemaTree;
   }
 
