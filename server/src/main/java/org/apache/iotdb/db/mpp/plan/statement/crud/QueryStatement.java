@@ -405,6 +405,7 @@ public class QueryStatement extends Statement {
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           Expression expression = resultColumn.getExpression();
           if (!(expression instanceof FunctionExpression
+              && expression.getExpressions().get(0) instanceof TimeSeriesOperand
               && expression.isBuiltInAggregationFunctionExpression())) {
             throw new SemanticException(
                 expression + " can't be used in group by tag. It will be supported in the future.");
