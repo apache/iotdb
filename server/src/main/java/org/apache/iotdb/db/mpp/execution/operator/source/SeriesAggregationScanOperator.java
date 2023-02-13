@@ -49,7 +49,9 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      long limit,
+      long offset) {
     super(
         sourceId,
         context,
@@ -60,7 +62,9 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
             context.getInstanceContext(),
             timeFilter,
             null,
-            ascending),
+            ascending,
+            limit,
+            offset),
         1,
         aggregators,
         timeRangeIterator,

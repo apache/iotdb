@@ -68,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions.getDefaultSeriesScanOptions;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -121,12 +122,11 @@ public class AlignedSeriesScanOperatorTest {
 
       AlignedSeriesScanOperator seriesScanOperator =
           new AlignedSeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               alignedPath,
-              driverContext.getOperatorContexts().get(0),
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              getDefaultSeriesScanOptions(alignedPath));
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator
           .getOperatorContext()
@@ -215,12 +215,11 @@ public class AlignedSeriesScanOperatorTest {
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               alignedPath1,
-              driverContext.getOperatorContexts().get(0),
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              getDefaultSeriesScanOptions(alignedPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -237,12 +236,11 @@ public class AlignedSeriesScanOperatorTest {
                   .collect(Collectors.toList()));
       AlignedSeriesScanOperator seriesScanOperator2 =
           new AlignedSeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               alignedPath2,
-              driverContext.getOperatorContexts().get(1),
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              getDefaultSeriesScanOptions(alignedPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -264,11 +262,8 @@ public class AlignedSeriesScanOperatorTest {
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              allSensors,
-              TSDataType.BOOLEAN,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()

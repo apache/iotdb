@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.factory.SourceOperatorFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -118,22 +120,12 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       OperatorContext context,
       PlanNodeId sourceId,
       PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      Filter timeFilter,
-      Filter valueFilter,
-      boolean ascending) {
+      Ordering scanOrder,
+      SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
-        new SeriesScanUtil(
-            seriesPath,
-            allSensors,
-            dataType,
-            context.getInstanceContext(),
-            timeFilter,
-            valueFilter,
-            ascending);
+        new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     this.maxReturnSize =
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());

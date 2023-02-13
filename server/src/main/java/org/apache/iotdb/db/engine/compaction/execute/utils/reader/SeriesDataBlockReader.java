@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Deprecated
 public class SeriesDataBlockReader implements IDataBlockReader {
 
   private final SeriesScanUtil seriesScanUtil;
@@ -52,10 +53,11 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       boolean ascending) {
     if (seriesPath instanceof AlignedPath) {
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
+          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending, 0L, 0L);
     } else if (seriesPath instanceof MeasurementPath) {
       this.seriesScanUtil =
-          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
+          new SeriesScanUtil(
+              seriesPath, allSensors, dataType, context, null, null, ascending, 0L, 0L);
     } else {
       throw new IllegalArgumentException("Should call exact sub class!");
     }
@@ -73,11 +75,12 @@ public class SeriesDataBlockReader implements IDataBlockReader {
     Set<String> allSensors = new HashSet<>();
     if (seriesPath instanceof AlignedPath) {
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
+          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending, 0L, 0L);
     } else {
       allSensors.add(seriesPath.getMeasurement());
       this.seriesScanUtil =
-          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
+          new SeriesScanUtil(
+              seriesPath, allSensors, dataType, context, null, null, ascending, 0L, 0L);
     }
 
     QueryDataSource queryDataSource = new QueryDataSource(seqFileResource, unseqFileResource);

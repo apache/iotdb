@@ -22,7 +22,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.query.reader.chunk.MemPageReader;
@@ -44,8 +47,6 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -74,9 +75,6 @@ public class SeriesScanUtil {
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
   protected boolean isAligned = false;
-
-  // all the sensors in this device;
-  protected final Set<String> allSensors;
   protected final TSDataType dataType;
 
   // inner class of SeriesReader for order purpose
@@ -90,7 +88,7 @@ public class SeriesScanUtil {
 
   // TimeSeriesMetadata cache
   protected ITimeSeriesMetadata firstTimeSeriesMetadata;
-  protected final List<ITimeSeriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
+  protected final List<ITimeSeriesMetadata> seqTimeSeriesMetadata;
   protected final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
   // chunk cache
@@ -99,7 +97,7 @@ public class SeriesScanUtil {
 
   // page cache
   protected VersionPageReader firstPageReader;
-  protected final List<VersionPageReader> seqPageReaders = new LinkedList<>();
+  protected final List<VersionPageReader> seqPageReaders;
   protected final PriorityQueue<VersionPageReader> unSeqPageReaders;
 
   // point cache
@@ -108,6 +106,8 @@ public class SeriesScanUtil {
   // result cache
   protected boolean hasCachedNextOverlappedPage;
   protected TsBlock cachedTsBlock;
+
+  protected SeriesScanOptions scanOptions;
 
   //
   private Filter globalTimeFilter;
@@ -122,67 +122,56 @@ public class SeriesScanUtil {
 
   public SeriesScanUtil(
       PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      @Nullable Filter globalTimeFilter,
-      @Nullable Filter queryFilter,
-      boolean ascending) {
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
+      FragmentInstanceContext context) {
     this.seriesPath = IDTable.translateQueryPath(seriesPath);
-    this.allSensors = allSensors;
-    this.dataType = dataType;
+    this.scanOptions = scanOptions;
     this.context = context;
 
-    this.globalTimeFilter = globalTimeFilter;
-    if (!Objects.equals(queryFilter, globalTimeFilter)) {
-      this.queryFilter = queryFilter;
-    }
-
-    if (ascending) {
-      this.orderUtils = new AscTimeOrderUtils();
+    dataType = seriesPath.getSeriesType();
+    if (scanOrder.isAscending()) {
+      orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
     } else {
-      this.orderUtils = new DescTimeOrderUtils();
+      orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
     }
-    this.curUnseqFileIndex = 0;
 
+    // init
+    seqTimeSeriesMetadata = new LinkedList<>();
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
+
+    // init
     cachedChunkMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
+
+    // init
+    seqPageReaders = new LinkedList<>();
     unSeqPageReaders =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
-  }
 
-  public SeriesScanUtil(
-      PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      Filter globalTimeFilter,
-      Filter queryFilter,
-      boolean ascending,
-      long limit,
-      long offset) {
-    this(seriesPath, allSensors, dataType, context, globalTimeFilter, queryFilter, ascending);
-    this.paginationController = new PaginationController(limit, offset);
+    //
+    paginationController = scanOptions.getPaginationController();
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
     dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
-    this.globalTimeFilter = dataSource.updateFilterUsingTTL(globalTimeFilter);
-    if (this.queryFilter != null) {
-      this.queryFilter = dataSource.updateFilterUsingTTL(queryFilter);
-    }
+
+    // updated filter concerning TTL
+    scanOptions.setTTL(dataSource.getDataTTL());
+
+    // init
     orderUtils.setCurSeqFileIndex(dataSource);
+    curUnseqFileIndex = 0;
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -191,10 +180,6 @@ public class SeriesScanUtil {
 
   protected DescPriorityMergeReader getDescPriorityMergeReader() {
     return new DescPriorityMergeReader();
-  }
-
-  public boolean isEmpty() throws IOException {
-    return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
   public boolean hasNextFile() throws IOException {
@@ -1082,7 +1067,7 @@ public class SeriesScanUtil {
             seriesPath,
             context,
             getGlobalTimeFilter(),
-            allSensors);
+            scanOptions.getAllSensors());
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
@@ -1096,7 +1081,7 @@ public class SeriesScanUtil {
             seriesPath,
             context,
             getGlobalTimeFilter(),
-            allSensors);
+            scanOptions.getAllSensors());
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
