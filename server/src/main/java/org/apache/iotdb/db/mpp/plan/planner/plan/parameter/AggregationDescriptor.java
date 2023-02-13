@@ -58,7 +58,7 @@ public class AggregationDescriptor {
 
   protected final Map<String, String> inputAttributes;
 
-  private String parametersString;
+  protected String parametersString;
 
   public AggregationDescriptor(
       String aggregationFuncName,
@@ -159,7 +159,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  private String getParametersString() {
+  protected String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {

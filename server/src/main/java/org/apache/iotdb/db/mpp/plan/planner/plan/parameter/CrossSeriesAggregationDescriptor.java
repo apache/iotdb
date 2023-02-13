@@ -35,8 +35,6 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private final Expression outputExpression;
 
-  private String outputParametersString;
-
   /**
    * Records how many Expressions are in one input, used for calculation of inputColumnNames
    *
@@ -85,27 +83,29 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return outputExpression;
   }
 
-  public List<String> getOutputColumnNames() {
-    List<String> outputAggregationNames = getActualAggregationNames(step.isOutputPartial());
-    List<String> outputColumnNames = new ArrayList<>();
-    for (String funcName : outputAggregationNames) {
-      outputColumnNames.add(funcName + "(" + getOutputParametersString() + ")");
-    }
-    return outputColumnNames;
-  }
-
-  private String getOutputParametersString() {
-    if (outputParametersString == null) {
+  /**
+   * Generates the parameter part of the output column name.
+   *
+   * <p>Example:
+   *
+   * <p>Full output column name -> count_if(root.*.*.s1, 3)
+   *
+   * <p>The parameter part -> root.*.*.s1, 3
+   */
+  @Override
+  protected String getParametersString() {
+    if (parametersString == null) {
       StringBuilder builder = new StringBuilder(outputExpression.getExpressionString());
       for (int i = 1; i < expressionNumOfOneInput; i++) {
         builder.append(", ").append(inputExpressions.get(i).toString());
       }
       appendAttributes(builder);
-      outputParametersString = builder.toString();
+      parametersString = builder.toString();
     }
-    return outputParametersString;
+    return parametersString;
   }
 
+  @Override
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
       return Collections.singletonList(
