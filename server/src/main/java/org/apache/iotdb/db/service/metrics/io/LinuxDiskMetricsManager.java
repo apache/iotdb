@@ -102,7 +102,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     Map<String, Long> readDataMap = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementReadSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
-      readDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L / updateInterval * 1000L);
+      readDataMap.put(
+          entry.getKey(), (long) (entry.getValue() * 512.0 / 1024.0 / updateInterval * 1000.0));
     }
     return readDataMap;
   }
@@ -113,7 +114,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     Map<String, Long> writeDataMap = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementWriteSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
-      writeDataMap.put(entry.getKey(), entry.getValue() * 512L / 1024L / updateInterval * 1000L);
+      writeDataMap.put(
+          entry.getKey(), (long) (entry.getValue() * 512.0 / 1024.0 / updateInterval * 1000.0));
     }
     return writeDataMap;
   }
@@ -123,7 +125,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
     checkUpdate();
     Map<String, Integer> incrementMapPerSecond = new HashMap<>();
     for (Map.Entry<String, Integer> entry : incrementReadOperationCountForDisk.entrySet()) {
-      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() / updateInterval * 1000L));
+      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerSecond;
   }
@@ -132,7 +134,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Integer> getWriteOperationCountForDisk() {
     Map<String, Integer> incrementMapPerSecond = new HashMap<>();
     for (Map.Entry<String, Integer> entry : incrementWriteOperationCountForDisk.entrySet()) {
-      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() / updateInterval * 1000L));
+      incrementMapPerSecond.put(entry.getKey(), (int) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerSecond;
   }
@@ -141,7 +143,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getReadCostTimeForDisk() {
     Map<String, Long> incrementMapPerSecond = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementReadTimeCostForDisk.entrySet()) {
-      incrementMapPerSecond.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+      incrementMapPerSecond.put(
+          entry.getKey(), (long) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerSecond;
   }
@@ -150,7 +153,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getWriteCostTimeForDisk() {
     Map<String, Long> incrementMapPerSecond = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementWriteTimeCostForDisk.entrySet()) {
-      incrementMapPerSecond.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+      incrementMapPerSecond.put(
+          entry.getKey(), (long) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerSecond;
   }
@@ -208,7 +212,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getMergedWriteOperationForDisk() {
     Map<String, Long> incrementMapPerMinute = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementMergedWriteCountForDisk.entrySet()) {
-      incrementMapPerMinute.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+      incrementMapPerMinute.put(
+          entry.getKey(), (long) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerMinute;
   }
@@ -217,39 +222,40 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getMergedReadOperationForDisk() {
     Map<String, Long> incrementMapPerMinute = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementMergedReadCountForDisk.entrySet()) {
-      incrementMapPerMinute.put(entry.getKey(), entry.getValue() / updateInterval * 1000L);
+      incrementMapPerMinute.put(
+          entry.getKey(), (long) (entry.getValue() * 1000.0 / updateInterval));
     }
     return incrementMapPerMinute;
   }
 
   @Override
   public long getActualReadDataSizeForProcess() {
-    return incrementReallyReadSizeForProcess / updateInterval * 1000L / 1024L;
+    return (long) (incrementReallyReadSizeForProcess * 1000.0 / updateInterval / 1024);
   }
 
   @Override
   public long getActualWriteDataSizeForProcess() {
-    return incrementReallyWriteSizeForProcess / updateInterval * 1000L / 1024L;
+    return (long) (incrementReallyWriteSizeForProcess * 1000.0 / updateInterval / 1024);
   }
 
   @Override
   public long getReadOpsCountForProcess() {
-    return incrementReadOpsCountForProcess / updateInterval * 1000L;
+    return (long) (incrementReadOpsCountForProcess * 1000.0 / updateInterval);
   }
 
   @Override
   public long getWriteOpsCountForProcess() {
-    return incrementWriteOpsCountForProcess / updateInterval * 1000L;
+    return (long) (incrementWriteOpsCountForProcess * 1000.0 / updateInterval);
   }
 
   @Override
   public long getAttemptReadSizeForProcess() {
-    return incrementAttemptReadSizeForProcess / 1024L / updateInterval * 1000L;
+    return (long) (incrementAttemptReadSizeForProcess / 1024.0 / updateInterval * 1000);
   }
 
   @Override
   public long getAttemptWriteSizeForProcess() {
-    return incrementAttemptWriteSizeForProcess / 1024L / updateInterval * 1000L;
+    return (long) (incrementAttemptWriteSizeForProcess / 1024.0 / updateInterval * 1000);
   }
 
   @Override
