@@ -339,7 +339,7 @@ public class DatabasePartitionTable {
         .getReplicaSet()
         .getDataNodeLocations()
         .forEach(
-            (dataNodeLocation) -> {
+            dataNodeLocation -> {
               TRegionInfo regionInfo = new TRegionInfo();
               regionInfo.setConsensusGroupId(regionId);
               regionInfo.setDatabase(databaseName);
@@ -443,7 +443,8 @@ public class DatabasePartitionTable {
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is already in region locations when addRegionNewLocation in {}, node: {}, region: {}",
+          "Node is already in region locations when addRegionNewLocation in {}, "
+              + "node: {}, region: {}",
           databaseName,
           node,
           regionId);
@@ -463,7 +464,8 @@ public class DatabasePartitionTable {
     }
     if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is not in region locations when removeRegionOldLocation in {}, no need to remove it, node: {}, region: {}",
+          "Node is not in region locations when removeRegionOldLocation in {}, "
+              + "no need to remove it, node: {}, region: {}",
           databaseName,
           node,
           regionId);
@@ -473,10 +475,10 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * if the region contained?
+   * Check if the DatabasePartitionTable contains the specified Region.
    *
    * @param regionId TConsensusGroupId
-   * @return true if contain
+   * @return True if contains.
    */
   public boolean containRegion(TConsensusGroupId regionId) {
     return regionGroupMap.containsKey(regionId);
@@ -496,8 +498,12 @@ public class DatabasePartitionTable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DatabasePartitionTable that = (DatabasePartitionTable) o;
     return databaseName.equals(that.databaseName)
         && regionGroupMap.equals(that.regionGroupMap)
