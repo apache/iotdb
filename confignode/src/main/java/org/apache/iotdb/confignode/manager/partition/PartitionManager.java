@@ -51,14 +51,14 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
-import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
-import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetTimeSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
@@ -643,10 +643,10 @@ public class PartitionManager {
   }
 
   public void preDeleteStorageGroup(
-      String storageGroup, PreDeleteStorageGroupPlan.PreDeleteType preDeleteType) {
-    final PreDeleteStorageGroupPlan preDeleteStorageGroupPlan =
-        new PreDeleteStorageGroupPlan(storageGroup, preDeleteType);
-    getConsensusManager().write(preDeleteStorageGroupPlan);
+      String storageGroup, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
+    final PreDeleteDatabasePlan preDeleteDatabasePlan =
+        new PreDeleteDatabasePlan(storageGroup, preDeleteType);
+    getConsensusManager().write(preDeleteDatabasePlan);
   }
 
   public void addMetrics() {
@@ -709,7 +709,7 @@ public class PartitionManager {
   public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
     GetRegionIdPlan plan =
         new GetRegionIdPlan(
-            req.getStorageGroup(),
+            req.getDatabase(),
             req.getType(),
             req.isSetSeriesSlotId()
                 ? req.getSeriesSlotId()

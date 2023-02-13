@@ -83,7 +83,7 @@ public class ShowRegionTask implements IConfigTask {
             .getColumnBuilder(2)
             .writeBinary(
                 Binary.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
-        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getStorageGroup()));
+        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getDatabase()));
         builder.getColumnBuilder(4).writeInt(regionInfo.getSeriesSlots());
         builder.getColumnBuilder(5).writeLong(regionInfo.getTimeSlots());
         builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());

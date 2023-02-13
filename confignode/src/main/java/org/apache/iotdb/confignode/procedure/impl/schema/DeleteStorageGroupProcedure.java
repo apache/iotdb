@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteStorageGroupState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -50,22 +50,22 @@ public class DeleteStorageGroupProcedure
   private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
-  private TStorageGroupSchema deleteSgSchema;
+  private TDatabaseSchema deleteSgSchema;
 
   public DeleteStorageGroupProcedure() {
     super();
   }
 
-  public DeleteStorageGroupProcedure(TStorageGroupSchema deleteSgSchema) {
+  public DeleteStorageGroupProcedure(TDatabaseSchema deleteSgSchema) {
     super();
     this.deleteSgSchema = deleteSgSchema;
   }
 
-  public TStorageGroupSchema getDeleteSgSchema() {
+  public TDatabaseSchema getDeleteSgSchema() {
     return deleteSgSchema;
   }
 
-  public void setDeleteSgSchema(TStorageGroupSchema deleteSgSchema) {
+  public void setDeleteSgSchema(TDatabaseSchema deleteSgSchema) {
     this.deleteSgSchema = deleteSgSchema;
   }
 
@@ -83,7 +83,7 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_PRE:
           LOG.info("Pre delete for database {}", deleteSgSchema.getName());
-          env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.EXECUTE, deleteSgSchema.getName());
+          env.preDelete(PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteSgSchema.getName());
           setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
@@ -156,7 +156,7 @@ public class DeleteStorageGroupProcedure
       case DELETE_PRE:
       case INVALIDATE_CACHE:
         LOG.info("Rollback preDeleted:{}", deleteSgSchema.getName());
-        env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
+        env.preDelete(PreDeleteDatabasePlan.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
         break;
       default:
         break;

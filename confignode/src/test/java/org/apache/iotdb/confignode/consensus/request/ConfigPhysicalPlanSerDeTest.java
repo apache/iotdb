@@ -40,6 +40,8 @@ import org.apache.iotdb.commons.sync.pipe.PipeStatus;
 import org.apache.iotdb.commons.sync.pipe.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -51,8 +53,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -81,7 +81,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
@@ -109,9 +109,9 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -193,7 +193,7 @@ public class ConfigPhysicalPlanSerDeTest {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase,
-            new TStorageGroupSchema()
+            new TDatabaseSchema()
                 .setName("sg")
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
@@ -209,7 +209,7 @@ public class ConfigPhysicalPlanSerDeTest {
     DatabaseSchemaPlan req0 =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.AlterDatabase,
-            new TStorageGroupSchema()
+            new TDatabaseSchema()
                 .setName("sg")
                 .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
@@ -227,9 +227,9 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void DeleteStorageGroupPlanTest() throws IOException {
     // TODO: Add serialize and deserialize test
-    DeleteStorageGroupPlan req0 = new DeleteStorageGroupPlan("root.sg");
-    DeleteStorageGroupPlan req1 =
-        (DeleteStorageGroupPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    DeleteDatabasePlan req0 = new DeleteDatabasePlan("root.sg");
+    DeleteDatabasePlan req1 =
+        (DeleteDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -282,17 +282,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountStorageGroupPlanTest() throws IOException {
-    CountStorageGroupPlan req0 = new CountStorageGroupPlan(Arrays.asList("root", "sg"));
-    CountStorageGroupPlan req1 =
-        (CountStorageGroupPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"));
+    CountDatabasePlan req1 =
+        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
   @Test
   public void GetStorageGroupPlanTest() throws IOException {
-    GetStorageGroupPlan req0 = new GetStorageGroupPlan(Arrays.asList("root", "sg"));
-    CountStorageGroupPlan req1 =
-        (CountStorageGroupPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"));
+    CountDatabasePlan req1 =
+        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -752,7 +752,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    deleteStorageGroupProcedure.setDeleteSgSchema(new TStorageGroupSchema("root.sg"));
+    deleteStorageGroupProcedure.setDeleteSgSchema(new TDatabaseSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
     updateProcedurePlan0.setProcedure(deleteStorageGroupProcedure);
     UpdateProcedurePlan updateProcedurePlan1 =
@@ -797,9 +797,9 @@ public class ConfigPhysicalPlanSerDeTest {
   public void UpdateProcedurePlanTest() throws IOException {
     UpdateProcedurePlan req0 = new UpdateProcedurePlan();
     DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
-    tStorageGroupSchema.setName("root.sg");
-    deleteStorageGroupProcedure.setDeleteSgSchema(tStorageGroupSchema);
+    TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
+    tDatabaseSchema.setName("root.sg");
+    deleteStorageGroupProcedure.setDeleteSgSchema(tDatabaseSchema);
     req0.setProcedure(deleteStorageGroupProcedure);
     UpdateProcedurePlan req1 =
         (UpdateProcedurePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -826,7 +826,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
     final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
-    showRegionReq.setStorageGroups(new ArrayList<>(sgList));
+    showRegionReq.setDatabases(new ArrayList<>(sgList));
     GetRegionInfoListPlan req2 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
