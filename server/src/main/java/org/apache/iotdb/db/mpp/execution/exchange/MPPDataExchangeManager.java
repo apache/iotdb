@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -60,6 +61,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
@@ -92,15 +94,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
             req.getStartSequenceId(),
             req.getEndSequenceId());
-        if (!shuffleSinkHandles.containsKey(req.getSourceFragmentInstanceId())) {
+        String sinkHandleId = createSinkHandleId(req.getSourceFragmentInstanceId(), req.getIndex());
+        if (!sinkHandles.containsKey(sinkHandleId)) {
           throw new TException(
               "Source fragment instance not found. Fragment instance ID: "
                   + req.getSourceFragmentInstanceId()
                   + ".");
         }
         TGetDataBlockResponse resp = new TGetDataBlockResponse();
-        SinkHandle sinkHandle =
-            (SinkHandle) shuffleSinkHandles.get(req.getSourceFragmentInstanceId());
+        SinkHandle sinkHandle = (SinkHandle) sinkHandles.get(sinkHandleId);
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
           try {
             ByteBuffer serializedTsBlock = sinkHandle.getSerializedTsBlock(i);
@@ -132,13 +134,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getStartSequenceId(),
             e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
-        if (!shuffleSinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
+        String sinkHandleId = createSinkHandleId(e.getSourceFragmentInstanceId(), e.getIndex());
+        if (!sinkHandles.containsKey(sinkHandleId)) {
           LOGGER.debug(
               "received ACK event but target FragmentInstance[{}] is not found.",
               e.getSourceFragmentInstanceId());
           return;
         }
-        ((SinkHandle) shuffleSinkHandles.get(e.getSourceFragmentInstanceId()))
+        ((SinkHandle) sinkHandles.get(sinkHandleId))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
       } catch (Throwable t) {
         LOGGER.warn(
@@ -312,6 +315,49 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   /** Listen to the state changes of a sink handle. */
+  class ShuffleSinkHandleListenerImpl implements SinkHandleListener {
+
+    private final FragmentInstanceContext context;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public ShuffleSinkHandleListenerImpl(
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.context = context;
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinish(ISinkHandle sinkHandle) {
+      LOGGER.debug("[ShuffleSinkHandleListenerOnFinish]");
+      shuffleSinkHandles.remove(sinkHandle.getSinkHandleId());
+      context.finished();
+    }
+
+    @Override
+    public void onEndOfBlocks(ISinkHandle sinkHandle) {
+      LOGGER.debug("[ShuffleSinkHandleListenerOnEndOfTsBlocks]");
+      context.transitionToFlushing();
+    }
+
+    @Override
+    public Optional<Throwable> onAborted(ISinkHandle sinkHandle) {
+      LOGGER.debug("[ShuffleSinkHandleListenerOnAbort]");
+      shuffleSinkHandles.remove(sinkHandle.getSinkHandleId());
+      return context.getFailureCause();
+    }
+
+    @Override
+    public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      // TODO: (xingtanzjr) should we remove the sinkHandle from MPPDataExchangeManager ?
+      LOGGER.warn("Sink handle failed due to", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
+  /** Listen to the state changes of a sink handle. */
   class SinkHandleListenerImpl implements SinkHandleListener {
 
     private final FragmentInstanceContext context;
@@ -328,13 +374,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     public void onFinish(ISinkHandle sinkHandle) {
       LOGGER.debug("[SkHListenerOnFinish]");
       removeFromMPPDataExchangeManager(sinkHandle);
-      context.finished();
     }
 
     @Override
     public void onEndOfBlocks(ISinkHandle sinkHandle) {
       LOGGER.debug("[SkHListenerOnEndOfTsBlocks]");
-      context.transitionToFlushing();
     }
 
     @Override
@@ -345,7 +389,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
 
     private void removeFromMPPDataExchangeManager(ISinkHandle sinkHandle) {
-      if (shuffleSinkHandles.remove(sinkHandle.getLocalFragmentInstanceId()) == null) {
+      if (sinkHandles.remove(sinkHandle.getSinkHandleId()) == null) {
         LOGGER.debug("[RemoveNoSinkHandle]");
       } else {
         LOGGER.debug("[RemoveSinkHandle]");
@@ -414,10 +458,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
       mppDataExchangeServiceClientManager;
   private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
-  /** Each FI has only one ShuffleSinkHandle. So we can use TFragmentInstanceId as the key. */
-  private final Map<TFragmentInstanceId, ISinkHandle> shuffleSinkHandles;
 
-  /** One ShuffleSinkHandle could have multiple ISinkHandles as its channel. We use String of */
+  /** Each FI has only one ShuffleSinkHandle. */
+  private final Map<String, ISinkHandle> shuffleSinkHandles;
+
+  /**
+   * One ShuffleSinkHandle could have multiple ISinkHandles as its channel. We use String of
+   * FragmentInstanceId + "." + PlanNodeID + "." + index to identify an ISinkHandle.
+   */
   private final Map<String, ISinkHandle> sinkHandles;
 
   private MPPDataExchangeServiceImpl mppDataExchangeService;
@@ -435,6 +483,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         Validate.notNull(mppDataExchangeServiceClientManager);
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
+    sinkHandles = new ConcurrentHashMap<>();
   }
 
   public MPPDataExchangeServiceImpl getOrCreateMPPDataExchangeServiceImpl() {
@@ -444,24 +493,24 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
-  @Override
   public synchronized ISinkHandle createLocalSinkHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      int index,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
-    if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
-      throw new IllegalStateException(
-          "Local sink handle for " + localFragmentInstanceId + " exists.");
+    String sinkHandleId = createSinkHandleId(localFragmentInstanceId, index);
+    if (sinkHandles.containsKey(sinkHandleId)) {
+      throw new IllegalStateException("LocalSinkHandle for " + sinkHandleId + " exists.");
     }
 
     LOGGER.debug(
         "Create local sink handle to plan node {} of {} for {}",
         remotePlanNodeId,
         remoteFragmentInstanceId,
-        localFragmentInstanceId);
+        sinkHandleId);
 
     SharedTsBlockQueue queue;
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(remoteFragmentInstanceId);
@@ -473,17 +522,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           ((LocalSourceHandle) sourceHandles.get(remoteFragmentInstanceId).get(remotePlanNodeId))
               .getSharedTsBlockQueue();
     } else {
-      LOGGER.debug("Create shared tsblock queue");
+      LOGGER.debug("Create SharedTsBlockQueue");
       queue =
           new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager);
     }
 
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            localFragmentInstanceId,
             queue,
-            new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
-    shuffleSinkHandles.put(localFragmentInstanceId, localSinkHandle);
+            new SinkHandleListenerImpl(instanceContext, instanceContext::failed),
+            sinkHandleId);
+    sinkHandles.put(sinkHandleId, localSinkHandle);
     return localSinkHandle;
   }
 
@@ -505,6 +554,44 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
+  private ISinkHandle createSinkHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      int index,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      String localPlanNodeId,
+      // TODO: replace with callbacks to decouple MPPDataExchangeManager from
+      // FragmentInstanceContext
+      FragmentInstanceContext instanceContext) {
+    String sinkHandleId = createSinkHandleId(localFragmentInstanceId, index);
+    if (sinkHandles.containsKey(sinkHandleId)) {
+      throw new IllegalStateException("Sink handle for " + sinkHandleId + " exists.");
+    }
+
+    LOGGER.debug(
+        "Create sink handle to plan node {} of {} for {}",
+        remotePlanNodeId,
+        remoteFragmentInstanceId,
+        sinkHandleId);
+
+    SinkHandle sinkHandle =
+        new SinkHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            sinkHandleId,
+            remotePlanNodeId,
+            localPlanNodeId,
+            localFragmentInstanceId,
+            localMemoryManager,
+            executorService,
+            tsBlockSerdeFactory.get(),
+            new SinkHandleListenerImpl(instanceContext, instanceContext::failed),
+            mppDataExchangeServiceClientManager);
+    sinkHandles.put(sinkHandleId, sinkHandle);
+    return sinkHandle;
+  }
+
   @Override
   public ISinkHandle createShuffleSinkHandle(
       List<DownStreamChannelLocation> downStreamChannelLocationList,
@@ -515,31 +602,58 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
-    if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
-      throw new IllegalStateException(
-          "ShuffleSinkHandle for " + localFragmentInstanceId + " exists.");
+    String sinkHandleId = createShuffleSinkHandleId(localFragmentInstanceId);
+    if (shuffleSinkHandles.containsKey(sinkHandleId)) {
+      throw new IllegalStateException("ShuffleSinkHandle for " + sinkHandleId + " exists.");
     }
 
-    SinkHandle sinkHandle =
-        new SinkHandle(
-            downStreamChannelLocationList,
+    List<ISinkHandle> downStreamChannelList = new ArrayList<>();
+    for (int i = 0; i < downStreamChannelLocationList.size(); i++) {
+      downStreamChannelList.add(
+          createHandleForShuffleSink(
+              localFragmentInstanceId,
+              localPlanNodeId,
+              downStreamChannelLocationList.get(i),
+              i,
+              instanceContext));
+    }
+
+    ShuffleSinkHandle shuffleSinkHandle =
+        new ShuffleSinkHandle(
+            sinkHandleId,
+            downStreamChannelList,
             downStreamChannelIndex,
             shuffleStrategyEnum,
             localPlanNodeId,
-            localFragmentInstanceId,
-            localMemoryManager,
-            executorService,
-            tsBlockSerdeFactory.get(),
-            new SinkHandleListenerImpl(instanceContext, instanceContext::failed),
-            mppDataExchangeServiceClientManager);
-    shuffleSinkHandles.put(localFragmentInstanceId, sinkHandle);
-    return sinkHandle;
+            new ShuffleSinkHandleListenerImpl(instanceContext, instanceContext::failed));
+    shuffleSinkHandles.put(sinkHandleId, shuffleSinkHandle);
+    return shuffleSinkHandle;
   }
 
   private ISinkHandle createHandleForShuffleSink(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
-      DownStreamChannelLocation downStreamChannelLocation) {}
+      DownStreamChannelLocation downStreamChannelLocation,
+      int index,
+      FragmentInstanceContext instanceContext) {
+    if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
+      return createLocalSinkHandleForFragment(
+          localFragmentInstanceId,
+          downStreamChannelLocation.getRemoteFragmentInstanceId(),
+          downStreamChannelLocation.getRemotePlanNodeId(),
+          index,
+          instanceContext);
+    } else {
+      return createSinkHandle(
+          localFragmentInstanceId,
+          index,
+          downStreamChannelLocation.getRemoteEndpoint(),
+          downStreamChannelLocation.getRemoteFragmentInstanceId(),
+          downStreamChannelLocation.getRemotePlanNodeId(),
+          localPlanNodeId,
+          instanceContext);
+    }
+  }
 
   /**
    * As we know the upstream and downstream node of shared queue, we don't need to put it into the
@@ -554,11 +668,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         context.getDriverTaskID().toString());
   }
 
-  @Override
   public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
+      int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
@@ -576,13 +690,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localPlanNodeId,
         localFragmentInstanceId);
     SharedTsBlockQueue queue;
-    if (shuffleSinkHandles.containsKey(remoteFragmentInstanceId)) {
-      LOGGER.debug("Get shared tsblock queue from local sink handle");
-      queue =
-          ((LocalSinkHandle) shuffleSinkHandles.get(remoteFragmentInstanceId))
-              .getSharedTsBlockQueue();
+    String sinkHandleId = createSinkHandleId(remoteFragmentInstanceId, index);
+    if (sinkHandles.containsKey(sinkHandleId)) {
+      LOGGER.debug("Get SharedTsBlockQueue from local sink handle");
+      queue = ((LocalSinkHandle) shuffleSinkHandles.get(sinkHandleId)).getSharedTsBlockQueue();
     } else {
-      LOGGER.debug("Create shared tsblock queue");
+      LOGGER.debug("Create SharedTsBlockQueue");
       queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
     }
     LocalSourceHandle localSourceHandle =
@@ -601,6 +714,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
@@ -626,6 +740,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            indexOfUpstreamSinkHandle,
             localMemoryManager,
             executorService,
             tsBlockSerdeFactory.get(),
@@ -645,10 +760,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
     LOGGER.debug("[StartForceReleaseFIDataExchangeResource]");
-    ISinkHandle sinkHandle = shuffleSinkHandles.get(fragmentInstanceId);
+    String shuffleSinkHandleId = createShuffleSinkHandleId(fragmentInstanceId);
+    ISinkHandle sinkHandle = shuffleSinkHandles.get(shuffleSinkHandleId);
     if (sinkHandle != null) {
       sinkHandle.abort();
-      shuffleSinkHandles.remove(fragmentInstanceId);
+      shuffleSinkHandles.remove(shuffleSinkHandleId);
     }
     Map<String, ISourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
     if (planNodeIdToSourceHandle != null) {
@@ -669,6 +785,23 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             fragmentInstanceId.instanceId)
         + "."
         + suffix;
+  }
+
+  public static String createSinkHandleId(TFragmentInstanceId fragmentInstanceId, int index) {
+    return String.format(
+        "%s.%d.%s.%d",
+        fragmentInstanceId.getQueryId(),
+        fragmentInstanceId.getFragmentId(),
+        fragmentInstanceId.getInstanceId(),
+        index);
+  }
+
+  private String createShuffleSinkHandleId(TFragmentInstanceId fragmentInstanceId) {
+    return String.format(
+        "%s.%d.%s",
+        fragmentInstanceId.getQueryId(),
+        fragmentInstanceId.getFragmentId(),
+        fragmentInstanceId.getInstanceId());
   }
 
   // endregion

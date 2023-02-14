@@ -50,6 +50,9 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   private List<String> outputColumnNames;
 
+  /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
+  private int indexOfUpstreamSinkHandle = 0;
+
   public ExchangeNode(PlanNodeId id) {
     super(id);
   }
@@ -102,10 +105,12 @@ public class ExchangeNode extends SingleChildProcessNode {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       outputColumnNamesSize--;
     }
+    int index = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
+    exchangeNode.setIndexOfUpstreamSinkHandle(index);
     return exchangeNode;
   }
 
@@ -120,6 +125,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
+    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, byteBuffer);
   }
 
   @Override
@@ -133,6 +139,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, stream);
     }
+    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, stream);
   }
 
   @Override
@@ -152,6 +159,14 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   public FragmentSinkNode getRemoteSourceNode() {
     return remoteSourceNode;
+  }
+
+  public int getIndexOfUpstreamSinkHandle() {
+    return indexOfUpstreamSinkHandle;
+  }
+
+  public void setIndexOfUpstreamSinkHandle(int indexOfUpstreamSinkHandle) {
+    this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
   }
 
   public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {

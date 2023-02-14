@@ -66,13 +66,14 @@ public class MPPDataExchangeManagerTest {
             localFragmentInstanceId,
             remoteFragmentInstanceId,
             remotePlanNodeId,
+            0,
             mockFragmentInstanceContext);
 
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
-            remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, t -> {});
+            remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, 0, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
@@ -105,7 +106,7 @@ public class MPPDataExchangeManagerTest {
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
-            localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, t -> {});
+            localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, 0, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
@@ -114,6 +115,7 @@ public class MPPDataExchangeManagerTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
+            0,
             mockFragmentInstanceContext);
 
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);

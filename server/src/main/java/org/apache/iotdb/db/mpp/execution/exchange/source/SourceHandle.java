@@ -72,6 +72,8 @@ public class SourceHandle implements ISourceHandle {
 
   private final String fullFragmentInstanceId;
   private final String localPlanNodeId;
+
+  private final int indexOfUpstreamSinkHandle;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
@@ -117,6 +119,7 @@ public class SourceHandle implements ISourceHandle {
       TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
       TsBlockSerde serde,
@@ -129,6 +132,7 @@ public class SourceHandle implements ISourceHandle {
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
+    this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);
@@ -468,7 +472,11 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         logger.debug("[StartPullTsBlocksFromRemote] [{}, {}) ", startSequenceId, endSequenceId);
         TGetDataBlockRequest req =
-            new TGetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
+            new TGetDataBlockRequest(
+                remoteFragmentInstanceId,
+                startSequenceId,
+                endSequenceId,
+                indexOfUpstreamSinkHandle);
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
@@ -566,7 +574,10 @@ public class SourceHandle implements ISourceHandle {
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
             new TAcknowledgeDataBlockEvent(
-                remoteFragmentInstanceId, startSequenceId, endSequenceId);
+                remoteFragmentInstanceId,
+                startSequenceId,
+                endSequenceId,
+                indexOfUpstreamSinkHandle);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
           long startTime = System.nanoTime();

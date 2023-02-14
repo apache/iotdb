@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
@@ -47,12 +48,7 @@ public interface IMPPDataExchangeManager {
       String localPlanNodeId,
       FragmentInstanceContext instanceContext);
 
-  ISinkHandle createLocalSinkHandleForFragment(
-      TFragmentInstanceId localFragmentInstanceId,
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
-      FragmentInstanceContext instanceContext);
-
+  ISinkHandle createLocalSinkHandleForPipeline(DriverContext driverContext, String planNodeId);
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
    * plan node of a local fragment instance in async manner.
@@ -68,6 +64,7 @@ public interface IMPPDataExchangeManager {
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
@@ -76,7 +73,11 @@ public interface IMPPDataExchangeManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
+      int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
+
+  /** SharedTsBlockQueue must belong to corresponding LocalSinkHandle */
+  ISourceHandle createLocalSourceHandleForPipeline(SharedTsBlockQueue queue, DriverContext context);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

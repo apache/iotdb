@@ -541,12 +541,14 @@ public class QueryExecution implements IQueryExecution {
                     context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                     context.getResultNodeContext().getVirtualResultNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                    0, // Upstream of result ExchangeNode will only have one child.
                     stateMachine::transitionToFailed)
             : MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .createSourceHandle(
                     context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                     context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    0,
                     upstreamEndPoint,
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                     stateMachine::transitionToFailed);

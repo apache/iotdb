@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.exchange.sink;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -39,7 +38,7 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
-  private TFragmentInstanceId localFragmentInstanceId;
+  private String sinkHandleId;
   private final SinkHandleListener sinkHandleListener;
 
   private final SharedTsBlockQueue queue;
@@ -59,20 +58,18 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
   }
 
   public LocalSinkHandle(
-      TFragmentInstanceId localFragmentInstanceId,
-      SharedTsBlockQueue queue,
-      SinkHandleListener sinkHandleListener) {
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
+      SharedTsBlockQueue queue, SinkHandleListener sinkHandleListener, String sinkHandleId) {
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
+    this.sinkHandleId = sinkHandleId;
     this.queue.setSinkHandle(this);
     // SinkHandle can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
   }
 
   @Override
-  public TFragmentInstanceId getLocalFragmentInstanceId() {
-    return localFragmentInstanceId;
+  public String getSinkHandleId() {
+    return sinkHandleId;
   }
 
   @Override

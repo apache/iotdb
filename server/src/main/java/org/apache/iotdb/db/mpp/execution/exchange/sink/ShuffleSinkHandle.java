@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -51,7 +51,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private final ShuffleStrategy shuffleStrategy;
 
   private final String localPlanNodeId;
-  private final TFragmentInstanceId localFragmentInstanceId;
+
+  private final String sinkHandleId;
+
+  private final MPPDataExchangeManager.SinkHandleListener sinkHandleListener;
 
   private boolean aborted = false;
 
@@ -64,24 +67,26 @@ public class ShuffleSinkHandle implements ISinkHandle {
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
   public ShuffleSinkHandle(
+      String sinkHandleId,
       List<ISinkHandle> downStreamChannelList,
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       String localPlanNodeId,
-      TFragmentInstanceId localFragmentInstanceId) {
+      MPPDataExchangeManager.SinkHandleListener sinkHandleListener) {
+    this.sinkHandleId = Validate.notNull(sinkHandleId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
+    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.channelNum = downStreamChannelList.size();
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
   }
 
   @Override
-  public TFragmentInstanceId getLocalFragmentInstanceId() {
-    return localFragmentInstanceId;
+  public String getSinkHandleId() {
+    return sinkHandleId;
   }
 
   @Override
@@ -93,7 +98,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public ListenableFuture<?> isFull() {
+  public synchronized ListenableFuture<?> isFull() {
     // It is safe to use currentSinkHandle.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
@@ -103,7 +108,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(TsBlock tsBlock) {
+  public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
       ISinkHandle currentSinkHandle =
@@ -118,17 +123,18 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void setNoMoreTsBlocks() {
+  public synchronized void setNoMoreTsBlocks() {
     for (int i = 0; i < downStreamChannelList.size(); i++) {
       if (!hasSetNoMoreTsBlocks[i]) {
         downStreamChannelList.get(i).setNoMoreTsBlocks();
         hasSetNoMoreTsBlocks[i] = true;
       }
     }
+    sinkHandleListener.onEndOfBlocks(this);
   }
 
   @Override
-  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+  public synchronized void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
     if (!hasSetNoMoreTsBlocks[channelIndex]) {
       downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
       hasSetNoMoreTsBlocks[channelIndex] = true;
@@ -136,34 +142,36 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public boolean isAborted() {
+  public synchronized boolean isAborted() {
     return aborted;
   }
 
   @Override
-  public boolean isFinished() {
+  public synchronized boolean isFinished() {
     return false;
   }
 
   @Override
-  public void abort() {
+  public synchronized void abort() {
     if (aborted) {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
     downStreamChannelList.forEach(ISinkHandle::abort);
     aborted = true;
+    sinkHandleListener.onAborted(this);
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     if (closed) {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
     downStreamChannelList.forEach(ISinkHandle::abort);
     closed = true;
+    sinkHandleListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
   }
 
