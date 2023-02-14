@@ -43,7 +43,7 @@ public class PaginationController {
   }
 
   public boolean hasCurOffset(long rowCount) {
-    return curOffset > rowCount;
+    return curOffset >= rowCount;
   }
 
   public boolean hasCurLimit() {
