@@ -66,7 +66,6 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
-import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class SeriesScanUtil {
 
@@ -110,13 +109,7 @@ public class SeriesScanUtil {
   protected SeriesScanOptions scanOptions;
 
   //
-  private Filter globalTimeFilter;
-
-  //
-  private Filter queryFilter;
-
-  //
-  protected PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
+  protected PaginationController paginationController;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -319,6 +312,7 @@ public class SeriesScanUtil {
 
     // filter seq chunks based on push-down conditions
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+      Filter queryFilter = scanOptions.getQueryFilter();
       if (queryFilter != null) {
         if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
           skipCurrentChunk();
@@ -633,10 +627,8 @@ public class SeriesScanUtil {
       cachedTsBlock = null;
       return res;
     } else {
-
-      /*
-       * next page is not overlapped, push down value filter if it exists
-       */
+      // next page is not overlapped, push down value filter & limit offset
+      Filter queryFilter = scanOptions.getQueryFilter();
       if (queryFilter != null) {
         firstPageReader.setFilter(queryFilter);
       }
@@ -776,6 +768,7 @@ public class SeriesScanUtil {
               }
             }
 
+            Filter queryFilter = scanOptions.getQueryFilter();
             if (queryFilter != null
                 && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
               continue;
@@ -1034,6 +1027,7 @@ public class SeriesScanUtil {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
+      Filter queryFilter = scanOptions.getQueryFilter();
       if (queryFilter != null) {
         if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
           skipCurrentFile();
@@ -1109,7 +1103,7 @@ public class SeriesScanUtil {
   }
 
   Filter getGlobalTimeFilter() {
-    return globalTimeFilter;
+    return scanOptions.getGlobalTimeFilter();
   }
 
   protected static class VersionPageReader {

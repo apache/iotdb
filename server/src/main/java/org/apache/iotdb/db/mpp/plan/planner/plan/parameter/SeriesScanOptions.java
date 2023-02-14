@@ -64,9 +64,9 @@ public class SeriesScanOptions {
   public static SeriesScanOptions getDefaultSeriesScanOptions(PartialPath seriesPath) {
     Builder builder = new Builder();
     if (seriesPath instanceof AlignedPath) {
-      builder.setAllSensors(new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
+      builder.withAllSensors(new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
     } else {
-      builder.setAllSensors(new HashSet<>(Collections.singletonList(seriesPath.getMeasurement())));
+      builder.withAllSensors(new HashSet<>(Collections.singletonList(seriesPath.getMeasurement())));
     }
     return builder.build();
   }
@@ -143,7 +143,7 @@ public class SeriesScanOptions {
       return this;
     }
 
-    public void setAllSensors(Set<String> allSensors) {
+    public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
 

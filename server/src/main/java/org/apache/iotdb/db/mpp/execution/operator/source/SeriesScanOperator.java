@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -49,7 +48,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     private final PlanNodeId sourceId;
     private final PartialPath seriesPath;
     private final Set<String> allSensors;
-    private final TSDataType dataType;
     private final Filter timeFilter;
     private final Filter valueFilter;
     private final boolean ascending;
@@ -60,7 +58,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         PlanNodeId sourceId,
         PartialPath seriesPath,
         Set<String> allSensors,
-        TSDataType dataType,
         Filter timeFilter,
         Filter valueFilter,
         boolean ascending) {
@@ -68,7 +65,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       this.sourceId = requireNonNull(sourceId, "sourceId is null");
       this.seriesPath = requireNonNull(seriesPath, "seriesPath is null");
       this.allSensors = requireNonNull(allSensors, "allSensors is null");
-      this.dataType = requireNonNull(dataType, "dataType is null");
       this.timeFilter = timeFilter;
       this.valueFilter = valueFilter;
       this.ascending = ascending;
@@ -96,15 +92,16 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       checkState(!closed, "Factory is already closed");
       OperatorContext operatorContext =
           driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
+      scanOptionsBuilder.withQueryFilter(valueFilter);
       return new SeriesScanOperator(
           operatorContext,
           sourceId,
           seriesPath,
-          allSensors,
-          dataType,
-          timeFilter,
-          valueFilter,
-          ascending);
+          ascending ? Ordering.ASC : Ordering.DESC,
+          scanOptionsBuilder.build());
     }
 
     @Override

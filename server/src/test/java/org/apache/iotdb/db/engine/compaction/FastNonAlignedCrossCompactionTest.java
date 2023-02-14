@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -89,19 +90,20 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < 10; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
+        List<TSDataType> dataTypes = createDataType(10);
         List<PartialPath> timeseriesPath = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
           timeseriesPath.add(
-              new PartialPath(
+              new MeasurementPath(
                   COMPACTION_TEST_SG
                       + PATH_SEPARATOR
                       + "d"
                       + deviceIndex
                       + PATH_SEPARATOR
                       + "s"
-                      + i));
+                      + i,
+                  dataTypes.get(i)));
         }
-        List<TSDataType> dataTypes = createDataType(10);
 
         List<TimeRange> pages = new ArrayList<>();
         pages.add(new TimeRange(0L, 300L));
@@ -128,19 +130,20 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < 15; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
+        List<TSDataType> dataTypes = createDataType(5);
         List<PartialPath> timeseriesPath = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
           timeseriesPath.add(
-              new PartialPath(
+              new MeasurementPath(
                   COMPACTION_TEST_SG
                       + PATH_SEPARATOR
                       + "d"
                       + deviceIndex
                       + PATH_SEPARATOR
                       + "s"
-                      + i));
+                      + i,
+                  dataTypes.get(i)));
         }
-        List<TSDataType> dataTypes = createDataType(5);
 
         List<TimeRange> pages = new ArrayList<>();
         pages.add(new TimeRange(200L, 2200L));
@@ -166,19 +169,20 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < 12; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
+        List<TSDataType> dataTypes = createDataType(5);
         List<PartialPath> timeseriesPath = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
           timeseriesPath.add(
-              new PartialPath(
+              new MeasurementPath(
                   COMPACTION_TEST_SG
                       + PATH_SEPARATOR
                       + "d"
                       + deviceIndex
                       + PATH_SEPARATOR
                       + "s"
-                      + i));
+                      + i,
+                  dataTypes.get(i)));
         }
-        List<TSDataType> dataTypes = createDataType(5);
 
         List<TimeRange> pages = new ArrayList<>();
         pages.add(new TimeRange(900L, 1400L));
@@ -206,19 +210,20 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
       for (int deviceIndex = 0; deviceIndex < 15; deviceIndex++) {
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
 
+        List<TSDataType> dataTypes = createDataType(5);
         List<PartialPath> timeseriesPath = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
           timeseriesPath.add(
-              new PartialPath(
+              new MeasurementPath(
                   COMPACTION_TEST_SG
                       + PATH_SEPARATOR
                       + "d"
                       + deviceIndex
                       + PATH_SEPARATOR
                       + "s"
-                      + i));
+                      + i,
+                  dataTypes.get(i)));
         }
-        List<TSDataType> dataTypes = createDataType(5);
 
         List<TimeRange> pages = new ArrayList<>();
         pages.add(new TimeRange(550L, 800L));

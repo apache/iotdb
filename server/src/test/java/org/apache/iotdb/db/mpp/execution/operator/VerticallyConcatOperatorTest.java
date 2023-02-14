@@ -38,6 +38,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -123,16 +125,18 @@ public class VerticallyConcatOperatorTest {
       List<Aggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
           .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
               measurementPath1,
-              allSensors,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
-              null,
-              true,
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
@@ -144,16 +148,16 @@ public class VerticallyConcatOperatorTest {
       MeasurementPath measurementPath2 =
           new MeasurementPath(
               VERTICALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId2,
               measurementPath2,
-              allSensors,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(1),
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
-              null,
-              true,
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
