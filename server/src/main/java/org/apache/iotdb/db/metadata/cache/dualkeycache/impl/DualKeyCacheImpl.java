@@ -259,7 +259,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       Map<K, V> map = maps[slotIndex];
       if (map == null) {
         synchronized (maps) {
-          if (maps[slotIndex] == null) {
+          map = maps[slotIndex];
+          if (map == null) {
             map = new ConcurrentHashMap<>();
             maps[slotIndex] = map;
           }

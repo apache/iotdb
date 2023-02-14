@@ -83,7 +83,8 @@ class LRUCacheEntryManager<FK, SK, V>
     LRULinkedList lruLinkedList = lruLinkedLists[slotIndex];
     if (lruLinkedList == null) {
       synchronized (lruLinkedLists) {
-        if (lruLinkedLists[slotIndex] == null) {
+        lruLinkedList = lruLinkedLists[slotIndex];
+        if (lruLinkedList == null) {
           lruLinkedList = new LRULinkedList();
           lruLinkedLists[slotIndex] = lruLinkedList;
         }
