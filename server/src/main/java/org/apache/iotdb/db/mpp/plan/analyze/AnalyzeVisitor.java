@@ -878,7 +878,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Set<Expression> aggregationExpressions = deviceToAggregationExpressions.get(deviceName);
         Set<Expression> sourceTransformExpressions = new LinkedHashSet<>();
         for (Expression expression : aggregationExpressions) {
-          sourceTransformExpressions.addAll(expression.getExpressions());
+          // We just process first input Expression of AggregationFunction,
+          // keep other input Expressions as origin
+          // If AggregationFunction need more than one input series,
+          // we need to reconsider the process of it
+          sourceTransformExpressions.add(expression.getExpressions().get(0));
         }
         if (analysis.hasGroupByParameter()) {
           sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
@@ -895,7 +899,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> sourceTransformExpressions = new HashSet<>();
     if (queryStatement.isAggregationQuery()) {
       for (Expression expression : analysis.getAggregationExpressions()) {
-        sourceTransformExpressions.addAll(expression.getExpressions());
+        // for AggregationExpression, only the first Expression of input need to transform
+        sourceTransformExpressions.add(expression.getExpressions().get(0));
       }
     } else {
       sourceTransformExpressions = analysis.getSelectExpressions();

@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.service.metric.enums;
 
 public enum Metric {
   ENTRY,
-  OPERATION,
   COST_TASK,
   QUEUE,
   FILE_SIZE,
@@ -81,7 +80,9 @@ public enum Metric {
   DATA_EXCHANGE_COST,
   DATA_EXCHANGE_COUNT,
   DRIVER_SCHEDULER,
-  STATEMENT_EXECUTION;
+  PERFORMANCE_OVERVIEW,
+  PERFORMANCE_OVERVIEW_DETAIL,
+  PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL;
 
   @Override
   public String toString() {

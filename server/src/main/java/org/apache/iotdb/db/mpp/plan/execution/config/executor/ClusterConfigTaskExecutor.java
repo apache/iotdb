@@ -35,13 +35,15 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -64,15 +66,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -207,7 +207,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TStorageGroupSchema storageGroupSchema =
+    TDatabaseSchema storageGroupSchema =
         DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
@@ -234,7 +234,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       DatabaseSchemaStatement databaseSchemaStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TStorageGroupSchema storageGroupSchema =
+    TDatabaseSchema storageGroupSchema =
         DatabaseSchemaTask.constructStorageGroupSchema(databaseSchemaStatement);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
@@ -266,9 +266,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
-      TShowStorageGroupResp resp = client.showStorageGroup(storageGroupPathPattern);
+      TShowDatabaseResp resp = client.showDatabase(storageGroupPathPattern);
       // build TSBlock
-      showStorageGroupStatement.buildTSBlock(resp.getStorageGroupInfoMap(), future);
+      showStorageGroupStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -284,7 +284,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         Arrays.asList(countStorageGroupStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+      TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
       storageGroupNum = resp.getCount();
       // build TSBlock
       CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
@@ -298,11 +298,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeleteStorageGroupsReq req =
-        new TDeleteStorageGroupsReq(deleteStorageGroupStatement.getPrefixPath());
+    TDeleteDatabasesReq req = new TDeleteDatabasesReq(deleteStorageGroupStatement.getPrefixPath());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      TSStatus tsStatus = client.deleteStorageGroups(req);
+      TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute delete database {} in config node, status is {}.",
@@ -905,19 +904,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       if (showTTLStatement.isAll()) {
         List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(allStorageGroupPathPattern);
-        for (Map.Entry<String, TStorageGroupSchema> entry :
-            resp.getStorageGroupSchemaMap().entrySet()) {
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(allStorageGroupPathPattern);
+        for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
           storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
         }
       } else {
         for (PartialPath storageGroupPath : storageGroupPaths) {
           List<String> storageGroupPathPattern = Arrays.asList(storageGroupPath.getNodes());
-          TStorageGroupSchemaResp resp =
-              client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-          for (Map.Entry<String, TStorageGroupSchema> entry :
-              resp.getStorageGroupSchemaMap().entrySet()) {
+          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(storageGroupPathPattern);
+          for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
             if (!storageGroupToTTL.containsKey(entry.getKey())) {
               storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
             }
@@ -939,9 +934,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
     if (showRegionStatement.getStorageGroups() == null) {
-      showRegionReq.setStorageGroups(null);
+      showRegionReq.setDatabases(null);
     } else {
-      showRegionReq.setStorageGroups(
+      showRegionReq.setDatabases(
           showRegionStatement.getStorageGroups().stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));

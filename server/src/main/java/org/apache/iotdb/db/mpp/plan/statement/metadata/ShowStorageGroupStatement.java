@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -72,7 +72,7 @@ public class ShowStorageGroupStatement extends ShowStatement implements IConfigS
   }
 
   public void buildTSBlock(
-      Map<String, TStorageGroupInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future) {
+      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future) {
 
     List<TSDataType> outputDataTypes =
         isDetailed
@@ -84,9 +84,9 @@ public class ShowStorageGroupStatement extends ShowStatement implements IConfigS
                 .collect(Collectors.toList());
 
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, TStorageGroupInfo> entry : storageGroupInfoMap.entrySet()) {
+    for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       String storageGroup = entry.getKey();
-      TStorageGroupInfo storageGroupInfo = entry.getValue();
+      TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(storageGroup));
 

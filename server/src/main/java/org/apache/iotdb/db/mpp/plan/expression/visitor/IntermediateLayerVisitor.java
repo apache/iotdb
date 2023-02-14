@@ -200,8 +200,8 @@ public class IntermediateLayerVisitor
             new TransparentTransformer(
                 context.rawTimeSeriesInputLayer.constructValuePointReader(
                     functionExpression.getInputColumnIndex()));
-      } else if (functionExpression.isBuiltInScalarFunction()) {
-        transformer = getBuiltInScalarFunctionTransformer(functionExpression, context);
+      } else if (functionExpression.isBuiltInFunction()) {
+        transformer = getBuiltInFunctionTransformer(functionExpression, context);
       } else {
         try {
           IntermediateLayer udfInputIntermediateLayer =
@@ -223,7 +223,7 @@ public class IntermediateLayerVisitor
     return context.expressionIntermediateLayerMap.get(functionExpression);
   }
 
-  private Transformer getBuiltInScalarFunctionTransformer(
+  private Transformer getBuiltInFunctionTransformer(
       FunctionExpression expression, IntermediateLayerVisitorContext context) {
 
     LayerPointReader childPointReader =

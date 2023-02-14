@@ -22,13 +22,13 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -81,18 +81,18 @@ public class ClusterSchemaInfoTest {
     storageGroupPathList.add("root.a.b.sg");
     storageGroupPathList.add("root.a.a.a.b.sg");
 
-    Map<String, TStorageGroupSchema> testMap = new TreeMap<>();
+    Map<String, TDatabaseSchema> testMap = new TreeMap<>();
     int i = 0;
     for (String path : storageGroupPathList) {
-      TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
-      tStorageGroupSchema.setName(path);
-      tStorageGroupSchema.setTTL(i);
-      tStorageGroupSchema.setDataReplicationFactor(i);
-      tStorageGroupSchema.setSchemaReplicationFactor(i);
-      tStorageGroupSchema.setTimePartitionInterval(i);
-      testMap.put(path, tStorageGroupSchema);
+      TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
+      tDatabaseSchema.setName(path);
+      tDatabaseSchema.setTTL(i);
+      tDatabaseSchema.setDataReplicationFactor(i);
+      tDatabaseSchema.setSchemaReplicationFactor(i);
+      tDatabaseSchema.setTimePartitionInterval(i);
+      testMap.put(path, tDatabaseSchema);
       clusterSchemaInfo.createDatabase(
-          new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tStorageGroupSchema));
+          new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
       i++;
     }
     clusterSchemaInfo.processTakeSnapshot(snapshotDir);
@@ -101,10 +101,10 @@ public class ClusterSchemaInfoTest {
 
     Assert.assertEquals(storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames().size());
 
-    GetStorageGroupPlan getStorageGroupReq =
-        new GetStorageGroupPlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
-    Map<String, TStorageGroupSchema> reloadResult =
-        clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
+    GetDatabasePlan getStorageGroupReq =
+        new GetDatabasePlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
+    Map<String, TDatabaseSchema> reloadResult =
+        clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
   }
 
@@ -118,13 +118,13 @@ public class ClusterSchemaInfoTest {
 
     clusterSchemaInfo.createDatabase(
         new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TStorageGroupSchema("root.test1")));
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test1")));
     clusterSchemaInfo.createDatabase(
         new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TStorageGroupSchema("root.test2")));
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test2")));
     clusterSchemaInfo.createDatabase(
         new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TStorageGroupSchema("root.test3")));
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test3")));
 
     clusterSchemaInfo.setSchemaTemplate(
         new SetSchemaTemplatePlan(templateName, "root.test1.template"));
