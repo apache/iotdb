@@ -162,7 +162,7 @@ public abstract class SeriesCompactionExecutor {
   private void compactWithOverlapChunks(ChunkMetadataElement overlappedChunkMetadata)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     readChunk(overlappedChunkMetadata);
-    deserializeChunkIntoQueue(overlappedChunkMetadata);
+    deserializeChunkIntoPageQueue(overlappedChunkMetadata);
 
     compactPages();
   }
@@ -198,36 +198,26 @@ public abstract class SeriesCompactionExecutor {
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
       summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += 1;
-      deserializeChunkIntoQueue(chunkMetadataElement);
+      deserializeChunkIntoPageQueue(chunkMetadataElement);
       compactPages();
     }
   }
 
-  abstract void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement)
+  abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
 
   abstract void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException;
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
-  abstract void deserializeFileIntoQueue(List<FileElement> fileElements)
+  abstract void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException;
 
   /** Compact pages in page queue. */
   private void compactPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {
-      if (pageQueue.peek().startTime >= nextChunkStartTime) {
-        ChunkMetadataElement chunkMetadataElement = chunkMetadataQueue.poll();
-        summary.CHUNK_OVERLAP_OR_MODIFIED++;
-        readChunk(chunkMetadataElement);
-        deserializeChunkIntoQueue(chunkMetadataElement);
-        nextChunkStartTime =
-            chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
-      }
-
-      PageElement firstPageElement = pageQueue.poll();
+      PageElement firstPageElement = getPageFromPageQueue(pageQueue.peek().startTime);
       ModifiedStatus modifiedStatus = isPageModified(firstPageElement);
-      nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
 
       if (modifiedStatus == ModifiedStatus.ALL_DELETED) {
         // all data on this page has been deleted, remove it
@@ -310,24 +300,17 @@ public abstract class SeriesCompactionExecutor {
       long currentTime = currentPoint.getTimestamp();
 
       while (currentTime >= nextChunkStartTime || currentTime >= nextPageStartTime) {
-        if (currentTime >= nextChunkStartTime) {
-          // read new overlap chunk and deserialize it
-          ChunkMetadataElement overlappedChunkMetadata = chunkMetadataQueue.poll();
-          summary.CHUNK_OVERLAP_OR_MODIFIED++;
-          readChunk(overlappedChunkMetadata);
-          deserializeChunkIntoQueue(overlappedChunkMetadata);
-          nextChunkStartTime =
-              chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
-        }
-        // read new overlap page
-        PageElement nextPageElement = pageQueue.poll();
-        nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
+        // current point overlaps with next chunk or next page, then deserialize next chunk if
+        // necessary and get next page
+        PageElement nextPageElement = getPageFromPageQueue(currentTime);
+        // check whether next page is fake overlap or not
         checkAndCompactOverlapPage(nextPageElement, currentPoint);
 
         // get new current point
         currentPoint = pointPriorityReader.currentPoint();
         currentTime = currentPoint.getTimestamp();
       }
+
       // write data point into chunk writer
       compactionWriter.write(currentPoint, subTaskId);
       pointPriorityReader.next();
@@ -354,6 +337,7 @@ public abstract class SeriesCompactionExecutor {
               || nextPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
       if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // next page is overlapped or modified, then deserialize it
+        summary.PAGE_OVERLAP_OR_MODIFIED++;
         pointPriorityReader.addNewPage(nextPageElement);
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
@@ -413,7 +397,27 @@ public abstract class SeriesCompactionExecutor {
   }
 
   /**
-   * Check should remove file or not. If it is the last page in the chunk and last chunk in the
+   * Check whether current page is overlap with next chunk which has not been read into memory yet
+   * before getting one page. If it is, then read next chunk into memory and deserialize it into
+   * pages.
+   */
+  private PageElement getPageFromPageQueue(long curTime) throws IOException {
+    if (curTime >= nextChunkStartTime) {
+      // overlap with next chunk, then read it into memory and deserialize it into page queue
+      summary.CHUNK_OVERLAP_OR_MODIFIED++;
+      ChunkMetadataElement chunkMetadataElement = chunkMetadataQueue.poll();
+      nextChunkStartTime =
+          chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
+      readChunk(chunkMetadataElement);
+      deserializeChunkIntoPageQueue(chunkMetadataElement);
+    }
+    PageElement page = pageQueue.poll();
+    nextPageStartTime = pageQueue.isEmpty() ? Long.MAX_VALUE : pageQueue.peek().startTime;
+    return page;
+  }
+
+  /**
+   * Check should remove file or not. If it is the last page in the chunk and the last chunk in the
    * file, then it means the file has been finished compacting and needs to be removed.
    */
   private void checkShouldRemoveFile(PageElement pageElement)
@@ -447,7 +451,7 @@ public abstract class SeriesCompactionExecutor {
     if (isFirstFile && !fileList.isEmpty()) {
       // find new overlapped files and deserialize them into chunk metadata queue
       List<FileElement> newOverlappedFiles = findOverlapFiles(fileList.get(0));
-      deserializeFileIntoQueue(newOverlappedFiles);
+      deserializeFileIntoChunkMetadataQueue(newOverlappedFiles);
       nextChunkStartTime =
           chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
     }

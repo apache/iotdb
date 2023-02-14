@@ -91,14 +91,14 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
       // read chunk metadatas from files and put them into chunk metadata queue
-      deserializeFileIntoQueue(overlappedFiles);
+      deserializeFileIntoChunkMetadataQueue(overlappedFiles);
 
       compactChunks();
     }
   }
 
   /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
-  void deserializeFileIntoQueue(List<FileElement> fileElements)
+  void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
@@ -199,7 +199,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   }
 
   /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
-  void deserializeChunkIntoQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
+  void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     List<PageHeader> timePageHeaders = new ArrayList<>();
     List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
