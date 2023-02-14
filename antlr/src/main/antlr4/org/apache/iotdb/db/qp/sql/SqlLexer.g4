@@ -714,6 +714,10 @@ VALUES
     : V A L U E S
     ;
 
+VARIATION
+    : V A R I A T I O N
+    ;
+
 VERIFY
     : V E R I F Y
     ;

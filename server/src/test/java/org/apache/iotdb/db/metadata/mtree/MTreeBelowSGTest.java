@@ -83,7 +83,17 @@ public abstract class MTreeBelowSGTest {
       IMTreeBelowSG mtree;
       if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
           .equals(SchemaEngineMode.Schema_File)) {
-        mtree = new MTreeBelowSGCachedImpl(path, null, 0);
+        mtree =
+            new MTreeBelowSGCachedImpl(
+                path,
+                null,
+                () -> {
+                  // do nothing
+                },
+                node -> {
+                  // do nothing
+                },
+                0);
       } else {
         mtree = new MTreeBelowSGMemoryImpl(path, null, 0);
       }

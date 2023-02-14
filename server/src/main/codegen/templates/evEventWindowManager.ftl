@@ -68,20 +68,33 @@ public class ${className} extends Event${dataType.dataType?cap_first}WindowManag
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
     ${dataType.dataType} previousEventValue = ((${windowName}) eventWindow).getPreviousEventValue();
+    boolean previousEventValueIsNull = ((${windowName}) eventWindow).valueIsNull();
     for (; i < size; i++) {
+      // condition must be initialized when isNull is false
+      boolean condition = false;
+      boolean isNull = controlColumn.isNull(i);
       <#if compareType.compareType == "equal">
           <#if dataType.dataType == "Binary">
-      if (!controlColumn.isNull(i) && !controlColumn.get${dataType.dataType?cap_first}(i).equals(previousEventValue)) {
+      if(!isNull) condition = !controlColumn.get${dataType.dataType?cap_first}(i).equals(previousEventValue);
           <#else>
-      if (!controlColumn.isNull(i) && controlColumn.get${dataType.dataType?cap_first}(i) != previousEventValue) {
+      if(!isNull) condition = controlColumn.get${dataType.dataType?cap_first}(i) != previousEventValue;
           </#if>
       <#else>
-      if (!controlColumn.isNull(i)
-          && Math.abs(controlColumn.get${dataType.dataType?cap_first}(i) - previousEventValue)
-              > eventWindowParameter.getDelta()) {
+      if(!isNull) condition = Math.abs(controlColumn.get${dataType.dataType?cap_first}(i) - previousEventValue)
+          > eventWindowParameter.getDelta();
       </#if>
-        break;
+      if(isIgnoringNull()){
+        if (!isNull && condition) {
+            break;
+        }else if(isNull){
+            continue;
+        }
+      }else{
+        if((isNull&&!previousEventValueIsNull)||!isNull&&previousEventValueIsNull||(!isNull&&condition)){
+            break;
+        }
       }
+
       // judge whether we need update endTime
       long currentTime = timeColumn.getLong(i);
       if (eventWindow.getEndTime() < currentTime) {
