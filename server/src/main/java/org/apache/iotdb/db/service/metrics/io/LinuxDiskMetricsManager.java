@@ -86,8 +86,6 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final Map<String, Long> incrementWriteTimeCostForDisk = new HashMap<>();
   private final Map<String, Long> incrementReadSectorCountForDisk = new HashMap<>();
   private final Map<String, Long> incrementWriteSectorCountForDisk = new HashMap<>();
-  private final Map<String, Long> incrementMergedReadCountForDisk = new HashMap<>();
-  private final Map<String, Long> incrementMergedWriteCountForDisk = new HashMap<>();
   private final Map<String, Long> incrementIOBusyTimeForDisk = new HashMap<>();
 
   // Process IO status structure
@@ -97,12 +95,6 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private long lastAttemptWriteSizeForProcess = 0L;
   private long lastReadOpsCountForProcess = 0L;
   private long lastWriteOpsCountForProcess = 0L;
-  private long incrementReallyReadSizeForProcess = 0L;
-  private long incrementReallyWriteSizeForProcess = 0L;
-  private long incrementAttemptReadSizeForProcess = 0L;
-  private long incrementAttemptWriteSizeForProcess = 0L;
-  private long incrementReadOpsCountForProcess = 0L;
-  private long incrementWriteOpsCountForProcess = 0L;
 
   public LinuxDiskMetricsManager() {
     super();
@@ -115,7 +107,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getReadDataSizeForDisk() {
     checkUpdate();
     Map<String, Long> readDataMap = new HashMap<>();
-    for (Map.Entry<String, Long> entry : incrementReadSectorCountForDisk.entrySet()) {
+    for (Map.Entry<String, Long> entry : lastReadSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
       readDataMap.put(entry.getKey(), entry.getValue() * 512 / 1024);
     }
@@ -126,7 +118,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getWriteDataSizeForDisk() {
     checkUpdate();
     Map<String, Long> writeDataMap = new HashMap<>();
-    for (Map.Entry<String, Long> entry : incrementWriteSectorCountForDisk.entrySet()) {
+    for (Map.Entry<String, Long> entry : lastWriteSectorCountForDisk.entrySet()) {
       // the data size in each sector is 512 byte
       writeDataMap.put(entry.getKey(), entry.getValue() * 512 / 1024);
     }
@@ -136,22 +128,22 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   @Override
   public Map<String, Integer> getReadOperationCountForDisk() {
     checkUpdate();
-    return incrementReadOperationCountForDisk;
+    return lastReadOperationCountForDisk;
   }
 
   @Override
   public Map<String, Integer> getWriteOperationCountForDisk() {
-    return incrementWriteOperationCountForDisk;
+    return lastWriteOperationCountForDisk;
   }
 
   @Override
   public Map<String, Long> getReadCostTimeForDisk() {
-    return incrementReadTimeCostForDisk;
+    return lastReadTimeCostForDisk;
   }
 
   @Override
   public Map<String, Long> getWriteCostTimeForDisk() {
-    return incrementWriteTimeCostForDisk;
+    return lastWriteTimeCostForDisk;
   }
 
   @Override
@@ -217,42 +209,42 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public Map<String, Long> getMergedWriteOperationForDisk() {
-    return incrementMergedWriteCountForDisk;
+    return lastMergedWriteCountForDisk;
   }
 
   @Override
   public Map<String, Long> getMergedReadOperationForDisk() {
-    return incrementMergedReadCountForDisk;
+    return lastMergedReadCountForDisk;
   }
 
   @Override
   public long getActualReadDataSizeForProcess() {
-    return incrementReallyReadSizeForProcess / 1024;
+    return lastReallyReadSizeForProcess / 1024;
   }
 
   @Override
   public long getActualWriteDataSizeForProcess() {
-    return incrementReallyWriteSizeForProcess / 1024;
+    return lastReallyWriteSizeForProcess / 1024;
   }
 
   @Override
   public long getReadOpsCountForProcess() {
-    return incrementReadOpsCountForProcess;
+    return lastReadOpsCountForProcess;
   }
 
   @Override
   public long getWriteOpsCountForProcess() {
-    return incrementWriteOpsCountForProcess;
+    return lastWriteOpsCountForProcess;
   }
 
   @Override
   public long getAttemptReadSizeForProcess() {
-    return (long) (incrementAttemptReadSizeForProcess / 1024.0);
+    return (long) (lastAttemptReadSizeForProcess / 1024.0);
   }
 
   @Override
   public long getAttemptWriteSizeForProcess() {
-    return (long) (incrementAttemptWriteSizeForProcess / 1024.0);
+    return (long) (lastAttemptWriteSizeForProcess / 1024.0);
   }
 
   @Override
@@ -355,20 +347,6 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
           incrementIOBusyTimeForDisk.put(diskId, 0L);
         }
 
-        if (lastMergedReadCount != 0) {
-          incrementMergedReadCountForDisk.put(
-              diskId, mergedReadOperationCount - lastMergedReadCount);
-        } else {
-          incrementMergedReadCountForDisk.put(diskId, 0L);
-        }
-
-        if (lastMergedWriteCount != 0) {
-          incrementMergedWriteCountForDisk.put(
-              diskId, mergedWriteOperationCount - lastMergedWriteCount);
-        } else {
-          incrementMergedWriteCountForDisk.put(diskId, 0L);
-        }
-
         lastReadOperationCountForDisk.put(diskId, readOperationCount);
         lastWriteOperationCountForDisk.put(diskId, writeOperationCount);
         lastReadSectorCountForDisk.put(diskId, sectorReadCount);
@@ -396,41 +374,21 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
         String infoLine = processStatsScanner.nextLine();
         if (infoLine.startsWith("syscr")) {
           long currentReadOpsCount = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastReadOpsCountForProcess != 0) {
-            incrementReadOpsCountForProcess = currentReadOpsCount - lastReadOpsCountForProcess;
-          }
           lastReadOpsCountForProcess = currentReadOpsCount;
         } else if (infoLine.startsWith("syscw")) {
           long currentWriteOpsCount = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastWriteOpsCountForProcess != 0) {
-            incrementWriteOpsCountForProcess = currentWriteOpsCount - lastWriteOpsCountForProcess;
-          }
           lastWriteOpsCountForProcess = currentWriteOpsCount;
         } else if (infoLine.startsWith("read_bytes")) {
           long currentReadSize = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastReallyReadSizeForProcess != 0) {
-            incrementReallyReadSizeForProcess = currentReadSize - lastReallyReadSizeForProcess;
-          }
           lastReallyReadSizeForProcess = currentReadSize;
         } else if (infoLine.startsWith("write_bytes")) {
           long currentWriteSize = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastReallyWriteSizeForProcess != 0) {
-            incrementReallyWriteSizeForProcess = currentWriteSize - lastReallyWriteSizeForProcess;
-          }
           lastReallyWriteSizeForProcess = currentWriteSize;
         } else if (infoLine.startsWith("rchar")) {
           long currentAttemptReadSize = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastAttemptReadSizeForProcess != 0) {
-            incrementAttemptReadSizeForProcess =
-                currentAttemptReadSize - lastAttemptReadSizeForProcess;
-          }
           lastAttemptReadSizeForProcess = currentAttemptReadSize;
         } else if (infoLine.startsWith("wchar")) {
           long currentAttemptWriteSize = Long.parseLong(infoLine.split(":\\s")[1]);
-          if (lastAttemptWriteSizeForProcess != 0) {
-            incrementAttemptWriteSizeForProcess =
-                currentAttemptWriteSize - lastAttemptWriteSizeForProcess;
-          }
           lastAttemptWriteSizeForProcess = currentAttemptWriteSize;
         }
       }
