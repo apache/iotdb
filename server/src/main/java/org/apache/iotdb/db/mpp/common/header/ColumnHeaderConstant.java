@@ -254,6 +254,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showRegionColumnHeaders =
       ImmutableList.of(
+          new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
           new ColumnHeader(REGION_ID, TSDataType.INT32),
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),

@@ -100,7 +100,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowRegionHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, false);
+    return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDataNodesHeader() {
