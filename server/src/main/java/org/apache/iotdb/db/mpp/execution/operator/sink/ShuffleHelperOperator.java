@@ -73,6 +73,8 @@ public class ShuffleHelperOperator implements Operator {
     // we need to ensure that this child is not blocked. We set this field to true here so that we
     // can begin another loop in Driver.
     needToReturnNull = true;
+    // tryOpenChannel first
+    sinkHandle.tryOpenChannel(currentIndex);
     return true;
   }
 

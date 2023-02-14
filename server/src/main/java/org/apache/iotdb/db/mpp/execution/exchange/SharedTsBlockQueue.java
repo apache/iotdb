@@ -124,6 +124,10 @@ public class SharedTsBlockQueue {
     return queue.isEmpty();
   }
 
+  public int getNumOfBufferedTsBlocks() {
+    return queue.size();
+  }
+
   public void setSinkHandle(LocalSinkHandle sinkHandle) {
     this.sinkHandle = sinkHandle;
   }

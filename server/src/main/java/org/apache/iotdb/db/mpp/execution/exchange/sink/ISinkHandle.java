@@ -23,32 +23,23 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.List;
-
 public interface ISinkHandle {
 
   /** Get the local fragment instance ID that this sink handle belongs to. */
   TFragmentInstanceId getLocalFragmentInstanceId();
 
-  /** Get the total amount of memory used by buffered tsblocks. */
+  /** Get the total amount of memory used by buffered TsBlocks. */
   long getBufferRetainedSizeInBytes();
 
   /** Get a future that will be completed when the output buffer is not full. */
   ListenableFuture<?> isFull();
 
   /**
-   * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,
+   * Send a {@link TsBlock} to an un-partitioned output buffer. If no-more-TsBlocks has been set,
    * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
    * will be thrown if any exception happened during the data transmission.
    */
   void send(TsBlock tsBlock);
-
-  /**
-   * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send
-   * tsblock call is ignored. This can happen with limit queries. A {@link RuntimeException} will be
-   * thrown if any exception happened * during the data transmission.
-   */
-  void send(int partition, List<TsBlock> tsBlocks);
 
   /**
    * Notify the handle that there are no more TsBlocks. Any future calls to send a TsBlock should be
@@ -62,19 +53,26 @@ public interface ISinkHandle {
    *
    * @param channelIndex index of the channel that should be closed
    */
-  void setNoMoreTsBlocksOfOneChannel(int channelIndex);
+  default void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Open specified channel of ISinkHandle. */
+  default void tryOpenChannel(int channelIndex) {
+    throw new UnsupportedOperationException();
+  }
 
   /** If the handle is aborted. */
   boolean isAborted();
 
   /**
-   * If there are no more tsblocks to be sent and all the tsblocks have been fetched by downstream
+   * If there are no more TsBlocks to be sent and all the TsBlocks have been fetched by downstream
    * fragment instances.
    */
   boolean isFinished();
 
   /**
-   * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
+   * Abort the sink handle. Discard all TsBlocks which may still be in the memory buffer and cancel
    * the future returned by {@link #isFull()}.
    *
    * <p>Should only be called in abnormal case
@@ -82,7 +80,7 @@ public interface ISinkHandle {
   void abort();
 
   /**
-   * Close the sink handle. Discard all tsblocks which may still be in the memory buffer and
+   * Close the sink handle. Discard all TsBlocks which may still be in the memory buffer and
    * complete the future returned by {@link #isFull()}.
    *
    * <p>Should only be called in normal case.

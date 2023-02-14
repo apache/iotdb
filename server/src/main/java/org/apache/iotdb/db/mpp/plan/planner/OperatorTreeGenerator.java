@@ -39,7 +39,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkHandle;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.SinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
@@ -1773,7 +1773,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
     ISourceHandle sourceHandle =
-        (isSameNode(upstreamEndPoint) && !node.isUpstreamMultiChildrenSinkNode())
+        isSameNode(upstreamEndPoint)
             ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
@@ -1814,14 +1814,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
                 context.getInstanceContext())
-            : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
+            : MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
                 Collections.singletonList(
                     new DownStreamChannelLocation(
                         downStreamEndPoint,
                         targetInstanceId.toThrift(),
                         node.getDownStreamPlanNodeId().getId())),
                 new DownStreamChannelIndex(0),
-                SinkHandle.ShuffleStrategyEnum.PLAIN,
+                ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
                 context.getInstanceContext());
@@ -1832,6 +1832,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitIdentitySink(IdentitySinkNode node, LocalExecutionPlanContext context) {
+    context.addExchangeSumNum(1);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1840,7 +1841,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 IdentityOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    context.addExchangeSumNum(1);
     List<Operator> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
@@ -1851,10 +1851,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
-        MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
             node.getDownStreamChannelLocationList(),
             downStreamChannelIndex,
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
@@ -1866,6 +1866,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitShuffleSink(ShuffleSinkNode node, LocalExecutionPlanContext context) {
+    context.addExchangeSumNum(1);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1874,7 +1875,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 ShuffleHelperOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    context.addExchangeSumNum(1);
     List<Operator> children =
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
@@ -1885,10 +1885,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
-        MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
             node.getDownStreamChannelLocationList(),
             downStreamChannelIndex,
-            SinkHandle.ShuffleStrategyEnum.SIMPLE_ROUND_ROBIN,
+            ShuffleSinkHandle.ShuffleStrategyEnum.SIMPLE_ROUND_ROBIN,
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());

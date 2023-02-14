@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,22 +57,16 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HAND
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public class SinkHandle implements ISinkHandle {
+public class SinkHandle implements ISinkHandle, ISinkChannel {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SinkHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;
 
-  private final List<DownStreamChannelLocation> downStreamChannelLocationList;
-
-  private final DownStreamChannelIndex downStreamChannelIndex;
-
-  private final List<DownStreamChannel> downStreamChannelList;
-
-  private final int channelNum;
-
-  private final ShuffleStrategy shuffleStrategy;
+  private final TEndPoint remoteEndpoint;
+  private final TFragmentInstanceId remoteFragmentInstanceId;
+  private final String remotePlanNodeId;
 
   private final String localPlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
@@ -86,34 +79,39 @@ public class SinkHandle implements ISinkHandle {
   private final String threadName;
   private long retryIntervalInMs;
 
+  // Use LinkedHashMap to meet 2 needs,
+  //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
+  //   2. Fast lookup.
+  private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
+      new LinkedHashMap<>();
+
+  // size for current TsBlock to reserve and free
+  private long currentTsBlockSize;
+
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
       mppDataExchangeServiceClientManager;
 
   private volatile ListenableFuture<Void> blocked;
-
+  private int nextSequenceId = 0;
   /** The actual buffered memory in bytes, including the amount of memory being reserved. */
   private long bufferRetainedSizeInBytes;
-
-  // size for current TsBlock to reserve and free
-  private long currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
   private boolean aborted = false;
 
   private boolean closed = false;
 
+  private boolean noMoreTsBlocks = false;
+
   /** max bytes this SinkHandle can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
-  /** startSequenceID of each channel = channelIndex * CHANNEL_ID_GAP */
-  private static final int CHANNEL_ID_GAP = 10000;
-
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public SinkHandle(
-      List<DownStreamChannelLocation> downStreamChannelLocationList,
-      DownStreamChannelIndex downStreamChannelIndex,
-      ShuffleStrategyEnum shuffleStrategyEnum,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
       String localPlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
@@ -122,15 +120,9 @@ public class SinkHandle implements ISinkHandle {
       SinkHandleListener sinkHandleListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.downStreamChannelLocationList = Validate.notNull(downStreamChannelLocationList);
-    this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
-    this.channelNum = downStreamChannelLocationList.size();
-    // Init downStreamChannel
-    this.downStreamChannelList = new ArrayList<>();
-    for (int i = 0; i < channelNum; i++) {
-      downStreamChannelList.add(new DownStreamChannel(i));
-    }
-    this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
+    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
+    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
+    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.fullFragmentInstanceId =
@@ -146,19 +138,8 @@ public class SinkHandle implements ISinkHandle {
             localFragmentInstanceId.queryId,
             localFragmentInstanceId.fragmentId,
             localFragmentInstanceId.instanceId);
-    this.blocked =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
-            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
-            // at first this SinkHandle has not reserved memory.
-            .left;
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
@@ -167,33 +148,25 @@ public class SinkHandle implements ISinkHandle {
     return nonCancellationPropagating(blocked);
   }
 
-  private void submitSendNewDataBlockEventTask(
-      int startSequenceId, List<Long> blockSizes, int currentDownStreamIndex) {
-    executorService.submit(
-        new SendNewDataBlockEventTask(startSequenceId, blockSizes, currentDownStreamIndex));
+  private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
+    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
-      // pre check
       Validate.notNull(tsBlock, "tsBlocks is null");
       checkState();
       if (!blocked.isDone()) {
         throw new IllegalStateException("Sink handle is blocked.");
       }
-
-      // choose one channel
-      int currentDownStreamIndex = downStreamChannelIndex.getCurrentIndex();
-      DownStreamChannel currentChannel = downStreamChannelList.get(currentDownStreamIndex);
-
-      if (currentChannel.noMoreTsBlocks) {
+      if (noMoreTsBlocks) {
         return;
       }
       long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
       int startSequenceId;
-      startSequenceId = currentChannel.nextSequenceId;
+      startSequenceId = nextSequenceId;
       blocked =
           localMemoryManager
               .getQueryPool()
@@ -206,30 +179,16 @@ public class SinkHandle implements ISinkHandle {
               .left;
       bufferRetainedSizeInBytes += retainedSizeInBytes;
 
-      currentChannel.channelBufferedSize += currentTsBlockSize;
-      currentChannel.sequenceIdToTsBlock.put(
-          currentChannel.nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
-
-      currentChannel.nextSequenceId += 1;
+      sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+      nextSequenceId += 1;
       currentTsBlockSize = retainedSizeInBytes;
 
       // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
-      submitSendNewDataBlockEventTask(
-          startSequenceId, ImmutableList.of(retainedSizeInBytes), currentDownStreamIndex);
+      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
     } finally {
-      switchChannelIfNecessary();
       QUERY_METRICS.recordDataExchangeCost(
           SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
     }
-  }
-
-  private synchronized void switchChannelIfNecessary() {
-    shuffleStrategy.shuffle();
-  }
-
-  @Override
-  public synchronized void send(int partition, List<TsBlock> tsBlocks) {
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -238,29 +197,13 @@ public class SinkHandle implements ISinkHandle {
     if (aborted || closed) {
       return;
     }
-    downStreamChannelList.forEach(
-        (downStreamChannel -> {
-          if (!downStreamChannel.noMoreTsBlocks) {
-            executorService.submit(new SendEndOfDataBlockEventTask(downStreamChannel.channelIndex));
-            downStreamChannel.setNoMoreTsBlocks();
-          }
-        }));
-  }
-
-  @Override
-  public synchronized void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    LOGGER.debug("[StartSetNoMoreTsBlocksOfChannel: {}]", channelIndex);
-    if (aborted || closed) {
-      return;
-    }
-    executorService.submit(new SendEndOfDataBlockEventTask(channelIndex));
-    downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
+    executorService.submit(new SendEndOfDataBlockEventTask());
   }
 
   @Override
   public synchronized void abort() {
     LOGGER.debug("[StartAbortSinkHandle]");
-    downStreamChannelList.forEach(DownStreamChannel::clear);
+    sequenceIdToTsBlock.clear();
     aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     if (bufferRetainedSizeInBytes > 0) {
@@ -284,7 +227,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public synchronized void close() {
     LOGGER.debug("[StartCloseSinkHandle]");
-    downStreamChannelList.forEach(DownStreamChannel::clear);
+    sequenceIdToTsBlock.clear();
     closed = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
     if (bufferRetainedSizeInBytes > 0) {
@@ -312,18 +255,16 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized boolean isFinished() {
-    for (DownStreamChannel channel : downStreamChannelList) {
-      // SinkHandle is not finished if at least one channel still has data.
-      if (!channel.noMoreTsBlocks || !channel.sequenceIdToTsBlock.isEmpty()) {
-        return false;
-      }
-    }
-    return true;
+    return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
   public synchronized long getBufferRetainedSizeInBytes() {
     return bufferRetainedSizeInBytes;
+  }
+
+  public ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
+    throw new UnsupportedOperationException();
   }
 
   public synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
@@ -334,15 +275,12 @@ public class SinkHandle implements ISinkHandle {
           closed);
       throw new IllegalStateException("Sink handle is aborted or closed. ");
     }
-    int channelOfCurrentSequenceId = sequenceId / CHANNEL_ID_GAP;
-    Pair<TsBlock, Long> pair =
-        downStreamChannelList.get(channelOfCurrentSequenceId).sequenceIdToTsBlock.get(sequenceId);
+    Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
       LOGGER.warn(
-          "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}, channelIndex is {}",
+          "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}",
           sequenceId,
-          downStreamChannelList.get(channelOfCurrentSequenceId).sequenceIdToTsBlock.entrySet(),
-          channelOfCurrentSequenceId);
+          sequenceIdToTsBlock.entrySet());
       throw new IllegalStateException("The data block doesn't exist. Sequence ID: " + sequenceId);
     }
     return serde.serialize(pair.left);
@@ -354,10 +292,8 @@ public class SinkHandle implements ISinkHandle {
       if (aborted || closed) {
         return;
       }
-      int channelOfCurrentSequenceId = startSequenceId / CHANNEL_ID_GAP;
-      DownStreamChannel currentChannel = downStreamChannelList.get(channelOfCurrentSequenceId);
       Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =
-          currentChannel.sequenceIdToTsBlock.entrySet().iterator();
+          sequenceIdToTsBlock.entrySet().iterator();
       while (iterator.hasNext()) {
         Entry<Integer, Pair<TsBlock, Long>> entry = iterator.next();
         if (entry.getKey() < startSequenceId) {
@@ -369,9 +305,8 @@ public class SinkHandle implements ISinkHandle {
 
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
-        currentChannel.channelBufferedSize -= entry.getValue().right;
         iterator.remove();
-        LOGGER.debug("[ACKTsBlock] {} of channel {}.", entry.getKey(), channelOfCurrentSequenceId);
+        LOGGER.debug("[ACKTsBlock] {}.", entry.getKey());
       }
     }
     if (isFinished()) {
@@ -416,131 +351,66 @@ public class SinkHandle implements ISinkHandle {
     }
   }
 
-  // region ============ Shuffle Related ============
+  // region ============ ISinkChannel related ============
 
-  public enum ShuffleStrategyEnum {
-    PLAIN,
-    SIMPLE_ROUND_ROBIN,
+  public void open() {
+    // SinkHandle is opened when ShuffleSinkHandle choose it as the next channel
+    this.blocked =
+        localMemoryManager
+            .getQueryPool()
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
+            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
+            // at first this SinkHandle has not reserved memory.
+            .left;
   }
 
-  @FunctionalInterface
-  interface ShuffleStrategy {
-    /*
-     SinkHandle may have multiple channels, we need to choose the next channel each time we send a TsBlock.
-    */
-    void shuffle();
+  @Override
+  public boolean isNoMoreTsBlocks() {
+    return noMoreTsBlocks;
   }
 
-  class PlainShuffleStrategy implements ShuffleStrategy {
-
-    @Override
-    public void shuffle() {
-      // do nothing
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PlainShuffleStrategy needs to do nothing, current channel index is {}",
-            downStreamChannelIndex.getCurrentIndex());
-      }
-    }
+  @Override
+  public long getRetainedSizeInBytes() {
+    return bufferRetainedSizeInBytes;
   }
 
-  class SimpleRoundRobinStrategy implements ShuffleStrategy {
-
-    private final long channelMemoryThreshold = maxBytesCanReserve / channelNum * 3;
-
-    @Override
-    public void shuffle() {
-      int currentIndex = downStreamChannelIndex.getCurrentIndex();
-      for (int i = 1; i < channelNum; i++) {
-        int nextIndex = (currentIndex + i) % channelNum;
-        if (satisfy(nextIndex)) {
-          downStreamChannelIndex.setCurrentIndex(nextIndex);
-          return;
-        }
-      }
-    }
-
-    private boolean satisfy(int channelIndex) {
-      DownStreamChannel channel = downStreamChannelList.get(channelIndex);
-      if (channel.noMoreTsBlocks) {
-        return false;
-      }
-      return channel.getRetainedTsBlockSize() <= channelMemoryThreshold
-          && channel.sequenceIdToTsBlock.size() < 3;
-    }
-  }
-
-  private ShuffleStrategy getShuffleStrategy(ShuffleStrategyEnum strategyEnum) {
-    switch (strategyEnum) {
-      case PLAIN:
-        return new PlainShuffleStrategy();
-      case SIMPLE_ROUND_ROBIN:
-        return new SimpleRoundRobinStrategy();
-      default:
-        throw new UnsupportedOperationException("Unsupported type of shuffle strategy");
-    }
+  @Override
+  public int getNumOfBufferedTsBlocks() {
+    return sequenceIdToTsBlock.size();
   }
 
   // endregion
 
-  // region ============ inner class ============
-  static class DownStreamChannel {
-    /**
-     * Use LinkedHashMap to meet 2 needs, 1. Predictable iteration order so that removing buffered
-     * TsBlocks can be efficient. 2. Fast lookup.
-     */
-    private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
-        new LinkedHashMap<>();
-
-    /** true if this channel has no more data */
-    private boolean noMoreTsBlocks = false;
-
-    /** Index of the channel */
-    private final int channelIndex;
-
-    /** Next sequence ID for each downstream ISourceHandle */
-    private int nextSequenceId;
-
-    private long channelBufferedSize = 0L;
-
-    public DownStreamChannel(int channelIndex) {
-      this.channelIndex = channelIndex;
-      this.nextSequenceId = channelIndex * CHANNEL_ID_GAP;
-    }
-
-    void clear() {
-      sequenceIdToTsBlock.clear();
-    }
-
-    void setNoMoreTsBlocks() {
-      noMoreTsBlocks = true;
-    }
-
-    long getRetainedTsBlockSize() {
-      return channelBufferedSize;
-    }
+  // region ============ TestOnly ============
+  @TestOnly
+  public void setRetryIntervalInMs(long retryIntervalInMs) {
+    this.retryIntervalInMs = retryIntervalInMs;
   }
+  // endregion
 
+  // region ============ inner class ============
   /**
-   * Send a {@link TNewDataBlockEvent} to downstream fragment specified by downStreamIndex instance.
+   * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
+   * instance.
    */
   class SendNewDataBlockEventTask implements Runnable {
 
     private final int startSequenceId;
     private final List<Long> blockSizes;
 
-    private final int downStreamIndex;
-
-    SendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes, int downStreamIndex) {
+    SendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
       Validate.isTrue(
           startSequenceId >= 0,
           "Start sequence ID should be greater than or equal to zero, but was: "
               + startSequenceId
               + ".");
-      Validate.isTrue(downStreamIndex >= 0, "downstreamIndex can not be negative.");
       this.startSequenceId = startSequenceId;
       this.blockSizes = Validate.notNull(blockSizes);
-      this.downStreamIndex = downStreamIndex;
     }
 
     @Override
@@ -549,11 +419,10 @@ public class SinkHandle implements ISinkHandle {
         LOGGER.debug(
             "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
         int attempt = 0;
-        DownStreamChannelLocation location = downStreamChannelLocationList.get(downStreamIndex);
         TNewDataBlockEvent newDataBlockEvent =
             new TNewDataBlockEvent(
-                location.getRemoteFragmentInstanceId(),
-                location.getRemotePlanNodeId(),
+                remoteFragmentInstanceId,
+                remotePlanNodeId,
                 localFragmentInstanceId,
                 startSequenceId,
                 blockSizes);
@@ -561,7 +430,7 @@ public class SinkHandle implements ISinkHandle {
           attempt += 1;
           long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(location.getRemoteEndpoint())) {
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Exception e) {
@@ -586,34 +455,26 @@ public class SinkHandle implements ISinkHandle {
   }
 
   /**
-   * Send a {@link TEndOfDataBlockEvent} to downstream fragment specified by downStreamIndex
+   * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent} to downstream fragment
    * instance.
    */
   class SendEndOfDataBlockEventTask implements Runnable {
-    private final int downStreamIndex;
-
-    public SendEndOfDataBlockEventTask(int downStreamIndex) {
-      Validate.isTrue(downStreamIndex >= 0, "downstreamIndex can not be negative.");
-      this.downStreamIndex = downStreamIndex;
-    }
 
     @Override
     public void run() {
       try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
         LOGGER.debug("[NotifyNoMoreTsBlock]");
         int attempt = 0;
-        DownStreamChannelLocation location = downStreamChannelLocationList.get(downStreamIndex);
-        DownStreamChannel channel = downStreamChannelList.get(downStreamIndex);
         TEndOfDataBlockEvent endOfDataBlockEvent =
             new TEndOfDataBlockEvent(
-                location.getRemoteFragmentInstanceId(),
-                location.getRemotePlanNodeId(),
+                remoteFragmentInstanceId,
+                remotePlanNodeId,
                 localFragmentInstanceId,
-                channel.nextSequenceId - 1);
+                nextSequenceId - 1);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(location.getRemoteEndpoint())) {
+              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
           } catch (Exception e) {
@@ -631,7 +492,7 @@ public class SinkHandle implements ISinkHandle {
             }
           }
         }
-        channel.noMoreTsBlocks = true;
+        noMoreTsBlocks = true;
         if (isFinished()) {
           sinkHandleListener.onFinish(SinkHandle.this);
         }
@@ -639,21 +500,6 @@ public class SinkHandle implements ISinkHandle {
       }
     }
   }
-
   // endregion
 
-  // region ============ TestOnly ============
-  @TestOnly
-  public int getNumOfBufferedTsBlocks() {
-    return downStreamChannelList.stream()
-        .map(downStreamChannel -> downStreamChannel.sequenceIdToTsBlock.size())
-        .reduce(Integer::sum)
-        .orElse(0);
-  }
-
-  @TestOnly
-  public void setRetryIntervalInMs(long retryIntervalInMs) {
-    this.retryIntervalInMs = retryIntervalInMs;
-  }
-  // endregion
 }

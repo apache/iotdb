@@ -65,22 +65,12 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(int partition, List<TsBlock> tsBlocks) {
-    this.tsBlocks.addAll(tsBlocks);
-  }
-
-  @Override
   public void setNoMoreTsBlocks() {
     if (closed) {
       return;
     }
     closed = true;
     instanceContext.transitionToFlushing();
-  }
-
-  @Override
-  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    throw new UnsupportedOperationException("Unsupported for now.");
   }
 
   @Override

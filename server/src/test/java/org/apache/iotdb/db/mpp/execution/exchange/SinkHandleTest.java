@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.SinkHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
@@ -42,7 +40,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -92,11 +89,9 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            Collections.singletonList(
-                new DownStreamChannelLocation(
-                    remoteEndpoint, remoteFragmentInstanceId, remotePlanNodeId)),
-            new DownStreamChannelIndex(0),
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
@@ -242,11 +237,9 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            Collections.singletonList(
-                new DownStreamChannelLocation(
-                    remoteEndpoint, remoteFragmentInstanceId, remotePlanNodeId)),
-            new DownStreamChannelIndex(0),
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
@@ -449,11 +442,9 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            Collections.singletonList(
-                new DownStreamChannelLocation(
-                    remoteEndpoint, remoteFragmentInstanceId, remotePlanNodeId)),
-            new DownStreamChannelIndex(0),
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
@@ -561,11 +552,9 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            Collections.singletonList(
-                new DownStreamChannelLocation(
-                    remoteEndpoint, remoteFragmentInstanceId, remotePlanNodeId)),
-            new DownStreamChannelIndex(0),
-            SinkHandle.ShuffleStrategyEnum.PLAIN,
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
             mockLocalMemoryManager,
