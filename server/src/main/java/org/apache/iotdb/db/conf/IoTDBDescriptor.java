@@ -541,6 +541,15 @@ public class IoTDBDescriptor {
       conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setDegreeOfParallelism(
+        Integer.parseInt(
+            properties.getProperty(
+                "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
+
+    if (conf.getDegreeOfParallelism() <= 0) {
+      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
     conf.setMaxAllowedConcurrentQueries(
         Integer.parseInt(
             properties.getProperty(

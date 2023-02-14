@@ -59,6 +59,8 @@ public class LocalExecutionPlanContext {
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
+  private int degreeOfParallelism =
+      IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
@@ -97,6 +99,7 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.degreeOfParallelism = parentContext.degreeOfParallelism;
     this.exchangeSumNum = parentContext.exchangeSumNum;
     this.exchangeOperatorList = parentContext.exchangeOperatorList;
     this.cachedDataTypes = parentContext.cachedDataTypes;
@@ -110,10 +113,13 @@ public class LocalExecutionPlanContext {
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
     this.nextOperatorId = new AtomicInteger(0);
+    this.nextPipelineId = new AtomicInteger(0);
 
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
-    this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
+    this.driverContext =
+        new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
+    this.pipelineDriverFactories = new ArrayList<>();
   }
 
   public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {
@@ -138,8 +144,20 @@ public class LocalExecutionPlanContext {
     return pipelineDriverFactories;
   }
 
+  public int getPipelineNumber() {
+    return pipelineDriverFactories.size();
+  }
+
   public DriverContext getDriverContext() {
     return driverContext;
+  }
+
+  public int getDegreeOfParallelism() {
+    return degreeOfParallelism;
+  }
+
+  public void setDegreeOfParallelism(int degreeOfParallelism) {
+    this.degreeOfParallelism = degreeOfParallelism;
   }
 
   private int getNextPipelineId() {
