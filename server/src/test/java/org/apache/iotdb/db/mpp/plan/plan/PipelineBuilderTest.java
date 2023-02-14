@@ -36,8 +36,10 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.mpp.plan.planner.OperatorTreeGenerator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -47,6 +49,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -671,6 +674,32 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+  }
+
+  @Test
+  public void testGetChildNumInEachPipeline() {
+    List<PlanNode> allChildren = new ArrayList<>();
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode1"), null));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode1")));
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode2"), null));
+
+    int[] childNumInEachPipeline =
+        operatorTreeGenerator.getChildNumInEachPipeline(allChildren, 2, 3);
+    assertEquals(2, childNumInEachPipeline.length);
+    assertEquals(2, childNumInEachPipeline[0]);
+    assertEquals(1, childNumInEachPipeline[1]);
+
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode3"), null));
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode4"), null));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode2")));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode3")));
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode5"), null));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode4")));
+    childNumInEachPipeline = operatorTreeGenerator.getChildNumInEachPipeline(allChildren, 5, 3);
+    assertEquals(3, childNumInEachPipeline.length);
+    assertEquals(2, childNumInEachPipeline[0]);
+    assertEquals(2, childNumInEachPipeline[1]);
+    assertEquals(5, childNumInEachPipeline[2]);
   }
 
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {

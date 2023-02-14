@@ -212,7 +212,6 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -2223,34 +2222,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       // Keep it since we may change the structure of origin children nodes
       List<PlanNode> afterwardsNodes = new ArrayList<>();
-      // 1. Separate localChildren from all nodes
-      int exchangeNodeIndex = node.getChildren().size();
-      for (int i = 0; i < node.getChildren().size(); i++) {
-        // We do this based on that exchangeNode should appear at last
-        if (node.getChildren().get(i) instanceof ExchangeNode) {
-          exchangeNodeIndex = i;
-          break;
+      // 1. Calculate localChildren size
+      int localChildrenSize = 0;
+      for (PlanNode child : node.getChildren()) {
+        if (!(child instanceof ExchangeNode)) {
+          localChildrenSize++;
         }
       }
-      List<PlanNode> localChildren = node.getChildren().subList(0, exchangeNodeIndex);
       // 2. divide every childNumInEachPipeline localChildren to different pipeline
       int[] childNumInEachPipeline =
-          getChildNumInEachPipeline(localChildren.size(), context.getDegreeOfParallelism());
+          getChildNumInEachPipeline(
+              node.getChildren(), localChildrenSize, context.getDegreeOfParallelism());
       // If dop > size(children) + 1, we can allocate extra dop to child node
       // Extra dop = dop - size(children), since dop = 1 means serial but not 0
-      int childGroupNum = Math.min(context.getDegreeOfParallelism(), localChildren.size());
-      int dopForChild = Math.max(1, context.getDegreeOfParallelism() - localChildren.size());
+      int childGroupNum = Math.min(context.getDegreeOfParallelism(), localChildrenSize);
+      int dopForChild = Math.max(1, context.getDegreeOfParallelism() - localChildrenSize);
       int startIndex, endIndex = 0;
       for (int i = 0; i < childGroupNum; i++) {
         startIndex = endIndex;
         endIndex += childNumInEachPipeline[i];
         // Only if dop >= size(children) + 1, split all children to new pipeline
         // Otherwise, the first group will belong to the parent pipeline
-        if (i == 0 && context.getDegreeOfParallelism() < localChildren.size() + 1) {
+        if (i == 0 && context.getDegreeOfParallelism() < localChildrenSize + 1) {
           for (int j = startIndex; j < endIndex; j++) {
-            Operator childOperation = localChildren.get(j).accept(this, context);
+            Operator childOperation = node.getChildren().get(j).accept(this, context);
             parentPipelineChildren.add(childOperation);
-            afterwardsNodes.add(localChildren.get(j));
+            afterwardsNodes.add(node.getChildren().get(j));
           }
           continue;
         }
@@ -2262,8 +2259,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
         int originPipeNum = context.getPipelineNumber();
         if (endIndex - startIndex == 1) {
-          partialParentNode = localChildren.get(i);
-          partialParentOperator = localChildren.get(i).accept(this, subContext);
+          partialParentNode = node.getChildren().get(i);
+          partialParentOperator = node.getChildren().get(i).accept(this, subContext);
         } else {
           // PartialParentNode is equals to parentNode except children
           partialParentNode = node.createSubNode(i, startIndex, endIndex);
@@ -2274,7 +2271,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
                 // Attention, there is no parent node, use first child node instead
-                subContext.getDriverContext(), localChildren.get(i).getPlanNodeId().getId());
+                subContext.getDriverContext(), node.getChildren().get(i).getPlanNodeId().getId());
         subContext.setSinkHandle(localSinkHandle);
         subContext.addPipelineDriverFactory(partialParentOperator, subContext.getDriverContext());
 
@@ -2296,15 +2293,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.addExchangeOperator(sourceOperator);
         finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
       }
-      // 3. deal with exchangeNode
-      for (int i = exchangeNodeIndex; i < node.getChildren().size(); i++) {
-        PlanNode exchangeNode = node.getChildren().get(i);
-        assert (exchangeNode instanceof ExchangeNode);
-        Operator childOperation = exchangeNode.accept(this, context);
-        finalExchangeNum += 1;
-        parentPipelineChildren.add(childOperation);
-        afterwardsNodes.add(exchangeNode);
-      }
       ((MultiChildProcessNode) node).setChildren(afterwardsNodes);
     }
     context.setExchangeSumNum(finalExchangeNum);
@@ -2315,17 +2303,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
    * Now, we allocate children to each pipeline as average as possible. For example, 5 children with
    * 3 dop, the children group will be [1, 2, 2]. After we can estimate the workload of each
    * operator, maybe we can allocate based on workload rather than child number.
+   *
+   * <p>If child is ExchangeNode, it won't affect the children number of current group.
    */
-  private int[] getChildNumInEachPipeline(int childrenSize, int dop) {
-    int[] childNumInEachPipeline = new int[Math.min(childrenSize, dop)];
-    if (childrenSize <= dop) {
-      Arrays.fill(childNumInEachPipeline, 1);
-    } else {
-      int avgChildNum = childrenSize / dop;
-      int splitIndex = childNumInEachPipeline.length - childrenSize % dop;
-      Arrays.fill(childNumInEachPipeline, 0, splitIndex, avgChildNum);
-      Arrays.fill(
-          childNumInEachPipeline, splitIndex, childNumInEachPipeline.length, avgChildNum + 1);
+  public int[] getChildNumInEachPipeline(
+      List<PlanNode> allChildren, int localChildrenSize, int dop) {
+    int maxPipelineNum = Math.min(localChildrenSize, dop);
+    int[] childNumInEachPipeline = new int[maxPipelineNum];
+    int avgChildNum = Math.max(1, localChildrenSize / dop);
+    // allocate remaining child to group from splitIndex
+    int splitIndex =
+        localChildrenSize <= dop ? maxPipelineNum : maxPipelineNum - localChildrenSize % dop;
+    int pipelineIndex = 0, childIndex = 0;
+    while (pipelineIndex < maxPipelineNum) {
+      int childNum = pipelineIndex < splitIndex ? avgChildNum : avgChildNum + 1;
+      int originChildIndex = childIndex;
+      while (childNum >= 0 && childIndex < allChildren.size()) {
+        if (!(allChildren.get(childIndex) instanceof ExchangeNode)) {
+          childNum--;
+          // Try to keep the first of a pipeline is not a ExchangeNode
+          if (childNum == -1) {
+            childIndex--;
+          }
+        }
+        childIndex++;
+      }
+      childNumInEachPipeline[pipelineIndex++] = childIndex - originChildIndex;
     }
     return childNumInEachPipeline;
   }
