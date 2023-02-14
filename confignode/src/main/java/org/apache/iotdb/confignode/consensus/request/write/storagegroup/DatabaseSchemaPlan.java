@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.consensus.request.write.storagegroup;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,19 +31,19 @@ import java.util.Objects;
 
 public class DatabaseSchemaPlan extends ConfigPhysicalPlan {
 
-  private TStorageGroupSchema schema;
+  private TDatabaseSchema schema;
 
   public DatabaseSchemaPlan(ConfigPhysicalPlanType planType) {
     super(planType);
-    this.schema = new TStorageGroupSchema();
+    this.schema = new TDatabaseSchema();
   }
 
-  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TStorageGroupSchema schema) {
+  public DatabaseSchemaPlan(ConfigPhysicalPlanType planType, TDatabaseSchema schema) {
     this(planType);
     this.schema = schema;
   }
 
-  public TStorageGroupSchema getSchema() {
+  public TDatabaseSchema getSchema() {
     return schema;
   }
 

@@ -50,7 +50,6 @@ public class SnapshotStorage implements StateMachineStorage {
   private static final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
-
   private final ReentrantReadWriteLock snapshotCacheGuard = new ReentrantReadWriteLock();
   private SnapshotInfo currentSnapshot = null;
 
@@ -176,20 +175,20 @@ public class SnapshotStorage implements StateMachineStorage {
     }
   }
 
-  public File getStateMachineDir() {
+  File getStateMachineDir() {
     return stateMachineDir;
   }
 
-  public File getSnapshotDir(String snapshotMetadata) {
+  File getSnapshotDir(String snapshotMetadata) {
     return new File(getStateMachineDir().getAbsolutePath() + File.separator + snapshotMetadata);
   }
 
-  public File getSnapshotTmpDir(String snapshotMetadata) {
+  File getSnapshotTmpDir(String snapshotMetadata) {
     return new File(
         getStateMachineDir().getAbsolutePath() + File.separator + TMP_PREFIX + snapshotMetadata);
   }
 
-  public String getSnapshotTmpId(String snapshotMetadata) {
+  String getSnapshotTmpId(String snapshotMetadata) {
     return TMP_PREFIX + snapshotMetadata;
   }
 

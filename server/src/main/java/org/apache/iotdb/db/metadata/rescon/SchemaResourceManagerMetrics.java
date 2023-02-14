@@ -43,7 +43,7 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         schemaStatisticsManager,
         SchemaStatisticsManager::getTotalSeriesNumber,
         Tag.NAME.toString(),
