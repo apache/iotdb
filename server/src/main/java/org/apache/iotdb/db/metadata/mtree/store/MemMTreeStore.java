@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -85,6 +86,24 @@ public class MemMTreeStore implements IMTreeStore {
     this.schemaRegionId = schemaRegionId;
     this.memoryStatistics = MemoryStatistics.getInstance();
     this.memoryStatistics.initSchemaRegion(schemaRegionId);
+  }
+
+  @Override
+  public IMNode generatePrefix(PartialPath storageGroupPath) {
+    String[] nodes = storageGroupPath.getNodes();
+    // nodes[0] must be root
+    IMNode res = new AboveDatabaseMNode(null, nodes[0]);
+    IMNode cur = res;
+    IMNode child;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      child = new AboveDatabaseMNode(cur, nodes[i]);
+      cur.addChild(nodes[i], child);
+      cur = child;
+    }
+    root.setParent(cur);
+    cur.addChild(root);
+    requestMemory(estimator.estimateSize(root));
+    return res;
   }
 
   @Override

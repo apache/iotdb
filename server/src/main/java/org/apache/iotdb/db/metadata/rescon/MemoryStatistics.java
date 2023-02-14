@@ -36,6 +36,7 @@ public class MemoryStatistics {
   private long memoryCapacity;
 
   private final AtomicLong memoryUsage = new AtomicLong(0);
+  // Map<SchemaRegionId, memoryUsage>
   private final Map<Integer, Long> memoryUsagePerRegion = new ConcurrentHashMap<>();
 
   private volatile boolean allowToCreateNewSeries;
@@ -114,5 +115,9 @@ public class MemoryStatistics {
     memoryUsage.getAndSet(0);
     memoryUsagePerRegion.clear();
     allowToCreateNewSeries = true;
+  }
+
+  public long getMemoryUsage(int schemaId) {
+    return memoryUsagePerRegion.getOrDefault(schemaId, 0L);
   }
 }

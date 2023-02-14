@@ -43,7 +43,7 @@ public class CacheMemoryManager {
 
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
-  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private IMemManager memManager;
 
   private static final int CONCURRENT_NUM = 10;
 
@@ -74,6 +74,7 @@ public class CacheMemoryManager {
   }
 
   public void init() {
+    memManager = MemManagerHolder.getMemManagerInstance();
     flushTaskExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
@@ -230,6 +231,8 @@ public class CacheMemoryManager {
       }
       flushTaskExecutor = null;
     }
+    storeList.clear();
+    memManager = null;
   }
 
   private CacheMemoryManager() {}

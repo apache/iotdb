@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
+import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -81,6 +82,23 @@ public class CachedMTreeStore implements IMTreeStore {
         CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId);
     cacheManager.initRootStatus(root);
     ensureMemoryStatus();
+  }
+
+  @Override
+  public IMNode generatePrefix(PartialPath storageGroupPath) {
+    String[] nodes = storageGroupPath.getNodes();
+    // nodes[0] must be root
+    IMNode res = new AboveDatabaseMNode(null, nodes[0]);
+    IMNode cur = res;
+    IMNode child;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      child = new AboveDatabaseMNode(cur, nodes[i]);
+      cur.addChild(nodes[i], child);
+      cur = child;
+    }
+    root.setParent(cur);
+    cur.addChild(root);
+    return res;
   }
 
   @Override
