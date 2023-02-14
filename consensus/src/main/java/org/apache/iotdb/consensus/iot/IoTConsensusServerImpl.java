@@ -895,6 +895,7 @@ public class IoTConsensusServerImpl {
                     request.getStartSyncIndex(),
                     nextSyncIndex);
                 requestCache.remove(request);
+                nextSyncIndex = Long.max(nextSyncIndex, request.getEndSyncIndex() + 1);
                 break;
               }
             }
