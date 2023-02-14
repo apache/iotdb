@@ -94,7 +94,9 @@ public class DatabasePartitionTable {
    */
   public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
     replicaSets.forEach(
-        replicaSet -> regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(replicaSet)));
+        replicaSet ->
+            regionGroupMap.put(
+                replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
   }
 
   /**
@@ -348,6 +350,7 @@ public class DatabasePartitionTable {
               regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
               regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
+              regionInfo.setCreateTime(regionGroup.getCreateTime());
               regionInfoList.add(regionInfo);
             });
 

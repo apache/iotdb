@@ -441,7 +441,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return schemaNodeManagementResp;
   }
 
-  /** Get region information */
+  /** Get Region information */
   public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
     RegionInfoListResp regionResp = new RegionInfoListResp();
     List<TRegionInfo> regionInfoList = new Vector<>();
