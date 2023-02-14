@@ -66,32 +66,32 @@ public class ShowRegionTask implements IConfigTask {
     if (showRegionResp.getRegionInfoList() != null) {
       for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder
-            .getColumnBuilder(0)
-            .writeBinary(new Binary(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
-        builder.getColumnBuilder(1).writeInt(regionInfo.getConsensusGroupId().getId());
+        builder.getColumnBuilder(0).writeInt(regionInfo.getConsensusGroupId().getId());
         if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.SchemaRegion.ordinal()) {
           builder
-              .getColumnBuilder(2)
+              .getColumnBuilder(1)
               .writeBinary(Binary.valueOf(String.valueOf(TConsensusGroupType.SchemaRegion)));
         } else if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
           builder
-              .getColumnBuilder(2)
+              .getColumnBuilder(1)
               .writeBinary(Binary.valueOf(String.valueOf(TConsensusGroupType.DataRegion)));
         }
         builder
-            .getColumnBuilder(3)
+            .getColumnBuilder(2)
             .writeBinary(
                 Binary.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
-        builder.getColumnBuilder(4).writeBinary(Binary.valueOf(regionInfo.getDatabase()));
-        builder.getColumnBuilder(5).writeInt(regionInfo.getSeriesSlots());
-        builder.getColumnBuilder(6).writeLong(regionInfo.getTimeSlots());
-        builder.getColumnBuilder(7).writeInt(regionInfo.getDataNodeId());
-        builder.getColumnBuilder(8).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
-        builder.getColumnBuilder(9).writeInt(regionInfo.getClientRpcPort());
-        builder.getColumnBuilder(10).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
+        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getDatabase()));
+        builder.getColumnBuilder(4).writeInt(regionInfo.getSeriesSlots());
+        builder.getColumnBuilder(5).writeLong(regionInfo.getTimeSlots());
+        builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());
+        builder.getColumnBuilder(7).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
+        builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
+        builder.getColumnBuilder(9).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
+        builder
+            .getColumnBuilder(10)
+            .writeBinary(new Binary(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
         builder.declarePosition();
       }
     }
