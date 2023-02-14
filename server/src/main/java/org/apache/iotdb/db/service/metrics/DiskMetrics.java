@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.io.AbstractDiskMetricsManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -34,7 +32,6 @@ import java.util.Set;
 public class DiskMetrics implements IMetricSet {
   private final AbstractDiskMetricsManager diskMetricsManager =
       AbstractDiskMetricsManager.getDiskMetricsManager();
-  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -147,6 +144,13 @@ public class DiskMetrics implements IMetricSet {
           x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.TYPE.toString(),
           "write",
+          Tag.NAME.toString(),
+          diskID);
+      metricService.createAutoGauge(
+          Metric.DISK_IO_BUSY_PERCENTAGE.toString(),
+          MetricLevel.IMPORTANT,
+          diskMetricsManager,
+          x -> x.getIOUtilsPercentage().getOrDefault(diskID, 0L),
           Tag.NAME.toString(),
           diskID);
     }

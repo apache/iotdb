@@ -76,6 +76,8 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Long> getWriteCostTimeForDisk();
 
+  public abstract Map<String, Long> getIOUtilsPercentage();
+
   public abstract Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk();
 
   public abstract Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk();

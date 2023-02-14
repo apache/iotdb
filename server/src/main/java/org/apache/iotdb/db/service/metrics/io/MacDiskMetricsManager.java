@@ -61,6 +61,11 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
+  public Map<String, Long> getIOUtilsPercentage() {
+    return Collections.emptyMap();
+  }
+
+  @Override
   public Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
     return Collections.emptyMap();
   }
