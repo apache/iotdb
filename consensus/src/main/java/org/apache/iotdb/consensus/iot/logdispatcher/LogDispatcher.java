@@ -303,7 +303,7 @@ public class LogDispatcher {
       try {
         Batch batch;
         while (!Thread.interrupted() && !stopped) {
-          long startTime = System.currentTimeMillis();
+          long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
@@ -326,7 +326,7 @@ public class LogDispatcher {
                   "constructBatch",
                   Tag.REGION.toString(),
                   peer.getGroupId().toString())
-              .update((System.currentTimeMillis() - startTime) / batch.getLogEntries().size());
+              .update((System.nanoTime() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
