@@ -194,15 +194,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
         blockedDependencyFuture.addListener(
             () -> {
               // Only if query is alive, we can submit this task
-              Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.get(queryId);
-              if (queryRelatedTasks != null) {
-                Set<DriverTask> instanceRelatedTasks =
-                    queryRelatedTasks.get(task.getDriverTaskId().getFragmentInstanceId());
-                if (instanceRelatedTasks != null) {
-                  instanceRelatedTasks.add(task);
-                  submitTaskToReadyQueue(task);
-                }
-              }
+              queryMap.computeIfPresent(
+                  queryId,
+                  (k1, queryRelatedTasks) -> {
+                    queryRelatedTasks.computeIfPresent(
+                        task.getDriverTaskId().getFragmentInstanceId(),
+                        (k2, instanceRelatedTasks) -> {
+                          instanceRelatedTasks.add(task);
+                          submitTaskToReadyQueue(task);
+                          return instanceRelatedTasks;
+                        });
+                    return queryRelatedTasks;
+                  });
             },
             MoreExecutors.directExecutor());
       } else {

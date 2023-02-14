@@ -2260,6 +2260,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         PlanNode partialParentNode = null;
         Operator partialParentOperator = null;
 
+        int originPipeNum = context.getPipelineNumber();
         if (endIndex - startIndex == 1) {
           partialParentNode = localChildren.get(i);
           partialParentOperator = localChildren.get(i).accept(this, subContext);
@@ -2268,6 +2269,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           partialParentNode = node.createSubNode(i, startIndex, endIndex);
           partialParentOperator = partialParentNode.accept(this, subContext);
         }
+        // update dop for child
+        dopForChild -= Math.max(1, subContext.getPipelineNumber() - originPipeNum);
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
                 // Attention, there is no parent node, use first child node instead
@@ -2296,6 +2299,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // 3. deal with exchangeNode
       for (int i = exchangeNodeIndex; i < node.getChildren().size(); i++) {
         PlanNode exchangeNode = node.getChildren().get(i);
+        assert (exchangeNode instanceof ExchangeNode);
         Operator childOperation = exchangeNode.accept(this, context);
         finalExchangeNum += 1;
         parentPipelineChildren.add(childOperation);
