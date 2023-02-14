@@ -216,7 +216,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
 
-  private static final String IGNORINGNULL = "IgnoringNull";
+  private static final String IGNORENULL = "IgnoreNull";
 
   private ZoneId zoneId;
 
@@ -1196,7 +1196,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     boolean ignoringNull = true;
     if (ctx.attributePair() != null && !ctx.attributePair().isEmpty()) {
-      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORINGNULL)) {
+      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORENULL)) {
         ignoringNull = Boolean.parseBoolean(ctx.attributePair().value.getText());
       }
     }

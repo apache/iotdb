@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory.KeepEvaluator;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -30,17 +31,21 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
-import java.util.function.Function;
 
 public class SeriesWindowManager implements IWindowManager {
 
   private final SeriesWindow seriesWindow;
   private boolean initialized;
   private boolean needSkip;
-  // need a skip before update result to get full info about keep value and endTime in window
-  // there are two skips in one process of group by series.
+
+  // skipPointsOutOfBound has two phrases in SeriesWindowManager.
+  // First phrase is to skip the row with the controlColumn of true in current window, which usually
+  // happens when LAST_VALUE or MAX_TIME leaves early in accumulator.
+  // Second phrase is to skip the row with the controlColumn of false/null which don't belong
+  // current window.
+  // isFirstSkip is used to identify the phrase.
   private boolean isFirstSkip;
-  private final Function<Long, Boolean> keepEvaluator;
+  private final KeepEvaluator keepEvaluator;
 
   public SeriesWindowManager(SeriesWindowParameter seriesWindowParameter) {
     this.seriesWindow = new SeriesWindow(seriesWindowParameter);
@@ -93,13 +98,20 @@ public class SeriesWindowManager implements IWindowManager {
     int i = 0, size = inputTsBlock.getPositionCount();
     int k = 0;
     for (; i < size; i++) {
+
+      // if ignoreNull is true, ignore the controlColumn of null
       if (isIgnoringNull() && controlColumn.isNull(i)) continue;
+
+      // the first phrase of skip
       if (isFirstSkip && (controlColumn.isNull(i) || !controlColumn.getBoolean(i))) {
         break;
+        // the second phrase of skip
       } else if (!isFirstSkip && !controlColumn.isNull(i) && controlColumn.getBoolean(i)) {
         break;
       }
-      // judge whether we need update endTime
+
+      // update endTime and record the row processed, only the first phrase of skip in current
+      // window need to record them.
       if (isFirstSkip) {
         k++;
         long currentTime = timeColumn.getLong(i);
@@ -109,14 +121,18 @@ public class SeriesWindowManager implements IWindowManager {
       }
     }
 
+    // record the row processed in the first phrase of skip. If the tsBlock is null, the skip may
+    // not finish.
     if (isFirstSkip) {
       if (i != size) isFirstSkip = false;
       seriesWindow.setKeep(seriesWindow.getKeep() + k);
-    } else if (i < size) {
+      return inputTsBlock.subTsBlock(i);
+    }
+
+    if (i < size) {
       // we can create a new window beginning at index i of inputTsBlock
       needSkip = false;
     }
-
     return inputTsBlock.subTsBlock(i);
   }
 
