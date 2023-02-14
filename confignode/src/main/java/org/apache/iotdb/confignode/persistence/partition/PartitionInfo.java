@@ -43,16 +43,16 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.GetRegionIdResp;
-import org.apache.iotdb.confignode.consensus.response.GetSeriesSlotListResp;
-import org.apache.iotdb.confignode.consensus.response.GetTimeSlotListResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetTimeSlotListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
@@ -105,7 +105,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
   // Map<StorageGroupName, StorageGroupPartitionInfo>
-  private final Map<String, StorageGroupPartitionTable> storageGroupPartitionTables;
+  private final Map<String, DatabasePartitionTable> storageGroupPartitionTables;
 
   /** For Region-Maintainer */
   // For RegionReplicas' asynchronous management
@@ -134,14 +134,13 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the new StorageGroupPartitionInfo is created successfully.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     String storageGroupName = plan.getSchema().getName();
-    StorageGroupPartitionTable storageGroupPartitionTable =
-        new StorageGroupPartitionTable(storageGroupName);
-    storageGroupPartitionTables.put(storageGroupName, storageGroupPartitionTable);
+    DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(storageGroupName);
+    storageGroupPartitionTables.put(storageGroupName, databasePartitionTable);
     MetricService.getInstance()
         .addMetricSet(
-            new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(storageGroupPartitionTable));
+            new PartitionInfoMetrics.StorageGroupPartitionTableMetrics(databasePartitionTable));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -218,24 +217,23 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Thread-safely pre-delete the specific StorageGroup
    *
-   * @param preDeleteStorageGroupPlan PreDeleteStorageGroupPlan
+   * @param preDeleteDatabasePlan PreDeleteStorageGroupPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus preDeleteStorageGroup(PreDeleteStorageGroupPlan preDeleteStorageGroupPlan) {
-    final PreDeleteStorageGroupPlan.PreDeleteType preDeleteType =
-        preDeleteStorageGroupPlan.getPreDeleteType();
-    final String storageGroup = preDeleteStorageGroupPlan.getStorageGroup();
-    StorageGroupPartitionTable storageGroupPartitionTable =
-        storageGroupPartitionTables.get(storageGroup);
-    if (storageGroupPartitionTable == null) {
+  public TSStatus preDeleteDatabase(PreDeleteDatabasePlan preDeleteDatabasePlan) {
+    final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
+        preDeleteDatabasePlan.getPreDeleteType();
+    final String storageGroup = preDeleteDatabasePlan.getStorageGroup();
+    DatabasePartitionTable databasePartitionTable = storageGroupPartitionTables.get(storageGroup);
+    if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     switch (preDeleteType) {
       case EXECUTE:
-        storageGroupPartitionTable.setPredeleted(true);
+        databasePartitionTable.setPredeleted(true);
         break;
       case ROLLBACK:
-        storageGroupPartitionTable.setPredeleted(false);
+        databasePartitionTable.setPredeleted(false);
         break;
       default:
         break;
@@ -248,7 +246,7 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param plan DeleteStorageGroupPlan
    */
-  public void deleteStorageGroup(DeleteStorageGroupPlan plan) {
+  public void deleteDatabase(DeleteDatabasePlan plan) {
     // Clean the StorageGroupTable cache
     storageGroupPartitionTables.remove(plan.getName());
   }
@@ -267,11 +265,11 @@ public class PartitionInfo implements SnapshotProcessor {
     if (plan.getPartitionSlotsMap().size() == 0) {
       // Return all SchemaPartitions when the queried PartitionSlots are empty
       storageGroupPartitionTables.forEach(
-          (storageGroup, storageGroupPartitionTable) -> {
-            if (!storageGroupPartitionTable.isPredeleted()) {
+          (storageGroup, databasePartitionTable) -> {
+            if (!databasePartitionTable.isPredeleted()) {
               schemaPartition.put(storageGroup, new SchemaPartitionTable());
 
-              storageGroupPartitionTable.getSchemaPartition(
+              databasePartitionTable.getSchemaPartition(
                   new ArrayList<>(), schemaPartition.get(storageGroup));
 
               if (schemaPartition.get(storageGroup).getSchemaPartitionMap().isEmpty()) {
@@ -372,9 +370,9 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   private boolean isStorageGroupExisted(String storageGroup) {
-    final StorageGroupPartitionTable storageGroupPartitionTable =
+    final DatabasePartitionTable databasePartitionTable =
         storageGroupPartitionTables.get(storageGroup);
-    return storageGroupPartitionTable != null && !storageGroupPartitionTable.isPredeleted();
+    return databasePartitionTable != null && !databasePartitionTable.isPredeleted();
   }
 
   /**
@@ -453,14 +451,13 @@ public class PartitionInfo implements SnapshotProcessor {
       return regionResp;
     }
     TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
-    final List<String> storageGroups =
-        showRegionReq != null ? showRegionReq.getStorageGroups() : null;
+    final List<String> storageGroups = showRegionReq != null ? showRegionReq.getDatabases() : null;
     storageGroupPartitionTables.forEach(
-        (storageGroup, storageGroupPartitionTable) -> {
+        (storageGroup, databasePartitionTable) -> {
           if (storageGroups != null && !storageGroups.contains(storageGroup)) {
             return;
           }
-          regionInfoList.addAll(storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan));
+          regionInfoList.addAll(databasePartitionTable.getRegionInfoList(regionsInfoPlan));
         });
     regionInfoList.sort(
         (o1, o2) ->
@@ -498,13 +495,11 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return database name
    */
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
-    Optional<StorageGroupPartitionTable> sgPartitionTableOptional =
+    Optional<DatabasePartitionTable> sgPartitionTableOptional =
         storageGroupPartitionTables.values().stream()
             .filter(s -> s.containRegion(regionId))
             .findFirst();
-    return sgPartitionTableOptional
-        .map(StorageGroupPartitionTable::getStorageGroupName)
-        .orElse(null);
+    return sgPartitionTableOptional.map(DatabasePartitionTable::getDatabaseName).orElse(null);
   }
 
   // ======================================================
@@ -571,8 +566,7 @@ public class PartitionInfo implements SnapshotProcessor {
     storageGroupPartitionTables
         .values()
         .forEach(
-            storageGroupPartitionTable ->
-                result.addAll(storageGroupPartitionTable.getAllReplicaSets()));
+            databasePartitionTable -> result.addAll(databasePartitionTable.getAllReplicaSets()));
     return result;
   }
 
@@ -587,8 +581,8 @@ public class PartitionInfo implements SnapshotProcessor {
     storageGroupPartitionTables
         .values()
         .forEach(
-            storageGroupPartitionTable ->
-                result.addAll(storageGroupPartitionTable.getAllReplicaSets(type)));
+            databasePartitionTable ->
+                result.addAll(databasePartitionTable.getAllReplicaSets(type)));
     return result;
   }
 
@@ -662,8 +656,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public int updateRegionGroupMetric(TConsensusGroupType type) {
     Set<RegionGroup> regionGroups = new HashSet<>();
-    for (Map.Entry<String, StorageGroupPartitionTable> entry :
-        storageGroupPartitionTables.entrySet()) {
+    for (Map.Entry<String, DatabasePartitionTable> entry : storageGroupPartitionTables.entrySet()) {
       regionGroups.addAll(entry.getValue().getRegionGroups(type));
     }
     int result = regionGroups.size();
@@ -725,7 +718,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
       // serialize StorageGroupPartitionTable
       ReadWriteIOUtils.write(storageGroupPartitionTables.size(), fileOutputStream);
-      for (Map.Entry<String, StorageGroupPartitionTable> storageGroupPartitionTableEntry :
+      for (Map.Entry<String, DatabasePartitionTable> storageGroupPartitionTableEntry :
           storageGroupPartitionTables.entrySet()) {
         ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
         storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
@@ -781,10 +774,9 @@ public class PartitionInfo implements SnapshotProcessor {
         if (storageGroup == null) {
           throw new IOException("Failed to load snapshot because get null StorageGroup name");
         }
-        StorageGroupPartitionTable storageGroupPartitionTable =
-            new StorageGroupPartitionTable(storageGroup);
-        storageGroupPartitionTable.deserialize(fileInputStream, protocol);
-        storageGroupPartitionTables.put(storageGroup, storageGroupPartitionTable);
+        DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(storageGroup);
+        databasePartitionTable.deserialize(fileInputStream, protocol);
+        storageGroupPartitionTables.put(storageGroup, databasePartitionTable);
       }
 
       // restore deletedRegionSet
@@ -801,7 +793,7 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable =
+    DatabasePartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetRegionIdResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -814,7 +806,7 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetTimeSlotListResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable =
+    DatabasePartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetTimeSlotListResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
@@ -827,7 +819,7 @@ public class PartitionInfo implements SnapshotProcessor {
       return new GetSeriesSlotListResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
-    StorageGroupPartitionTable sgPartitionTable =
+    DatabasePartitionTable sgPartitionTable =
         storageGroupPartitionTables.get(plan.getStorageGroup());
     return new GetSeriesSlotListResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),

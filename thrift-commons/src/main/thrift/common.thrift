@@ -138,5 +138,6 @@ enum TAggregationType {
   MIN_TIME,
   MAX_VALUE,
   MIN_VALUE,
-  EXTREME
+  EXTREME,
+  COUNT_IF
 }

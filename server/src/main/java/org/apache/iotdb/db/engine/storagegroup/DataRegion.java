@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -115,6 +116,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -769,65 +771,72 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void recoverUnsealedTsFileCallBack(UnsealedTsFileRecoverPerformer recoverPerformer) {
-    TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
-    boolean isSeq = recoverPerformer.isSequence();
-    if (!recoverPerformer.canWrite()) {
-      // cannot write, just close it
-      for (ISyncManager syncManager :
-          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-      }
-      try {
-        tsFileResource.close();
-      } catch (IOException e) {
-        logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
-      }
-      updateLastFlushTime(tsFileResource, isSeq);
-      tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-      TsFileMetricManager.getInstance()
-          .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
-    } else {
-      // the last file is not closed, continue writing to it
-      RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
-      long timePartitionId = tsFileResource.getTimePartition();
-      TimePartitionManager.getInstance()
-          .updateAfterOpeningTsFileProcessor(
-              new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
-      TsFileProcessor tsFileProcessor =
-          new TsFileProcessor(
-              dataRegionId,
-              dataRegionInfo,
-              tsFileResource,
-              this::closeUnsealedTsFileProcessorCallBack,
-              isSeq ? this::sequenceFlushCallback : this::unsequenceFlushCallback,
-              isSeq,
-              writer);
-      if (isSeq) {
-        workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+    try {
+      TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
+      boolean isSeq = recoverPerformer.isSequence();
+      if (!recoverPerformer.canWrite()) {
+        // cannot write, just close it
+        for (ISyncManager syncManager :
+            SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
+          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
+        }
+        try {
+          tsFileResource.close();
+        } catch (IOException e) {
+          logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
+        }
+        updateLastFlushTime(tsFileResource, isSeq);
+        tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+        TsFileMetricManager.getInstance()
+            .addFile(tsFileResource.getTsFile().length(), recoverPerformer.isSequence());
       } else {
-        workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-      }
-      tsFileResource.setProcessor(tsFileProcessor);
-      tsFileResource.removeResourceFile();
-      tsFileProcessor.setTimeRangeId(timePartitionId);
-      writer.makeMetadataVisible();
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
-        // get chunkMetadata size
-        long chunkMetadataSize = 0;
-        for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
-          for (List<ChunkMetadata> metadatas : metaMap.values()) {
-            for (ChunkMetadata chunkMetadata : metadatas) {
-              chunkMetadataSize += chunkMetadata.calculateRamSize();
+        // the last file is not closed, continue writing to it
+        RestorableTsFileIOWriter writer = recoverPerformer.getWriter();
+        long timePartitionId = tsFileResource.getTimePartition();
+        TimePartitionManager.getInstance()
+            .updateAfterOpeningTsFileProcessor(
+                new DataRegionId(Integer.parseInt(dataRegionId)), timePartitionId);
+        TsFileProcessor tsFileProcessor =
+            new TsFileProcessor(
+                dataRegionId,
+                dataRegionInfo,
+                tsFileResource,
+                this::closeUnsealedTsFileProcessorCallBack,
+                isSeq ? this::sequenceFlushCallback : this::unsequenceFlushCallback,
+                isSeq,
+                writer);
+        if (isSeq) {
+          workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+        } else {
+          workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+        }
+        tsFileResource.setProcessor(tsFileProcessor);
+        tsFileResource.removeResourceFile();
+        tsFileProcessor.setTimeRangeId(timePartitionId);
+        writer.makeMetadataVisible();
+        if (enableMemControl) {
+          TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+          tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+          this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
+          // get chunkMetadata size
+          long chunkMetadataSize = 0;
+          for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+            for (List<ChunkMetadata> metadatas : metaMap.values()) {
+              for (ChunkMetadata chunkMetadata : metadatas) {
+                chunkMetadataSize += chunkMetadata.calculateRamSize();
+              }
             }
           }
+          tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
         }
-        tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
       }
+      tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
+    } catch (Throwable e) {
+      logger.error(
+          "Fail to recover unsealed TsFile {}, skip it.",
+          recoverPerformer.getTsFileAbsolutePath(),
+          e);
     }
-    tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
   }
 
   /** recover sealed TsFile */
@@ -850,7 +859,7 @@ public class DataRegion implements IDataRegionForQuery {
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
-    } catch (DataRegionException | IOException e) {
+    } catch (Throwable e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
     } finally {
       // update recovery context
@@ -911,7 +920,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRow");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -960,7 +972,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("insertTablet");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -1051,7 +1066,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long globalLatestFlushedTime =
           lastFlushTimeMap.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
+      startTime = System.nanoTime();
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1154,7 +1172,10 @@ public class DataRegion implements IDataRegionForQuery {
     long globalLatestFlushTime =
         lastFlushTimeMap.getGlobalFlushedTime(insertRowNode.getDevicePath().getFullPath());
 
+    long startTime = System.nanoTime();
     tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -2120,11 +2141,11 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
-  private void executeCompaction() {
+  protected void executeCompaction() {
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
         CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
@@ -3074,7 +3095,10 @@ public class DataRegion implements IDataRegionForQuery {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
     }
+    long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;

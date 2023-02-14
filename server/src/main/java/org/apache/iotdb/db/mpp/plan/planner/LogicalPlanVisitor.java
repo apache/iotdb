@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -74,6 +76,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplate
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.lang3.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -215,8 +219,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       // aggregation query
       boolean isRawDataSource =
           analysis.hasValueFilter()
+              || analysis.hasGroupByParameter()
               || needTransform(sourceTransformExpressions)
-              || analysis.hasGroupByParameter();
+              || cannotUseStatistics(aggregationExpressions);
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -305,6 +310,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   private boolean needTransform(Set<Expression> expressions) {
     for (Expression expression : expressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean cannotUseStatistics(Set<Expression> expressions) {
+    for (Expression expression : expressions) {
+      Validate.isTrue(
+          expression instanceof FunctionExpression,
+          String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+      if (!BuiltinAggregationFunction.canUseStatistics(
+          ((FunctionExpression) expression).getFunctionName())) {
         return true;
       }
     }

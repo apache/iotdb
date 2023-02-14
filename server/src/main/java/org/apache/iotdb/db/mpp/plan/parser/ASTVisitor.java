@@ -106,6 +106,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
@@ -115,7 +116,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
@@ -192,6 +192,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -1967,39 +1968,50 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create database
   @Override
   public Statement visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
-    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    DatabaseSchemaStatement databaseSchemaStatement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupStatement.setStorageGroupPath(path);
+    databaseSchemaStatement.setStorageGroupPath(path);
     if (ctx.storageGroupAttributesClause() != null) {
       parseStorageGroupAttributesClause(
-          setStorageGroupStatement, ctx.storageGroupAttributesClause());
+          databaseSchemaStatement, ctx.storageGroupAttributesClause());
     }
-    return setStorageGroupStatement;
+    return databaseSchemaStatement;
+  }
+
+  @Override
+  public Statement visitAlterStorageGroup(IoTDBSqlParser.AlterStorageGroupContext ctx) {
+    DatabaseSchemaStatement databaseSchemaStatement =
+        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    databaseSchemaStatement.setStorageGroupPath(path);
+    parseStorageGroupAttributesClause(databaseSchemaStatement, ctx.storageGroupAttributesClause());
+    return databaseSchemaStatement;
   }
 
   private void parseStorageGroupAttributesClause(
-      SetStorageGroupStatement setStorageGroupStatement,
+      DatabaseSchemaStatement databaseSchemaStatement,
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
     for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
         ctx.storageGroupAttributeClause()) {
       if (attribute.TTL() != null) {
         long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setTTL(ttl);
+        databaseSchemaStatement.setTTL(ttl);
       } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
         int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+        databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
       } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
         int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+        databaseSchemaStatement.setDataReplicationFactor(dataReplicationFactor);
       } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
         long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+        databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
       } else if (attribute.SCHEMA_REGION_GROUP_NUM() != null) {
         int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
+        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
       } else if (attribute.DATA_REGION_GROUP_NUM() != null) {
         int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
-        setStorageGroupStatement.setDataRegionGroupNum(dataRegionGroupNum);
+        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
       }
     }
   }
@@ -2307,7 +2319,73 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
+
+    // check size of input expressions
+    // type check of input expressions is put in ExpressionTypeAnalyzer
+    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      checkAggregationFunctionInput(functionExpression);
+    } else if (functionExpression.isBuiltInFunction()) {
+      checkBuiltInFunctionInput(functionExpression);
+    }
     return functionExpression;
+  }
+
+  private void checkAggregationFunctionInput(FunctionExpression functionExpression) {
+    final String functionName = functionExpression.getFunctionName().toLowerCase();
+    switch (functionName) {
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.COUNT:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.EXTREME:
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            1);
+        return;
+      case SqlConstant.COUNT_IF:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            2);
+        return;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + functionExpression.getFunctionName());
+    }
+  }
+
+  private void checkBuiltInFunctionInput(FunctionExpression functionExpression) {
+    final String functionName = functionExpression.getFunctionName().toLowerCase();
+    switch (functionName) {
+      case SqlConstant.DIFF:
+        checkFunctionExpressionInputSize(
+            functionExpression.getExpressionString(),
+            functionExpression.getExpressions().size(),
+            1);
+        return;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid BuiltInFunction: " + functionExpression.getFunctionName());
+    }
+  }
+
+  private void checkFunctionExpressionInputSize(
+      String expressionString, int actual, int... expected) {
+    for (int expect : expected) {
+      if (expect == actual) {
+        return;
+      }
+    }
+    throw new SemanticException(
+        String.format(
+            "Error size of input expressions. expression: %s, actual size: %s, expected size: %s.",
+            expressionString, actual, Arrays.toString(expected)));
   }
 
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {

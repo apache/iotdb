@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 
 import java.util.List;
 
@@ -30,11 +29,5 @@ import java.util.List;
  */
 public interface BatchInsertNode {
 
-  List<PartialPath> getDevicePaths();
-
-  List<String[]> getMeasurementsList();
-
-  List<TSDataType[]> getDataTypesList();
-
-  List<Boolean> getAlignedList();
+  List<ISchemaValidation> getSchemaValidationList();
 }

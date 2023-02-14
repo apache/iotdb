@@ -64,13 +64,16 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private IMNode root;
 
+  private final Runnable flushCallback;
+
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
-  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId)
+  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId, Runnable flushCallback)
       throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
+    this.flushCallback = flushCallback;
     ensureMemoryStatus();
   }
 
@@ -452,16 +455,19 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   public static CachedMTreeStore loadFromSnapshot(
-      File snapshotDir, String storageGroup, int schemaRegionId)
+      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
-    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId);
+    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId, flushCallback);
   }
 
-  private CachedMTreeStore(File snapshotDir, String storageGroup, int schemaRegionId)
+  private CachedMTreeStore(
+      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
       throws IOException, MetadataException {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     cacheManager.initRootStatus(root);
+    this.flushCallback = flushCallback;
+    ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
@@ -511,6 +517,9 @@ public class CachedMTreeStore implements IMTreeStore {
           return;
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
+      }
+      if (updatedStorageGroupMNode != null || !nodesToPersist.isEmpty()) {
+        flushCallback.run();
       }
     } catch (Throwable e) {
       logger.error(
