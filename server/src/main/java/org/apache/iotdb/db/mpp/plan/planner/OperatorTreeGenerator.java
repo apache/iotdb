@@ -36,7 +36,6 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
@@ -1815,17 +1814,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 localInstanceId.toThrift(),
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
-                0,
                 context.getInstanceContext())
-            : MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
-                Collections.singletonList(
-                    new DownStreamChannelLocation(
-                        downStreamEndPoint,
-                        targetInstanceId.toThrift(),
-                        node.getDownStreamPlanNodeId().getId())),
-                new DownStreamChannelIndex(0),
-                ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
                 localInstanceId.toThrift(),
+                downStreamEndPoint,
+                targetInstanceId.toThrift(),
+                node.getDownStreamPlanNodeId().getId(),
                 node.getPlanNodeId().getId(),
                 context.getInstanceContext());
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());

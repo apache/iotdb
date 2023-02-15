@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -25,10 +26,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 public interface ISinkHandle {
 
   /** Get the local fragment instance ID that this sink handle belongs to. */
-  String getSinkHandleId();
+  TFragmentInstanceId getLocalFragmentInstanceId();
 
   /** Get the total amount of memory used by buffered TsBlocks. */
   long getBufferRetainedSizeInBytes();
+
+  default ISinkHandle getChannel(int index) {
+    throw new UnsupportedOperationException();
+  }
 
   /** Get a future that will be completed when the output buffer is not full. */
   ListenableFuture<?> isFull();

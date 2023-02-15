@@ -66,7 +66,6 @@ public class MPPDataExchangeManagerTest {
             localFragmentInstanceId,
             remoteFragmentInstanceId,
             remotePlanNodeId,
-            0,
             mockFragmentInstanceContext);
 
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
@@ -115,7 +114,6 @@ public class MPPDataExchangeManagerTest {
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
-            0,
             mockFragmentInstanceContext);
 
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);

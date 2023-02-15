@@ -71,8 +71,6 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
   private final String localPlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
 
-  private final String sinkHandleId;
-
   private final String fullFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
@@ -82,7 +80,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
   private long retryIntervalInMs;
 
   // Use LinkedHashMap to meet 2 needs,
-  //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
+  //   1. Predictable iteration order so that removing buffered TsBlocks can be efficient.
   //   2. Fast lookup.
   private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
       new LinkedHashMap<>();
@@ -113,7 +111,6 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
   public SinkHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String sinkHandleId,
       String remotePlanNodeId,
       String localPlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
@@ -125,7 +122,6 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.sinkHandleId = sinkHandleId;
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
@@ -145,7 +141,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-    // delete this once ShuffleSinkNode/IdentitySinkNode is finished
+    // delete this once ShuffleSinkHandle is finished
     open();
   }
 
@@ -332,8 +328,9 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
     }
   }
 
-  public String getSinkHandleId() {
-    return sinkHandleId;
+  @Override
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
+    return localFragmentInstanceId;
   }
 
   @Override

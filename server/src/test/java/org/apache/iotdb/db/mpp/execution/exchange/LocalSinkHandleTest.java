@@ -55,10 +55,7 @@ public class LocalSinkHandleTest {
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            queue,
-            mockSinkHandleListener,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0));
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
 
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
@@ -146,10 +143,7 @@ public class LocalSinkHandleTest {
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            queue,
-            mockSinkHandleListener,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0));
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
 
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 

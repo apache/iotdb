@@ -91,7 +91,6 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteEndpoint,
             remoteFragmentInstanceId,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0),
             remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
@@ -240,7 +239,6 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteEndpoint,
             remoteFragmentInstanceId,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0),
             remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
@@ -446,7 +444,6 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteEndpoint,
             remoteFragmentInstanceId,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0),
             remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,
@@ -557,7 +554,6 @@ public class SinkHandleTest {
         new SinkHandle(
             remoteEndpoint,
             remoteFragmentInstanceId,
-            MPPDataExchangeManager.createSinkHandleId(localFragmentInstanceId, 0),
             remotePlanNodeId,
             localPlanNodeId,
             localFragmentInstanceId,

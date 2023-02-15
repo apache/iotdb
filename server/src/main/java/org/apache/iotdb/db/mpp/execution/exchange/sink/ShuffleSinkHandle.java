@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -52,7 +54,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private final String localPlanNodeId;
 
-  private final String sinkHandleId;
+  private final TFragmentInstanceId localFragmentInstanceId;
 
   private final MPPDataExchangeManager.SinkHandleListener sinkHandleListener;
 
@@ -67,13 +69,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
   public ShuffleSinkHandle(
-      String sinkHandleId,
+      TFragmentInstanceId localFragmentInstanceId,
       List<ISinkHandle> downStreamChannelList,
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       String localPlanNodeId,
       MPPDataExchangeManager.SinkHandleListener sinkHandleListener) {
-    this.sinkHandleId = Validate.notNull(sinkHandleId);
+    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
@@ -82,19 +84,17 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.channelNum = downStreamChannelList.size();
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
+    // open first channel
+    tryOpenChannel(0);
   }
 
   @Override
-  public String getSinkHandleId() {
-    return sinkHandleId;
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
+    return localFragmentInstanceId;
   }
 
-  @Override
-  public long getBufferRetainedSizeInBytes() {
-    return downStreamChannelList.stream()
-        .map(ISinkHandle::getBufferRetainedSizeInBytes)
-        .reduce(Long::sum)
-        .orElse(0L);
+  public ISinkHandle getChannel(int index) {
+    return downStreamChannelList.get(index);
   }
 
   @Override
@@ -148,7 +148,12 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized boolean isFinished() {
-    return false;
+    for (ISinkHandle channel : downStreamChannelList) {
+      if (!channel.isFinished()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
@@ -157,7 +162,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
-    downStreamChannelList.forEach(ISinkHandle::abort);
+    for (ISinkHandle channel : downStreamChannelList) {
+      try {
+        channel.abort();
+      } catch (Exception e) {
+        LOGGER.warn("Error occurred when try to abort channel.");
+      }
+    }
     aborted = true;
     sinkHandleListener.onAborted(this);
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
@@ -169,7 +180,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
-    downStreamChannelList.forEach(ISinkHandle::abort);
+    for (ISinkHandle channel : downStreamChannelList) {
+      try {
+        channel.close();
+      } catch (Exception e) {
+        LOGGER.warn("Error occurred when try to abort channel.");
+      }
+    }
     closed = true;
     sinkHandleListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
@@ -267,5 +284,16 @@ public class ShuffleSinkHandle implements ISinkHandle {
     }
   }
 
+  // endregion
+
+  // region ============= Test Only =============
+  @TestOnly
+  @Override
+  public long getBufferRetainedSizeInBytes() {
+    return downStreamChannelList.stream()
+        .map(ISinkHandle::getBufferRetainedSizeInBytes)
+        .reduce(Long::sum)
+        .orElse(0L);
+  }
   // endregion
 }

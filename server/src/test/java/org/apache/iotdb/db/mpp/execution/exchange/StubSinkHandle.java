@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -44,7 +45,7 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public String getSinkHandleId() {
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
     return null;
   }
 
