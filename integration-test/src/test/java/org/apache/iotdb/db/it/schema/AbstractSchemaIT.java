@@ -22,6 +22,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
 import net.jcip.annotations.NotThreadSafe;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -59,15 +60,30 @@ public abstract class AbstractSchemaIT {
         break;
       case SchemaFile:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
-        EnvFactory.getEnv()
-            .getConfig()
-            .getCommonConfig()
-            .setSchemaMemoryAllocate("3:10000:5000:5000");
+        allocateMemoryForSchemaRegion(3600);
         break;
     }
   }
 
   public void tearDown() throws Exception {}
+
+  /**
+   * Set memory allocated to the SchemaRegion. There is no guarantee that the memory allocated to
+   * the schemaRegion will be exactly equal to the set memory, but it will be greater than the set
+   * memory.
+   *
+   * @param allocateMemoryForSchemaRegion bytes
+   */
+  protected void allocateMemoryForSchemaRegion(int allocateMemoryForSchemaRegion) {
+    int schemaAllMemory = 25742540;
+    int sumProportion = schemaAllMemory / allocateMemoryForSchemaRegion;
+    int[] proportion =
+        new int[] {1, (sumProportion - 1) / 2, (sumProportion - 1) / 4, (sumProportion - 1) / 4};
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaMemoryAllocate(StringUtils.join(proportion, ':'));
+  }
 
   enum SchemaTestMode {
     Memory,

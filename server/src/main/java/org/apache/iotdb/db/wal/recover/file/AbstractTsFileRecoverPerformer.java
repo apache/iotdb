@@ -100,7 +100,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   private void loadResourceFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       logger.warn(
           "Cannot deserialize .resource file of {}, try to reconstruct it.",
           tsFileResource.getTsFile(),

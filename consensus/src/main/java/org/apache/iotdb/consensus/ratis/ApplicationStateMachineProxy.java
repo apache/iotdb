@@ -53,9 +53,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
   private final IStateMachine applicationStateMachine;
   private final IStateMachine.RetryPolicy retryPolicy;
-
-  // Raft Storage sub dir for statemachine data, default (_sm)
-  private File statemachineDir;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
 
@@ -77,7 +74,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         .startAndTransition(
             () -> {
               snapshotStorage.init(storage);
-              this.statemachineDir = snapshotStorage.getStateMachineDir();
               loadSnapshot(snapshotStorage.findLatestSnapshotDir());
             });
   }
@@ -110,7 +106,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
-    IConsensusRequest applicationRequest = null;
+    IConsensusRequest applicationRequest;
 
     // if this server is leader
     // it will first try to obtain applicationRequest from transaction context
@@ -173,7 +169,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       try {
         TimeUnit.SECONDS.sleep(60);
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        logger.warn("{}: interrupted when waiting until system ready: {}", this, e);
+        Thread.currentThread().interrupt();
       }
     }
   }

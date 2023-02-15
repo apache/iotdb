@@ -88,7 +88,7 @@ public class SchemaQueryScanOperatorTest {
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
       Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
           SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
       SchemaOperatorTestUtil.mockGetSchemaReader(
@@ -193,7 +193,7 @@ public class SchemaQueryScanOperatorTest {
       Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
 
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
           SchemaSourceFactory.getTimeSeriesSchemaSource(
               partialPath, false, 10, 0, null, null, false, Collections.emptyMap());

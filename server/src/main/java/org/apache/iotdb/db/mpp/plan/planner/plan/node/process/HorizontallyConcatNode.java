@@ -42,9 +42,20 @@ public class HorizontallyConcatNode extends MultiChildProcessNode {
     super(id, new ArrayList<>());
   }
 
+  public HorizontallyConcatNode(PlanNodeId id, List<PlanNode> children) {
+    super(id, children);
+  }
+
   @Override
   public PlanNode clone() {
     return new HorizontallyConcatNode(getPlanNodeId());
+  }
+
+  @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new HorizontallyConcatNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override

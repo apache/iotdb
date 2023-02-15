@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
@@ -49,9 +49,9 @@ public class DatabaseSchemaTask implements IConfigTask {
   }
 
   /** Construct DatabaseSchema according to statement */
-  public static TStorageGroupSchema constructStorageGroupSchema(
+  public static TDatabaseSchema constructStorageGroupSchema(
       DatabaseSchemaStatement databaseSchemaStatement) {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     storageGroupSchema.setName(databaseSchemaStatement.getStorageGroupPath().getFullPath());
     if (databaseSchemaStatement.getTTL() != null) {
       storageGroupSchema.setTTL(databaseSchemaStatement.getTTL());

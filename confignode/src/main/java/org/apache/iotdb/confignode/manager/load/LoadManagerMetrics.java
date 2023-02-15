@@ -213,7 +213,7 @@ public class LoadManagerMetrics implements IMetricSet {
       metricService
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               name)
           .set(idToCountMap.getOrDefault(dataNodeId, 0));
@@ -233,7 +233,7 @@ public class LoadManagerMetrics implements IMetricSet {
       metricService
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
@@ -256,7 +256,7 @@ public class LoadManagerMetrics implements IMetricSet {
       metricService
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
@@ -278,7 +278,7 @@ public class LoadManagerMetrics implements IMetricSet {
       metricService
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
@@ -301,7 +301,7 @@ public class LoadManagerMetrics implements IMetricSet {
       metricService
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.IMPORTANT,
+              MetricLevel.CORE,
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),

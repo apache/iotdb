@@ -81,7 +81,6 @@ public class DataNodeInternalClient {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
-
       // call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
