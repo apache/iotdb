@@ -28,5 +28,9 @@ public interface ISchemaRegionStatistics {
 
   long getSeriesNumber();
 
+  MemSchemaRegionStatistics getAsMemSchemaRegionStatistics();
+
+  CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics();
+
   void clear();
 }

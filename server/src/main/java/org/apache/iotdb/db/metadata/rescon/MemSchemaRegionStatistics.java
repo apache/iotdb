@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   protected MemSchemaEngineStatistics schemaEngineStatistics =
-      (MemSchemaEngineStatistics) SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
+      SchemaEngineStatisticsHolder.getSchemaEngineStatistics().getAsMemSchemaEngineStatistics();
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong seriesNumber = new AtomicLong(0);
@@ -71,6 +71,16 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public int getSchemaRegionId() {
     return schemaRegionId;
+  }
+
+  @Override
+  public MemSchemaRegionStatistics getAsMemSchemaRegionStatistics() {
+    return this;
+  }
+
+  @Override
+  public CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics() {
+    throw new UnsupportedOperationException("Wrong SchemaRegionStatistics Type");
   }
 
   @Override

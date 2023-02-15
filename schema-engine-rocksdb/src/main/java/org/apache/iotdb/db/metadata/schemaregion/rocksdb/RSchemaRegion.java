@@ -192,7 +192,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

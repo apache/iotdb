@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +31,7 @@ public class PlainCacheManager extends CacheManager {
   // eviction.
   private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
 
-  public PlainCacheManager(IMemManager memManager) {
+  public PlainCacheManager(MemManager memManager) {
     super(memManager);
   }
 

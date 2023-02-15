@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Number-based threshold strategy */
 public class ReleaseFlushStrategyNumBasedImpl implements IReleaseFlushStrategy {
 
   private final int capacity;

@@ -30,7 +30,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
-  /** threshold total size of MTree */
+  /** Total size of schema region */
   private long memoryCapacity;
 
   protected final AtomicLong memoryUsage = new AtomicLong(0);
@@ -94,6 +94,16 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public void deleteTimeseries(long deletedNum) {
     totalSeriesNumber.addAndGet(-deletedNum);
+  }
+
+  @Override
+  public MemSchemaEngineStatistics getAsMemSchemaEngineStatistics() {
+    return this;
+  }
+
+  @Override
+  public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
+    throw new UnsupportedOperationException("Wrong SchemaEngineStatistics Type");
   }
 
   @Override

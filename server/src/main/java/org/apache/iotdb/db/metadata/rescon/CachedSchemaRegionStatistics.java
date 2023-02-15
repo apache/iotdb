@@ -34,7 +34,7 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 
   public CachedSchemaRegionStatistics(int schemaRegionId) {
     super(schemaRegionId);
-    cachedEngineStatistics = (CachedSchemaEngineStatistics) schemaEngineStatistics;
+    cachedEngineStatistics = schemaEngineStatistics.getAsCachedSchemaEngineStatistics();
   }
 
   public boolean isExceedReleaseThreshold() {
@@ -63,6 +63,28 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 
   public long getCachedSize() {
     return unpinnedSize.get();
+  }
+
+  public long getPinnedSize() {
+    return pinnedSize.get();
+  }
+
+  public long getCachedNum() {
+    return unpinnedNum.get();
+  }
+
+  public long getPinnedNum() {
+    return pinnedNum.get();
+  }
+
+  @Override
+  public CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics() {
+    return this;
+  }
+
+  @Override
+  public MemSchemaRegionStatistics getAsMemSchemaRegionStatistics() {
+    return this;
   }
 
   @Override

@@ -157,7 +157,7 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

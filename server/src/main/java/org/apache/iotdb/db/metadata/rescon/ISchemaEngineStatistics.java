@@ -31,5 +31,9 @@ public interface ISchemaEngineStatistics {
 
   long getTotalSeriesNumber();
 
+  MemSchemaEngineStatistics getAsMemSchemaEngineStatistics();
+
+  CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics();
+
   void clear();
 }

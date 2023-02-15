@@ -25,10 +25,9 @@ import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import java.util.List;
 
 // This class is used for memory control in industry environment.
-public class MemManager implements IMemManager {
+public class MemManager {
 
-  //  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
-  private CachedSchemaRegionStatistics regionStatistics;
+  private final CachedSchemaRegionStatistics regionStatistics;
 
   private final CachedMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
 
@@ -36,7 +35,6 @@ public class MemManager implements IMemManager {
     this.regionStatistics = regionStatistics;
   }
 
-  @Override
   public void requestPinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.requestMemory(size);
@@ -44,7 +42,6 @@ public class MemManager implements IMemManager {
     regionStatistics.updatePinnedNum(1);
   }
 
-  @Override
   public void upgradeMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updatePinnedSize(size);
@@ -53,7 +50,6 @@ public class MemManager implements IMemManager {
     regionStatistics.updateUnpinnedNum(-1);
   }
 
-  @Override
   public void releasePinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updateUnpinnedSize(size);
@@ -62,7 +58,6 @@ public class MemManager implements IMemManager {
     regionStatistics.updatePinnedNum(-1);
   }
 
-  @Override
   public void releaseMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updateUnpinnedSize(-size);
@@ -70,18 +65,16 @@ public class MemManager implements IMemManager {
     regionStatistics.releaseMemory(size);
   }
 
-  @Override
   public void releaseMemResource(List<IMNode> evictedNodes) {
     int size = 0;
     for (IMNode node : evictedNodes) {
       size += estimator.estimateSize(node);
     }
-    regionStatistics.updateUnpinnedNum(evictedNodes.size());
+    regionStatistics.updateUnpinnedNum(-evictedNodes.size());
     regionStatistics.updateUnpinnedSize(-size);
     regionStatistics.releaseMemory(size);
   }
 
-  @Override
   public void updatePinnedSize(int deltaSize) {
     if (deltaSize > 0) {
       regionStatistics.requestMemory(deltaSize);

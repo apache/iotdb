@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.CachedMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -150,6 +151,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
       Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     }
+    Assert.assertEquals(0, schemaRegion1.getSchemaRegionStatistics().getSchemaRegionId());
+    Assert.assertEquals(1, schemaRegion2.getSchemaRegionStatistics().getSchemaRegionId());
     checkSchemaFileStatistics(engineStatistics);
   }
 
@@ -159,7 +162,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
           (CachedSchemaEngineStatistics) engineStatistics;
       Assert.assertEquals(
           cachedEngineStatistics.getMemoryUsage(),
-          cachedEngineStatistics.getPinnedSize() + cachedEngineStatistics.getUnpinnedSize());
+          cachedEngineStatistics.getPinnedSize() + cachedEngineStatistics.getCachedSize());
     }
   }
 
@@ -181,8 +184,63 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     Assert.assertTrue(schemaRegion2.constructSchemaBlackList(patternTree) >= 1);
     schemaRegion1.deleteTimeseriesInBlackList(patternTree);
     schemaRegion2.deleteTimeseriesInBlackList(patternTree);
+
+    // check series number
     Assert.assertEquals(2, schemaRegion1.getSchemaRegionStatistics().getSeriesNumber());
     Assert.assertEquals(2, schemaRegion2.getSchemaRegionStatistics().getSeriesNumber());
     Assert.assertEquals(4, engineStatistics.getTotalSeriesNumber());
+  }
+
+  @Test
+  public void testSchemaFileNodeStatistics() throws Exception {
+    if (testParams.getSchemaEngineMode().equals("Schema_File")) {
+      ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
+      ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
+      CachedSchemaEngineStatistics engineStatistics =
+          SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
+              .getAsCachedSchemaEngineStatistics();
+      SchemaRegionTestUtil.createSimpleTimeseriesByList(
+          schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
+      SchemaRegionTestUtil.createSimpleTimeseriesByList(
+          schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+      patternTree.constructTree();
+      Assert.assertTrue(schemaRegion1.constructSchemaBlackList(patternTree) >= 1);
+      Assert.assertTrue(schemaRegion2.constructSchemaBlackList(patternTree) >= 1);
+      schemaRegion1.deleteTimeseriesInBlackList(patternTree);
+      schemaRegion2.deleteTimeseriesInBlackList(patternTree);
+
+      Thread.sleep(1000);
+      CachedSchemaRegionStatistics cachedRegionStatistics1 =
+          schemaRegion1.getSchemaRegionStatistics().getAsCachedSchemaRegionStatistics();
+      CachedSchemaRegionStatistics cachedRegionStatistics2 =
+          schemaRegion2.getSchemaRegionStatistics().getAsCachedSchemaRegionStatistics();
+      // check correctness of statistics
+      if (testParams.getCachedMNodeSize() > 3) {
+        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedNum());
+        Assert.assertEquals(4, cachedRegionStatistics1.getCachedNum());
+        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedNum());
+        Assert.assertEquals(4, cachedRegionStatistics2.getCachedNum());
+      } else {
+        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedNum());
+        Assert.assertEquals(0, cachedRegionStatistics1.getCachedNum());
+        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedNum());
+        Assert.assertEquals(0, cachedRegionStatistics2.getCachedNum());
+      }
+      // check consistence between region and engine
+      Assert.assertEquals(
+          cachedRegionStatistics1.getPinnedNum() + cachedRegionStatistics2.getPinnedNum(),
+          engineStatistics.getPinnedNum());
+      Assert.assertEquals(
+          cachedRegionStatistics1.getCachedNum() + cachedRegionStatistics2.getCachedNum(),
+          engineStatistics.getCachedNum());
+      Assert.assertEquals(
+          cachedRegionStatistics1.getPinnedSize() + cachedRegionStatistics2.getPinnedSize(),
+          engineStatistics.getPinnedSize());
+      Assert.assertEquals(
+          cachedRegionStatistics1.getCachedSize() + cachedRegionStatistics2.getCachedSize(),
+          engineStatistics.getCachedSize());
+    }
   }
 }

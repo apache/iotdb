@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -64,12 +64,12 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  */
 public abstract class CacheManager implements ICacheManager {
 
-  private final IMemManager memManager;
+  private final MemManager memManager;
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private final NodeBuffer nodeBuffer = new NodeBuffer();
 
-  public CacheManager(IMemManager memManager) {
+  public CacheManager(MemManager memManager) {
     this.memManager = memManager;
   }
 

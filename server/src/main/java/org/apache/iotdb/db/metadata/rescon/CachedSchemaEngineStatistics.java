@@ -76,12 +76,30 @@ public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
     this.unpinnedSize.addAndGet(delta);
   }
 
-  public long getUnpinnedSize() {
+  public long getCachedSize() {
     return unpinnedSize.get();
   }
 
   public long getPinnedSize() {
     return pinnedSize.get();
+  }
+
+  public long getCachedNum() {
+    return unpinnedNum.get();
+  }
+
+  public long getPinnedNum() {
+    return pinnedNum.get();
+  }
+
+  @Override
+  public MemSchemaEngineStatistics getAsMemSchemaEngineStatistics() {
+    return this;
+  }
+
+  @Override
+  public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
+    return this;
   }
 
   @Override

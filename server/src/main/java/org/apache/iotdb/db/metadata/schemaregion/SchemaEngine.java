@@ -223,8 +223,6 @@ public class SchemaEngine {
   }
 
   public void clear() {
-    SchemaResourceManager.clearSchemaResource();
-
     if (timedForceMLogThread != null) {
       timedForceMLogThread.shutdown();
       timedForceMLogThread = null;
@@ -237,6 +235,7 @@ public class SchemaEngine {
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }
+    SchemaResourceManager.clearSchemaResource();
   }
 
   public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {

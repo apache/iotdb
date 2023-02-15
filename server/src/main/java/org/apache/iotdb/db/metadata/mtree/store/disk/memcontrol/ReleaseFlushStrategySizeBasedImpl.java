@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Threshold strategy based on the number of nodes. */
 public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy {
 
   private final AtomicLong memoryUsage;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
+/** This interface defines the threshold strategy for release and flush task */
 public interface IReleaseFlushStrategy {
   /** Check if exceed release threshold */
   boolean isExceedReleaseThreshold();

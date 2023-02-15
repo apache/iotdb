@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
 
@@ -66,7 +66,7 @@ public class CacheMemoryManager {
    * @param store CachedMTreeStore
    * @return LRUCacheManager
    */
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store, IMemManager memManager) {
+  public ICacheManager createLRUCacheManager(CachedMTreeStore store, MemManager memManager) {
     synchronized (storeList) {
       ICacheManager cacheManager = new LRUCacheManager(memManager);
       storeList.add(store);
@@ -76,7 +76,8 @@ public class CacheMemoryManager {
 
   public void init() {
     engineStatistics =
-        (CachedSchemaEngineStatistics) SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
+        SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
+            .getAsCachedSchemaEngineStatistics();
     flushTaskExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
