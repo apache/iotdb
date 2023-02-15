@@ -63,7 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1676387778830,
+  "iteration": 1676425932038,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -14140,7 +14140,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "rate(disk_io_size{instance=~\"$instance\"}[1m])",
+          "expr": "irate(disk_io_size{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
           "refId": "A"
@@ -14227,7 +14227,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "rate(disk_io_ops{instance=~\"$instance\"}[1m])",
+          "expr": "irate(disk_io_ops{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
           "refId": "A"
@@ -14286,7 +14286,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
+        "h": 10,
         "w": 7,
         "x": 0,
         "y": 27
@@ -14312,7 +14312,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "rate(disk_io_time{instance=~\"$instance\"}[1m])",
+          "expr": "irate(disk_io_time{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
           "refId": "A"
@@ -14371,8 +14371,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 8,
+        "h": 10,
+        "w": 9,
         "x": 7,
         "y": 27
       },
@@ -14457,9 +14457,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 9,
-        "x": 15,
+        "h": 10,
+        "w": 8,
+        "x": 16,
         "y": 27
       },
       "id": 185,
@@ -14546,7 +14546,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 37
       },
       "id": 187,
       "options": {
@@ -14573,7 +14573,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "rate(process_io_ops{instance=~\"$instance\"}[1m])",
+          "expr": "irate(process_io_ops{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{from}}-{{name}}",
           "refId": "A"
@@ -14635,7 +14635,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 36
+        "y": 37
       },
       "id": 189,
       "options": {
@@ -14659,7 +14659,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "rate(process_io_size{instance=~\"$instance\"}[1m])",
+          "expr": "irate(process_io_size{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{from}}-{{name}}",
           "refId": "A"
