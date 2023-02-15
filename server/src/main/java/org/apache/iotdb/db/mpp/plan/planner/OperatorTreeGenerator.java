@@ -2334,6 +2334,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
    * operator, maybe we can allocate based on workload rather than child number.
    *
    * <p>If child is ExchangeNode, it won't affect the children number of current group.
+   *
+   * <p>This method can only be invoked when dop <= localChildrenSize.
    */
   public int[] getChildNumInEachPipeline(
       List<PlanNode> allChildren, int localChildrenSize, int dop) {
