@@ -43,7 +43,6 @@ public class SchemaResourceManager {
   }
 
   public static void clearSchemaResource() {
-    SchemaStatisticsManager.getInstance().clear();
     SchemaEngineStatisticsHolder.getSchemaEngineStatistics().clear();
     if (IoTDBDescriptor.getInstance()
         .getConfig()
