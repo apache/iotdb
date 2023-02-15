@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -93,9 +95,10 @@ public abstract class MTreeBelowSGTest {
                 node -> {
                   // do nothing
                 },
-                0);
+                0,
+                new CachedSchemaRegionStatistics(0));
       } else {
-        mtree = new MTreeBelowSGMemoryImpl(path, null, 0);
+        mtree = new MTreeBelowSGMemoryImpl(path, null, new SchemaRegionStatistics(0));
       }
       usedMTree.add(mtree);
       return mtree;

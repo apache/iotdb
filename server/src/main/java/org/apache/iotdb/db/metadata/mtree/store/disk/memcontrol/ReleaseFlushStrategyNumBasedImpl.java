@@ -18,21 +18,30 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
-public interface IMemManager {
+public class ReleaseFlushStrategyNumBasedImpl implements IReleaseFlushStrategy {
 
-  void requestPinnedMemResource(IMNode node, int schemaRegionId);
+  private final int capacity;
 
-  void upgradeMemResource(IMNode node, int schemaRegionId);
+  private final AtomicLong unpinnedNum;
+  private final AtomicLong pinnedNum;
 
-  void releasePinnedMemResource(IMNode node, int schemaRegionId);
+  public ReleaseFlushStrategyNumBasedImpl(AtomicLong unpinnedNum, AtomicLong pinnedNum) {
+    this.unpinnedNum = unpinnedNum;
+    this.pinnedNum = pinnedNum;
+    this.capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode();
+  }
 
-  void releaseMemResource(IMNode node, int schemaRegionId);
+  @Override
+  public boolean isExceedReleaseThreshold() {
+    return pinnedNum.get() + unpinnedNum.get() > capacity * 0.6;
+  }
 
-  void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId);
-
-  void updatePinnedSize(int deltaSize, int schemaRegionId);
+  @Override
+  public boolean isExceedFlushThreshold() {
+    return pinnedNum.get() + unpinnedNum.get() > capacity;
+  }
 }

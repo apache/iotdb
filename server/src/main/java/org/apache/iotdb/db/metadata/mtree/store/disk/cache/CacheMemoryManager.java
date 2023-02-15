@@ -22,7 +22,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
+import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class CacheMemoryManager {
 
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
-  private IMemManager memManager;
+  private CachedSchemaEngineStatistics engineStatistics;
 
   private static final int CONCURRENT_NUM = 10;
 
@@ -65,16 +66,18 @@ public class CacheMemoryManager {
    * @param store CachedMTreeStore
    * @return LRUCacheManager
    */
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store, int schemaRegionId) {
+  public ICacheManager createLRUCacheManager(
+      CachedMTreeStore store, int schemaRegionId, IMemManager memManager) {
     synchronized (storeList) {
-      ICacheManager cacheManager = new LRUCacheManager(schemaRegionId);
+      ICacheManager cacheManager = new LRUCacheManager(schemaRegionId, memManager);
       storeList.add(store);
       return cacheManager;
     }
   }
 
   public void init() {
-    memManager = MemManagerHolder.getMemManagerInstance();
+    engineStatistics =
+        (CachedSchemaEngineStatistics) SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
     flushTaskExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
@@ -88,7 +91,7 @@ public class CacheMemoryManager {
    * perform an internal and external memory swap to release the memory.
    */
   public void ensureMemoryStatus() {
-    if (memManager.isExceedReleaseThreshold() && !hasReleaseTask) {
+    if (engineStatistics.isExceedReleaseThreshold() && !hasReleaseTask) {
       registerReleaseTask();
     }
   }
@@ -155,7 +158,7 @@ public class CacheMemoryManager {
       releaseCount++;
       synchronized (blockObject) {
         hasReleaseTask = false;
-        if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
+        if (engineStatistics.isExceedFlushThreshold() && !hasFlushTask) {
           registerFlushTask();
         } else {
           blockObject.notifyAll();
@@ -232,7 +235,7 @@ public class CacheMemoryManager {
       flushTaskExecutor = null;
     }
     storeList.clear();
-    memManager = null;
+    engineStatistics = null;
   }
 
   private CacheMemoryManager() {}

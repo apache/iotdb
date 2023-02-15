@@ -36,7 +36,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -48,8 +48,7 @@ import java.util.function.Consumer;
 public class MemMTreeStore implements IMTreeStore {
 
   private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
-  private MemoryStatistics memoryStatistics;
-  private int schemaRegionId;
+  private SchemaRegionStatistics regionStatistics;
 
   private IMNode root;
 
@@ -66,7 +65,8 @@ public class MemMTreeStore implements IMTreeStore {
     }
   }
 
-  public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup, int schemaRegionId) {
+  public MemMTreeStore(
+      PartialPath rootPath, boolean isStorageGroup, SchemaRegionStatistics regionStatistics) {
     if (isStorageGroup) {
       this.root =
           new StorageGroupMNode(
@@ -76,16 +76,12 @@ public class MemMTreeStore implements IMTreeStore {
     } else {
       this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     }
-    this.schemaRegionId = schemaRegionId;
-    this.memoryStatistics = MemoryStatistics.getInstance();
-    this.memoryStatistics.initSchemaRegion(schemaRegionId);
+    this.regionStatistics = regionStatistics;
   }
 
-  private MemMTreeStore(IMNode root, int schemaRegionId) {
+  private MemMTreeStore(IMNode root, SchemaRegionStatistics regionStatistics) {
     this.root = root;
-    this.schemaRegionId = schemaRegionId;
-    this.memoryStatistics = MemoryStatistics.getInstance();
-    this.memoryStatistics.initSchemaRegion(schemaRegionId);
+    this.regionStatistics = regionStatistics;
   }
 
   @Override
@@ -223,8 +219,8 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    if (memoryStatistics != null) {
-      memoryStatistics.clearSchemaRegion(schemaRegionId);
+    if (regionStatistics != null) {
+      regionStatistics.clear();
     }
   }
 
@@ -234,22 +230,24 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      File snapshotDir,
+      Consumer<IMeasurementMNode> measurementProcess,
+      SchemaRegionStatistics regionStatistics)
       throws IOException {
     return new MemMTreeStore(
-        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, schemaRegionId),
-        schemaRegionId);
+        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
+        regionStatistics);
   }
 
   private void requestMemory(int size) {
-    if (memoryStatistics != null) {
-      memoryStatistics.requestMemory(size, schemaRegionId);
+    if (regionStatistics != null) {
+      regionStatistics.requestMemory(size);
     }
   }
 
   private void releaseMemory(int size) {
-    if (memoryStatistics != null) {
-      memoryStatistics.releaseMemory(size, schemaRegionId);
+    if (regionStatistics != null) {
+      regionStatistics.releaseMemory(size);
     }
   }
 }

@@ -31,12 +31,13 @@ import java.util.Objects;
 public class SchemaResourceManagerMetrics implements IMetricSet {
   private final SchemaStatisticsManager schemaStatisticsManager;
 
-  private final MemoryStatistics memoryStatistics;
+  private final SchemaEngineStatistics schemaEngineStatistics;
 
   public SchemaResourceManagerMetrics(
-      SchemaStatisticsManager schemaStatisticsManager, MemoryStatistics memoryStatistics) {
+      SchemaStatisticsManager schemaStatisticsManager,
+      SchemaEngineStatistics schemaEngineStatistics) {
     this.schemaStatisticsManager = schemaStatisticsManager;
-    this.memoryStatistics = memoryStatistics;
+    this.schemaEngineStatistics = schemaEngineStatistics;
   }
 
   @Override
@@ -52,17 +53,17 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
-        memoryStatistics,
-        MemoryStatistics::getMemoryUsage,
+        schemaEngineStatistics,
+        SchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
         "schema_region_total_usage");
 
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
-        memoryStatistics,
-        memoryStatistics ->
-            memoryStatistics.getMemoryCapacity() - memoryStatistics.getMemoryUsage(),
+        schemaEngineStatistics,
+        schemaEngineStatistics ->
+            schemaEngineStatistics.getMemoryCapacity() - schemaEngineStatistics.getMemoryUsage(),
         Tag.NAME.toString(),
         "schema_region_total_remaining");
   }

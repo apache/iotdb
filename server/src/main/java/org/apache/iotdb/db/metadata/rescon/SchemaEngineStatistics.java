@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -24,37 +23,18 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MemoryStatistics {
+public class SchemaEngineStatistics {
 
-  private static final Logger logger = LoggerFactory.getLogger(MemoryStatistics.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaEngineStatistics.class);
 
   /** threshold total size of MTree */
   private long memoryCapacity;
 
-  private final AtomicLong memoryUsage = new AtomicLong(0);
-  // Map<SchemaRegionId, memoryUsage>
-  private final Map<Integer, Long> memoryUsagePerRegion = new ConcurrentHashMap<>();
+  protected final AtomicLong memoryUsage = new AtomicLong(0);
 
   private volatile boolean allowToCreateNewSeries;
-
-  private static class MemoryStatisticsHolder {
-
-    private MemoryStatisticsHolder() {
-      // allowed to do nothing
-    }
-
-    private static final MemoryStatistics INSTANCE = new MemoryStatistics();
-  }
-
-  public static MemoryStatistics getInstance() {
-    return MemoryStatisticsHolder.INSTANCE;
-  }
-
-  private MemoryStatistics() {}
 
   public void init() {
     memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
@@ -78,8 +58,7 @@ public class MemoryStatistics {
     return memoryUsage.get();
   }
 
-  public void requestMemory(long size, int schemaRegionId) {
-    memoryUsagePerRegion.computeIfPresent(schemaRegionId, (k, v) -> v + size);
+  public void requestMemory(long size) {
     memoryUsage.getAndUpdate(v -> v += size);
     if (memoryUsage.get() >= memoryCapacity) {
       logger.warn("Current series memory {} is too large...", memoryUsage);
@@ -87,8 +66,7 @@ public class MemoryStatistics {
     }
   }
 
-  public void releaseMemory(long size, int schemaRegionId) {
-    memoryUsagePerRegion.computeIfPresent(schemaRegionId, (k, v) -> v - size);
+  public void releaseMemory(long size) {
     memoryUsage.getAndUpdate(v -> v -= size);
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
       logger.info("Current series memory {} come back to normal level", memoryUsage);
@@ -96,28 +74,8 @@ public class MemoryStatistics {
     }
   }
 
-  public void initSchemaRegion(int schemaRegionId) {
-    memoryUsagePerRegion.put(schemaRegionId, 0L);
-  }
-
-  public void clearSchemaRegion(int schemaRegionId) {
-    Long releaseMemory = memoryUsagePerRegion.remove(schemaRegionId);
-    if (releaseMemory != null) {
-      memoryUsage.getAndUpdate(v -> v -= releaseMemory);
-    }
-    if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-      logger.info("Current series number {} come back to normal level", memoryUsage);
-      allowToCreateNewSeries = true;
-    }
-  }
-
   public void clear() {
     memoryUsage.getAndSet(0);
-    memoryUsagePerRegion.clear();
     allowToCreateNewSeries = true;
-  }
-
-  public long getMemoryUsage(int schemaId) {
-    return memoryUsagePerRegion.getOrDefault(schemaId, 0L);
   }
 }

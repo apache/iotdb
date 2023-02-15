@@ -16,26 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class MemManagerHolder {
+import java.util.concurrent.atomic.AtomicLong;
 
-  private static IMemManager memManagerInstance;
+public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy {
 
-  public static void initMemManagerInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      memManagerInstance = new MemManagerNodeNumBasedImpl();
-    } else {
-      memManagerInstance = new MemManagerNodeEstimatedSizeBasedImpl();
-    }
+  private final AtomicLong memoryUsage;
+
+  private final long releaseThreshold;
+  private final long flushThreshold;
+
+  private static final double RELEASE_THRESHOLD_RATIO = 0.6;
+  private static final double FLUSH_THRESHOLD_RATION = 0.75;
+
+  public ReleaseFlushStrategySizeBasedImpl(AtomicLong memoryUsage) {
+    this.memoryUsage = memoryUsage;
+    long capacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
+    this.releaseThreshold = (long) (capacity * RELEASE_THRESHOLD_RATIO);
+    this.flushThreshold = (long) (capacity * FLUSH_THRESHOLD_RATION);
   }
 
-  public static IMemManager getMemManagerInstance() {
-    return memManagerInstance;
+  @Override
+  public boolean isExceedReleaseThreshold() {
+    return memoryUsage.get() > releaseThreshold;
   }
 
-  private MemManagerHolder() {}
+  @Override
+  public boolean isExceedFlushThreshold() {
+    return memoryUsage.get() > flushThreshold;
+  }
 }

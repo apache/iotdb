@@ -35,10 +35,11 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -57,7 +58,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
-  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private final IMemManager memManager;
 
   private final ICacheManager cacheManager;
 
@@ -67,19 +68,28 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private final Runnable flushCallback;
 
+  private final CachedSchemaRegionStatistics regionStatistics;
+  private final CachedSchemaEngineStatistics engineStatistics;
+
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   private final int schemaRegionId;
 
-  public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId, Runnable flushCallback)
+  public CachedMTreeStore(
+      PartialPath storageGroup,
+      int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics,
+      Runnable flushCallback)
       throws MetadataException, IOException {
-    MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId);
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
+    this.regionStatistics = regionStatistics;
+    this.engineStatistics = regionStatistics.getSchemaEngineStatistics();
+    this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
     this.schemaRegionId = schemaRegionId;
     this.cacheManager =
-        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId);
+        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId, memManager);
     cacheManager.initRootStatus(root);
     ensureMemoryStatus();
   }
@@ -462,7 +472,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
       file = null;
-      MemoryStatistics.getInstance().clearSchemaRegion(schemaRegionId);
+      regionStatistics.clear();
     } finally {
       lock.unlockWrite();
     }
@@ -481,21 +491,32 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   public static CachedMTreeStore loadFromSnapshot(
-      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
+      File snapshotDir,
+      String storageGroup,
+      int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics,
+      Runnable flushCallback)
       throws IOException, MetadataException {
-    return new CachedMTreeStore(snapshotDir, storageGroup, schemaRegionId, flushCallback);
+    return new CachedMTreeStore(
+        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback);
   }
 
   private CachedMTreeStore(
-      File snapshotDir, String storageGroup, int schemaRegionId, Runnable flushCallback)
+      File snapshotDir,
+      String storageGroup,
+      int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics,
+      Runnable flushCallback)
       throws IOException, MetadataException {
-    MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId);
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
+    this.regionStatistics = regionStatistics;
+    this.engineStatistics = regionStatistics.getSchemaEngineStatistics();
+    this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
     this.schemaRegionId = schemaRegionId;
     this.cacheManager =
-        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId);
+        CacheMemoryManager.getInstance().createLRUCacheManager(this, schemaRegionId, memManager);
     cacheManager.initRootStatus(root);
     ensureMemoryStatus();
   }
@@ -513,7 +534,7 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   public void executeMemoryRelease() {
-    while (memManager.isExceedReleaseThreshold() && !memManager.isEmpty()) {
+    while (engineStatistics.isExceedReleaseThreshold() && regionStatistics.getCachedSize() != 0) {
       if (!cacheManager.evict()) {
         break;
       }

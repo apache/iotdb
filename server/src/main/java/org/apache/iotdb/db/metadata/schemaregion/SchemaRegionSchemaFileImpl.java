@@ -67,7 +67,8 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -142,7 +143,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private final SchemaStatisticsManager schemaStatisticsManager =
       SchemaStatisticsManager.getInstance();
-  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final CachedSchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGCachedImpl mtree;
   private TagManager tagManager;
@@ -164,6 +165,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     this.seriesNumerMonitor = seriesNumerMonitor;
+    this.regionStatistics = new CachedSchemaRegionStatistics(schemaRegionId.getId());
     init();
   }
 
@@ -199,7 +201,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
-              schemaRegionId.getId());
+              schemaRegionId.getId(),
+              regionStatistics);
 
       if (!(config.isClusterMode()
           && config
@@ -295,6 +298,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
     }
+  }
+
+  @Override
+  public SchemaRegionStatistics getSchemaRegionStatistics() {
+    return regionStatistics;
   }
 
   /** Init from metadata log file. */
@@ -487,6 +495,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               latestSnapshotRootDir,
               storageGroupFullPath,
               schemaRegionId.getId(),
+              regionStatistics,
               measurementMNode -> {
                 if (measurementMNode.getOffset() == -1) {
                   return;
@@ -568,9 +577,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
         logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
         throw new SeriesOverflowException();
       }
@@ -691,9 +700,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
         throw new SeriesOverflowException();
       }
     }

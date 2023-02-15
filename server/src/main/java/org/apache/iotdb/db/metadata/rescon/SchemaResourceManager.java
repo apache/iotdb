@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.rescon;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
 public class SchemaResourceManager {
@@ -30,11 +29,12 @@ public class SchemaResourceManager {
   private SchemaResourceManager() {}
 
   public static void initSchemaResource() {
+    SchemaEngineStatisticsHolder.initSchemaEngineStatisticsInstance();
     MetricService.getInstance()
         .addMetricSet(
             new SchemaResourceManagerMetrics(
-                SchemaStatisticsManager.getInstance(), MemoryStatistics.getInstance()));
-    MemoryStatistics.getInstance().init();
+                SchemaStatisticsManager.getInstance(),
+                SchemaEngineStatisticsHolder.getSchemaEngineStatistics()));
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
@@ -45,7 +45,7 @@ public class SchemaResourceManager {
 
   public static void clearSchemaResource() {
     SchemaStatisticsManager.getInstance().clear();
-    MemoryStatistics.getInstance().clear();
+    SchemaEngineStatisticsHolder.getSchemaEngineStatistics().clear();
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
@@ -55,13 +55,10 @@ public class SchemaResourceManager {
   }
 
   private static void initSchemaFileModeResource() {
-    MemManagerHolder.initMemManagerInstance();
-    MemManagerHolder.getMemManagerInstance().init();
     CacheMemoryManager.getInstance().init();
   }
 
   private static void clearSchemaFileModeResource() {
-    MemManagerHolder.getMemManagerInstance().clear();
     CacheMemoryManager.getInstance().clear();
   }
 }

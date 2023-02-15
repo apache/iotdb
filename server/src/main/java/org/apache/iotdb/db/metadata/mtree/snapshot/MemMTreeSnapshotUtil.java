@@ -33,7 +33,7 @@ import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -67,7 +67,6 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
-  private static final MemoryStatistics MEMORY_STATISTICS = MemoryStatistics.getInstance();
   private static final IMNodeSizeEstimator ESTIMATOR = new BasicMNodSizeEstimator();
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
@@ -106,16 +105,18 @@ public class MemMTreeSnapshotUtil {
   }
 
   public static IMNode loadSnapshot(
-      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      File snapshotDir,
+      Consumer<IMeasurementMNode> measurementProcess,
+      SchemaRegionStatistics regionStatistics)
       throws IOException {
     File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.MTREE_SNAPSHOT);
     try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
-      return deserializeFrom(inputStream, measurementProcess, schemaRegionId);
+      return deserializeFrom(inputStream, measurementProcess, regionStatistics);
     } catch (Throwable e) {
       // This method is only invoked during recovery. If failed, the memory usage should be cleared
       // since the loaded schema will not be used.
-      MEMORY_STATISTICS.clear();
+      regionStatistics.clear();
       throw e;
     }
   }
@@ -154,20 +155,29 @@ public class MemMTreeSnapshotUtil {
   }
 
   private static IMNode deserializeFrom(
-      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      InputStream inputStream,
+      Consumer<IMeasurementMNode> measurementProcess,
+      SchemaRegionStatistics regionStatistics)
       throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
-    return inorderDeserialize(inputStream, measurementProcess, schemaRegionId);
+    return inorderDeserialize(inputStream, measurementProcess, regionStatistics);
   }
 
   private static IMNode inorderDeserialize(
-      InputStream inputStream, Consumer<IMeasurementMNode> measurementProcess, int schemaRegionId)
+      InputStream inputStream,
+      Consumer<IMeasurementMNode> measurementProcess,
+      SchemaRegionStatistics regionStatistics)
       throws IOException {
     MNodeDeserializer deserializer = new MNodeDeserializer();
     Deque<IMNode> ancestors = new ArrayDeque<>();
     Deque<Integer> restChildrenNum = new ArrayDeque<>();
     deserializeMNode(
-        ancestors, restChildrenNum, deserializer, inputStream, measurementProcess, schemaRegionId);
+        ancestors,
+        restChildrenNum,
+        deserializer,
+        inputStream,
+        measurementProcess,
+        regionStatistics);
     int childrenNum;
     IMNode root = ancestors.peek();
     while (!ancestors.isEmpty()) {
@@ -182,7 +192,7 @@ public class MemMTreeSnapshotUtil {
             deserializer,
             inputStream,
             measurementProcess,
-            schemaRegionId);
+            regionStatistics);
       }
     }
     return root;
@@ -194,7 +204,7 @@ public class MemMTreeSnapshotUtil {
       MNodeDeserializer deserializer,
       InputStream inputStream,
       Consumer<IMeasurementMNode> measurementProcess,
-      int schemaRegionId)
+      SchemaRegionStatistics regionStatistics)
       throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
     IMNode node;
@@ -225,7 +235,7 @@ public class MemMTreeSnapshotUtil {
         throw new IOException("Unrecognized MNode type " + type);
     }
 
-    MEMORY_STATISTICS.requestMemory(schemaRegionId, ESTIMATOR.estimateSize(node));
+    regionStatistics.requestMemory(ESTIMATOR.estimateSize(node));
 
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());

@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -65,14 +64,15 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  */
 public abstract class CacheManager implements ICacheManager {
 
-  private final IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private final IMemManager memManager;
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private final NodeBuffer nodeBuffer = new NodeBuffer();
   private final int schemaRegionId;
 
-  public CacheManager(int schemaRegionId) {
+  public CacheManager(int schemaRegionId, IMemManager memManager) {
     this.schemaRegionId = schemaRegionId;
+    this.memManager = memManager;
   }
 
   public void initRootStatus(IMNode root) {

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -115,10 +116,11 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback,
       Consumer<IMeasurementMNode> measurementProcess,
-      int schemaRegionId)
+      int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, flushCallback);
+    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -186,6 +188,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       File snapshotDir,
       String storageGroupFullPath,
       int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback)
@@ -193,7 +196,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
         CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupFullPath, schemaRegionId, flushCallback),
+            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
         tagGetter);
   }

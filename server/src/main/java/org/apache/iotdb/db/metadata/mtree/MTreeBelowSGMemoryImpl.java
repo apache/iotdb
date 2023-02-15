@@ -60,6 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -113,8 +114,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
-      int schemaRegionId) {
-    store = new MemMTreeStore(storageGroupPath, true, schemaRegionId);
+      SchemaRegionStatistics regionStatistics) {
+    store = new MemMTreeStore(storageGroupPath, true, regionStatistics);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
@@ -151,13 +152,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
       File snapshotDir,
       String storageGroupFullPath,
-      int schemaRegionId,
+      SchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
-        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess, schemaRegionId),
+        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess, regionStatistics),
         tagGetter);
   }
 

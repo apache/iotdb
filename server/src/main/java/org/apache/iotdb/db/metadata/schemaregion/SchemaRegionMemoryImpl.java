@@ -66,7 +66,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -138,7 +138,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private final SchemaStatisticsManager schemaStatisticsManager =
       SchemaStatisticsManager.getInstance();
-  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final SchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
@@ -172,6 +172,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     this.seriesNumerMonitor = seriesNumerMonitor;
+    this.regionStatistics = new SchemaRegionStatistics(schemaRegionId.getId());
 
     init();
   }
@@ -192,7 +193,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
+              new PartialPath(storageGroupFullPath), tagManager::readTags, regionStatistics);
 
       if (!(config.isClusterMode()
           && config
@@ -272,6 +273,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
     }
+  }
+
+  @Override
+  public SchemaRegionStatistics getSchemaRegionStatistics() {
+    return regionStatistics;
   }
 
   /**
@@ -449,12 +455,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           System.currentTimeMillis() - tagSnapshotStartTime);
 
       long mtreeSnapshotStartTime = System.currentTimeMillis();
-      MemoryStatistics.getInstance().initSchemaRegion(schemaRegionId.getId());
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
               storageGroupFullPath,
-              schemaRegionId.getId(),
+              regionStatistics,
               measurementMNode -> {
                 if (measurementMNode.getOffset() == -1) {
                   return;
@@ -513,7 +518,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
 
@@ -593,7 +598,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
 
