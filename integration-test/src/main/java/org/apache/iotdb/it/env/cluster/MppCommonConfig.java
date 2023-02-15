@@ -318,6 +318,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
