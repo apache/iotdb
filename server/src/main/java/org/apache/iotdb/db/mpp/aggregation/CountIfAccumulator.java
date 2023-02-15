@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory.KeepEvaluator;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-
-import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -37,13 +36,13 @@ public class CountIfAccumulator implements Accumulator {
   // number of the continues data points satisfy IF expression
   private long keep;
 
-  private final Function<Long, Boolean> keepEvaluator;
+  private final KeepEvaluator keepEvaluator;
 
   private final boolean ignoreNull;
 
   private boolean lastPointIsSatisfy;
 
-  public CountIfAccumulator(Function<Long, Boolean> keepEvaluator, boolean ignoreNull) {
+  public CountIfAccumulator(KeepEvaluator keepEvaluator, boolean ignoreNull) {
     this.keepEvaluator = keepEvaluator;
     this.ignoreNull = ignoreNull;
   }

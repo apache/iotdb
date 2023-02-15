@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,20 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.window;
+package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public enum WindowType {
-  TIME_WINDOW((byte) 0),
-  EVENT_WINDOW((byte) 1),
-  SERIES_WINDOW((byte) 2);
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
-  private final byte type;
+public class GroupBySeriesComponent extends GroupByComponent {
 
-  WindowType(byte type) {
-    this.type = type;
+  // use to filter continuous value (keep>=/>/=/</<=threshold)
+  private Expression keepExpression;
+
+  public GroupBySeriesComponent() {
+    super(WindowType.SERIES_WINDOW);
   }
 
-  public byte getType() {
-    return type;
+  public void setKeepExpression(Expression keepExpression) {
+    this.keepExpression = keepExpression;
+  }
+
+  public Expression getKeepExpression() {
+    return keepExpression;
   }
 }

@@ -19,18 +19,35 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-public enum WindowType {
-  TIME_WINDOW((byte) 0),
-  EVENT_WINDOW((byte) 1),
-  SERIES_WINDOW((byte) 2);
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
-  private final byte type;
+public class SeriesWindowParameter extends WindowParameter {
 
-  WindowType(byte type) {
-    this.type = type;
+  private final boolean ignoringNull;
+  private final int controlColumnIndex;
+  private final Expression keepExpression;
+
+  public SeriesWindowParameter(
+      boolean needOutputEndTime,
+      boolean ignoringNull,
+      int controlColumnIndex,
+      Expression keepExpression) {
+    super(needOutputEndTime);
+    this.windowType = WindowType.SERIES_WINDOW;
+    this.ignoringNull = ignoringNull;
+    this.controlColumnIndex = controlColumnIndex;
+    this.keepExpression = keepExpression;
   }
 
-  public byte getType() {
-    return type;
+  public boolean isIgnoringNull() {
+    return ignoringNull;
+  }
+
+  public int getControlColumnIndex() {
+    return controlColumnIndex;
+  }
+
+  public Expression getKeepExpression() {
+    return keepExpression;
   }
 }

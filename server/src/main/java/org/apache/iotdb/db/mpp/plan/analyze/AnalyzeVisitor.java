@@ -61,11 +61,14 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
@@ -75,6 +78,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySeriesComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
@@ -1162,7 +1166,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     WindowType windowType = groupByComponent.getWindowType();
 
     Map<String, Expression> deviceToGroupByExpression = new LinkedHashMap<>();
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (queryStatement.hasGroupByExpression()) {
       Expression expression = groupByComponent.getControlColumnExpression();
       for (PartialPath device : deviceSet) {
         List<Expression> groupByExpressionsOfOneDevice =
@@ -1179,17 +1183,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (aggregationExpression != null && aggregationExpression.size() != 0) {
           throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
         }
-        TSDataType tsDataType = analyzeExpression(analysis, groupByExpressionOfOneDevice);
-        if (!checkGroupByExpressionType(tsDataType, groupByComponent)) {
-          throw new SemanticException("Only support numeric type when delta != 0");
-        }
         deviceToGroupByExpression.put(device.getFullPath(), groupByExpressionOfOneDevice);
       }
+    }
 
+    if (windowType == WindowType.EVENT_WINDOW) {
+      double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
+      for (Expression expression : deviceToGroupByExpression.values()) {
+        checkGroupByVariationExpressionType(analysis, expression, delta);
+      }
       GroupByParameter groupByParameter =
-          new GroupByVariationParameter(
-              groupByComponent.isIgnoringNull(),
-              ((GroupByVariationComponent) groupByComponent).getDelta());
+          new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
+      analysis.setGroupByParameter(groupByParameter);
+      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+    } else if (windowType == WindowType.SERIES_WINDOW) {
+      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
+      for (Expression expression : deviceToGroupByExpression.values()) {
+        checkGroupBySeriesExpressionType(analysis, expression, keepExpression);
+      }
+      GroupByParameter groupByParameter =
+          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else {
@@ -1206,9 +1219,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     GroupByComponent groupByComponent = queryStatement.getGroupByComponent();
     WindowType windowType = groupByComponent.getWindowType();
 
-    if (windowType == WindowType.EVENT_WINDOW) {
-
-      Expression groupByExpression = groupByComponent.getControlColumnExpression();
+    Expression groupByExpression = null;
+    if (queryStatement.hasGroupByExpression()) {
+      groupByExpression = groupByComponent.getControlColumnExpression();
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.removeWildcardInExpression(groupByExpression, schemaTree);
@@ -1221,32 +1234,64 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (aggregationExpression != null && aggregationExpression.size() != 0) {
         throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
       }
-      TSDataType tsDataType = analyzeExpression(analysis, expressions.get(0));
-      if (!checkGroupByExpressionType(tsDataType, groupByComponent)) {
-        throw new SemanticException("Only support numeric type when delta != 0");
-      }
+      groupByExpression = expressions.get(0);
+    }
+
+    if (windowType == WindowType.EVENT_WINDOW) {
+      double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
+      checkGroupByVariationExpressionType(analysis, groupByExpression, delta);
       GroupByParameter groupByParameter =
-          new GroupByVariationParameter(
-              groupByComponent.isIgnoringNull(),
-              ((GroupByVariationComponent) groupByComponent).getDelta());
-      analysis.setGroupByExpression(expressions.get(0));
+          new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
+      analysis.setGroupByExpression(groupByExpression);
+      analysis.setGroupByParameter(groupByParameter);
+    } else if (windowType == WindowType.SERIES_WINDOW) {
+      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
+      checkGroupBySeriesExpressionType(analysis, groupByExpression, keepExpression);
+      GroupByParameter groupByParameter =
+          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
+      analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
     } else {
       throw new SemanticException("Unsupported window type");
     }
   }
 
-  private boolean checkGroupByExpressionType(TSDataType type, GroupByComponent groupByComponent) {
-    if (groupByComponent.getWindowType() == WindowType.EVENT_WINDOW) {
-      double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
-      if (delta != 0) {
-        return type == TSDataType.INT32
-            || type == TSDataType.INT64
-            || type == TSDataType.DOUBLE
-            || type == TSDataType.FLOAT;
+  private void checkGroupByVariationExpressionType(
+      Analysis analysis, Expression groupByExpression, double delta) {
+    TSDataType type = analyzeExpression(analysis, groupByExpression);
+    if (delta != 0) {
+      if (!type.isNumeric()) {
+        throw new SemanticException("Only support numeric type when delta != 0");
       }
     }
-    return true;
+  }
+
+  private void checkGroupBySeriesExpressionType(
+      Analysis analysis, Expression groupByExpression, Expression keepExpression) {
+    TSDataType type = analyzeExpression(analysis, groupByExpression);
+    if (type != TSDataType.BOOLEAN) {
+      throw new SemanticException("Only support boolean type in predict of group by series");
+    }
+
+    // check keep Expression
+    if (keepExpression instanceof ConstantOperand) {
+    } else if (keepExpression instanceof CompareBinaryExpression) {
+      Expression leftExpression = ((CompareBinaryExpression) keepExpression).getLeftExpression();
+      Expression rightExpression = ((CompareBinaryExpression) keepExpression).getRightExpression();
+      if (!(leftExpression instanceof TimeSeriesOperand
+          && leftExpression.getExpressionString().equalsIgnoreCase("keep")
+          && rightExpression instanceof ConstantOperand)) {
+        throw new SemanticException(
+            String.format(
+                "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+                keepExpression.getExpressionString()));
+      }
+    } else {
+      throw new SemanticException(
+          String.format(
+              "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+              keepExpression.getExpressionString()));
+    }
   }
 
   private void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
