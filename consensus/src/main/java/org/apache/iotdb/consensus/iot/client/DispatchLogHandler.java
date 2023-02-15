@@ -46,7 +46,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public DispatchLogHandler(LogDispatcherThread thread, Batch batch) {
     this.thread = thread;
     this.batch = batch;
-    this.createTime = System.currentTimeMillis();
+    this.createTime = System.nanoTime();
   }
 
   @Override
@@ -74,7 +74,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
             "syncLogTimePerRequest",
             Tag.REGION.toString(),
             this.thread.getPeer().getGroupId().toString())
-        .update((System.currentTimeMillis() - createTime) / batch.getLogEntries().size());
+        .update((System.nanoTime() - createTime) / batch.getLogEntries().size());
   }
 
   private boolean needRetry(int statusCode) {

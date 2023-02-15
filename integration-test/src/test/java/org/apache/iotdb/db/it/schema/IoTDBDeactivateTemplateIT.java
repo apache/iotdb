@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -29,7 +28,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -37,13 +35,16 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-// TODO: extends AbstractSchemaIT
-@RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBDeactivateTemplateIT {
+public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
+
+  public IoTDBDeactivateTemplateIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     EnvFactory.getEnv().initClusterEnvironment();
 
     prepareTemplate();
@@ -52,6 +53,7 @@ public class IoTDBDeactivateTemplateIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   private void prepareTemplate() throws SQLException {

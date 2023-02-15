@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AbstractProcessOperator;
@@ -288,6 +289,11 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   private void updateTimeSelector(int index) {
     timeSelector.add(inputTsBlocks[index].getTimeByIndex(inputIndex[index]));
+  }
+
+  @TestOnly
+  public List<Operator> getChildren() {
+    return children;
   }
 
   /**

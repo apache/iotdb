@@ -27,15 +27,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
@@ -46,14 +46,14 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSche
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
@@ -128,7 +128,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Set StorageGroup
-      TStorageGroupSchema storageGroupSchema = plan.getSchema();
+      TDatabaseSchema storageGroupSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.setStorageGroup(partialPathName);
 
@@ -157,10 +157,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      TStorageGroupSchema alterSchema = plan.getSchema();
+      TDatabaseSchema alterSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
-      TStorageGroupSchema currentSchema =
+      TDatabaseSchema currentSchema =
           mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
@@ -213,7 +213,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param plan DeleteStorageGroupPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus deleteStorageGroup(DeleteStorageGroupPlan plan) {
+  public TSStatus deleteDatabase(DeleteDatabasePlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
@@ -235,8 +235,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupPlan plan) {
-    CountStorageGroupResp result = new CountStorageGroupResp();
+  public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
+    CountDatabaseResp result = new CountDatabaseResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
@@ -254,11 +254,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupPlan plan) {
-    StorageGroupSchemaResp result = new StorageGroupSchemaResp();
+  public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
+    DatabaseSchemaResp result = new DatabaseSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
-      Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+      Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
       List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
       for (PartialPath path : matchedPaths) {
@@ -388,7 +388,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       for (Map.Entry<String, Pair<Integer, Integer>> entry :
           plan.getMaxRegionGroupNumMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
-        TStorageGroupSchema storageGroupSchema =
+        TDatabaseSchema storageGroupSchema =
             mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
         storageGroupSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
         storageGroupSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
@@ -463,7 +463,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @return The specific StorageGroupSchema
    * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
    */
-  public TStorageGroupSchema getMatchedDatabaseSchemaByName(String storageGroup)
+  public TDatabaseSchema getMatchedDatabaseSchemaByName(String storageGroup)
       throws DatabaseNotExistsException {
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -483,9 +483,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param rawPathList StorageGroups' path patterns or full paths
    * @return All StorageGroupSchemas that matches to the specific StorageGroup patterns
    */
-  public Map<String, TStorageGroupSchema> getMatchedDatabaseSchemasByName(
-      List<String> rawPathList) {
-    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
+    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     storageGroupReadWriteLock.readLock().lock();
     try {
       for (String rawPath : rawPathList) {
@@ -515,7 +514,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath path = new PartialPath(database);
-      TStorageGroupSchema storageGroupSchema =
+      TDatabaseSchema storageGroupSchema =
           mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
@@ -543,7 +542,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath path = new PartialPath(database);
-      TStorageGroupSchema storageGroupSchema =
+      TDatabaseSchema storageGroupSchema =
           mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
@@ -870,9 +869,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(
+  public Map<String, TDatabaseSchema> getMatchedStorageGroupSchemasByOneName(
       String[] storageGroupPathPattern) {
-    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath patternPath = new PartialPath(storageGroupPathPattern);

@@ -38,6 +38,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AccumulatorTest {
@@ -81,7 +82,12 @@ public class AccumulatorTest {
   @Test
   public void avgAccumulatorTest() {
     Accumulator avgAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.AVG, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.AVG,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.INT64, avgAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, avgAccumulator.getIntermediateType()[1]);
     Assert.assertEquals(TSDataType.DOUBLE, avgAccumulator.getFinalType());
@@ -122,7 +128,12 @@ public class AccumulatorTest {
   @Test
   public void countAccumulatorTest() {
     Accumulator countAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.COUNT, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.COUNT,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.INT64, countAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.INT64, countAccumulator.getFinalType());
     // check returning null while no data
@@ -157,7 +168,12 @@ public class AccumulatorTest {
   @Test
   public void extremeAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.EXTREME, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.EXTREME,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getFinalType());
     // check returning null while no data
@@ -192,7 +208,12 @@ public class AccumulatorTest {
   @Test
   public void firstValueAccumulatorTest() {
     Accumulator firstValueAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.FIRST_VALUE, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.FIRST_VALUE,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, firstValueAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.INT64, firstValueAccumulator.getIntermediateType()[1]);
     Assert.assertEquals(TSDataType.DOUBLE, firstValueAccumulator.getFinalType());
@@ -233,7 +254,12 @@ public class AccumulatorTest {
   @Test
   public void lastValueAccumulatorTest() {
     Accumulator lastValueAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.LAST_VALUE, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.LAST_VALUE,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, lastValueAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.INT64, lastValueAccumulator.getIntermediateType()[1]);
     Assert.assertEquals(TSDataType.DOUBLE, lastValueAccumulator.getFinalType());
@@ -273,7 +299,12 @@ public class AccumulatorTest {
   @Test
   public void maxTimeAccumulatorTest() {
     Accumulator maxTimeAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.MAX_TIME, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MAX_TIME,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.INT64, maxTimeAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.INT64, maxTimeAccumulator.getFinalType());
     // check returning null while no data
@@ -308,7 +339,12 @@ public class AccumulatorTest {
   @Test
   public void minTimeAccumulatorTest() {
     Accumulator minTimeAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.MIN_TIME, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MIN_TIME,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.INT64, minTimeAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.INT64, minTimeAccumulator.getFinalType());
     // check returning null while no data
@@ -343,7 +379,12 @@ public class AccumulatorTest {
   @Test
   public void maxValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.MAX_VALUE, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MAX_VALUE,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getFinalType());
     // check returning null while no data
@@ -378,7 +419,12 @@ public class AccumulatorTest {
   @Test
   public void minValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.MIN_VALUE, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MIN_VALUE,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, extremeAccumulator.getFinalType());
     // check returning null while no data
@@ -413,7 +459,12 @@ public class AccumulatorTest {
   @Test
   public void sumAccumulatorTest() {
     Accumulator sumAccumulator =
-        AccumulatorFactory.createAccumulator(TAggregationType.SUM, TSDataType.DOUBLE, true);
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.SUM,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     Assert.assertEquals(TSDataType.DOUBLE, sumAccumulator.getIntermediateType()[0]);
     Assert.assertEquals(TSDataType.DOUBLE, sumAccumulator.getFinalType());
     // check returning null while no data

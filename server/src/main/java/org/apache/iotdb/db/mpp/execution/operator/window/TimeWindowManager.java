@@ -59,7 +59,7 @@ public class TimeWindowManager implements IWindowManager {
   }
 
   @Override
-  public void initCurWindow(TsBlock tsBlock) {
+  public void initCurWindow() {
     this.initialized = true;
   }
 

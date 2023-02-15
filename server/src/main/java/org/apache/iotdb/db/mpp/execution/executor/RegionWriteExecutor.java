@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
@@ -99,10 +100,13 @@ public class RegionWriteExecutor {
 
   public static ConsensusWriteResponse fireTriggerAndInsert(
       ConsensusGroupId groupId, PlanNode planNode) {
+    long triggerCostTime = 0;
     ConsensusWriteResponse writeResponse;
     TriggerFireVisitor visitor = new TriggerFireVisitor();
+    long startTime = System.nanoTime();
     // fire Trigger before the insertion
     TriggerFireResult result = visitor.process(planNode, TriggerEvent.BEFORE_INSERT);
+    triggerCostTime += (System.nanoTime() - startTime);
     if (result.equals(TriggerFireResult.TERMINATION)) {
       TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
       triggerError.setMessage(
@@ -112,10 +116,12 @@ public class RegionWriteExecutor {
       boolean hasFailedTriggerBeforeInsertion =
           result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
 
+      planNode.setMetricTime(System.nanoTime());
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
+        startTime = System.nanoTime();
         result = visitor.process(planNode, TriggerEvent.AFTER_INSERT);
         if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
           TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
@@ -123,8 +129,10 @@ public class RegionWriteExecutor {
               "Meet trigger error before/after the insertion, the insertion itself is completed.");
           writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
         }
+        triggerCostTime += (System.nanoTime() - startTime);
       }
     }
+    PerformanceOverviewMetricsManager.getInstance().recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 
@@ -199,6 +207,7 @@ public class RegionWriteExecutor {
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
       // data insertion should be blocked by data deletion, especially when deleting timeseries
+      final long startTime = System.nanoTime();
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
         try {
@@ -214,6 +223,9 @@ public class RegionWriteExecutor {
             response.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
           }
           return response;
+        } finally {
+          PerformanceOverviewMetricsManager.getInstance()
+              .recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;

@@ -64,6 +64,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -883,7 +884,12 @@ public class RawDataAggregationOperatorTest {
 
     List<Aggregator> aggregators = new ArrayList<>();
     List<Accumulator> accumulators =
-        AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true);
+        AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
     for (int i = 0; i < accumulators.size(); i++) {
       aggregators.add(
           new Aggregator(accumulators.get(i), AggregationStep.SINGLE, inputLocations.get(i)));

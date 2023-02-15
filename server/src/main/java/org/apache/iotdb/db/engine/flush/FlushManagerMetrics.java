@@ -39,7 +39,7 @@ public class FlushManagerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         flushManager,
         FlushManager::getNumberOfWaitingTasks,
         Tag.NAME.toString(),
@@ -48,7 +48,7 @@ public class FlushManagerMetrics implements IMetricSet {
         "waiting");
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         flushManager,
         FlushManager::getNumberOfWorkingTasks,
         Tag.NAME.toString(),

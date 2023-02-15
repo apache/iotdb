@@ -52,6 +52,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -121,7 +122,12 @@ public class HorizontallyConcatOperatorTest {
           Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
       GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 10, 1, 1, true);
       List<Aggregator> aggregators = new ArrayList<>();
-      AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+      AccumulatorFactory.createAccumulators(
+              aggregationTypes,
+              TSDataType.INT32,
+              Collections.emptyList(),
+              Collections.emptyMap(),
+              true)
           .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
