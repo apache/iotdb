@@ -68,6 +68,7 @@ public abstract class MTreeBelowSGTest {
 
   @After
   public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
     root.clear();
     root = null;
     for (IMTreeBelowSG mtree : usedMTree) {
@@ -75,7 +76,6 @@ public abstract class MTreeBelowSGTest {
     }
     usedMTree.clear();
     storageGroup = null;
-    EnvironmentUtils.cleanEnv();
     rollBackConfig();
   }
 
