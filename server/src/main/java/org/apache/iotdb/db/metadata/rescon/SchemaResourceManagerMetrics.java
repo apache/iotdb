@@ -31,11 +31,11 @@ import java.util.Objects;
 public class SchemaResourceManagerMetrics implements IMetricSet {
   private final SchemaStatisticsManager schemaStatisticsManager;
 
-  private final SchemaEngineStatistics schemaEngineStatistics;
+  private final ISchemaEngineStatistics schemaEngineStatistics;
 
   public SchemaResourceManagerMetrics(
       SchemaStatisticsManager schemaStatisticsManager,
-      SchemaEngineStatistics schemaEngineStatistics) {
+      ISchemaEngineStatistics schemaEngineStatistics) {
     this.schemaStatisticsManager = schemaStatisticsManager;
     this.schemaEngineStatistics = schemaEngineStatistics;
   }
@@ -54,7 +54,7 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
         schemaEngineStatistics,
-        SchemaEngineStatistics::getMemoryUsage,
+        ISchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
         "schema_region_total_usage");
 

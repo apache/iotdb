@@ -20,20 +20,19 @@ package org.apache.iotdb.db.metadata.rescon;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class SchemaRegionStatistics {
-  SchemaEngineStatistics schemaEngineStatistics =
-      SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
+/** This class is used to record statistics within the SchemaRegion in Memory mode */
+public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
+
+  protected MemSchemaEngineStatistics schemaEngineStatistics =
+      (MemSchemaEngineStatistics) SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong();
 
-  public SchemaRegionStatistics(int schemaRegionId) {
+  public MemSchemaRegionStatistics(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
   }
 
-  public void init() {
-    memoryUsage.getAndSet(0);
-  }
-
+  @Override
   public boolean isAllowToCreateNewSeries() {
     return schemaEngineStatistics.isAllowToCreateNewSeries();
   }
@@ -48,19 +47,23 @@ public class SchemaRegionStatistics {
     schemaEngineStatistics.releaseMemory(size);
   }
 
+  @Override
   public void clear() {
     schemaEngineStatistics.releaseMemory(memoryUsage.get());
   }
 
+  @Override
   public long getRegionMemoryUsage() {
     return memoryUsage.get();
   }
 
+  @Override
   public int getSchemaRegionId() {
     return schemaRegionId;
   }
 
-  public SchemaEngineStatistics getSchemaEngineStatistics() {
+  @Override
+  public MemSchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
   }
 }

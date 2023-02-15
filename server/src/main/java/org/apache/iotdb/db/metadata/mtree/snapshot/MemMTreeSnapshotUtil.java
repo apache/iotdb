@@ -33,7 +33,7 @@ import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
-import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -107,7 +107,7 @@ public class MemMTreeSnapshotUtil {
   public static IMNode loadSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode> measurementProcess,
-      SchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.MTREE_SNAPSHOT);
@@ -157,7 +157,7 @@ public class MemMTreeSnapshotUtil {
   private static IMNode deserializeFrom(
       InputStream inputStream,
       Consumer<IMeasurementMNode> measurementProcess,
-      SchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
     return inorderDeserialize(inputStream, measurementProcess, regionStatistics);
@@ -166,7 +166,7 @@ public class MemMTreeSnapshotUtil {
   private static IMNode inorderDeserialize(
       InputStream inputStream,
       Consumer<IMeasurementMNode> measurementProcess,
-      SchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     MNodeDeserializer deserializer = new MNodeDeserializer();
     Deque<IMNode> ancestors = new ArrayDeque<>();
@@ -204,7 +204,7 @@ public class MemMTreeSnapshotUtil {
       MNodeDeserializer deserializer,
       InputStream inputStream,
       Consumer<IMeasurementMNode> measurementProcess,
-      SchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
     IMNode node;

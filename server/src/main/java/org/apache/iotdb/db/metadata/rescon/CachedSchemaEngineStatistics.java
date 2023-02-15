@@ -25,7 +25,11 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStra
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CachedSchemaEngineStatistics extends SchemaEngineStatistics {
+/**
+ * This class is used to record global statistics for SchemaEngine in Schema_File mode, which is a
+ * superset of the statistics in Memory mode
+ */
+public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
 
   private final AtomicLong unpinnedSize = new AtomicLong(0);
   private final AtomicLong pinnedSize = new AtomicLong(0);

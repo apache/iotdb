@@ -38,7 +38,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -77,7 +77,7 @@ public interface ISchemaRegion {
   void forceMlog();
 
   @TestOnly
-  SchemaRegionStatistics getSchemaRegionStatistics();
+  ISchemaRegionStatistics getSchemaRegionStatistics();
   // endregion
 
   // region Interfaces for schema region Info query and operation

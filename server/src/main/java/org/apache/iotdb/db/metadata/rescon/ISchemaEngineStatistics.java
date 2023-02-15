@@ -18,24 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+public interface ISchemaEngineStatistics {
+  void init();
 
-// TODO: SchemaEngineStatistics should not be singleton later
-public class SchemaEngineStatisticsHolder {
-  private static MemSchemaEngineStatistics schemaEngineStatistics;
+  boolean isAllowToCreateNewSeries();
 
-  public static void initSchemaEngineStatisticsInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
-      schemaEngineStatistics = new MemSchemaEngineStatistics();
-    } else {
-      schemaEngineStatistics = new CachedSchemaEngineStatistics();
-    }
-    schemaEngineStatistics.init();
-  }
+  boolean isExceedCapacity();
 
-  public static ISchemaEngineStatistics getSchemaEngineStatistics() {
-    return schemaEngineStatistics;
-  }
+  long getMemoryCapacity();
 
-  private SchemaEngineStatisticsHolder() {}
+  long getMemoryUsage();
+
+  void clear();
 }

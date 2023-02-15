@@ -25,9 +25,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class SchemaEngineStatistics {
+/** This class is used to record the global statistics of SchemaEngine in Memory mode */
+public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaEngineStatistics.class);
+  private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
   /** threshold total size of MTree */
   private long memoryCapacity;
@@ -36,24 +37,29 @@ public class SchemaEngineStatistics {
 
   private volatile boolean allowToCreateNewSeries;
 
+  @Override
   public void init() {
     memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     memoryUsage.getAndSet(0);
     allowToCreateNewSeries = true;
   }
 
+  @Override
   public boolean isAllowToCreateNewSeries() {
     return allowToCreateNewSeries;
   }
 
+  @Override
   public boolean isExceedCapacity() {
     return memoryUsage.get() > memoryCapacity;
   }
 
+  @Override
   public long getMemoryCapacity() {
     return memoryCapacity;
   }
 
+  @Override
   public long getMemoryUsage() {
     return memoryUsage.get();
   }
@@ -74,6 +80,7 @@ public class SchemaEngineStatistics {
     }
   }
 
+  @Override
   public void clear() {
     memoryUsage.getAndSet(0);
     allowToCreateNewSeries = true;

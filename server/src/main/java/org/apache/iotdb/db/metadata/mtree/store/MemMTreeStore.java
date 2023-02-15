@@ -36,7 +36,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
-import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -48,7 +48,7 @@ import java.util.function.Consumer;
 public class MemMTreeStore implements IMTreeStore {
 
   private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
-  private SchemaRegionStatistics regionStatistics;
+  private MemSchemaRegionStatistics regionStatistics;
 
   private IMNode root;
 
@@ -66,7 +66,7 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   public MemMTreeStore(
-      PartialPath rootPath, boolean isStorageGroup, SchemaRegionStatistics regionStatistics) {
+      PartialPath rootPath, boolean isStorageGroup, MemSchemaRegionStatistics regionStatistics) {
     if (isStorageGroup) {
       this.root =
           new StorageGroupMNode(
@@ -79,7 +79,7 @@ public class MemMTreeStore implements IMTreeStore {
     this.regionStatistics = regionStatistics;
   }
 
-  private MemMTreeStore(IMNode root, SchemaRegionStatistics regionStatistics) {
+  private MemMTreeStore(IMNode root, MemSchemaRegionStatistics regionStatistics) {
     this.root = root;
     this.regionStatistics = regionStatistics;
   }
@@ -232,7 +232,7 @@ public class MemMTreeStore implements IMTreeStore {
   public static MemMTreeStore loadFromSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode> measurementProcess,
-      SchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),

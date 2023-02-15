@@ -20,7 +20,11 @@ package org.apache.iotdb.db.metadata.rescon;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class CachedSchemaRegionStatistics extends SchemaRegionStatistics {
+/**
+ * This class is used to record statistics within a SchemaRegion in Schema_File mode, which is a
+ * superset of the statistics in Memory mode
+ */
+public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 
   private final AtomicLong unpinnedSize = new AtomicLong(0);
   private final AtomicLong pinnedSize = new AtomicLong(0);

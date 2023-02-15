@@ -66,7 +66,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.SchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -138,7 +138,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private final SchemaStatisticsManager schemaStatisticsManager =
       SchemaStatisticsManager.getInstance();
-  private final SchemaRegionStatistics regionStatistics;
+  private final MemSchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
@@ -172,7 +172,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new SchemaRegionStatistics(schemaRegionId.getId());
+    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId());
 
     init();
   }
@@ -276,7 +276,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public SchemaRegionStatistics getSchemaRegionStatistics() {
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
   }
 
