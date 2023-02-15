@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
+/**
+ * This interface defines the behaviour of a cache entry holding the cache value. The cache entry is
+ * mainly accessed via second key from cache entry group and managed by cache entry manager for
+ * cache eviction.
+ *
+ * @param <SK> The second key of cache value.
+ * @param <V> The cache value.
+ */
 interface ICacheEntry<SK, V> {
 
   SK getSecondKey();

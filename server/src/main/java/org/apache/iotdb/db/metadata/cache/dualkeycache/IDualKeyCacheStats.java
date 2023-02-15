@@ -19,15 +19,24 @@
 
 package org.apache.iotdb.db.metadata.cache.dualkeycache;
 
+/** This interface defines the status and statistics, that will be provided , of dual key cache. */
 public interface IDualKeyCacheStats {
 
+  /**
+   * Return the count of recorded requests, since the cache has been utilized after init or clean
+   * up.
+   */
   long requestCount();
 
+  /**
+   * Return the count of recorded cache hit cases, since the cache has been utilized after init or
+   * clean up.
+   */
   long hitCount();
 
+  /** Return the hit rate of recorded cases, equal hitCount() / requestCount(). */
   double hitRate();
 
-  double missRate();
-
+  /** Return current memory usage of dual key cache. */
   long memoryUsage();
 }

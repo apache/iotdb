@@ -19,11 +19,22 @@
 
 package org.apache.iotdb.db.metadata.cache.dualkeycache;
 
+/**
+ * This interfaces defines the behaviour needed be implemented and executed during cache value
+ * traverse.
+ *
+ * @param <FK> The first key of target cache values
+ * @param <SK> The second key of one target cache value
+ * @param <V> The cache value
+ */
 public interface IDualKeyCacheComputation<FK, SK, V> {
 
+  /** Return the first key of target cache values. */
   FK getFirstKey();
 
+  /** Return the second key list of target cache values. */
   SK[] getSecondKeyList();
 
+  /** Compute each target cache value. The index is the second key's position in second key list. */
   void computeValue(int index, V value);
 }

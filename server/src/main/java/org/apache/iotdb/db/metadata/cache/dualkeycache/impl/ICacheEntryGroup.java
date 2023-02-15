@@ -21,6 +21,15 @@ package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
 import java.util.function.BiFunction;
 
+/**
+ * This interface defines the behaviour of a cache entry group, which is mainly accessed via first
+ * key from dual key cache and holds all the second keys and cache values indexed by the first key.
+ *
+ * @param <FK> The first key of cache value.
+ * @param <SK> The second key of cache value.
+ * @param <V> The cache value.
+ * @param <T> The cache entry holding cache value.
+ */
 interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   FK getFirstKey();

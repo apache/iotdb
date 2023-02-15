@@ -147,6 +147,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                     cacheEntry.replaceValue(value);
                     usedMemorySize.getAndAdd(-sizeComputer.computeValueSize(existingValue));
                   }
+                  // update the cache status
                   cacheEntryManager.access(cacheEntry);
                 }
                 usedMemorySize.getAndAdd(sizeComputer.computeValueSize(value));
@@ -157,9 +158,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     return usedMemorySize.get();
   }
 
+  /**
+   * Each thread putting new cache value only needs to evict cache values, total memory equals that
+   * the new cache value occupied.
+   */
   private void executeCacheEviction(int targetSize) {
     int evictedSize;
-    while (targetSize > 0) {
+    while (targetSize > 0 && cacheStats.memoryUsage() > 0) {
       evictedSize = evictOneCacheEntry();
       cacheStats.decreaseMemoryUsage(evictedSize);
       targetSize -= evictedSize;
@@ -231,6 +236,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     return cacheStats;
   }
 
+  /**
+   * Since the capacity of one instance of ConcurrentHashMap is about 4 million, a number of
+   * instances are united for more capacity.
+   */
   private static class SegmentedConcurrentHashMap<K, V> {
 
     private static final int SLOT_NUM = 31;

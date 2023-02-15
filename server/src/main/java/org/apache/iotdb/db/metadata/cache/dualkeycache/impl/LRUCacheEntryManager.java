@@ -22,6 +22,13 @@ package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 import java.util.Objects;
 import java.util.Random;
 
+/**
+ * This class implements the cache entry manager with LRU policy.
+ *
+ * @param <FK> The first key of cache value.
+ * @param <SK> The second key of cache value.
+ * @param <V> The cache value.
+ */
 class LRUCacheEntryManager<FK, SK, V>
     implements ICacheEntryManager<FK, SK, V, LRUCacheEntryManager.LRUCacheEntry<SK, V>> {
 
@@ -183,7 +190,7 @@ class LRUCacheEntryManager<FK, SK, V>
 
     synchronized void moveToHead(LRUCacheEntry cacheEntry) {
       if (head == null) {
-        // this cache entry has been evicted
+        // this cache entry has been evicted and the cache list is empty
         return;
       }
 

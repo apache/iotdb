@@ -23,6 +23,13 @@ import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
 
 import java.util.function.Function;
 
+/**
+ * This class defines and implements the behaviour needed for building a dual key cache.
+ *
+ * @param <FK> The first key of cache value
+ * @param <SK> The second key of cache value
+ * @param <V> The cache value
+ */
 public class DualKeyCacheBuilder<FK, SK, V> {
 
   private LRUCacheEntryManager<FK, SK, V> cacheEntryManager;
@@ -35,6 +42,7 @@ public class DualKeyCacheBuilder<FK, SK, V> {
 
   private Function<V, Integer> valueSizeComputer;
 
+  /** Initiate and return a dual key cache instance. */
   public IDualKeyCache<FK, SK, V> build() {
     return new DualKeyCacheImpl<>(
         cacheEntryManager,
@@ -42,6 +50,7 @@ public class DualKeyCacheBuilder<FK, SK, V> {
         memoryCapacity);
   }
 
+  /** Define the cache eviction policy of dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> cacheEvictionPolicy(DualKeyCachePolicy policy) {
     if (policy == DualKeyCachePolicy.LRU) {
       this.cacheEntryManager = new LRUCacheEntryManager<>();
@@ -50,21 +59,25 @@ public class DualKeyCacheBuilder<FK, SK, V> {
     throw new IllegalStateException();
   }
 
+  /** Define the memory capacity of dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> memoryCapacity(long memoryCapacity) {
     this.memoryCapacity = memoryCapacity;
     return this;
   }
 
+  /** Define how to compute the memory usage of a first key in dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> firstKeySizeComputer(Function<FK, Integer> computer) {
     this.firstKeySizeComputer = computer;
     return this;
   }
 
+  /** Define how to compute the memory usage of a second key in dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> secondKeySizeComputer(Function<SK, Integer> computer) {
     this.secondKeySizeComputer = computer;
     return this;
   }
 
+  /** Define how to compute the memory usage of a cache value in dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> valueSizeComputer(Function<V, Integer> computer) {
     this.valueSizeComputer = computer;
     return this;

@@ -94,11 +94,6 @@ class CacheStats implements IDualKeyCacheStats {
   }
 
   @Override
-  public double missRate() {
-    return 1.0 - hitRate();
-  }
-
-  @Override
   public long memoryUsage() {
     return memoryUsage.get();
   }
