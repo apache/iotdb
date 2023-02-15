@@ -137,7 +137,8 @@ public class SessionWindowManager implements IWindowManager {
   }
 
   @Override
-  public void appendAggregationResult(TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
+  public void appendAggregationResult(
+      TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
     // Use the start time of sessionWindow as default output time.
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(sessionWindow.getStartTime());
