@@ -101,13 +101,4 @@ public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
   public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
     return this;
   }
-
-  @Override
-  public void clear() {
-    super.clear();
-    unpinnedSize.getAndSet(0);
-    pinnedSize.getAndSet(0);
-    unpinnedNum.getAndSet(0);
-    pinnedNum.getAndSet(0);
-  }
 }

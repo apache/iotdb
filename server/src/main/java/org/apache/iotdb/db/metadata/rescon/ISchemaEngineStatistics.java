@@ -34,6 +34,4 @@ public interface ISchemaEngineStatistics {
   MemSchemaEngineStatistics getAsMemSchemaEngineStatistics();
 
   CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics();
-
-  void clear();
 }

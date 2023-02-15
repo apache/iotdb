@@ -105,10 +105,4 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
     throw new UnsupportedOperationException("Wrong SchemaEngineStatistics Type");
   }
-
-  @Override
-  public void clear() {
-    memoryUsage.getAndSet(0);
-    allowToCreateNewSeries = true;
-  }
 }

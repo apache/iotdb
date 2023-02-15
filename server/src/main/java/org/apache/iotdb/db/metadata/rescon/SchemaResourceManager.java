@@ -24,8 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
-import java.util.Optional;
-
 public class SchemaResourceManager {
 
   private SchemaResourceManager() {}
@@ -45,8 +43,6 @@ public class SchemaResourceManager {
   }
 
   public static void clearSchemaResource() {
-    Optional.ofNullable(SchemaEngineStatisticsHolder.getSchemaEngineStatistics())
-        .ifPresent(ISchemaEngineStatistics::clear);
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
