@@ -29,7 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class IdentityOperator implements Operator {
+public class IdentitySinkOperator implements Operator {
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
@@ -42,7 +42,7 @@ public class IdentityOperator implements Operator {
 
   private boolean isFinished = false;
 
-  public IdentityOperator(
+  public IdentitySinkOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       DownStreamChannelIndex downStreamChannelIndex,

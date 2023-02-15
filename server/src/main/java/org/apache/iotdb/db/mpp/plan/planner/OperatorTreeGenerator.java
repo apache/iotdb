@@ -114,7 +114,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperato
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
-import org.apache.iotdb.db.mpp.execution.operator.sink.IdentityOperator;
+import org.apache.iotdb.db.mpp.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.mpp.execution.operator.sink.ShuffleHelperOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
@@ -1836,7 +1836,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                IdentityOperator.class.getSimpleName());
+                IdentitySinkOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     List<Operator> children =
         node.getChildren().stream()
@@ -1858,7 +1858,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSinkHandle(sinkHandle);
 
-    return new IdentityOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+    return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
 
   @Override
