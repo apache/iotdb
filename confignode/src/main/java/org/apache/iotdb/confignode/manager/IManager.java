@@ -25,14 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -92,9 +92,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -264,14 +264,14 @@ public interface IManager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan);
+  DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupPlan);
+  DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
 
   /**
    * Set Database
@@ -446,7 +446,7 @@ public interface IManager {
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
    */
-  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
+  TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan);
 
   /**
    * create schema template

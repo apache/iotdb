@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -33,8 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -64,8 +64,8 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
@@ -89,7 +89,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -100,8 +100,8 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -192,9 +192,9 @@ public class ConfigPlanExecutor {
       case GetDataNodeConfiguration:
         return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
       case CountDatabase:
-        return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
+        return clusterSchemaInfo.countMatchedDatabases((CountDatabasePlan) req);
       case GetDatabase:
-        return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupPlan) req);
+        return clusterSchemaInfo.getMatchedDatabaseSchemas((GetDatabasePlan) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
         return partitionInfo.getDataPartition((GetDataPartitionPlan) req);
@@ -275,10 +275,10 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.adjustMaxRegionGroupCount(
             (AdjustMaxRegionGroupNumPlan) physicalPlan);
       case DeleteDatabase:
-        partitionInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
-        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupPlan) physicalPlan);
+        partitionInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
+        return clusterSchemaInfo.deleteDatabase((DeleteDatabasePlan) physicalPlan);
       case PreDeleteDatabase:
-        return partitionInfo.preDeleteStorageGroup((PreDeleteStorageGroupPlan) physicalPlan);
+        return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
       case SetSchemaReplicationFactor:
@@ -487,14 +487,14 @@ public class ConfigPlanExecutor {
   private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
     TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
-    if (showRegionReq != null && showRegionReq.isSetStorageGroups()) {
-      final List<String> storageGroups = showRegionReq.getStorageGroups();
+    if (showRegionReq != null && showRegionReq.isSetDatabases()) {
+      final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
           clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
-              .map(TStorageGroupSchema::getName)
+              .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {
-        showRegionReq.setStorageGroups(matchedStorageGroups);
+        showRegionReq.setDatabases(matchedStorageGroups);
       }
     }
     return partitionInfo.getRegionInfoList(getRegionInfoListPlan);

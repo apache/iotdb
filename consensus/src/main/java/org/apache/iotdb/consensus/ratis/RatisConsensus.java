@@ -88,11 +88,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/**
- * A multi-raft consensus implementation based on Ratis, currently still under development.
- *
- * <p>See jira [IOTDB-2674](https://issues.apache.org/jira/browse/IOTDB-2674) for more details.
- */
+/** A multi-raft consensus implementation based on Apache Ratis. */
 class RatisConsensus implements IConsensus {
 
   private final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
@@ -686,16 +682,14 @@ class RatisConsensus implements IConsensus {
 
   private void triggerSnapshotByCustomize() {
 
-    Iterable<RaftGroupId> groupIds = server.getGroupIds();
-
-    for (RaftGroupId raftGroupId : groupIds) {
-      File currentDir = null;
+    for (RaftGroupId raftGroupId : server.getGroupIds()) {
+      File currentDir;
 
       try {
         currentDir =
             server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
       } catch (IOException e) {
-        logger.warn("Get division failed: ", e);
+        logger.warn("{}: get division {} failed: ", this, raftGroupId, e);
         continue;
       }
 
@@ -709,7 +703,10 @@ class RatisConsensus implements IConsensus {
         if (consensusGenericResponse.isSuccess()) {
           logger.info("Raft group {} took snapshot successfully", raftGroupId);
         } else {
-          logger.warn("Raft group {} failed to take snapshot", raftGroupId);
+          logger.warn(
+              "Raft group {} failed to take snapshot due to {}",
+              raftGroupId,
+              consensusGenericResponse.getException());
         }
       }
     }

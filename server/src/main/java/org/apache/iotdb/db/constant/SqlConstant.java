@@ -53,6 +53,7 @@ public class SqlConstant {
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+  public static final String COUNT_IF = "count_if";
 
   // names of scalar functions
   public static final String DIFF = "diff";

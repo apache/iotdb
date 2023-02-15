@@ -70,10 +70,10 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -147,9 +147,9 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteStorageGroups(ArrayList<TStorageGroupSchema> deleteSgSchemaList) {
+  public TSStatus deleteStorageGroups(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
     List<Long> procedureIds = new ArrayList<>();
-    for (TStorageGroupSchema storageGroupSchema : deleteSgSchemaList) {
+    for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteStorageGroupProcedure deleteStorageGroupProcedure =
           new DeleteStorageGroupProcedure(storageGroupSchema);
       long procedureId = this.executor.submitProcedure(deleteStorageGroupProcedure);

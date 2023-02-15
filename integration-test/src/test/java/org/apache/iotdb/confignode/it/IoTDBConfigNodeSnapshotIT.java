@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -35,12 +36,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -115,7 +116,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema(storageGroup);
+        TDatabaseSchema storageGroupSchema = new TDatabaseSchema(storageGroup);
         TSStatus status = client.setDatabase(storageGroupSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

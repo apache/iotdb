@@ -112,7 +112,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
-      if (parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+      if (templateMap != null
+          && !templateMap.isEmpty() // this task will cover some timeseries represented by template
+          && parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
           && !(skipPreDeletedSchema
               && parent
                   .getAsEntityMNode()

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -109,10 +109,10 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   public void setTimePartitionInterval(long timePartitionInterval) {}
 
   @Override
-  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+  public void setStorageGroupSchema(TDatabaseSchema schema) {}
 
   @Override
-  public TStorageGroupSchema getStorageGroupSchema() {
+  public TDatabaseSchema getStorageGroupSchema() {
     return null;
   }
 }

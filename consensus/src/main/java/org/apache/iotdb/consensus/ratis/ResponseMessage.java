@@ -26,7 +26,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ResponseMessage implements Message {
+class ResponseMessage implements Message {
 
   /**
    * This content holder may hold 1. TSStatus, which may be serialized when called getContent() 2.
@@ -37,12 +37,12 @@ public class ResponseMessage implements Message {
   private volatile ByteString serializedData;
   private final Logger logger = LoggerFactory.getLogger(ResponseMessage.class);
 
-  public ResponseMessage(Object content) {
+  ResponseMessage(Object content) {
     this.contentHolder = content;
     this.serializedData = null;
   }
 
-  public Object getContentHolder() {
+  Object getContentHolder() {
     return contentHolder;
   }
 

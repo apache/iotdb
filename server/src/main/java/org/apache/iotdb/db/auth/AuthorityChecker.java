@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -48,7 +49,9 @@ public class AuthorityChecker {
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
-  private AuthorityChecker() {}
+  private AuthorityChecker() {
+    // empty constructor
+  }
 
   /**
    * check permission(datanode to confignode).
@@ -103,6 +106,7 @@ public class AuthorityChecker {
 
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+    long startTime = System.nanoTime();
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
         return RpcUtils.getStatus(
@@ -117,6 +121,8 @@ public class AuthorityChecker {
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
