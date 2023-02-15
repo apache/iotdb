@@ -395,7 +395,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().invalidateAll();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -477,7 +477,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     cache.takeWriteLock();
     try {
       // todo implement precise timeseries clean rather than clean all
-      cache.cleanUp();
+      cache.invalidateAll();
     } finally {
       cache.releaseWriteLock();
     }

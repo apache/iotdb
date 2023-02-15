@@ -264,6 +264,10 @@ public class DataNodeSchemaCache {
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
+  public void invalidateAll() {
+    dualKeyCache.invalidateAll();
+  }
+
   public void cleanUp() {
     dualKeyCache.cleanUp();
   }
