@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -68,7 +69,7 @@ public abstract class MTreeBelowSGTest {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    CacheMemoryManager.getInstance().clear();
     root.clear();
     root = null;
     for (IMTreeBelowSG mtree : usedMTree) {
@@ -76,6 +77,7 @@ public abstract class MTreeBelowSGTest {
     }
     usedMTree.clear();
     storageGroup = null;
+    EnvironmentUtils.cleanEnv();
     rollBackConfig();
   }
 
