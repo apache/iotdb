@@ -43,22 +43,22 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   }
 
   public void updatePinnedNum(int delta) {
-    this.pinnedNum.getAndUpdate(i -> i += delta);
+    this.pinnedNum.addAndGet(delta);
     cachedEngineStatistics.updatePinnedNum(delta);
   }
 
   public void updateUnpinnedNum(int delta) {
-    this.unpinnedNum.getAndUpdate(i -> i += delta);
+    this.unpinnedNum.addAndGet(delta);
     cachedEngineStatistics.updateUnpinnedNum(delta);
   }
 
   public void updatePinnedSize(int delta) {
-    this.pinnedSize.getAndUpdate(i -> i += delta);
+    this.pinnedSize.addAndGet(delta);
     cachedEngineStatistics.updatePinnedSize(delta);
   }
 
   public void updateUnpinnedSize(int delta) {
-    this.unpinnedSize.getAndUpdate(i -> i += delta);
+    this.unpinnedSize.addAndGet(delta);
     cachedEngineStatistics.updateUnpinnedSize(delta);
   }
 
@@ -69,9 +69,9 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   @Override
   public void clear() {
     super.clear();
-    cachedEngineStatistics.updatePinnedNum((int) -pinnedNum.get());
-    cachedEngineStatistics.updateUnpinnedNum((int) -unpinnedNum.get());
-    cachedEngineStatistics.updatePinnedSize((int) -pinnedSize.get());
-    cachedEngineStatistics.updateUnpinnedSize((int) -unpinnedSize.get());
+    cachedEngineStatistics.updatePinnedNum(-pinnedNum.get());
+    cachedEngineStatistics.updateUnpinnedNum(-unpinnedNum.get());
+    cachedEngineStatistics.updatePinnedSize(-pinnedSize.get());
+    cachedEngineStatistics.updateUnpinnedSize(-unpinnedSize.get());
   }
 }

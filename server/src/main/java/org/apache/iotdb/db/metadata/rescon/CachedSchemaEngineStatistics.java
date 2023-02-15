@@ -60,20 +60,20 @@ public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
     return releaseFlushStrategy.isExceedFlushThreshold();
   }
 
-  public void updatePinnedNum(int delta) {
-    this.pinnedNum.getAndUpdate(i -> i += delta);
+  public void updatePinnedNum(long delta) {
+    this.pinnedNum.addAndGet(delta);
   }
 
-  public void updateUnpinnedNum(int delta) {
-    this.unpinnedNum.getAndUpdate(i -> i += delta);
+  public void updateUnpinnedNum(long delta) {
+    this.unpinnedNum.addAndGet(delta);
   }
 
-  public void updatePinnedSize(int delta) {
-    this.pinnedSize.getAndUpdate(i -> i += delta);
+  public void updatePinnedSize(long delta) {
+    this.pinnedSize.addAndGet(delta);
   }
 
-  public void updateUnpinnedSize(int delta) {
-    this.unpinnedSize.getAndUpdate(i -> i += delta);
+  public void updateUnpinnedSize(long delta) {
+    this.unpinnedSize.addAndGet(delta);
   }
 
   public long getUnpinnedSize() {

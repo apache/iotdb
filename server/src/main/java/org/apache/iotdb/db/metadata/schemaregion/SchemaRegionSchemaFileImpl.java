@@ -69,7 +69,6 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -141,8 +140,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
   private MLogDescriptionWriter logDescriptionWriter;
 
-  private final SchemaStatisticsManager schemaStatisticsManager =
-      SchemaStatisticsManager.getInstance();
   private final CachedSchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGCachedImpl mtree;
@@ -421,8 +418,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
-    long seriesCount = mtree.countAllMeasurement();
-    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    long seriesCount = regionStatistics.getSeriesNumber();
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
     }
@@ -497,6 +493,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               schemaRegionId.getId(),
               regionStatistics,
               measurementMNode -> {
+                regionStatistics.addTimeseries(1L);
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
@@ -616,7 +613,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       try {
 
         // update statistics and schemaDataTypeNumMap
-        schemaStatisticsManager.addTimeseries(1L);
+        regionStatistics.addTimeseries(1L);
 
         // update tag index
         if (offset != -1 && isRecovering) {
@@ -744,7 +741,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       try {
 
         // update statistics and schemaDataTypeNumMap
-        schemaStatisticsManager.addTimeseries(seriesCount);
+        regionStatistics.addTimeseries(seriesCount);
 
         List<Long> tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -885,7 +882,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
@@ -904,7 +901,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }

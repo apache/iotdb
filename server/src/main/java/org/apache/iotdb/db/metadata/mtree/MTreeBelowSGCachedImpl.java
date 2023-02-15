@@ -61,7 +61,6 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -133,7 +132,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected Void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
-            SchemaStatisticsManager.getInstance().addTimeseries(1);
+            regionStatistics.addTimeseries(1L);
             return null;
           }
         }) {

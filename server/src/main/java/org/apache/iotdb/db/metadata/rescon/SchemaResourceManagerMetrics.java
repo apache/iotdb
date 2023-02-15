@@ -29,14 +29,9 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class SchemaResourceManagerMetrics implements IMetricSet {
-  private final SchemaStatisticsManager schemaStatisticsManager;
-
   private final ISchemaEngineStatistics schemaEngineStatistics;
 
-  public SchemaResourceManagerMetrics(
-      SchemaStatisticsManager schemaStatisticsManager,
-      ISchemaEngineStatistics schemaEngineStatistics) {
-    this.schemaStatisticsManager = schemaStatisticsManager;
+  public SchemaResourceManagerMetrics(ISchemaEngineStatistics schemaEngineStatistics) {
     this.schemaEngineStatistics = schemaEngineStatistics;
   }
 
@@ -45,8 +40,8 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
-        schemaStatisticsManager,
-        SchemaStatisticsManager::getTotalSeriesNumber,
+        schemaEngineStatistics,
+        ISchemaEngineStatistics::getTotalSeriesNumber,
         Tag.NAME.toString(),
         "timeSeries");
 
@@ -91,11 +86,11 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SchemaResourceManagerMetrics that = (SchemaResourceManagerMetrics) o;
-    return Objects.equals(schemaStatisticsManager, that.schemaStatisticsManager);
+    return Objects.equals(schemaEngineStatistics, that.schemaEngineStatistics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(schemaStatisticsManager);
+    return Objects.hash(schemaEngineStatistics);
   }
 }

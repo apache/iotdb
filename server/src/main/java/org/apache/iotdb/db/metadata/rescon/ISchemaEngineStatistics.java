@@ -29,5 +29,7 @@ public interface ISchemaEngineStatistics {
 
   long getMemoryUsage();
 
+  long getTotalSeriesNumber();
+
   void clear();
 }

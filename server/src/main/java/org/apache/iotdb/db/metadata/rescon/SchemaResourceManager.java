@@ -33,7 +33,6 @@ public class SchemaResourceManager {
     MetricService.getInstance()
         .addMetricSet(
             new SchemaResourceManagerMetrics(
-                SchemaStatisticsManager.getInstance(),
                 SchemaEngineStatisticsHolder.getSchemaEngineStatistics()));
     if (IoTDBDescriptor.getInstance()
         .getConfig()

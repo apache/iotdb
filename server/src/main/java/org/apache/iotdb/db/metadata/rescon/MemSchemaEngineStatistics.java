@@ -35,12 +35,15 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   protected final AtomicLong memoryUsage = new AtomicLong(0);
 
+  private final AtomicLong totalSeriesNumber = new AtomicLong(0);
+
   private volatile boolean allowToCreateNewSeries;
 
   @Override
   public void init() {
     memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     memoryUsage.getAndSet(0);
+    totalSeriesNumber.getAndSet(0);
     allowToCreateNewSeries = true;
   }
 
@@ -65,7 +68,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void requestMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v += size);
+    memoryUsage.addAndGet(size);
     if (memoryUsage.get() >= memoryCapacity) {
       logger.warn("Current series memory {} is too large...", memoryUsage);
       allowToCreateNewSeries = false;
@@ -73,11 +76,24 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void releaseMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v -= size);
+    memoryUsage.addAndGet(-size);
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
       logger.info("Current series memory {} come back to normal level", memoryUsage);
       allowToCreateNewSeries = true;
     }
+  }
+
+  @Override
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
+  }
+
+  public void addTimeseries(long addedNum) {
+    totalSeriesNumber.addAndGet(addedNum);
+  }
+
+  public void deleteTimeseries(long deletedNum) {
+    totalSeriesNumber.addAndGet(-deletedNum);
   }
 
   @Override

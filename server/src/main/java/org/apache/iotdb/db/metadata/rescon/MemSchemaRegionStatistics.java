@@ -26,7 +26,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   protected MemSchemaEngineStatistics schemaEngineStatistics =
       (MemSchemaEngineStatistics) SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
   private final int schemaRegionId;
-  private final AtomicLong memoryUsage = new AtomicLong();
+  private final AtomicLong memoryUsage = new AtomicLong(0);
+  private final AtomicLong seriesNumber = new AtomicLong(0);
 
   public MemSchemaRegionStatistics(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
@@ -38,18 +39,27 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   }
 
   public void requestMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v += size);
+    memoryUsage.addAndGet(size);
     schemaEngineStatistics.requestMemory(size);
   }
 
   public void releaseMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v -= size);
+    memoryUsage.addAndGet(-size);
     schemaEngineStatistics.releaseMemory(size);
   }
 
-  @Override
-  public void clear() {
-    schemaEngineStatistics.releaseMemory(memoryUsage.get());
+  public long getSeriesNumber() {
+    return seriesNumber.get();
+  }
+
+  public void addTimeseries(long addedNum) {
+    seriesNumber.addAndGet(addedNum);
+    schemaEngineStatistics.addTimeseries(addedNum);
+  }
+
+  public void deleteTimeseries(long deletedNum) {
+    seriesNumber.addAndGet(-deletedNum);
+    schemaEngineStatistics.deleteTimeseries(deletedNum);
   }
 
   @Override
@@ -65,5 +75,13 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public MemSchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
+  }
+
+  @Override
+  public void clear() {
+    schemaEngineStatistics.releaseMemory(memoryUsage.get());
+    schemaEngineStatistics.deleteTimeseries(seriesNumber.get());
+    memoryUsage.getAndSet(0);
+    seriesNumber.getAndSet(0);
   }
 }
