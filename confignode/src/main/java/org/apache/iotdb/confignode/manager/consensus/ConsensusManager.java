@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -24,13 +24,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -345,21 +345,5 @@ public class ConsensusManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
-  }
-
-  @TestOnly
-  public void singleCopyMayWaitUntilLeaderReady() {
-    long startTime = System.currentTimeMillis();
-    long maxWaitTime = 1000L * 60; // milliseconds, which is 60s
-    try {
-      while (!consensusImpl.isLeader(consensusGroupId)) {
-        TimeUnit.MILLISECONDS.sleep(100);
-        long elapsed = System.currentTimeMillis() - startTime;
-        if (elapsed > maxWaitTime) {
-          return;
-        }
-      }
-    } catch (InterruptedException ignored) {
-    }
   }
 }

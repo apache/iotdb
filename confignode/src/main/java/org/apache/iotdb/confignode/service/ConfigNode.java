@@ -204,6 +204,21 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
+  private void setUpInternalServices() throws StartupException, IOException {
+    // Setup JMXService
+    registerManager.register(new JMXService());
+    JMXService.registerMBean(this, mbeanName);
+
+    registerManager.register(MetricService.getInstance());
+    // bind predefined metric sets
+    MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(new LogbackMetrics());
+    MetricService.getInstance().addMetricSet(new ProcessMetrics());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
+
+    LOGGER.info("Successfully setup internal services.");
+  }
+
   private void initConfigManager() {
     try {
       configManager = new ConfigManager();
@@ -218,21 +233,6 @@ public class ConfigNode implements ConfigNodeMBean {
     // Add some Metrics for configManager
     configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
-  }
-
-  private void setUpInternalServices() throws StartupException, IOException {
-    // Setup JMXService
-    registerManager.register(new JMXService());
-    JMXService.registerMBean(this, mbeanName);
-
-    registerManager.register(MetricService.getInstance());
-    // bind predefined metric sets
-    MetricService.getInstance().addMetricSet(new JvmMetrics());
-    MetricService.getInstance().addMetricSet(new LogbackMetrics());
-    MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
-
-    LOGGER.info("Successfully setup internal services.");
   }
 
   /** Register Non-seed ConfigNode when first startup */

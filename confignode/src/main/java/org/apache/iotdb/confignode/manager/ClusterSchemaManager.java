@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -322,7 +323,7 @@ public class ClusterSchemaManager {
       // Get related DataNodes
       Set<TDataNodeLocation> dataNodeLocations =
           getPartitionManager()
-              .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+              .getDatabaseRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
 
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
         dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
