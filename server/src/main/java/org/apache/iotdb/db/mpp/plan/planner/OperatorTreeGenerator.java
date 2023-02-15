@@ -2309,7 +2309,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // Create partial parent operator for children
           PlanNode partialParentNode = null;
           if (endIndex - startIndex == 1) {
-            partialParentNode = node.getChildren().get(i);
+            partialParentNode = node.getChildren().get(startIndex);
           } else {
             // PartialParentNode is equals to parentNode except children
             partialParentNode = node.createSubNode(i, startIndex, endIndex);
