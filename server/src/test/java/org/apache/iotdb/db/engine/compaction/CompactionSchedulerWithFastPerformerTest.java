@@ -101,6 +101,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.FAST);
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
