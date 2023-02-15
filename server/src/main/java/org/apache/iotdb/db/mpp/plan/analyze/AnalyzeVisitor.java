@@ -1260,10 +1260,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, Expression groupByExpression, double delta) {
     TSDataType type = analyzeExpression(analysis, groupByExpression);
     if (delta != 0) {
-      if (type != TSDataType.INT32
-          && type != TSDataType.INT64
-          && type != TSDataType.DOUBLE
-          && type != TSDataType.FLOAT) {
+      if (!type.isNumeric()) {
         throw new SemanticException("Only support numeric type when delta != 0");
       }
     }
