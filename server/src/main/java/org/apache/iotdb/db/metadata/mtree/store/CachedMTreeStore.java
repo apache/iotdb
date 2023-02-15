@@ -562,7 +562,9 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     } catch (Throwable e) {
       logger.error(
-          "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);
+          "Error occurred during MTree flush, current SchemaRegionId is {}",
+          regionStatistics.getSchemaRegionId(),
+          e);
       e.printStackTrace();
     }
   }
