@@ -37,9 +37,8 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics = (CachedSchemaEngineStatistics) schemaEngineStatistics;
   }
 
-  @Override
-  public CachedSchemaEngineStatistics getSchemaEngineStatistics() {
-    return cachedEngineStatistics;
+  public boolean isExceedReleaseThreshold() {
+    return cachedEngineStatistics.isExceedReleaseThreshold();
   }
 
   public void updatePinnedNum(int delta) {

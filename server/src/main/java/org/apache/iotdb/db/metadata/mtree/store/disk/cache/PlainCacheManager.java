@@ -31,8 +31,8 @@ public class PlainCacheManager extends CacheManager {
   // eviction.
   private volatile Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
 
-  public PlainCacheManager(int schemaRegionId, IMemManager memManager) {
-    super(schemaRegionId, memManager);
+  public PlainCacheManager(IMemManager memManager) {
+    super(memManager);
   }
 
   @Override

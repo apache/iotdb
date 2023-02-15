@@ -48,6 +48,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     schemaEngineStatistics.releaseMemory(size);
   }
 
+  @Override
   public long getSeriesNumber() {
     return seriesNumber.get();
   }
@@ -70,11 +71,6 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public int getSchemaRegionId() {
     return schemaRegionId;
-  }
-
-  @Override
-  public MemSchemaEngineStatistics getSchemaEngineStatistics() {
-    return schemaEngineStatistics;
   }
 
   @Override

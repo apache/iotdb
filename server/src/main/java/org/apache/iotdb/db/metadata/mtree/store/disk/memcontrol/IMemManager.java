@@ -24,15 +24,15 @@ import java.util.List;
 
 public interface IMemManager {
 
-  void requestPinnedMemResource(IMNode node, int schemaRegionId);
+  void requestPinnedMemResource(IMNode node);
 
-  void upgradeMemResource(IMNode node, int schemaRegionId);
+  void upgradeMemResource(IMNode node);
 
-  void releasePinnedMemResource(IMNode node, int schemaRegionId);
+  void releasePinnedMemResource(IMNode node);
 
-  void releaseMemResource(IMNode node, int schemaRegionId);
+  void releaseMemResource(IMNode node);
 
-  void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId);
+  void releaseMemResource(List<IMNode> evictedNodes);
 
-  void updatePinnedSize(int deltaSize, int schemaRegionId);
+  void updatePinnedSize(int deltaSize);
 }

@@ -37,7 +37,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void requestPinnedMemResource(IMNode node, int schemaRegionId) {
+  public void requestPinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.requestMemory(size);
     regionStatistics.updatePinnedSize(size);
@@ -45,7 +45,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void upgradeMemResource(IMNode node, int schemaRegionId) {
+  public void upgradeMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updatePinnedSize(size);
     regionStatistics.updatePinnedNum(1);
@@ -54,7 +54,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void releasePinnedMemResource(IMNode node, int schemaRegionId) {
+  public void releasePinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updateUnpinnedSize(size);
     regionStatistics.updateUnpinnedNum(1);
@@ -63,7 +63,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void releaseMemResource(IMNode node, int schemaRegionId) {
+  public void releaseMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.updateUnpinnedSize(-size);
     regionStatistics.updateUnpinnedNum(-1);
@@ -71,7 +71,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void releaseMemResource(List<IMNode> evictedNodes, int schemaRegionId) {
+  public void releaseMemResource(List<IMNode> evictedNodes) {
     int size = 0;
     for (IMNode node : evictedNodes) {
       size += estimator.estimateSize(node);
@@ -82,7 +82,7 @@ public class MemManager implements IMemManager {
   }
 
   @Override
-  public void updatePinnedSize(int deltaSize, int schemaRegionId) {
+  public void updatePinnedSize(int deltaSize) {
     if (deltaSize > 0) {
       regionStatistics.requestMemory(deltaSize);
     } else {

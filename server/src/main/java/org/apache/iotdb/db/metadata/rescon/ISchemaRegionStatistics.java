@@ -26,7 +26,7 @@ public interface ISchemaRegionStatistics {
 
   int getSchemaRegionId();
 
-  ISchemaEngineStatistics getSchemaEngineStatistics();
+  long getSeriesNumber();
 
   void clear();
 }

@@ -30,8 +30,8 @@ public class LRUCacheManager extends CacheManager {
 
   private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager(int schemaRegionId, IMemManager memManager) {
-    super(schemaRegionId, memManager);
+  public LRUCacheManager(IMemManager memManager) {
+    super(memManager);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }

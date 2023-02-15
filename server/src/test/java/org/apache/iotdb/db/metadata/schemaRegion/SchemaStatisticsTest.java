@@ -30,6 +30,9 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.CachedMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,6 +54,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
+    ISchemaEngineStatistics engineStatistics =
+        SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
 
     SchemaRegionTestUtil.createSimpleTimeseriesByList(
         schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
@@ -66,6 +71,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
     if (testParams.getTestModeName().equals("SchemaFile-PartialMemory")
         || testParams.getTestModeName().equals("SchemaFile-NonMemory")) {
+      // wait release and flush task
       Thread.sleep(1000);
       IMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
       // schemaRegion1
@@ -82,6 +88,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       sg2.setFullPath("root.sg2");
       long size2 = estimator.estimateSize(sg2);
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
+      Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     } else {
       IMNodeSizeEstimator estimator =
           testParams.getSchemaEngineMode().equals("Memory")
@@ -141,6 +148,41 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                       "s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
                   null));
       Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
+      Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
     }
+    checkSchemaFileStatistics(engineStatistics);
+  }
+
+  private void checkSchemaFileStatistics(ISchemaEngineStatistics engineStatistics) {
+    if (engineStatistics instanceof CachedSchemaEngineStatistics) {
+      CachedSchemaEngineStatistics cachedEngineStatistics =
+          (CachedSchemaEngineStatistics) engineStatistics;
+      Assert.assertEquals(
+          cachedEngineStatistics.getMemoryUsage(),
+          cachedEngineStatistics.getPinnedSize() + cachedEngineStatistics.getUnpinnedSize());
+    }
+  }
+
+  @Test
+  public void testSeriesNumStatistics() throws Exception {
+    ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
+    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
+    ISchemaEngineStatistics engineStatistics =
+        SchemaEngineStatisticsHolder.getSchemaEngineStatistics();
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion1, Arrays.asList("root.sg1.d0", "root.sg1.d1.s1", "root.sg1.d1.s2.t1"));
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion2, Arrays.asList("root.sg2.d1.s3", "root.sg2.d2.s1", "root.sg2.d2.s2"));
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+    Assert.assertTrue(schemaRegion1.constructSchemaBlackList(patternTree) >= 1);
+    Assert.assertTrue(schemaRegion2.constructSchemaBlackList(patternTree) >= 1);
+    schemaRegion1.deleteTimeseriesInBlackList(patternTree);
+    schemaRegion2.deleteTimeseriesInBlackList(patternTree);
+    Assert.assertEquals(2, schemaRegion1.getSchemaRegionStatistics().getSeriesNumber());
+    Assert.assertEquals(2, schemaRegion2.getSchemaRegionStatistics().getSeriesNumber());
+    Assert.assertEquals(4, engineStatistics.getTotalSeriesNumber());
   }
 }
