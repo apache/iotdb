@@ -94,7 +94,11 @@ public class SessionWindow implements IWindow {
     long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
     long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
 
-    return maxTime - minTime <= timeInterval;
+    boolean contains = maxTime - minTime <= timeInterval;
+    if (contains) {
+      timeValue = ascending ? maxTime : minTime;
+    }
+    return contains;
   }
 
   public long getTimeInterval() {
