@@ -61,7 +61,7 @@ public class PathUpgradeCache {
     if (!needUpgrade) {
       return measurementId;
     }
-    return paths.computeIfAbsent(measurementId, )
+    return paths.computeIfAbsent(measurementId, o -> parseMeasurementId(measurementId))[0];
   }
 
   private String[] parsePath(String path) {
@@ -153,9 +153,11 @@ public class PathUpgradeCache {
     return paths.putIfAbsent(path, nodes);
   }
 
-  private String parseMeasurementId(String measurementId) {
+  private String[] parseMeasurementId(String measurementId) {
     measurementId = measurementId.replace("`", "``");
-    return paths.putIfAbsent(measurementId, new String[]{containIllegalChar(measurementId) ? "`" + measurementId + "`" : measurementId})[0];
+    return new String[] {
+      containIllegalChar(measurementId) ? "`" + measurementId + "`" : measurementId
+    };
   }
 
   private boolean containIllegalChar(String nodeName) {

@@ -92,6 +92,7 @@ import java.util.Set;
 
 public class RewriteTsFileTool {
   private static final int MAX_TABLET_LENGTH = 1024 * 64;
+  private static final boolean SHOW_TIME = true;
 
   private static String host = "localhost";
   private static String port = "6667";
@@ -107,15 +108,20 @@ public class RewriteTsFileTool {
   private static boolean deleteAfterLoad = false;
 
   private static PathUpgradeCache upgradeCache;
+  private static Set<String> createdSgSet = new HashSet<>();
 
   public static void main(String[] args) {
     Session session = null;
     try {
+      long startTime = System.currentTimeMillis();
       parseArgs(args);
       session = new Session(host, port, user, password);
       session.open();
       System.out.printf("Connect to IoTDB %s:%s successfully.%n", host, port);
       writeToIoTDB(collectTsFiles(new File(filePath)), session);
+      if (SHOW_TIME) {
+        System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
+      }
     } catch (IoTDBConnectionException e) {
       System.out.printf("Can not connect to IoTDB. %s%n", e.getMessage());
       e.printStackTrace();
@@ -146,7 +152,7 @@ public class RewriteTsFileTool {
       readMode = getArgOrDefault(commandLine, "rm", readMode);
       ignoreBrokenChunk = commandLine.hasOption("ig");
       needUpgrade = commandLine.hasOption("ug");
-      sgLevel = Integer.parseInt(getArgOrDefault(commandLine, "sl", "1"));
+      sgLevel = Integer.parseInt(getArgOrDefault(commandLine, "sl", "1")) + 1;
       deleteAfterLoad = commandLine.hasOption("delete");
     } catch (ParseException e) {
       System.out.printf("Parse Args Error. %s%n", e.getMessage());
@@ -591,7 +597,6 @@ public class RewriteTsFileTool {
   private static void createSg(TsFileSequenceReader reader, Session session)
       throws IOException, VerifyMetadataException, IoTDBConnectionException,
           StatementExecutionException {
-    sgLevel += 1;
     Set<String> sgSet = new HashSet<>();
     Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
@@ -602,12 +607,16 @@ public class RewriteTsFileTool {
             String.format("Sg level %d is longer than device %s.", sgLevel, entry.getKey()));
       }
       System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
-      sgSet.add(String.join(".", sgNodes));
+      String sgName = String.join(".", sgNodes);
+      if (!createdSgSet.contains(sgName)) {
+        sgSet.add(sgName);
+      }
     }
 
     for (String sgName : sgSet) {
       session.createDatabase(sgName);
     }
+    createdSgSet.addAll(sgSet);
   }
 
   private static void readAndSendValuePage(
@@ -648,7 +657,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              header.getMeasurementID(),
+              upgradeCache.getMeasurement(header.getMeasurementID()),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -668,7 +677,7 @@ public class RewriteTsFileTool {
       Decoder defaultTimeDecoder,
       Session session)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    String measurementId = header.getMeasurementID();
+    String measurementId = upgradeCache.getMeasurement(header.getMeasurementID());
     Tablet tablet =
         new Tablet(
             upgradeCache.getPath(currentDevice),

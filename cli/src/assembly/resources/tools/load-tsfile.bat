@@ -29,6 +29,7 @@ if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.Cli
+if NOT DEFINED UPGRADE_MAIN_CLASS set UPGRADE_MAIN_CLASS=org.apache.iotdb.RewriteTsFileTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -46,10 +47,11 @@ set pw_parameter=-pw root
 set u_parameter=-u root
 set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1
-set load_dir_parameter=-e "load '
+set load_dir_parameter=
 set sg_level_parameter=
 set verify_parameter=
 set on_success_parameter=
+set need_upgrade=
 
 echo %* | findstr /c:"-f">nul || (goto :load_err)
 
@@ -68,13 +70,15 @@ if %param%!== ! (
 	set h_parameter=%1 %2
 ) else if "%param%"=="-f" (
 	if "%2"=="" goto :load_err
-	set load_dir_parameter=%load_dir_parameter%%2'
+	set load_dir_parameter=%2
 ) else if "%param%"=="--sgLevel" (
-	set sg_level_parameter=sgLevel=%2
+	set sg_level_parameter=%2
 ) else if "%param%"=="--verify" (
-	set verify_parameter=verify=%2
+	set verify_parameter=%2
 ) else if "%param%"=="--onSuccess" (
-	set on_success_parameter=onSuccess=%2
+	set on_success_parameter=%2
+) else if "%param%"=="-ug" (
+    set need_upgrade="-ug"
 )
 shift
 goto :loop
@@ -95,11 +99,33 @@ EXIT /B %ret_code%
 @REM -----------------------------------------------------------------------------
 :finally
 
-set PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %load_dir_parameter% %sg_level_parameter% %verify_parameter% %on_success_parameter%"
-echo %PARAMETERS%
+set PARAMETERS=load '%load_dir_parameter%'
+set UPGRADE_PARAMETERS=-f "%load_dir_parameter%" -rm s -ug
+if not "%sg_level_parameter%" == "" (
+    set PARAMETERS=%PARAMETERS% sgLevel=%sg_level_parameter%
+    set UPGRADE_PARAMETERS=%UPGRADE_PARAMETERS% -sl %sg_level_parameter%
+)
+if not "%verify_parameter%" == "" (
+    set PARAMETERS=%PARAMETERS% verify=%verify_parameter%
+)
+if not "%on_success_parameter%" == "" (
+    set PARAMETERS=%PARAMETERS% onSuccess=%on_success_parameter%
+    if "%on_success_parameter%" == "delete" (
+        set UPGRADE_PARAMETERS=%UPGRADE_PARAMETERS% -delete
+    )
+)
+set PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% -e "%PARAMETERS%"
+set UPGRADE_PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %UPGRADE_PARAMETERS%
 
 echo start loading TsFiles, please wait...
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
+if "%need_upgrade%" == "" (
+    echo %PARAMETERS%
+    "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
+) else (
+    echo %UPGRADE_PARAMETERS%
+    "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %UPGRADE_MAIN_CLASS% %UPGRADE_PARAMETERS%
+)
+
 set ret_code=%ERRORLEVEL%
 
 ENDLOCAL

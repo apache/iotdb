@@ -30,6 +30,7 @@ export IOTDB_HOME="${IOTDB_HOME}"
 eval set -- "$VARS"
 
 PARAMETERS=""
+UPGRADE_PARAMETERS=""
 HELP="Usage: $0 -f <file_path> [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
 
 # Added parameters when default parameters are missing
@@ -72,6 +73,10 @@ while true; do
             on_success_param="$2"
             shift 2
         ;;
+        -ug)
+            needUpgrade_param="$1"
+            shift 1
+        ;;
         "")
               #if we do not use getopt, we then have to process the case that there is no argument.
               #in some systems, when there is no argument, shift command may throw error, so we skip directly
@@ -91,21 +96,28 @@ if [ -z "${load_dir_param}" ]; then
 fi
 
 LOAD_SQL="load '${load_dir_param}'"
+UPGRADE_PARAMETERS="-f \"${load_dir_param}\""
 if [ -n "${sg_level_param}" ]; then
     LOAD_SQL="${LOAD_SQL} sgLevel=${sg_level_param}"
+    UPGRADE_PARAMETERS="${UPGRADE_PARAMETERS} -sl ${sg_level_param}"
 fi
 if [ -n "${verify_param}" ]; then
     LOAD_SQL="${LOAD_SQL} verify=${verify_param}"
 fi
 if [ -n "${on_success_param}" ]; then
     LOAD_SQL="${LOAD_SQL} onSuccess=${on_success_param}"
+    if [ "${on_success_param}" == "delete" ]; then
+      UPGRADE_PARAMETERS="${UPGRADE_PARAMETERS} -delete"
+    fi
 fi
 
 PARAMETERS="$host_param $port_param $user_param $passwd_param $PARAMETERS -e \"${LOAD_SQL}\""
+UPGRADE_PARAMETERS="$host_param $port_param $user_param $passwd_param $UPGRADE_PARAMETERS $needUpgrade_param -rm s"
 
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
 MAIN_CLASS=org.apache.iotdb.cli.Cli
+REWRITE_MAIN_CLASS=org.apache.iotdb.RewriteTsFileTool
 
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
@@ -127,6 +139,10 @@ set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
 
 echo "start loading TsFiles, please wait..."
-exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+if [ -n "${needUpgrade_param}" ]; then
+  exec "$JAVA" -cp "$CLASSPATH" "$REWRITE_MAIN_CLASS" $UPGRADE_PARAMETERS
+else
+  exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+fi
 
 exit $?
