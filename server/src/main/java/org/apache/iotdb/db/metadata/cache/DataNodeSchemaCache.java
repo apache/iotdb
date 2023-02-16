@@ -160,7 +160,7 @@ public class DataNodeSchemaCache {
 
   public List<Integer> compute(ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    final AtomicBoolean isFirstMeasurement = new AtomicBoolean();
+    final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
     dualKeyCache.compute(
         new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
           @Override
