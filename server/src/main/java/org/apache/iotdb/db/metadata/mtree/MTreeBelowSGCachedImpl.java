@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -61,7 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -116,13 +115,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback,
       Consumer<IMeasurementMNode> measurementProcess,
-      int schemaRegionId)
+      int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, flushCallback);
+    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
-    this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
+    this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
 
     // recover measurement
@@ -132,34 +132,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected Void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
-            SchemaStatisticsManager.getInstance().addTimeseries(1);
+            regionStatistics.addTimeseries(1L);
             return null;
           }
         }) {
       collector.traverse();
     }
-  }
-
-  /**
-   * Generate the ancestor nodes of storageGroupNode
-   *
-   * @return root node
-   */
-  private IMNode generatePrefix(
-      PartialPath storageGroupPath, IStorageGroupMNode storageGroupMNode) {
-    String[] nodes = storageGroupPath.getNodes();
-    // nodes[0] must be root
-    IMNode root = new AboveDatabaseMNode(null, nodes[0]);
-    IMNode cur = root;
-    IMNode child;
-    for (int i = 1; i < nodes.length - 1; i++) {
-      child = new AboveDatabaseMNode(cur, nodes[i]);
-      cur.addChild(nodes[i], child);
-      cur = child;
-    }
-    storageGroupMNode.setParent(cur);
-    cur.addChild(storageGroupMNode);
-    return root;
   }
 
   /** Only used for load snapshot */
@@ -171,7 +149,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
+    this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
 
@@ -209,6 +187,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       File snapshotDir,
       String storageGroupFullPath,
       int schemaRegionId,
+      CachedSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       Runnable flushCallback)
@@ -216,7 +195,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
         CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupFullPath, schemaRegionId, flushCallback),
+            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
         tagGetter);
   }
@@ -1038,8 +1017,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             rootNode, showTimeSeriesPlan.getPath(), store, showTimeSeriesPlan.isPrefixMatch()) {
           @Override
           protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode node) {
-            Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
-                tagAndAttributeProvider.apply(node.getOffset());
             return new ITimeSeriesSchemaInfo() {
 
               private Pair<Map<String, String>, Map<String, String>> tagAndAttribute = null;

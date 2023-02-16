@@ -16,26 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
+package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class MemManagerHolder {
+// TODO: SchemaEngineStatistics should not be singleton later
+public class SchemaEngineStatisticsHolder {
+  private static MemSchemaEngineStatistics schemaEngineStatistics;
 
-  private static IMemManager memManagerInstance;
-
-  public static void initMemManagerInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      memManagerInstance = new MemManagerNodeNumBasedImpl();
+  public static void initSchemaEngineStatisticsInstance() {
+    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
+      schemaEngineStatistics = new MemSchemaEngineStatistics();
     } else {
-      memManagerInstance = new MemManagerNodeEstimatedSizeBasedImpl();
+      schemaEngineStatistics = new CachedSchemaEngineStatistics();
     }
+    schemaEngineStatistics.init();
   }
 
-  public static IMemManager getMemManagerInstance() {
-    return memManagerInstance;
+  public static ISchemaEngineStatistics getSchemaEngineStatistics() {
+    return schemaEngineStatistics;
   }
 
-  private MemManagerHolder() {}
+  private SchemaEngineStatisticsHolder() {}
 }
