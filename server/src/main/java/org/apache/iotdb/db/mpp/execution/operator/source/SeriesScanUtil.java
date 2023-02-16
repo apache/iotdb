@@ -107,8 +107,6 @@ public class SeriesScanUtil {
   protected TsBlock cachedTsBlock;
 
   protected SeriesScanOptions scanOptions;
-
-  //
   protected PaginationController paginationController;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
@@ -119,10 +117,13 @@ public class SeriesScanUtil {
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = IDTable.translateQueryPath(seriesPath);
+    dataType = seriesPath.getSeriesType();
+
     this.scanOptions = scanOptions;
+    paginationController = scanOptions.getPaginationController();
+
     this.context = context;
 
-    dataType = seriesPath.getSeriesType();
     if (scanOrder.isAscending()) {
       orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
@@ -131,28 +132,25 @@ public class SeriesScanUtil {
       mergeReader = getDescPriorityMergeReader();
     }
 
-    // init
+    // init TimeSeriesMetadata materializer
     seqTimeSeriesMetadata = new LinkedList<>();
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
 
-    // init
+    // init ChunkMetadata materializer
     cachedChunkMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
 
-    // init
+    // init PageReader materializer
     seqPageReaders = new LinkedList<>();
     unSeqPageReaders =
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
-
-    //
-    paginationController = scanOptions.getPaginationController();
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
@@ -162,7 +160,7 @@ public class SeriesScanUtil {
     // updated filter concerning TTL
     scanOptions.setTTL(dataSource.getDataTTL());
 
-    // init
+    // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
     curUnseqFileIndex = 0;
   }
