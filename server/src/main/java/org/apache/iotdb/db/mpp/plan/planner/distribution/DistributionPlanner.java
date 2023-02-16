@@ -42,8 +42,6 @@ public class DistributionPlanner {
   private MPPQueryContext context;
   private LogicalQueryPlan logicalPlan;
 
-  private int planFragmentIndex = 0;
-
   public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
     this.analysis = analysis;
     this.logicalPlan = logicalPlan;
@@ -63,8 +61,23 @@ public class DistributionPlanner {
 
   public PlanNode addExchangeNode(PlanNode root) {
     ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
-    return adder.visit(root, new NodeGroupContext(context));
+    NodeGroupContext nodeGroupContext =
+        new NodeGroupContext(
+            context,
+            analysis.getStatement() instanceof QueryStatement
+                && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
+            root);
+    PlanNode newRoot = adder.visit(root, nodeGroupContext);
+    adjustUpStream(nodeGroupContext.exchangeNodes);
+    return newRoot;
   }
+
+  /**
+   * adjust upStream of exchangeNodes, generate
+   *
+   * @param exchangeNodes
+   */
+  private void adjustUpStream(List<ExchangeNode> exchangeNodes) {}
 
   public SubPlan splitFragment(PlanNode root) {
     FragmentBuilder fragmentBuilder = new FragmentBuilder(context);
