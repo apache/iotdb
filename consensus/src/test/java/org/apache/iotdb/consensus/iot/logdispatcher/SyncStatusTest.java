@@ -47,7 +47,7 @@ public class SyncStatusTest {
       new Peer(new DataRegionId(1), 2, new TEndPoint("127.0.0.1", 6667));
   private static final IoTConsensusConfig config = new IoTConsensusConfig.Builder().build();
   private static final long CHECK_POINT_GAP = 500;
-  private static LongSupplier supplier;
+  private static final LongSupplier supplier = () -> -1L;
 
   @Before
   public void setUp() throws IOException {
