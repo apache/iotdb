@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics.io;
+package org.apache.iotdb.metrics.metricsets.disk;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-/** Disk Metrics Manager for Windows system, not implemented yet. */
-public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
+/** Disk Metrics Manager for macOS, not implemented yet. */
+public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
 
-  public WindowsDiskMetricsManager() {
+  public MacDiskMetricsManager() {
     super();
   }
 
@@ -47,16 +47,6 @@ public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public Map<String, Long> getWriteOperationCountForDisk() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String, Long> getMergedWriteOperationForDisk() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String, Long> getMergedReadOperationForDisk() {
     return Collections.emptyMap();
   }
 
@@ -97,6 +87,16 @@ public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public Map<String, Long> getQueueSizeForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, Long> getMergedWriteOperationForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, Long> getMergedReadOperationForDisk() {
     return Collections.emptyMap();
   }
 

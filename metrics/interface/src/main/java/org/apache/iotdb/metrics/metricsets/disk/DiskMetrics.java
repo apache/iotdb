@@ -17,11 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.metrics.metricsets.disk;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.service.metrics.io.AbstractDiskMetricsManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -34,6 +31,26 @@ public class DiskMetrics implements IMetricSet {
       AbstractDiskMetricsManager.getDiskMetricsManager();
   private static final String WRITE = "write";
   private static final String READ = "read";
+  private static final String AVG_READ = "avg_read";
+  private static final String AVG_WRITE = "avg_write";
+  private static final String MERGED_READ = "merged_read";
+  private static final String MERGED_WRITE = "merged_write";
+  private static final String ATTEMPT_READ = "attempt_read";
+  private static final String ATTEMPT_WRITE = "attempt_write";
+  private static final String ACTUAL_WRITE = "actual_write";
+  private static final String ACTUAL_READ = "actual_read";
+  private static final String TYPE = "type";
+  private static final String NAME = "name";
+  private static final String FROM = "from";
+  private static final String DISK_IO_SIZE = "disk_io_size";
+  private static final String DISK_IO_OPS = "disk_io_ops";
+  private static final String DISK_IO_TIME = "disk_io_time";
+  private static final String DISK_IO_AVG_TIME = "disk_io_avg_time";
+  private static final String DISK_IO_SECTOR_NUM = "disk_io_sector_num";
+  private static final String DISK_IO_BUSY_PERCENTAGE = "disk_io_busy_percentage";
+  private static final String DISK_IO_QUEUE_SIZE = "disk_io_queue_size";
+  private static final String PROCESS_IO_OPS = "process_io_ops";
+  private static final String PROCESS_IO_SIZE = "process_io_size";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -41,184 +58,184 @@ public class DiskMetrics implements IMetricSet {
     Set<String> diskIDs = diskMetricsManager.getDiskIds();
     for (String diskID : diskIDs) {
       metricService.createAutoGauge(
-          Metric.DISK_IO_SIZE.toString(),
+          DISK_IO_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadDataSizeForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           READ,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_SIZE.toString(),
+          DISK_IO_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteDataSizeForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           WRITE,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_OPS.toString(),
+          DISK_IO_OPS,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadOperationCountForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           READ,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_OPS.toString(),
+          DISK_IO_OPS,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteOperationCountForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           WRITE,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_OPS.toString(),
+          DISK_IO_OPS,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getMergedReadOperationForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
-          "merged_write",
-          Tag.NAME.toString(),
+          TYPE,
+          MERGED_WRITE,
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_OPS.toString(),
+          DISK_IO_OPS,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getMergedWriteOperationForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
-          "merged_read",
-          Tag.NAME.toString(),
+          TYPE,
+          MERGED_READ,
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_TIME.toString(),
+          DISK_IO_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getReadCostTimeForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           READ,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_TIME.toString(),
+          DISK_IO_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getWriteCostTimeForDisk().getOrDefault(diskID, 0L),
-          Tag.TYPE.toString(),
+          TYPE,
           WRITE,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_AVG_TIME.toString(),
+          DISK_IO_AVG_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgReadCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.TYPE.toString(),
+          TYPE,
           READ,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_AVG_TIME.toString(),
+          DISK_IO_AVG_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgWriteCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.TYPE.toString(),
+          TYPE,
           WRITE,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_SECTOR_NUM.toString(),
+          DISK_IO_SECTOR_NUM,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.TYPE.toString(),
+          TYPE,
           READ,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_SECTOR_NUM.toString(),
+          DISK_IO_SECTOR_NUM,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
-          Tag.TYPE.toString(),
+          TYPE,
           WRITE,
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_BUSY_PERCENTAGE.toString(),
+          DISK_IO_BUSY_PERCENTAGE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getIoUtilsPercentage().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          NAME,
           diskID);
       metricService.createAutoGauge(
-          Metric.DISK_IO_QUEUE_SIZE.toString(),
+          DISK_IO_QUEUE_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getQueueSizeForDisk().getOrDefault(diskID, 0L),
-          Tag.NAME.toString(),
+          NAME,
           diskID);
     }
 
     // metrics for datanode and config node
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_OPS.toString(),
+        PROCESS_IO_OPS,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getReadOpsCountForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
+        NAME,
         READ);
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_OPS.toString(),
+        PROCESS_IO_OPS,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getWriteOpsCountForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
+        NAME,
         WRITE);
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
+        PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getActualReadDataSizeForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "actual_read");
+        NAME,
+        ACTUAL_READ);
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
+        PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getActualWriteDataSizeForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "actual_write");
+        NAME,
+        ACTUAL_WRITE);
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
+        PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getAttemptReadSizeForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "attempt_read");
+        NAME,
+        ATTEMPT_READ);
     metricService.createAutoGauge(
-        Metric.PROCESS_IO_SIZE.toString(),
+        PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
         AbstractDiskMetricsManager::getAttemptWriteSizeForProcess,
-        Tag.FROM.toString(),
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "attempt_write");
+        NAME,
+        ATTEMPT_WRITE);
   }
 
   @Override
@@ -226,120 +243,60 @@ public class DiskMetrics implements IMetricSet {
     // metrics for disks
     Set<String> diskIDs = diskMetricsManager.getDiskIds();
     for (String diskID : diskIDs) {
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SIZE.toString(),
-          Tag.NAME.toString(),
-          READ,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SIZE.toString(),
-          Tag.NAME.toString(),
-          WRITE,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_OPS.toString(),
-          Tag.NAME.toString(),
-          READ,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_OPS.toString(),
-          Tag.NAME.toString(),
-          WRITE,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          READ,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          WRITE,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "avg_read",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_TIME.toString(),
-          Tag.NAME.toString(),
-          "avg_write",
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SECTOR_NUM.toString(),
-          Tag.NAME.toString(),
-          READ,
-          Tag.NAME.toString(),
-          diskID);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          Metric.DISK_IO_SECTOR_NUM.toString(),
-          Tag.NAME.toString(),
-          WRITE,
-          Tag.NAME.toString(),
-          diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, NAME, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SIZE, NAME, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, NAME, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_OPS, NAME, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SECTOR_NUM, NAME, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SECTOR_NUM, NAME, WRITE, NAME, diskID);
     }
 
     // metrics for datanode and config node
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_SIZE,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "actual_read");
+        NAME,
+        ACTUAL_READ);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_SIZE,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "actual_write");
+        NAME,
+        ACTUAL_WRITE);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_SIZE,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "attempt_read");
+        NAME,
+        ATTEMPT_READ);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_SIZE.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_SIZE,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
-        "attempt_write");
+        NAME,
+        ATTEMPT_WRITE);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_OPS.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_OPS,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
+        NAME,
         READ);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_IO_OPS.toString(),
-        Tag.FROM.toString(),
+        PROCESS_IO_OPS,
+        FROM,
         diskMetricsManager.getProcessName(),
-        Tag.NAME.toString(),
+        NAME,
         WRITE);
   }
 }

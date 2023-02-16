@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics.io;
+package org.apache.iotdb.metrics.metricsets.disk;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
