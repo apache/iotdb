@@ -52,8 +52,13 @@ import java.util.stream.Collectors;
  */
 public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
+
+  @SuppressWarnings("squid:S1075")
   private static final String DISK_STATUS_FILE_PATH = "/proc/diskstats";
+
+  @SuppressWarnings("squid:S1075")
   private static final String DISK_ID_PATH = "/sys/block";
+
   private final String processIoStatusPath;
   private static final int DISK_ID_OFFSET = 3;
   private static final int DISK_READ_COUNT_OFFSET = 4;
