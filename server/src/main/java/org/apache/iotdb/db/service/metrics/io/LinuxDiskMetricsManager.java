@@ -52,20 +52,20 @@ import java.util.stream.Collectors;
  */
 public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
-  private static final String diskStatusFilePath = "/proc/diskstats";
-  private static final String diskIdPath = "/sys/block";
+  private static final String DISK_STATUS_FILE_PATH = "/proc/diskstats";
+  private static final String DISK_ID_PATH = "/sys/block";
   private final String processIoStatusPath;
-  private static final int diskIdOffset = 3;
-  private static final int diskReadCountOffset = 4;
-  private static final int diskMergedReadCountOffset = 5;
-  private static final int diskSectorReadCountOffset = 6;
-  private static final int diskReadTimeCostOffset = 7;
-  private static final int diskWriteCountOffset = 8;
-  private static final int diskMergedWriteCountOffset = 9;
-  private static final int diskSectorWriteCountOffset = 10;
-  private static final int diskWriteTimeCostOffset = 11;
-  private static final int diskIoTotalTimeOffset = 13;
-  private static final long updateSmallestInterval = 10000L;
+  private static final int DISK_ID_OFFSET = 3;
+  private static final int DISK_READ_COUNT_OFFSET = 4;
+  private static final int DISK_MERGED_READ_COUNT_OFFSET = 5;
+  private static final int DISK_SECTOR_READ_COUNT_OFFSET = 6;
+  private static final int DISK_READ_TIME_OFFSET = 7;
+  private static final int DISK_WRITE_COUNT_OFFSET = 8;
+  private static final int DISK_MERGED_WRITE_COUNT_OFFSET = 9;
+  private static final int DISK_SECTOR_WRITE_COUNT_OFFSET = 10;
+  private static final int DISK_WRITE_TIME_COST_OFFSET = 11;
+  private static final int DISK_IO_TOTAL_TIME_OFFSET = 13;
+  private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
   private Set<String> diskIdSet;
   private long lastUpdateTime = 0L;
   private long updateInterval = 1L;
@@ -249,7 +249,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
 
   @Override
   public Set<String> getDiskIds() {
-    File diskIdFolder = new File(diskIdPath);
+    File diskIdFolder = new File(DISK_ID_PATH);
     if (!diskIdFolder.exists()) {
       return Collections.emptySet();
     }
@@ -271,29 +271,29 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   private void updateDiskInfo() {
-    File diskStatsFile = new File(diskStatusFilePath);
+    File diskStatsFile = new File(DISK_STATUS_FILE_PATH);
     if (!diskStatsFile.exists()) {
-      log.warn("Cannot find disk io status file {}", diskStatusFilePath);
+      log.warn("Cannot find disk io status file {}", DISK_STATUS_FILE_PATH);
       return;
     }
 
     try (Scanner diskStatsScanner = new Scanner(Files.newInputStream(diskStatsFile.toPath()))) {
       while (diskStatsScanner.hasNextLine()) {
         String[] diskInfo = diskStatsScanner.nextLine().split("\\s+");
-        String diskId = diskInfo[diskIdOffset];
+        String diskId = diskInfo[DISK_ID_OFFSET];
         if (!diskIdSet.contains(diskId)) {
           continue;
         }
         int[] offsetArray = {
-          diskReadCountOffset,
-          diskWriteCountOffset,
-          diskMergedReadCountOffset,
-          diskMergedWriteCountOffset,
-          diskSectorReadCountOffset,
-          diskSectorWriteCountOffset,
-          diskReadTimeCostOffset,
-          diskWriteTimeCostOffset,
-          diskIoTotalTimeOffset
+          DISK_READ_COUNT_OFFSET,
+          DISK_WRITE_COUNT_OFFSET,
+          DISK_MERGED_READ_COUNT_OFFSET,
+          DISK_MERGED_WRITE_COUNT_OFFSET,
+          DISK_SECTOR_READ_COUNT_OFFSET,
+          DISK_SECTOR_WRITE_COUNT_OFFSET,
+          DISK_READ_TIME_OFFSET,
+          DISK_WRITE_TIME_COST_OFFSET,
+          DISK_IO_TOTAL_TIME_OFFSET
         };
         Map[] lastMapArray = {
           lastReadOperationCountForDisk,
@@ -375,7 +375,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   private void checkUpdate() {
-    if (System.currentTimeMillis() - lastUpdateTime > updateSmallestInterval) {
+    if (System.currentTimeMillis() - lastUpdateTime > UPDATE_SMALLEST_INTERVAL) {
       updateInfo();
     }
   }

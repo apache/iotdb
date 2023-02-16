@@ -32,8 +32,8 @@ import java.util.Set;
 public class DiskMetrics implements IMetricSet {
   private final AbstractDiskMetricsManager diskMetricsManager =
       AbstractDiskMetricsManager.getDiskMetricsManager();
-  private final String WRITE = "write";
-  private final String READ = "read";
+  private static final String write = "write";
+  private static final String read = "read";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -46,7 +46,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getReadDataSizeForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -55,7 +55,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getWriteDataSizeForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -64,7 +64,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getReadOperationCountForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -73,7 +73,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getWriteOperationCountForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -100,7 +100,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getReadCostTimeForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -109,7 +109,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getWriteCostTimeForDisk().getOrDefault(diskID, 0L),
           Tag.TYPE.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -118,7 +118,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getAvgReadCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.TYPE.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -127,7 +127,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getAvgWriteCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.TYPE.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -136,7 +136,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.TYPE.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -145,7 +145,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
           Tag.TYPE.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.createAutoGauge(
@@ -166,7 +166,7 @@ public class DiskMetrics implements IMetricSet {
         Tag.FROM.toString(),
         diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        READ);
+        read);
     metricService.createAutoGauge(
         Metric.PROCESS_IO_OPS.toString(),
         MetricLevel.IMPORTANT,
@@ -175,7 +175,7 @@ public class DiskMetrics implements IMetricSet {
         Tag.FROM.toString(),
         diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        WRITE);
+        write);
     metricService.createAutoGauge(
         Metric.PROCESS_IO_SIZE.toString(),
         MetricLevel.IMPORTANT,
@@ -223,42 +223,42 @@ public class DiskMetrics implements IMetricSet {
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_SIZE.toString(),
           Tag.NAME.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_SIZE.toString(),
           Tag.NAME.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_OPS.toString(),
           Tag.NAME.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_OPS.toString(),
           Tag.NAME.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_TIME.toString(),
           Tag.NAME.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_TIME.toString(),
           Tag.NAME.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
@@ -279,14 +279,14 @@ public class DiskMetrics implements IMetricSet {
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_SECTOR_NUM.toString(),
           Tag.NAME.toString(),
-          READ,
+          read,
           Tag.NAME.toString(),
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
           Metric.DISK_IO_SECTOR_NUM.toString(),
           Tag.NAME.toString(),
-          WRITE,
+          write,
           Tag.NAME.toString(),
           diskID);
     }
@@ -326,13 +326,13 @@ public class DiskMetrics implements IMetricSet {
         Tag.FROM.toString(),
         diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        READ);
+        read);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PROCESS_IO_OPS.toString(),
         Tag.FROM.toString(),
         diskMetricsManager.getProcessName(),
         Tag.NAME.toString(),
-        WRITE);
+        write);
   }
 }
