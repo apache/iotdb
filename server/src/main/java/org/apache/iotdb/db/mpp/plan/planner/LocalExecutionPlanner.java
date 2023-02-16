@@ -24,12 +24,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -81,7 +78,7 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  public SchemaDriver plan(
+  public List<PipelineDriverFactory> plan(
       PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
     LocalExecutionPlanContext context =
@@ -92,18 +89,12 @@ public class LocalExecutionPlanner {
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
+    context.addPipelineDriverFactory(root, context.getDriverContext());
+
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    context
-        .getDriverContext()
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
-
-    return new SchemaDriver(root, (SchemaDriverContext) context.getDriverContext());
+    return context.getPipelineDriverFactories();
   }
 
   private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)

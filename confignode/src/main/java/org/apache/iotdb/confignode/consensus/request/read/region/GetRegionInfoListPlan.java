@@ -60,10 +60,10 @@ public class GetRegionInfoListPlan extends ConfigPhysicalPlan {
       if (setConsensusGroupType) {
         ReadWriteIOUtils.write(showRegionReq.getConsensusGroupType().ordinal(), stream);
       }
-      boolean setStorageGroups = showRegionReq.isSetStorageGroups();
+      boolean setStorageGroups = showRegionReq.isSetDatabases();
       stream.writeBoolean(setStorageGroups);
       if (setStorageGroups) {
-        ReadWriteIOUtils.writeStringList(showRegionReq.getStorageGroups(), stream);
+        ReadWriteIOUtils.writeStringList(showRegionReq.getDatabases(), stream);
       }
     }
   }
@@ -77,7 +77,7 @@ public class GetRegionInfoListPlan extends ConfigPhysicalPlan {
             TConsensusGroupType.values()[ReadWriteIOUtils.readInt(buffer)]);
       }
       if (ReadWriteIOUtils.readBool(buffer)) {
-        this.showRegionReq.setStorageGroups(ReadWriteIOUtils.readStringList(buffer));
+        this.showRegionReq.setDatabases(ReadWriteIOUtils.readStringList(buffer));
       }
     }
   }

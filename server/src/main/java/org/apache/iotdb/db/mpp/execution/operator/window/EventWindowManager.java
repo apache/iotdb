@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -58,7 +57,7 @@ public abstract class EventWindowManager implements IWindowManager {
   }
 
   @Override
-  public void initCurWindow(TsBlock tsBlock) {
+  public void initCurWindow() {
     this.initialized = true;
     this.eventWindow.setInitializedEventValue(false);
   }
@@ -80,16 +79,6 @@ public abstract class EventWindowManager implements IWindowManager {
   @Override
   public IWindow getCurWindow() {
     return eventWindow;
-  }
-
-  @Override
-  public boolean satisfiedCurWindow(TsBlock inputTsBlock) {
-    return true;
-  }
-
-  @Override
-  public boolean isTsBlockOutOfBound(TsBlock inputTsBlock) {
-    return false;
   }
 
   @Override
@@ -124,11 +113,6 @@ public abstract class EventWindowManager implements IWindowManager {
     }
     resultTsBlockBuilder.declarePosition();
     return columnBuilders;
-  }
-
-  @Override
-  public boolean notInitedLastTimeWindow() {
-    return false;
   }
 
   @Override

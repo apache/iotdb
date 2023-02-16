@@ -119,6 +119,8 @@ public class QueryMetricsManager {
 
     private static final QueryMetricsManager INSTANCE = new QueryMetricsManager();
 
-    private QueryMetricsManagerHolder() {}
+    private QueryMetricsManagerHolder() {
+      // empty constructor
+    }
   }
 }

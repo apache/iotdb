@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -43,9 +44,7 @@ import java.util.stream.Collectors;
 
 public class ShowRegionTask implements IConfigTask {
 
-  private ShowRegionStatement showRegionStatement;
-
-  public ShowRegionTask() {}
+  private final ShowRegionStatement showRegionStatement;
 
   public ShowRegionTask(ShowRegionStatement showRegionStatement) {
     this.showRegionStatement = showRegionStatement;
@@ -83,13 +82,16 @@ public class ShowRegionTask implements IConfigTask {
             .getColumnBuilder(2)
             .writeBinary(
                 Binary.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
-        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getStorageGroup()));
+        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getDatabase()));
         builder.getColumnBuilder(4).writeInt(regionInfo.getSeriesSlots());
         builder.getColumnBuilder(5).writeLong(regionInfo.getTimeSlots());
         builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());
         builder.getColumnBuilder(7).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
         builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
         builder.getColumnBuilder(9).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
+        builder
+            .getColumnBuilder(10)
+            .writeBinary(new Binary(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
         builder.declarePosition();
       }
     }

@@ -39,6 +39,7 @@ public class DriverContext {
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISinkHandle sinkHandle;
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
+  private int dependencyDriverIndex = -1;
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
@@ -67,6 +68,14 @@ public class DriverContext {
 
   public DriverContext createSubDriverContext(int pipelineId) {
     throw new UnsupportedOperationException();
+  }
+
+  public void setDependencyDriverIndex(int dependencyDriverIndex) {
+    this.dependencyDriverIndex = dependencyDriverIndex;
+  }
+
+  public int getDependencyDriverIndex() {
+    return dependencyDriverIndex;
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {

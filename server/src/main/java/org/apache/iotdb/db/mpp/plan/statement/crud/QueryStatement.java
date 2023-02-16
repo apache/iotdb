@@ -285,15 +285,19 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isGroupBy() {
-    return isGroupByTime() || isGroupByVariation();
+    return isGroupByTime() || groupByComponent != null;
   }
 
-  public boolean isGroupByVariation() {
+  private boolean isGroupByVariation() {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
   }
 
+  private boolean isGroupBySeries() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
+  }
+
   public boolean hasGroupByExpression() {
-    return isGroupByVariation();
+    return isGroupByVariation() || isGroupBySeries();
   }
 
   public boolean isAlignByTime() {

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTa
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
@@ -57,6 +58,8 @@ public class DriverTask implements IDIndexedAccessible {
   private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
+
+  private SettableFuture<Void> blockedDependencyDriver = null;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -135,6 +138,19 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public void submitDependencyDriver() {
+    if (blockedDependencyDriver != null) {
+      this.blockedDependencyDriver.set(null);
+    }
+  }
+
+  public SettableFuture<Void> getBlockedDependencyDriver() {
+    if (blockedDependencyDriver == null) {
+      blockedDependencyDriver = SettableFuture.create();
+    }
+    return blockedDependencyDriver;
   }
 
   public Priority getPriority() {
@@ -250,6 +266,11 @@ public class DriverTask implements IDIndexedAccessible {
     @Override
     public ISinkHandle getSinkHandle() {
       return null;
+    }
+
+    @Override
+    public int getDependencyDriverIndex() {
+      return -1;
     }
   }
 }

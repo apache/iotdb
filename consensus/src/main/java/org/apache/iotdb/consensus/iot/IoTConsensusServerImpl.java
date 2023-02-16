@@ -165,10 +165,10 @@ public class IoTConsensusServerImpl {
    * performed.
    */
   public TSStatus write(IConsensusRequest request) {
-    long consensusWriteStartTime = System.currentTimeMillis();
+    long consensusWriteStartTime = System.nanoTime();
     stateMachineLock.lock();
     try {
-      long getStateMachineLockTime = System.currentTimeMillis();
+      long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -200,7 +200,7 @@ public class IoTConsensusServerImpl {
           Thread.currentThread().interrupt();
         }
       }
-      long writeToStateMachineStartTime = System.currentTimeMillis();
+      long writeToStateMachineStartTime = System.nanoTime();
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       // statistic the time of checking write block
@@ -225,7 +225,7 @@ public class IoTConsensusServerImpl {
       // TODO wal and memtable
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       TSStatus result = stateMachine.write(planNode);
-      long writeToStateMachineEndTime = System.currentTimeMillis();
+      long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -260,7 +260,7 @@ public class IoTConsensusServerImpl {
                 "offerRequestToQueue",
                 Tag.REGION.toString(),
                 this.consensusGroupId)
-            .update(System.currentTimeMillis() - writeToStateMachineEndTime);
+            .update(System.nanoTime() - writeToStateMachineEndTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -279,7 +279,7 @@ public class IoTConsensusServerImpl {
               "consensusWrite",
               Tag.REGION.toString(),
               this.consensusGroupId)
-          .update(System.currentTimeMillis() - consensusWriteStartTime);
+          .update(System.nanoTime() - consensusWriteStartTime);
       return result;
     } finally {
       stateMachineLock.unlock();
@@ -720,6 +720,11 @@ public class IoTConsensusServerImpl {
 
   public long getSearchIndex() {
     return searchIndex.get();
+  }
+
+  public long getSyncLag() {
+    long safeIndex = getCurrentSafelyDeletedSearchIndex();
+    return getSearchIndex() - safeIndex;
   }
 
   public IoTConsensusConfig getConfig() {

@@ -1205,7 +1205,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, true);
@@ -1255,7 +1259,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
@@ -1323,7 +1331,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 5, true);
@@ -1397,7 +1409,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
