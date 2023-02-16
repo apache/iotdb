@@ -34,6 +34,7 @@ public abstract class AbstractDiskMetricsManager {
   private final Logger log = LoggerFactory.getLogger(AbstractDiskMetricsManager.class);
   String processName;
 
+  @SuppressWarnings("squid:S4036")
   protected AbstractDiskMetricsManager() {
     try {
       Process process = Runtime.getRuntime().exec("jps");
