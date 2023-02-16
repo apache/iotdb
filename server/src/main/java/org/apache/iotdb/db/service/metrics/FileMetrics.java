@@ -51,6 +51,7 @@ public class FileMetrics implements IMetricSet {
   private long innerSeqCompactionTempFileNum = 0L;
   private long innerUnseqCompactionTempFileNum = 0L;
   private long crossCompactionTempFileNum = 0L;
+  private final TsFileMetricManager TS_FILE_METRIC_MANAGER = TsFileMetricManager.getInstance();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -75,6 +76,13 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        TS_FILE_METRIC_MANAGER,
+        TsFileMetricManager::getModFileSize,
+        Tag.NAME.toString(),
+        "mods");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -121,23 +129,37 @@ public class FileMetrics implements IMetricSet {
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
+        FileMetrics::getModsFileNum,
+        Tag.NAME.toString(),
+        "mods-num");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
         FileMetrics::getInnerSeqCompactionTempFileSize,
         Tag.NAME.toString(),
         "inner-seq-temp-size");
     metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
+        Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getInnerUnseqCompactionTempFileSize,
         Tag.NAME.toString(),
         "inner-unseq-temp-size");
     metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
+        Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         this,
         FileMetrics::getCrossCompactionTempFileSize,
         Tag.NAME.toString(),
         "cross-temp-size");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getModsFileSize,
+        Tag.NAME.toString(),
+        "mods-size");
 
     // finally start to update the value of some metrics in async way
     if (null == currentServiceFuture) {
@@ -170,9 +192,13 @@ public class FileMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "wal");
     metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "mods");
+    metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "mods");
   }
 
   private void collect() {
@@ -218,6 +244,14 @@ public class FileMetrics implements IMetricSet {
 
   public long getCrossCompactionTempFileSize() {
     return crossCompactionTempFileSize;
+  }
+
+  public int getModsFileNum() {
+    return TsFileMetricManager.getInstance().getModFileNum();
+  }
+
+  public long getModsFileSize() {
+    return TsFileMetricManager.getInstance().getModFileSize();
   }
 
   public long getInnerSeqCompactionTempFileNum() {

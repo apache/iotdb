@@ -417,6 +417,25 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
+  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+      }
+      return (DeviceTimeIndex) timeIndexFromResourceFile;
+    } catch (Exception e) {
+      throw new IOException(
+          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   /**
    * Whether this TsFileResource contains this device, if false, it must not contain this device, if
    * true, it may or may not contain this device
@@ -521,7 +540,7 @@ public class TsFileResource {
    * file physically.
    */
   public boolean remove() {
-    this.status = TsFileResourceStatus.DELETED;
+    setStatus(TsFileResourceStatus.DELETED);
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -607,6 +626,9 @@ public class TsFileResource {
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
+        break;
+      case DELETED:
+        this.status = TsFileResourceStatus.DELETED;
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
@@ -874,7 +896,7 @@ public class TsFileResource {
               .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
               .toPath());
     }
-    this.status = TsFileResourceStatus.DELETED;
+    setStatus(TsFileResourceStatus.DELETED);
   }
 
   public long getMaxPlanIndex() {

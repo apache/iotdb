@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.compaction.execute.performer.ISeqCompactionPer
 import org.apache.iotdb.db.engine.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -75,9 +75,7 @@ public class FastCompactionPerformer
 
   public Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 
-  private CompactionTaskSummary summary;
-
-  private final SubCompactionTaskSummary subTaskSummary = new SubCompactionTaskSummary();
+  private FastCompactionTaskSummary subTaskSummary;
 
   private List<TsFileResource> targetFiles;
 
@@ -110,7 +108,7 @@ public class FastCompactionPerformer
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, targetFiles.size());
+        .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
@@ -146,7 +144,7 @@ public class FastCompactionPerformer
         long currentTempFileSize = compactionWriter.getWriterSize();
         TsFileMetricManager.getInstance()
             .addCompactionTempFileSize(
-                !isCrossCompaction, seqFiles.size() > 0, currentTempFileSize - tempFileSize);
+                !isCrossCompaction, !seqFiles.isEmpty(), currentTempFileSize - tempFileSize);
         tempFileSize = currentTempFileSize;
         sortedSourceFiles.clear();
       }
@@ -161,9 +159,9 @@ public class FastCompactionPerformer
       readerCacheMap = null;
       modificationCache = null;
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, -targetFiles.size());
+          .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), -targetFiles.size());
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(!isCrossCompaction, seqFiles.size() > 0, -tempFileSize);
+          .addCompactionTempFileSize(!isCrossCompaction, !seqFiles.isEmpty(), -tempFileSize);
     }
   }
 
@@ -192,7 +190,7 @@ public class FastCompactionPerformer
       timeseriesMetadataOffsetMap.put(entry.getKey(), entry.getValue().right);
     }
 
-    SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
+    FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();
     new FastCompactionPerformerSubTask(
             fastCrossCompactionWriter,
             timeseriesMetadataOffsetMap,
@@ -234,9 +232,9 @@ public class FastCompactionPerformer
 
     // construct sub tasks and start compacting measurements in parallel
     List<Future<Void>> futures = new ArrayList<>();
-    List<SubCompactionTaskSummary> taskSummaryList = new ArrayList<>();
+    List<FastCompactionTaskSummary> taskSummaryList = new ArrayList<>();
     for (int i = 0; i < subTaskNums; i++) {
-      SubCompactionTaskSummary taskSummary = new SubCompactionTaskSummary();
+      FastCompactionTaskSummary taskSummary = new FastCompactionTaskSummary();
       futures.add(
           CompactionTaskManager.getInstance()
               .submitSubTask(
@@ -272,7 +270,12 @@ public class FastCompactionPerformer
 
   @Override
   public void setSummary(CompactionTaskSummary summary) {
-    this.summary = summary;
+    if (!(summary instanceof FastCompactionTaskSummary)) {
+      throw new RuntimeException(
+          "CompactionTaskSummary for FastCompactionPerformer "
+              + "should be FastCompactionTaskSummary");
+    }
+    this.subTaskSummary = (FastCompactionTaskSummary) summary;
   }
 
   @Override
@@ -282,14 +285,14 @@ public class FastCompactionPerformer
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.interrupted() || summary.isCancel()) {
+    if (Thread.interrupted() || subTaskSummary.isCancel()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetFiles.toString()));
     }
   }
 
-  public SubCompactionTaskSummary getSubTaskSummary() {
+  public FastCompactionTaskSummary getSubTaskSummary() {
     return subTaskSummary;
   }
 

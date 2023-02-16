@@ -42,6 +42,7 @@ public final class InfluxSelectComponent
     super((ZoneId) null);
   }
 
+  @Override
   public void addResultColumn(ResultColumn resultColumn) {
     Expression expression = resultColumn.getExpression();
     if (expression instanceof FunctionExpression) {

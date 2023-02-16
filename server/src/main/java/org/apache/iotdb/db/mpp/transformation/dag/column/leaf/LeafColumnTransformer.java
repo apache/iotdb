@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public abstract class LeafColumnTransformer extends ColumnTransformer {
-  public LeafColumnTransformer(Type returnType) {
+  protected LeafColumnTransformer(Type returnType) {
     super(returnType);
   }
 

@@ -27,9 +27,9 @@ import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTa
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.selector.impl.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,8 +106,8 @@ public class CompactionScheduler {
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
             sequence
-                ? tsFileManager.getSequenceListByTimePartition(timePartition)
-                : tsFileManager.getUnsequenceListByTimePartition(timePartition));
+                ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
+                : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     for (List<TsFileResource> task : taskList) {
       ICompactionPerformer performer =
           sequence
@@ -145,10 +145,10 @@ public class CompactionScheduler {
         config
             .getCrossCompactionSelector()
             .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> taskList =
+    List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
-            tsFileManager.getSequenceListByTimePartition(timePartition),
-            tsFileManager.getUnsequenceListByTimePartition(timePartition));
+            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     List<Long> memoryCost = crossSpaceCompactionSelector.getCompactionMemoryCost();
     for (int i = 0, size = taskList.size(); i < size; ++i) {
       CompactionTaskManager.getInstance()
@@ -156,8 +156,8 @@ public class CompactionScheduler {
               new CrossSpaceCompactionTask(
                   timePartition,
                   tsFileManager,
-                  taskList.get(i).left,
-                  taskList.get(i).right,
+                  taskList.get(i).getSeqFiles(),
+                  taskList.get(i).getUnseqFiles(),
                   IoTDBDescriptor.getInstance()
                       .getConfig()
                       .getCrossCompactionPerformer()

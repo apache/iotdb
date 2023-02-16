@@ -854,9 +854,9 @@ public abstract class AlignedTVList extends TVList {
       return size;
     }
     // time array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // array headers mem size
     size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList

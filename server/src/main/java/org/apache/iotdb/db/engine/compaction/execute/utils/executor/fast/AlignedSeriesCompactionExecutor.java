@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
@@ -66,7 +66,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       String deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
-      SubCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary) {
     super(compactionWriter, readerCacheMap, modificationCacheMap, deviceId, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
@@ -179,7 +179,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
       }
 
-      if (alignedChunkMetadataList.size() == 0) {
+      if (alignedChunkMetadataList.isEmpty()) {
         // all chunks has been deleted in this file or current file does not contain this aligned
         // device, just remove it
         removeFile(fileElement);

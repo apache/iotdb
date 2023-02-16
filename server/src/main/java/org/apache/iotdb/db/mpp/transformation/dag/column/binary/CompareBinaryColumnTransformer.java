@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
-  public CompareBinaryColumnTransformer(
+  protected CompareBinaryColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }

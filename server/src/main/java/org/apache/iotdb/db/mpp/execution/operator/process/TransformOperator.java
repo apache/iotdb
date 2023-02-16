@@ -270,11 +270,7 @@ public class TransformOperator implements ProcessOperator {
       return true;
     }
 
-    if (reader.isCurrentNull()) {
-      return true;
-    } else {
-      return false;
-    }
+    return reader.isCurrentNull();
   }
 
   protected YieldableState collectDataPoint(

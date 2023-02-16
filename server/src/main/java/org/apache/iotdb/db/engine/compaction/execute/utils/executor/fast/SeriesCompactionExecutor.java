@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
@@ -58,7 +59,7 @@ public abstract class SeriesCompactionExecutor {
         throws WriteProcessException, IOException, IllegalPathException;
   }
 
-  private final SubCompactionTaskSummary summary;
+  private final FastCompactionTaskSummary summary;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
@@ -87,13 +88,13 @@ public abstract class SeriesCompactionExecutor {
   // added into this list.
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
 
-  public SeriesCompactionExecutor(
+  protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
       int subTaskId,
-      SubCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.deviceId = deviceId;
@@ -154,6 +155,8 @@ public abstract class SeriesCompactionExecutor {
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     for (ChunkMetadataElement overlappedChunkMetadata : overlappedChunkMetadataList) {
       readChunk(overlappedChunkMetadata);
+      updateSummary(overlappedChunkMetadata, ChunkStatus.READ_IN);
+      updateSummary(overlappedChunkMetadata, ChunkStatus.DESERIALIZE_CHUNK);
       deserializeChunkIntoQueue(overlappedChunkMetadata);
     }
     compactPages();
@@ -166,6 +169,7 @@ public abstract class SeriesCompactionExecutor {
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     readChunk(chunkMetadataElement);
+    updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     boolean success;
     if (chunkMetadataElement.chunkMetadata instanceof AlignedChunkMetadata) {
       success =
@@ -185,10 +189,12 @@ public abstract class SeriesCompactionExecutor {
     }
     if (success) {
       // flush chunk successfully, then remove this chunk
+      updateSummary(chunkMetadataElement, ChunkStatus.DIRECTORY_FLUSH);
       removeChunk(chunkMetadataQueue.peek());
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
       summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += 1;
+      updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
       deserializeChunkIntoQueue(chunkMetadataElement);
       compactPages();
     }
@@ -379,11 +385,9 @@ public abstract class SeriesCompactionExecutor {
     List<PageElement> elements = new ArrayList<>();
     long endTime = page.pageHeader.getEndTime();
     for (PageElement element : pageQueue) {
-      if (element.startTime <= endTime) {
-        if (!element.isSelected) {
-          elements.add(element);
-          element.isSelected = true;
-        }
+      if (element.startTime <= endTime && !element.isSelected) {
+        elements.add(element);
+        element.isSelected = true;
       }
     }
     elements.sort(Comparator.comparingLong(o -> o.startTime));
@@ -400,11 +404,9 @@ public abstract class SeriesCompactionExecutor {
     List<ChunkMetadataElement> elements = new ArrayList<>();
     long endTime = chunkMetadataElement.chunkMetadata.getEndTime();
     for (ChunkMetadataElement element : chunkMetadataQueue) {
-      if (element.chunkMetadata.getStartTime() <= endTime) {
-        if (!element.isSelected) {
-          elements.add(element);
-          element.isSelected = true;
-        }
+      if (element.chunkMetadata.getStartTime() <= endTime && !element.isSelected) {
+        elements.add(element);
+        element.isSelected = true;
       }
     }
     elements.sort(Comparator.comparingLong(o -> o.startTime));
@@ -590,5 +592,60 @@ public abstract class SeriesCompactionExecutor {
       }
     }
     return pathModifications;
+  }
+
+  private void updateSummary(ChunkMetadataElement chunkMetadataElement, ChunkStatus status) {
+    switch (status) {
+      case READ_IN:
+        summary.increaseProcessChunkNum(
+            chunkMetadataElement.isAligned
+                ? ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+                        .getValueChunkMetadataList()
+                        .size()
+                    + 1
+                : 1);
+        if (chunkMetadataElement.isAligned) {
+          for (IChunkMetadata valueChunkMetadata :
+              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+                  .getValueChunkMetadataList()) {
+            if (valueChunkMetadata == null) {
+              continue;
+            }
+            summary.increaseProcessPointNum(valueChunkMetadata.getStatistics().getCount());
+          }
+        } else {
+          summary.increaseProcessPointNum(
+              chunkMetadataElement.chunkMetadata.getStatistics().getCount());
+        }
+        break;
+      case DIRECTORY_FLUSH:
+        if (chunkMetadataElement.isAligned) {
+          summary.increaseDirectlyFlushChunkNum(
+              ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
+                      .getValueChunkMetadataList()
+                      .size()
+                  + 1);
+        } else {
+          summary.increaseDirectlyFlushChunkNum(1);
+        }
+        break;
+      case DESERIALIZE_CHUNK:
+        if (chunkMetadataElement.isAligned) {
+          summary.increaseDeserializedChunkNum(
+              ((AlignedChunkMetadata) (chunkMetadataElement.chunkMetadata))
+                      .getValueChunkMetadataList()
+                      .size()
+                  + 1);
+        } else {
+          summary.increaseDeserializedChunkNum(1);
+        }
+        break;
+    }
+  }
+
+  enum ChunkStatus {
+    READ_IN,
+    DIRECTORY_FLUSH,
+    DESERIALIZE_CHUNK
   }
 }

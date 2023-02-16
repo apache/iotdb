@@ -386,7 +386,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           }
           logger.warn(
               "The task {} is aborted. All other tasks in the same query will be cancelled",
-              task.getId().toString());
+              task.getId());
           clearDriverTask(task);
         } finally {
           task.unlock();
@@ -394,16 +394,19 @@ public class DriverScheduler implements IDriverScheduler, IService {
         QueryId queryId = task.getId().getQueryId();
         Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
         if (queryRelatedTasks != null) {
-          for (DriverTask otherTask : queryRelatedTasks) {
-            if (task.equals(otherTask)) {
-              continue;
-            }
-            otherTask.lock();
-            try {
-              otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-              clearDriverTask(otherTask);
-            } finally {
-              otherTask.unlock();
+          synchronized (queryRelatedTasks) {
+            for (DriverTask otherTask : queryRelatedTasks) {
+              if (task.equals(otherTask)) {
+                continue;
+              }
+              otherTask.lock();
+              try {
+                otherTask.setAbortCause(
+                    FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
+                clearDriverTask(otherTask);
+              } finally {
+                otherTask.unlock();
+              }
             }
           }
         }

@@ -31,11 +31,11 @@ public abstract class SingleChildProcessNode extends ProcessNode {
 
   protected PlanNode child;
 
-  public SingleChildProcessNode(PlanNodeId id) {
+  protected SingleChildProcessNode(PlanNodeId id) {
     super(id);
   }
 
-  public SingleChildProcessNode(PlanNodeId id, PlanNode child) {
+  protected SingleChildProcessNode(PlanNodeId id, PlanNode child) {
     super(id);
     this.child = child;
   }

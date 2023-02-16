@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -96,28 +97,35 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    ConfigPhysicalPlan plan;
+    return Optional.ofNullable(request)
+        .map(o -> write((ConfigPhysicalPlan) request))
+        .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+  }
+
+  @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    IConsensusRequest result;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
+        result = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (Throwable e) {
         LOGGER.error(
             "Deserialization error for write plan, request: {}, bytebuffer: {}",
             request,
             request.serializeToByteBuffer(),
             e);
-        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        return null;
       }
     } else if (request instanceof ConfigPhysicalPlan) {
-      plan = (ConfigPhysicalPlan) request;
+      result = request;
     } else {
       LOGGER.error(
           "Unexpected write plan, request: {}, bytebuffer: {}",
           request,
           request.serializeToByteBuffer());
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return null;
     }
-    return write(plan);
+    return result;
   }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
@@ -297,6 +305,7 @@ public class ConfigNodeRegionStateMachine
       // The method logWriter.write will execute flip() firstly, so we must make position==limit
       buffer.position(buffer.limit());
       logWriter.write(buffer);
+      logWriter.close();
       endIndex = endIndex + 1;
       File tmpLogFile = new File(PROGRESS_FILE_PATH + endIndex);
       Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);

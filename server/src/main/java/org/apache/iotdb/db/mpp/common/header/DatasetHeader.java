@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 /** The header of query result dataset. */
 public class DatasetHeader {
 
-  public static DatasetHeader EMPTY_HEADER = new DatasetHeader(new ArrayList<>(), false);
+  public static final DatasetHeader EMPTY_HEADER = new DatasetHeader(new ArrayList<>(), false);
 
   // column names, data types and aliases of result dataset
   private final List<ColumnHeader> columnHeaders;

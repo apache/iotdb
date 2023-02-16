@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
@@ -40,13 +39,13 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** directory to store .wal files */
   protected final String logDirectory;
   /** current wal file version id */
-  protected final AtomicLong currentWALFileVersion = new AtomicLong();
+  protected volatile long currentWALFileVersion;
   /** current search index */
   protected volatile long currentSearchIndex;
   /** current wal file log writer */
   protected volatile WALWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(
+  protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
@@ -56,20 +55,18 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
       logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
     currentSearchIndex = startSearchIndex;
-    currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory,
                 WALFileUtils.getLogFileName(
-                    currentWALFileVersion.get(),
-                    currentSearchIndex,
-                    WALFileStatus.CONTAINS_SEARCH_INDEX)));
+                    startFileVersion, currentSearchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX)));
+    currentWALFileVersion = startFileVersion;
   }
 
   @Override
   public long getCurrentWALFileVersion() {
-    return currentWALFileVersion.get();
+    return currentWALFileVersion;
   }
 
   @Override
@@ -96,14 +93,14 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
       }
     }
     // roll file
+    long nextFileVersion = currentWALFileVersion + 1;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
             logDirectory,
             WALFileUtils.getLogFileName(
-                currentWALFileVersion.incrementAndGet(),
-                searchIndex,
-                WALFileStatus.CONTAINS_SEARCH_INDEX));
+                nextFileVersion, searchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX));
     currentWALFileWriter = new WALWriter(nextLogFile);
+    currentWALFileVersion = nextFileVersion;
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }
 

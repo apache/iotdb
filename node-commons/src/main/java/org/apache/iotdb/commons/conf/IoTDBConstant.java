@@ -113,14 +113,13 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-  public static final Set<String> reservedWords =
-      new HashSet<String>() {
-        {
-          add("TIME");
-          add("TIMESTAMP");
-          add("ROOT");
-        }
-      };
+  public static final Set<String> reservedWords = new HashSet<>();
+
+  static {
+    reservedWords.add("TIME");
+    reservedWords.add("TIMESTAMP");
+    reservedWords.add("ROOT");
+  }
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -204,7 +203,7 @@ public class IoTDBConstant {
               MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + DN_ROLE;
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -274,7 +273,8 @@ public class IoTDBConstant {
   // client version number
   public enum ClientVersion {
     V_0_12,
-    V_0_13
+    V_0_13,
+    V_1_0
   }
 
   // select into

@@ -38,7 +38,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateBruteForce() {
-    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.mean(numbers), 0L);
+    return new InfluxFunctionValue(numbers.isEmpty() ? numbers : MathUtils.mean(numbers), 0L);
   }
 
   @Override

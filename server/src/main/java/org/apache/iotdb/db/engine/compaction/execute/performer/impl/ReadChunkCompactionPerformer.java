@@ -69,7 +69,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
@@ -134,7 +134,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer);
+            device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     writer.endChunkGroup();
   }
@@ -178,7 +178,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              p, readerAndChunkMetadataList, writer, targetResource, summary);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();

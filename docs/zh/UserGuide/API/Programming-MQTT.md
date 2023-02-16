@@ -67,7 +67,7 @@ MQTT 主题与 IoTDB 时间序列相对应。
 | 名称      | 描述         | 默认 |
 | ------------- |:-------------:|:------:|
 | enable_mqtt_service      | 是否启用 mqtt 服务 | false |
-| mqtt_host      | mqtt 服务绑定主机 | 0.0.0.0 |
+| mqtt_host      | mqtt 服务绑定主机 | 127.0.0.1 |
 | mqtt_port      | mqtt 服务绑定端口 |   1883 |
 | mqtt_handler_pool_size | 处理 mqtt 消息的处理程序池大小 |    1 |
 | mqtt_payload_formatter | mqtt 消息有效负载格式化程序 |    json |
@@ -115,7 +115,7 @@ connection.disconnect();
             <version>${project.version}</version>
         </dependency>
 ```
-* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
+* 创建一个实现类，实现接口 `org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`
 
 ```java
 package org.apache.iotdb.mqtt.server;
@@ -161,7 +161,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     }
 }
 ```
-* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter` 文件:
+* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter` 文件:
   将示例中的文件内容清除，并将刚才的实现类的全名（包名.类名）写入文件中。注意，这个文件中只有一行。
   在本例中，文件内容为: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * 编译项目生成一个 jar 包: `mvn package -DskipTests`

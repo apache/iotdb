@@ -287,7 +287,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         TriggerManagementService.getInstance().getMatchedTriggerListForPath(device, measurements);
     boolean isAllEmpty = true;
     for (List<String> triggerNameList : triggerNameLists) {
-      if (triggerNameList.size() != 0) {
+      if (!triggerNameList.isEmpty()) {
         isAllEmpty = false;
         break;
       }
@@ -344,7 +344,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              tDataNodeLocation.getInternalEndPoint().toString(),
+              tDataNodeLocation.getInternalEndPoint(),
               e);
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
@@ -355,7 +355,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
-              tDataNodeLocation.getInternalEndPoint().toString(),
+              tDataNodeLocation.getInternalEndPoint(),
               e);
           // do not retry if it is not due to bad network or no executor found
           return TriggerManagementService.getInstance()
@@ -401,13 +401,12 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TDataNodeLocation newTDataNodeLocation =
           configNodeClient.getLocationOfStatefulTrigger(triggerName).getDataNodeLocation();
-      if (newTDataNodeLocation != null) {
-        if (currentDataNodeId != newTDataNodeLocation.getDataNodeId()) {
-          // indicates that the location of this stateful trigger has changed
-          TriggerManagementService.getInstance()
-              .updateLocationOfStatefulTrigger(triggerName, newTDataNodeLocation);
-          return true;
-        }
+      if (newTDataNodeLocation != null
+          && currentDataNodeId != newTDataNodeLocation.getDataNodeId()) {
+        // indicates that the location of this stateful trigger has changed
+        TriggerManagementService.getInstance()
+            .updateLocationOfStatefulTrigger(triggerName, newTDataNodeLocation);
+        return true;
       }
       return false;
     } catch (ClientManagerException | TException | IOException e) {

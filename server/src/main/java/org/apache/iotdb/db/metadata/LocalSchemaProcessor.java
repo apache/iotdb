@@ -96,6 +96,8 @@ import static java.util.stream.Collectors.toList;
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>TestOnly Interfaces
  * </ol>
+ *
+ * @deprecated
  */
 @SuppressWarnings("java:S1135") // ignore todos
 public class LocalSchemaProcessor {

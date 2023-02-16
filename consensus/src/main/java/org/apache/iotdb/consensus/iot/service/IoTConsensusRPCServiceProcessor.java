@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -114,7 +115,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
                             : ByteBufferConsensusRequest::new)
                     .collect(Collectors.toList())));
       }
-      TSStatus writeStatus = impl.getStateMachine().write(logEntriesInThisBatch);
+      IConsensusRequest deserializedRequest =
+          impl.getStateMachine().deserializeRequest(logEntriesInThisBatch);
+      TSStatus writeStatus =
+          impl.syncLog(logEntriesInThisBatch.getSourcePeerId(), deserializedRequest);
       logger.debug(
           "execute TSyncLogEntriesReq for {} with result {}",
           req.consensusGroupId,
@@ -236,7 +240,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       resultHandler.onComplete(new TWaitSyncLogCompleteRes(true, 0, 0));
       return;
     }
-    long searchIndex = impl.getIndex();
+    long searchIndex = impl.getSearchIndex();
     long safeIndex = impl.getCurrentSafelyDeletedSearchIndex();
     resultHandler.onComplete(
         new TWaitSyncLogCompleteRes(searchIndex == safeIndex, searchIndex, safeIndex));

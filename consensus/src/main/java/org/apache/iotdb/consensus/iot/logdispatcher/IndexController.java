@@ -126,7 +126,8 @@ public class IndexController {
         // because it won't infect the correctness
         logger.info(
             "failed to flush sync index because previous version file {} does not exists. "
-                + "It may be caused by the target Peer is removed from current group. target file is {}",
+                + "It may be caused by the target Peer is removed from current group. "
+                + "target file is {}",
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
       }

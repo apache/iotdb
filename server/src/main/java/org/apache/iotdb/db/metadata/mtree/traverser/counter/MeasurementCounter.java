@@ -62,10 +62,8 @@ public class MeasurementCounter extends CounterTraverser {
     if (!node.isMeasurement()) {
       return false;
     }
-    if (hasTag) {
-      if (!timeseries.contains(node.getFullPath())) {
-        return true;
-      }
+    if (hasTag && !timeseries.contains(node.getFullPath())) {
+      return true;
     }
     count++;
     return true;

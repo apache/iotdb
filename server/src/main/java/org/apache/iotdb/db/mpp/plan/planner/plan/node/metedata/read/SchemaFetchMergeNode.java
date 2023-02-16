@@ -83,6 +83,7 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
     return visitor.visitSchemaFetchMerge(this, context);
   }
 
+  @Override
   public String toString() {
     return String.format("SchemaFetchMergeNode-%s", getPlanNodeId());
   }
