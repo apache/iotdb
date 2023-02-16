@@ -19,15 +19,10 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 import java.util.Set;
 
 public abstract class AbstractDiskMetricsManager {
-  private final Logger log = LoggerFactory.getLogger(AbstractDiskMetricsManager.class);
-
   public abstract Map<String, Long> getReadDataSizeForDisk();
 
   public abstract Map<String, Long> getWriteDataSizeForDisk();
