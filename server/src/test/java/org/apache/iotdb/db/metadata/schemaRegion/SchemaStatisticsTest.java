@@ -52,6 +52,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  //  @Ignore
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
@@ -193,6 +194,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  //  @Ignore
   public void testSchemaFileNodeStatistics() throws Exception {
     if (testParams.getSchemaEngineMode().equals("Schema_File")) {
       ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);

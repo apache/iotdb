@@ -166,7 +166,7 @@ public class CacheMemoryManager {
                               () -> {
                                 store.getLock().threadReadLock();
                                 try {
-                                  store.executeMemoryRelease();
+                                  executeMemoryRelease(store);
                                 } finally {
                                   store.getLock().threadReadUnlock();
                                 }
@@ -182,6 +182,16 @@ public class CacheMemoryManager {
         } else {
           blockObject.notifyAll();
         }
+      }
+    }
+  }
+
+  private void executeMemoryRelease(CachedMTreeStore store) {
+    while (isExceedReleaseThreshold()) {
+      // store try to release memory if not exceed release threshold
+      if (store.executeMemoryRelease()) {
+        // if store can not release memory, break
+        break;
       }
     }
   }
@@ -215,7 +225,7 @@ public class CacheMemoryManager {
                                 store.getLock().writeLock();
                                 try {
                                   store.flushVolatileNodes();
-                                  store.executeMemoryRelease();
+                                  executeMemoryRelease(store);
                                 } finally {
                                   store.getLock().unlockWrite();
                                 }

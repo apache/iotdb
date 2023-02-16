@@ -519,13 +519,14 @@ public class CachedMTreeStore implements IMTreeStore {
   /**
    * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
    * no node could be evicted. Update the memory status after evicting each node.
+   *
+   * @return should not continue releasing
    */
-  public void executeMemoryRelease() {
-    while (CacheMemoryManager.getInstance().isExceedReleaseThreshold()
-        && regionStatistics.getCachedMemorySize() != 0) {
-      if (!cacheManager.evict()) {
-        break;
-      }
+  public boolean executeMemoryRelease() {
+    if (regionStatistics.getCachedMemorySize() != 0) {
+      return !cacheManager.evict();
+    } else {
+      return true;
     }
   }
 
