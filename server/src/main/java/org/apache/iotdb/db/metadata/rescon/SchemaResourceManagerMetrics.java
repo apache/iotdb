@@ -29,14 +29,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class SchemaResourceManagerMetrics implements IMetricSet {
-  private final SchemaStatisticsManager schemaStatisticsManager;
+  private final ISchemaEngineStatistics schemaEngineStatistics;
 
-  private final MemoryStatistics memoryStatistics;
-
-  public SchemaResourceManagerMetrics(
-      SchemaStatisticsManager schemaStatisticsManager, MemoryStatistics memoryStatistics) {
-    this.schemaStatisticsManager = schemaStatisticsManager;
-    this.memoryStatistics = memoryStatistics;
+  public SchemaResourceManagerMetrics(ISchemaEngineStatistics schemaEngineStatistics) {
+    this.schemaEngineStatistics = schemaEngineStatistics;
   }
 
   @Override
@@ -44,25 +40,25 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.CORE,
-        schemaStatisticsManager,
-        SchemaStatisticsManager::getTotalSeriesNumber,
+        schemaEngineStatistics,
+        ISchemaEngineStatistics::getTotalSeriesNumber,
         Tag.NAME.toString(),
         "timeSeries");
 
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
-        memoryStatistics,
-        MemoryStatistics::getMemoryUsage,
+        schemaEngineStatistics,
+        ISchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
         "schema_region_total_usage");
 
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
-        memoryStatistics,
-        memoryStatistics ->
-            memoryStatistics.getMemoryCapacity() - memoryStatistics.getMemoryUsage(),
+        schemaEngineStatistics,
+        schemaEngineStatistics ->
+            schemaEngineStatistics.getMemoryCapacity() - schemaEngineStatistics.getMemoryUsage(),
         Tag.NAME.toString(),
         "schema_region_total_remaining");
   }
@@ -90,11 +86,11 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SchemaResourceManagerMetrics that = (SchemaResourceManagerMetrics) o;
-    return Objects.equals(schemaStatisticsManager, that.schemaStatisticsManager);
+    return Objects.equals(schemaEngineStatistics, that.schemaEngineStatistics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(schemaStatisticsManager);
+    return Objects.hash(schemaEngineStatistics);
   }
 }

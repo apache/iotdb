@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,9 +28,10 @@ public class LRUCacheManager extends CacheManager {
 
   private static final int NUM_OF_LIST = 17;
 
-  private LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
+  private final LRUCacheList[] lruCacheLists = new LRUCacheList[NUM_OF_LIST];
 
-  public LRUCacheManager() {
+  public LRUCacheManager(MemManager memManager) {
+    super(memManager);
     for (int i = 0; i < NUM_OF_LIST; i++) {
       lruCacheLists[i] = new LRUCacheList();
     }

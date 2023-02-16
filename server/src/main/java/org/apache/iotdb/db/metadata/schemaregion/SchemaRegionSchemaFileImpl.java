@@ -67,8 +67,8 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -140,9 +140,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
   private MLogDescriptionWriter logDescriptionWriter;
 
-  private final SchemaStatisticsManager schemaStatisticsManager =
-      SchemaStatisticsManager.getInstance();
-  private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final CachedSchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGCachedImpl mtree;
   private TagManager tagManager;
@@ -164,6 +162,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     this.seriesNumerMonitor = seriesNumerMonitor;
+    this.regionStatistics = new CachedSchemaRegionStatistics(schemaRegionId.getId());
     init();
   }
 
@@ -199,7 +198,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
-              schemaRegionId.getId());
+              schemaRegionId.getId(),
+              regionStatistics);
 
       if (!(config.isClusterMode()
           && config
@@ -297,6 +297,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    return regionStatistics;
+  }
+
   /** Init from metadata log file. */
   @SuppressWarnings("squid:S3776")
   private void initFromLog() throws IOException {
@@ -378,6 +383,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       if (this.mtree != null) {
         this.mtree.clear();
       }
+      this.regionStatistics.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -413,8 +419,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
-    long seriesCount = mtree.countAllMeasurement();
-    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    long seriesCount = regionStatistics.getSeriesNumber();
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
     }
@@ -487,7 +492,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               latestSnapshotRootDir,
               storageGroupFullPath,
               schemaRegionId.getId(),
+              regionStatistics,
               measurementMNode -> {
+                regionStatistics.addTimeseries(1L);
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
@@ -568,9 +575,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
         logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
         throw new SeriesOverflowException();
       }
@@ -607,7 +614,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       try {
 
         // update statistics and schemaDataTypeNumMap
-        schemaStatisticsManager.addTimeseries(1L);
+        regionStatistics.addTimeseries(1L);
 
         // update tag index
         if (offset != -1 && isRecovering) {
@@ -691,9 +698,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!memoryStatistics.isAllowToCreateNewSeries()) {
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
         throw new SeriesOverflowException();
       }
     }
@@ -735,7 +742,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       try {
 
         // update statistics and schemaDataTypeNumMap
-        schemaStatisticsManager.addTimeseries(seriesCount);
+        regionStatistics.addTimeseries(seriesCount);
 
         List<Long> tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -876,7 +883,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
@@ -895,7 +902,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }

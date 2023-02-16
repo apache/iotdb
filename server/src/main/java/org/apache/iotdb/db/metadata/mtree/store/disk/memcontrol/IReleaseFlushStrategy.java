@@ -18,35 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-
-import java.util.List;
-
-public interface IMemManager {
-
-  void init();
-
-  boolean isEmpty();
-
+/** This interface defines the threshold strategy for release and flush task */
+public interface IReleaseFlushStrategy {
+  /** Check if exceed release threshold */
   boolean isExceedReleaseThreshold();
 
+  /** Check if exceed flush threshold */
   boolean isExceedFlushThreshold();
-
-  void requestPinnedMemResource(IMNode node);
-
-  void upgradeMemResource(IMNode node);
-
-  void releasePinnedMemResource(IMNode node);
-
-  void releaseMemResource(IMNode node);
-
-  void releaseMemResource(List<IMNode> evictedNodes);
-
-  void updatePinnedSize(int deltaSize);
-
-  void clear();
-
-  long getPinnedSize();
-
-  long getCachedSize();
 }
