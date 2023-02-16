@@ -86,6 +86,11 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
+  public Map<String, Long> getQueueSizeForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
   public Map<String, Long> getMergedWriteOperationForDisk() {
     return Collections.emptyMap();
   }

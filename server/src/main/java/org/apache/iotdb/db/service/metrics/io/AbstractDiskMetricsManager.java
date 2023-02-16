@@ -87,6 +87,8 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Double> getAvgSectorCountOfEachWriteForDisk();
 
+  public abstract Map<String, Long> getQueueSizeForDisk();
+
   public abstract long getActualReadDataSizeForProcess();
 
   public abstract long getActualWriteDataSizeForProcess();

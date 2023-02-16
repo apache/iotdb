@@ -96,6 +96,11 @@ public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
+  public Map<String, Long> getQueueSizeForDisk() {
+    return Collections.emptyMap();
+  }
+
+  @Override
   public long getActualReadDataSizeForProcess() {
     return 0;
   }

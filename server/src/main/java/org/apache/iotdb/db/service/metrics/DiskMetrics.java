@@ -155,6 +155,13 @@ public class DiskMetrics implements IMetricSet {
           x -> x.getIoUtilsPercentage().getOrDefault(diskID, 0L),
           Tag.NAME.toString(),
           diskID);
+      metricService.createAutoGauge(
+          Metric.DISK_IO_QUEUE_SIZE.toString(),
+          MetricLevel.IMPORTANT,
+          diskMetricsManager,
+          x -> x.getQueueSizeForDisk().getOrDefault(diskID, 0L),
+          Tag.NAME.toString(),
+          diskID);
     }
 
     // metrics for datanode and config node

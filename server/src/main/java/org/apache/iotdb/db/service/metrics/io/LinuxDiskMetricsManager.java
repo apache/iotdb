@@ -64,6 +64,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private static final int DISK_MERGED_WRITE_COUNT_OFFSET = 9;
   private static final int DISK_SECTOR_WRITE_COUNT_OFFSET = 10;
   private static final int DISK_WRITE_TIME_COST_OFFSET = 11;
+  private static final int DISK_QUEUE_SIZE_OFFSET = 12;
   private static final int DISK_IO_TOTAL_TIME_OFFSET = 13;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
   private Set<String> diskIdSet;
@@ -79,6 +80,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   private final Map<String, Long> lastMergedWriteCountForDisk = new HashMap<>();
   private final Map<String, Long> lastReadSectorCountForDisk = new HashMap<>();
   private final Map<String, Long> lastWriteSectorCountForDisk = new HashMap<>();
+  private final Map<String, Long> queueSizeMap = new HashMap<>();
   private final Map<String, Long> lastIoBusyTimeForDisk = new HashMap<>();
   private final Map<String, Long> incrementReadOperationCountForDisk = new HashMap<>();
   private final Map<String, Long> incrementWriteOperationCountForDisk = new HashMap<>();
@@ -218,6 +220,11 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
+  public Map<String, Long> getQueueSizeForDisk() {
+    return queueSizeMap;
+  }
+
+  @Override
   public long getActualReadDataSizeForProcess() {
     return lastReallyReadSizeForProcess / 1024;
   }
@@ -293,6 +300,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
           DISK_SECTOR_WRITE_COUNT_OFFSET,
           DISK_READ_TIME_OFFSET,
           DISK_WRITE_TIME_COST_OFFSET,
+          DISK_QUEUE_SIZE_OFFSET,
           DISK_IO_TOTAL_TIME_OFFSET
         };
         Map[] lastMapArray = {
@@ -304,6 +312,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
           lastWriteSectorCountForDisk,
           lastReadTimeCostForDisk,
           lastWriteTimeCostForDisk,
+          queueSizeMap,
           lastIoBusyTimeForDisk
         };
         Map[] incrementMapArray = {
@@ -315,6 +324,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
           incrementWriteSectorCountForDisk,
           incrementReadTimeCostForDisk,
           incrementWriteTimeCostForDisk,
+          null,
           incrementIoBusyTimeForDisk
         };
         for (int index = 0, length = offsetArray.length; index < length; ++index) {
