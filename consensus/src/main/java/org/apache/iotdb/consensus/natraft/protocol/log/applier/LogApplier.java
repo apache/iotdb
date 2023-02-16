@@ -17,26 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.request;
+package org.apache.iotdb.consensus.natraft.protocol.log.applier;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 
-public interface IConsensusRequest {
+/** LogApplier applies the log to the local node to make it take effect. */
+public interface LogApplier {
+
   /**
-   * Serialize all the data to a ByteBuffer.
+   * Apply the given log, if any exception is thrown during the execution, the exception will be
+   * recorded in the log. Either an exception is thrown or the log is executed successfully, log
+   * .setApplied(true) must be called.
    *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
+   * @param e
    */
-  ByteBuffer serializeToByteBuffer();
+  void apply(Entry e);
 
-  default long estimateSize() {
-    return 0;
-  }
+  default void close() {}
 }

@@ -17,26 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.request;
+package org.apache.iotdb.consensus.natraft.protocol.log.appender;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
+import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
-public interface IConsensusRequest {
-  /**
-   * Serialize all the data to a ByteBuffer.
-   *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
-   */
-  ByteBuffer serializeToByteBuffer();
+import java.util.List;
 
-  default long estimateSize() {
-    return 0;
-  }
+/**
+ * LogAppender appends newly incoming entries to the local log of a member, providing different
+ * policies for out-of-order entries and other cases.
+ */
+public interface LogAppender {
+
+  AppendEntryResult appendEntries(AppendEntriesRequest request, List<Entry> entries);
+
+  void reset();
 }

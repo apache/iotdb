@@ -17,26 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.request;
+package org.apache.iotdb.consensus.natraft.protocol.consistency;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.consensus.natraft.exception.CheckConsistencyException;
 
-public interface IConsensusRequest {
+/** call back after syncLeader */
+public interface CheckConsistency {
+
   /**
-   * Serialize all the data to a ByteBuffer.
+   * deal leaderCommitId and localAppliedId after syncLeader
    *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
+   * @param leaderCommitId leader commit id
+   * @param localAppliedId local applied id
+   * @throws CheckConsistencyException maybe throw CheckConsistencyException, which is defined in
+   *     implements.
    */
-  ByteBuffer serializeToByteBuffer();
-
-  default long estimateSize() {
-    return 0;
-  }
+  void postCheckConsistency(long leaderCommitId, long localAppliedId)
+      throws CheckConsistencyException;
 }

@@ -76,7 +76,8 @@ public enum ServiceType {
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
   MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
   INTERNAL_SERVICE("Internal Service", "InternalService"),
-  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
+  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService"),
+  RAFT_CONSENSUS_SERVICE("Raft consensus Service", "RaftRPCService");
 
   private final String name;
   private final String jmxName;

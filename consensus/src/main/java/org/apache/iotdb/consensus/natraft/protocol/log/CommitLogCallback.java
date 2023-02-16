@@ -17,26 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.request;
+package org.apache.iotdb.consensus.natraft.protocol.log;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
-public interface IConsensusRequest {
-  /**
-   * Serialize all the data to a ByteBuffer.
-   *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
-   */
-  ByteBuffer serializeToByteBuffer();
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-  default long estimateSize() {
-    return 0;
+public class CommitLogCallback implements AsyncMethodCallback<Void> {
+
+  private static final Logger logger = LoggerFactory.getLogger(CommitLogCallback.class);
+  private final RaftMember raftMember;
+
+  public CommitLogCallback(RaftMember raftMember) {
+    this.raftMember = raftMember;
+  }
+
+  @Override
+  public void onComplete(Void v) {
+    synchronized (raftMember.getSyncLock()) {
+      raftMember.getSyncLock().notifyAll();
+    }
+  }
+
+  @Override
+  public void onError(Exception e) {
+    logger.error("async commit log failed", e);
   }
 }

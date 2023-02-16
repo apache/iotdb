@@ -16,27 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.natraft.protocol;
 
-package org.apache.iotdb.consensus.common.request;
-
-import java.nio.ByteBuffer;
-
-public interface IConsensusRequest {
-  /**
-   * Serialize all the data to a ByteBuffer.
-   *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
-   */
-  ByteBuffer serializeToByteBuffer();
-
-  default long estimateSize() {
-    return 0;
-  }
+public enum RaftRole {
+  // the leader in this group is unknown
+  CANDIDATE,
+  // this node has known the leader in the group
+  FOLLOWER,
+  // this node is the leader in the group
+  LEADER
 }

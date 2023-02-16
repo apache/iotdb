@@ -16,27 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.consensus.natraft.exception;
 
-package org.apache.iotdb.consensus.common.request;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
-import java.nio.ByteBuffer;
+/**
+ * Raised when check consistency failed, now only happens if there is a strong-consistency and
+ * syncLeader failed
+ */
+public class CheckConsistencyException extends ConsensusException {
 
-public interface IConsensusRequest {
-  /**
-   * Serialize all the data to a ByteBuffer.
-   *
-   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
-   * memory copies.
-   *
-   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
-   * the memory copy required to send an RPC
-   *
-   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
-   * changed or an error may occur
-   */
-  ByteBuffer serializeToByteBuffer();
-
-  default long estimateSize() {
-    return 0;
+  public CheckConsistencyException(String errMsg) {
+    super(String.format("check consistency failed, error message=%s ", errMsg));
   }
+
+  public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =
+      new CheckConsistencyException("strong consistency, sync with leader failed");
+
+  public static final CheckConsistencyException CHECK_MID_CONSISTENCY_EXCEPTION =
+      new CheckConsistencyException(
+          "mid consistency, localAppliedId is smaller than the leaderCommitId");
 }

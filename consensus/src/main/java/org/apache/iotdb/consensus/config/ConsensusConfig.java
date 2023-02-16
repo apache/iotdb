@@ -27,6 +27,7 @@ public class ConsensusConfig {
   private final String storageDir;
   private final RatisConfig ratisConfig;
   private final MultiLeaderConfig multiLeaderConfig;
+  private final RPCConfig rpcConfig;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -37,6 +38,8 @@ public class ConsensusConfig {
     this.storageDir = storageDir;
     this.ratisConfig = ratisConfig;
     this.multiLeaderConfig = multiLeaderConfig;
+    // TODO-Raft: unify rpc config for all protocols
+    this.rpcConfig = RPCConfig.newBuilder().build();
   }
 
   public TEndPoint getThisNode() {
@@ -57,6 +60,10 @@ public class ConsensusConfig {
 
   public static ConsensusConfig.Builder newBuilder() {
     return new ConsensusConfig.Builder();
+  }
+
+  public RPCConfig getRPCConfig() {
+    return rpcConfig;
   }
 
   public static class Builder {

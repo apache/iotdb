@@ -37,6 +37,8 @@ public class ConsensusFactory {
   public static final String RatisConsensus = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String MultiLeaderConsensus =
       "org.apache.iotdb.consensus.multileader.MultiLeaderConsensus";
+  public static final String RaftConsensus =
+      "org.apache.iotdb.consensus.natraft.RaftConsensus";
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
