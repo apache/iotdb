@@ -41,12 +41,12 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Integer> getReadOperationCountForDisk() {
+  public Map<String, Long> getReadOperationCountForDisk() {
     return Collections.emptyMap();
   }
 
   @Override
-  public Map<String, Integer> getWriteOperationCountForDisk() {
+  public Map<String, Long> getWriteOperationCountForDisk() {
     return Collections.emptyMap();
   }
 
@@ -61,7 +61,7 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getIOUtilsPercentage() {
+  public Map<String, Long> getIoUtilsPercentage() {
     return Collections.emptyMap();
   }
 
@@ -126,7 +126,7 @@ public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
   }
 
   @Override
-  public Set<String> getDiskIDs() {
+  public Set<String> getDiskIds() {
     return Collections.emptySet();
   }
 }

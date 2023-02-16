@@ -64,9 +64,9 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Long> getWriteDataSizeForDisk();
 
-  public abstract Map<String, Integer> getReadOperationCountForDisk();
+  public abstract Map<String, Long> getReadOperationCountForDisk();
 
-  public abstract Map<String, Integer> getWriteOperationCountForDisk();
+  public abstract Map<String, Long> getWriteOperationCountForDisk();
 
   public abstract Map<String, Long> getMergedWriteOperationForDisk();
 
@@ -76,7 +76,7 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract Map<String, Long> getWriteCostTimeForDisk();
 
-  public abstract Map<String, Long> getIOUtilsPercentage();
+  public abstract Map<String, Long> getIoUtilsPercentage();
 
   public abstract Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk();
 
@@ -98,13 +98,9 @@ public abstract class AbstractDiskMetricsManager {
 
   public abstract long getAttemptWriteSizeForProcess();
 
-  public abstract Set<String> getDiskIDs();
+  public abstract Set<String> getDiskIds();
 
-  /**
-   * Return different implementation of DiskMetricsManager according to OS type.
-   *
-   * @return
-   */
+  /** Return different implementation of DiskMetricsManager according to OS type. */
   public static AbstractDiskMetricsManager getDiskMetricsManager() {
     String os = System.getProperty("os.name").toLowerCase();
 
