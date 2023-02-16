@@ -77,15 +77,19 @@ public abstract class AbstractMetricService {
   /** Start metric service. */
   public void startService() {
     startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.bindTo(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.bindTo(this);
+      }
     }
   }
 
   /** Stop metric service. */
   public void stopService() {
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.unbindFrom(this);
+      }
     }
     stopCoreModule();
   }
