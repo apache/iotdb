@@ -36,10 +36,18 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBShuffleSink1IT {
-
-  // two devices
-  private static final String[] SQLs =
+  private static final String[] SINGLE_SERIES =
       new String[] {
+        "create database root.single",
+        "insert into root.single.d1(time,s1,s2) values (1,2,2)",
+        "insert into root.single.d1(time,s1,s2) values (now(),3,3)",
+        "insert into root.single.d2(time,s1,s2) values (1,4,4)",
+        "insert into root.single.d2(time,s1,s2) values (now(),5,5)"
+      };
+  // two devices
+  private static final String[] MULTI_SERIES =
+      new String[] {
+        "create database root.sg",
         "insert into root.sg.d1(time,s1,s2) values (1,2,2)",
         "insert into root.sg.d1(time,s1,s2) values (now(),3,3)",
         "insert into root.sg.d2(time,s1,s2) values (1,4,4)",
@@ -51,7 +59,8 @@ public class IoTDBShuffleSink1IT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
     EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupNumPerDatabase(2);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(SQLs);
+    prepareData(SINGLE_SERIES);
+    prepareData(MULTI_SERIES);
   }
 
   @AfterClass
@@ -61,43 +70,81 @@ public class IoTDBShuffleSink1IT {
 
   @Test
   public void testCountAlignByDeviceOrderByDeviceWithoutValueFilter() {
-    String expectedHeader = "Device,count(s1),count(s2)";
-    String[] retArray = new String[] {"root.sg.d1,2,2", "root.sg.d2,2,2"};
+    // result of SINGLE_SERIES
+    String expectedHeader1 = "Device,count(s1)";
+    String[] retArray1 = new String[] {"root.single.d1,2", "root.single.d2,2"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.** align by device", expectedHeader, retArray);
+        "select count(s1) from root.single.** align by device", expectedHeader1, retArray1);
+
+    // result of MULTI_SERIES
+    String expectedHeader2 = "Device,count(s1),count(s2)";
+    String[] retArray2 = new String[] {"root.sg.d1,2,2", "root.sg.d2,2,2"};
+
+    resultSetEqualTest(
+        "select count(s1),count(s2) from root.sg.** align by device", expectedHeader2, retArray2);
   }
 
   @Test
   public void testCountAlignByDeviceOrderByDeviceWithValueFilter() {
-    String expectedHeader = "Device,count(s1),count(s2)";
-    String[] retArray = new String[] {"root.sg.d1,2,2", "root.sg.d2,1,1"};
+    // result of SINGLE_SERIES
+    String expectedHeader1 = "Device,count(s1)";
+    String[] retArray1 = new String[] {"root.single.d1,2", "root.single.d2,1"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.** where s1 <= 4 align by device",
-        expectedHeader,
-        retArray);
+        "select count(s1),count(s2) from root.single.** where s1 <= 4 align by device",
+        expectedHeader1,
+        retArray1);
+
+    // result of MULTI_SERIES
+    String expectedHeader2 = "Device,count(s1),count(s2)";
+    String[] retArray2 = new String[] {"root.sg.d1,2,2", "root.sg.d2,1,1"};
+
+    resultSetEqualTest(
+        "select count(s1),count(s2) from root.sg.** where s1 <= 4 align by device",
+        expectedHeader2,
+        retArray2);
   }
 
   @Test
   public void testCountAlignByDeviceOrderByTimeWithoutValueFilter() {
-    String expectedHeader = "Device,count(s1),count(s2)";
-    String[] retArray = new String[] {"root.sg.d1,2,2", "root.sg.d2,2,2"};
+    // result of SINGLE_SERIES
+    String expectedHeader1 = "Device,count(s1)";
+    String[] retArray1 = new String[] {"root.single.d1,2", "root.single.d2,2"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.** order by time align by device",
-        expectedHeader,
-        retArray);
+        "select count(s1),count(s2) from root.single.** order by time align by device",
+        expectedHeader1,
+        retArray1);
+
+    // result of MULTI_SERIES
+    String expectedHeader2 = "Device,count(s1),count(s2)";
+    String[] retArray2 = new String[] {"root.sg.d1,2,2", "root.sg.d2,2,2"};
+
+    resultSetEqualTest(
+        "select count(s1),count(s2) from root.sg.** order by time align by device",
+        expectedHeader2,
+        retArray2);
   }
 
   @Test
   public void testCountAlignByDeviceOrderByTimeWithValueFilter() {
-    String expectedHeader = "Device,count(s1),count(s2)";
-    String[] retArray = new String[] {"root.sg.d1,2,2", "root.sg.d2,1,1"};
+    // result of SINGLE_SERIES
+    String expectedHeader1 = "Device,count(s1)";
+    String[] retArray1 = new String[] {"root.single.d1,2", "root.single.d2,1"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.** where s1 <= 4 order by time align by device",
-        expectedHeader,
-        retArray);
+        "select count(s1),count(s2) from root.single.** where s1 <= 4 order by time align by device",
+        expectedHeader1,
+        retArray1);
+
+    // result of MULTI_SERIES
+    String expectedHeader2 = "Device,count(s1),count(s2)";
+    String[] retArray2 = new String[] {"root.sg.d1,2,2", "root.sg.d2,1,1"};
+
+    resultSetEqualTest(
+        "select count(s1),count(s2) from root.sg.** where s1 <= 4 order by time align by device",
+        expectedHeader2,
+        retArray2);
   }
 }
