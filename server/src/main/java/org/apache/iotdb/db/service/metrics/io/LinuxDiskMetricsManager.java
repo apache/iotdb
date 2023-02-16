@@ -152,7 +152,7 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
   public Map<String, Long> getIoUtilsPercentage() {
     Map<String, Long> utilsMap = new HashMap<>();
     for (Map.Entry<String, Long> entry : incrementIoBusyTimeForDisk.entrySet()) {
-      utilsMap.put(entry.getKey(), (long) (entry.getValue() * 1000.0 / updateInterval * 10000.0));
+      utilsMap.put(entry.getKey(), (long) (entry.getValue() * 10000.0 / updateInterval));
     }
     return utilsMap;
   }
@@ -344,8 +344,8 @@ public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
       Map<String, Long> lastMap,
       Map<String, Long> incrementMap) {
     long currentValue = Long.parseLong(diskInfo[offset]);
-    long lastValue = lastMap.getOrDefault(diskId, 0L);
     if (incrementMap != null) {
+      long lastValue = lastMap.getOrDefault(diskId, 0L);
       if (lastValue != 0) {
         incrementMap.put(diskId, currentValue - lastValue);
       } else {
