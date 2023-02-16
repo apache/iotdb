@@ -127,4 +127,59 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected IPointReader getPointReader(TsBlock tsBlock) {
     return tsBlock.getTsBlockAlignedRowIterator();
   }
+
+  @Override
+  protected void filterFirstTimeSeriesMetadata() throws IOException {
+    if (firstTimeSeriesMetadata != null
+        && !isFileOverlapped()
+        && !firstTimeSeriesMetadata.isModified()) {
+      Filter queryFilter = scanOptions.getQueryFilter();
+      if (queryFilter != null) {
+        // TODO accept valueStatisticsList to filter
+        if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
+          skipCurrentFile();
+        }
+      } else {
+        long rowCount =
+            ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
+        for (Statistics statistics :
+            ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
+          if (statistics == null || statistics.getCount() != rowCount) {
+            return;
+          }
+        }
+
+        if (paginationController.hasCurOffset(rowCount)) {
+          skipCurrentFile();
+          paginationController.consumeOffset(rowCount);
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void filterFirstChunkMetadata() throws IOException {
+    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+      Filter queryFilter = scanOptions.getQueryFilter();
+      if (queryFilter != null) {
+        // TODO accept valueStatisticsList to filter
+        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
+          skipCurrentChunk();
+        }
+      } else {
+        long rowCount = firstChunkMetadata.getStatistics().getCount();
+        for (Statistics statistics :
+            ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
+          if (statistics == null || statistics.getCount() != rowCount) {
+            return;
+          }
+        }
+
+        if (paginationController.hasCurOffset(rowCount)) {
+          skipCurrentChunk();
+          paginationController.consumeOffset(rowCount);
+        }
+      }
+    }
+  }
 }

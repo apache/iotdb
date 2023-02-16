@@ -94,140 +94,156 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
+  public boolean pageSatisfy() {
+    if (valueFilter != null) {
+      return valueFilter.satisfy(getStatistics());
+    } else {
+      long rowCount = getStatistics().getCount();
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public TsBlock getAllSatisfiedData() {
     TSDataType dataType = chunkMetadata.getDataType();
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    switch (dataType) {
-      case BOOLEAN:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          boolean value = tsBlock.getColumn(0).getBoolean(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
+    if (pageSatisfy()) {
+      switch (dataType) {
+        case BOOLEAN:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            boolean value = tsBlock.getColumn(0).getBoolean(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeBoolean(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
+          break;
+        case INT32:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            int value = tsBlock.getColumn(0).getInt(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeInt(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeBoolean(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
+          break;
+        case INT64:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            long value = tsBlock.getColumn(0).getLong(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeLong(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          int value = tsBlock.getColumn(0).getInt(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
+          break;
+        case FLOAT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            float value = tsBlock.getColumn(0).getFloat(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeFloat(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
+          break;
+        case DOUBLE:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            double value = tsBlock.getColumn(0).getDouble(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeDouble(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeInt(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
+          break;
+        case TEXT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            long time = tsBlock.getTimeColumn().getLong(i);
+            Binary value = tsBlock.getColumn(0).getBinary(i);
+            if (valueFilter != null && !valueFilter.satisfy(time, value)) {
+              continue;
+            }
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              timeBuilder.writeLong(time);
+              valueBuilder.writeBinary(value);
+              builder.declarePosition();
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          long value = tsBlock.getColumn(0).getLong(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
-          }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
-          }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeLong(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
-          }
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          float value = tsBlock.getColumn(0).getFloat(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
-          }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
-          }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeFloat(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
-          }
-        }
-        break;
-      case DOUBLE:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          double value = tsBlock.getColumn(0).getDouble(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
-          }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
-          }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeDouble(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
-          }
-        }
-        break;
-      case TEXT:
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long time = tsBlock.getTimeColumn().getLong(i);
-          Binary value = tsBlock.getColumn(0).getBinary(i);
-          if (valueFilter != null && !valueFilter.satisfy(time, value)) {
-            continue;
-          }
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-            continue;
-          }
-          if (paginationController.hasCurLimit()) {
-            timeBuilder.writeLong(time);
-            valueBuilder.writeBinary(value);
-            builder.declarePosition();
-            paginationController.consumeLimit();
-          } else {
-            break;
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
     }
     return builder.build();
   }

@@ -92,6 +92,27 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
+  public boolean pageSatisfy() {
+    if (valueFilter != null) {
+      // TODO accept valueStatisticsList to filter
+      return valueFilter.satisfy(getStatistics());
+    } else {
+      long rowCount = getTimeStatistics().getCount();
+      for (Statistics statistics : getValueStatisticsList()) {
+        if (statistics == null || statistics.getCount() != rowCount) {
+          return true;
+        }
+      }
+
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
 
@@ -166,6 +187,11 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public Statistics getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
+  }
+
+  @Override
+  public List<Statistics> getValueStatisticsList() {
+    return chunkMetadata.getValueStatisticsList();
   }
 
   @Override

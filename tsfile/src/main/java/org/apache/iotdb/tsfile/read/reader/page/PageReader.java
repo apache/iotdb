@@ -163,11 +163,25 @@ public class PageReader implements IPageReader {
   }
 
   @Override
+  public boolean pageSatisfy() {
+    if (filter != null) {
+      return filter.satisfy(getStatistics());
+    } else {
+      long rowCount = getStatistics().getCount();
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (filter == null || filter.satisfy(getStatistics())) {
+    if (pageSatisfy()) {
       switch (dataType) {
         case BOOLEAN:
           while (timeDecoder.hasNext(timeBuffer)) {

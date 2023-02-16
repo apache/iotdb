@@ -120,8 +120,33 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
+  public boolean pageSatisfy() {
+    if (filter != null) {
+      // TODO accept valueStatisticsList to filter
+      return filter.satisfy(getStatistics());
+    } else {
+      long rowCount = getTimeStatistics().getCount();
+      for (Statistics statistics : getValueStatisticsList()) {
+        if (statistics == null || statistics.getCount() != rowCount) {
+          return true;
+        }
+      }
+
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     builder.reset();
+    if (!pageSatisfy()) {
+      return builder.build();
+    }
+
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
     // if all the sub sensors' value are null in current row, just discard it
@@ -234,6 +259,15 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public Statistics getTimeStatistics() {
     return timePageReader.getStatistics();
+  }
+
+  @Override
+  public List<Statistics> getValueStatisticsList() {
+    List<Statistics> valueStatisticsList = new ArrayList<>();
+    for (ValuePageReader v : valuePageReaderList) {
+      valueStatisticsList.add(v == null ? null : v.getStatistics());
+    }
+    return valueStatisticsList;
   }
 
   @Override

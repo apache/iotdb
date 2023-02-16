@@ -207,6 +207,8 @@ public class SeriesScanUtil {
             || !unSeqTimeSeriesMetadata.isEmpty())) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+      // filter file based on push-down conditions
+      filterFirstTimeSeriesMetadata();
     }
 
     return firstTimeSeriesMetadata != null;
@@ -279,8 +281,27 @@ public class SeriesScanUtil {
 
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
       initFirstChunkMetadata();
+      // filter chunk based on push-down conditions
+      filterFirstChunkMetadata();
     }
     return firstChunkMetadata != null;
+  }
+
+  protected void filterFirstChunkMetadata() throws IOException {
+    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+      Filter queryFilter = scanOptions.getQueryFilter();
+      if (queryFilter != null) {
+        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
+          skipCurrentChunk();
+        }
+      } else {
+        long rowCount = firstChunkMetadata.getStatistics().getCount();
+        if (paginationController.hasCurOffset(rowCount)) {
+          skipCurrentChunk();
+          paginationController.consumeOffset(rowCount);
+        }
+      }
+    }
   }
 
   /** construct first chunk metadata */
@@ -306,22 +327,6 @@ public class SeriesScanUtil {
         if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
           firstChunkMetadata = cachedChunkMetadata.poll();
           break;
-        }
-      }
-    }
-
-    // filter seq chunks based on push-down conditions
-    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      if (queryFilter != null) {
-        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
-          skipCurrentChunk();
-        }
-      } else {
-        long rowCount = firstChunkMetadata.getStatistics().getCount();
-        if (paginationController.hasCurOffset(rowCount)) {
-          skipCurrentChunk();
-          paginationController.consumeOffset(rowCount);
         }
       }
     }
@@ -1022,8 +1027,9 @@ public class SeriesScanUtil {
         firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
       }
     }
+  }
 
-    // filter seq files based on push-down conditions
+  protected void filterFirstTimeSeriesMetadata() throws IOException {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
