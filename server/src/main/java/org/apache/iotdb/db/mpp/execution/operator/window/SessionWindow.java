@@ -28,16 +28,21 @@ public class SessionWindow implements IWindow {
 
   private final long timeInterval;
 
+  private final boolean ascending;
+
   private long timeValue;
 
   private long startTime;
 
   private long endTime;
 
+  private long lastTsBlockTime;
+
   private boolean initializedTimeValue;
 
-  public SessionWindow(long timeInterval) {
+  public SessionWindow(long timeInterval, boolean ascending) {
     this.timeInterval = timeInterval;
+    this.ascending = ascending;
   }
 
   @Override
@@ -50,7 +55,10 @@ public class SessionWindow implements IWindow {
     if (!initializedTimeValue) {
       return true;
     }
-    return Math.abs(column.getLong(index) - timeValue) <= timeInterval;
+    if (index == 0) {
+      return Math.abs(column.getLong(index) - lastTsBlockTime) <= timeInterval;
+    }
+    return Math.abs(column.getLong(index) - column.getLong(index - 1)) <= timeInterval;
   }
 
   @Override
@@ -65,7 +73,7 @@ public class SessionWindow implements IWindow {
       endTime = currentTime;
     }
     // update the last time of session window
-    timeValue = currentTime;
+    timeValue = ascending ? Math.max(timeValue, currentTime) : Math.min(timeValue, currentTime);
     // judge whether we need initialize timeValue
     if (!initializedTimeValue) {
       startTime = currentTime;
@@ -119,5 +127,13 @@ public class SessionWindow implements IWindow {
 
   public void setInitializedTimeValue(boolean initializedTimeValue) {
     this.initializedTimeValue = initializedTimeValue;
+  }
+
+  public long getLastTsBlockTime() {
+    return lastTsBlockTime;
+  }
+
+  public void setLastTsBlockTime(long lastTsBlockTime) {
+    this.lastTsBlockTime = lastTsBlockTime;
   }
 }

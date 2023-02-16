@@ -39,12 +39,12 @@ public class SessionWindowManager implements IWindowManager {
 
   private final SessionWindow sessionWindow;
 
-  public SessionWindowManager(SessionWindowParameter sessionWindowParameter) {
-    this.sessionWindow = new SessionWindow(sessionWindowParameter.getTimeInterval());
-    this.isNeedOutputEndTime = sessionWindowParameter.isNeedOutputEndTime();
+  public SessionWindowManager(boolean isNeedOutputEndTime, long timeInterval, boolean ascending) {
+    this.isNeedOutputEndTime = isNeedOutputEndTime;
     this.initialized = false;
     // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
+    this.sessionWindow = new SessionWindow(timeInterval, ascending);
   }
 
   @Override
@@ -69,6 +69,7 @@ public class SessionWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
+    this.sessionWindow.setLastTsBlockTime(0);
   }
 
   @Override
@@ -104,7 +105,7 @@ public class SessionWindowManager implements IWindowManager {
       if (sessionWindow.getEndTime() < currentTime) {
         sessionWindow.setEndTime(currentTime);
       }
-      previousTimeValue = timeColumn.getLong(i);
+      previousTimeValue = currentTime;
     }
 
     // we can create a new window beginning at index i of inputTsBlock
@@ -171,5 +172,10 @@ public class SessionWindowManager implements IWindowManager {
   @Override
   public boolean isIgnoringNull() {
     return false;
+  }
+
+  @Override
+  public void setLastTsBlockTime() {
+    this.sessionWindow.setLastTsBlockTime(this.sessionWindow.getTimeValue());
   }
 }
