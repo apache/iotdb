@@ -61,7 +61,7 @@ public class SeriesScanLimitOffsetPushDownTest {
   private static final String TEST_PATH = TEST_DEVICE + ".s1";
 
   /**
-   *
+   * The data distribution is as follows:
    *
    * <pre>
    *  time    root.sg_pd.d1.s1
@@ -256,6 +256,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
     long expectedTime = 10;
     for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
       Assert.assertEquals(expectedTime++, tsBlock.getTimeByIndex(i));
@@ -275,6 +276,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertTrue(seriesScanUtil.hasNextPage());
 
     TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
     long expectedTime = 20;
     for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
       Assert.assertEquals(expectedTime++, tsBlock.getTimeByIndex(i));

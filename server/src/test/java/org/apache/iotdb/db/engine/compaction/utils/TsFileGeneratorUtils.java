@@ -172,6 +172,10 @@ public class TsFileGeneratorUtils {
     chunkWriter.writeToFileWriter(tsFileIOWriter);
   }
 
+  public static void writeNullPoint(ValuePageWriter valuePageWriter, long timestamp) {
+    valuePageWriter.write(timestamp, null, true);
+  }
+
   public static void writeAlignedPoint(
       ValuePageWriter valuePageWriter, long timestamp, boolean isSeq) {
     switch (valuePageWriter.getStatistics().getType()) {

@@ -212,8 +212,9 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
         builder.declarePosition();
+        paginationController.consumeLimit();
       } else {
-        readEndIndex = i + 1;
+        readEndIndex = i;
         break;
       }
     }

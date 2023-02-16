@@ -151,7 +151,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         builder.declarePosition();
         paginationController.consumeLimit();
       } else {
-        readEndIndex = row + 1;
+        readEndIndex = row;
         break;
       }
     }
