@@ -476,6 +476,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void invalidAllCache() {
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().invalidateAll();
   }
 }

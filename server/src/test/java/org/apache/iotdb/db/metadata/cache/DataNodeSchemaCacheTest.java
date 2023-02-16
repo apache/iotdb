@@ -88,7 +88,6 @@ public class DataNodeSchemaCacheTest {
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
-    Assert.assertEquals(3, dataNodeSchemaCache.estimatedSize());
 
     String[] otherMeasurements = new String[3];
     otherMeasurements[0] = "s3";
@@ -120,7 +119,6 @@ public class DataNodeSchemaCacheTest {
         TSDataType.INT64,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
-    Assert.assertEquals(5, dataNodeSchemaCache.estimatedSize());
   }
 
   @Test
@@ -180,12 +178,6 @@ public class DataNodeSchemaCacheTest {
     Assert.assertNotNull(cachedTimeValuePair3);
     Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
     Assert.assertEquals(value3, cachedTimeValuePair3.getValue());
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
-
-    // invalid cache
-    dataNodeSchemaCache.invalidate(seriesPath1);
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
   }
