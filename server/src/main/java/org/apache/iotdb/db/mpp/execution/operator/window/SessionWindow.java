@@ -117,10 +117,6 @@ public class SessionWindow implements IWindow {
     this.endTime = endTime;
   }
 
-  public boolean isInitializedTimeValue() {
-    return initializedTimeValue;
-  }
-
   public void setInitializedTimeValue(boolean initializedTimeValue) {
     this.initializedTimeValue = initializedTimeValue;
   }

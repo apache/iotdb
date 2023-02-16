@@ -37,6 +37,8 @@ public class WindowManagerFactory {
                 (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
       case SERIES_WINDOW:
         return new SeriesWindowManager((SeriesWindowParameter) windowParameter);
+      case SESSION_WINDOW:
+        return new SessionWindowManager((SessionWindowParameter) windowParameter);
       default:
         throw new IllegalArgumentException(
             "Not support this type of aggregation window :"

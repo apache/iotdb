@@ -33,19 +33,12 @@ public abstract class GroupByParameter {
 
   protected WindowType windowType;
 
-  protected boolean ignoringNull;
-
-  public GroupByParameter(WindowType windowType, boolean ignoringNull) {
+  public GroupByParameter(WindowType windowType) {
     this.windowType = windowType;
-    this.ignoringNull = ignoringNull;
   }
 
   public WindowType getWindowType() {
     return windowType;
-  }
-
-  public boolean isIgnoringNull() {
-    return ignoringNull;
   }
 
   protected abstract void serializeAttributes(ByteBuffer byteBuffer);
@@ -54,13 +47,11 @@ public abstract class GroupByParameter {
 
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(windowType.getType(), buffer);
-    ReadWriteIOUtils.write(ignoringNull, buffer);
     serializeAttributes(buffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(windowType.getType(), stream);
-    ReadWriteIOUtils.write(ignoringNull, stream);
     serializeAttributes(stream);
   }
 
@@ -70,12 +61,12 @@ public abstract class GroupByParameter {
       return false;
     }
     GroupByParameter other = (GroupByParameter) obj;
-    return this.windowType == other.windowType && this.ignoringNull == other.ignoringNull;
+    return this.windowType == other.windowType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(windowType, ignoringNull);
+    return Objects.hash(windowType);
   }
 
   public static GroupByParameter deserialize(ByteBuffer byteBuffer) {

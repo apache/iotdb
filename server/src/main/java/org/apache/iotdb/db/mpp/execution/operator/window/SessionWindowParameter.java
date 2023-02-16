@@ -21,18 +21,15 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 public class SessionWindowParameter extends WindowParameter {
 
-  private long timeInterval;
+  private final long timeInterval;
 
   public SessionWindowParameter(long timeInterval, boolean needOutputEndTime) {
     super(needOutputEndTime);
     this.timeInterval = timeInterval;
+    this.windowType = WindowType.SESSION_WINDOW;
   }
 
   public long getTimeInterval() {
     return timeInterval;
-  }
-
-  public void setTimeInterval(long timeInterval) {
-    this.timeInterval = timeInterval;
   }
 }

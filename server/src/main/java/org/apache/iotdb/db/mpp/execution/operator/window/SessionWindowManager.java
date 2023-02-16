@@ -31,19 +31,17 @@ import java.util.List;
 
 public class SessionWindowManager implements IWindowManager {
 
-  private final boolean ascending;
-
   private final boolean isNeedOutputEndTime;
 
   private boolean initialized;
 
   private boolean needSkip;
 
-  private SessionWindow sessionWindow;
+  private final SessionWindow sessionWindow;
 
-  public SessionWindowManager(boolean ascending, boolean isNeedOutputEndTime) {
-    this.ascending = ascending;
-    this.isNeedOutputEndTime = isNeedOutputEndTime;
+  public SessionWindowManager(SessionWindowParameter sessionWindowParameter) {
+    this.sessionWindow = new SessionWindow(sessionWindowParameter.getTimeInterval());
+    this.isNeedOutputEndTime = sessionWindowParameter.isNeedOutputEndTime();
     this.initialized = false;
     // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
