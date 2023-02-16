@@ -19,13 +19,12 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 
 /** Threshold strategy based on the number of nodes. */
 public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy {
 
-  private final AtomicLong memoryUsage;
+  private final CachedSchemaEngineStatistics engineStatistics;
 
   private final long releaseThreshold;
   private final long flushThreshold;
@@ -33,8 +32,8 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
   private static final double RELEASE_THRESHOLD_RATIO = 0.6;
   private static final double FLUSH_THRESHOLD_RATION = 0.75;
 
-  public ReleaseFlushStrategySizeBasedImpl(AtomicLong memoryUsage) {
-    this.memoryUsage = memoryUsage;
+  public ReleaseFlushStrategySizeBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
+    this.engineStatistics = engineStatistics;
     long capacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     this.releaseThreshold = (long) (capacity * RELEASE_THRESHOLD_RATIO);
     this.flushThreshold = (long) (capacity * FLUSH_THRESHOLD_RATION);
@@ -42,11 +41,11 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
 
   @Override
   public boolean isExceedReleaseThreshold() {
-    return memoryUsage.get() > releaseThreshold;
+    return engineStatistics.getMemoryUsage() > releaseThreshold;
   }
 
   @Override
   public boolean isExceedFlushThreshold() {
-    return memoryUsage.get() > flushThreshold;
+    return engineStatistics.getMemoryUsage() > flushThreshold;
   }
 }

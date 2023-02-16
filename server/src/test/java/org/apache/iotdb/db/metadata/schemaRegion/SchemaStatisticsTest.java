@@ -162,7 +162,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
           (CachedSchemaEngineStatistics) engineStatistics;
       Assert.assertEquals(
           cachedEngineStatistics.getMemoryUsage(),
-          cachedEngineStatistics.getPinnedSize() + cachedEngineStatistics.getCachedSize());
+          cachedEngineStatistics.getPinnedMemorySize()
+              + cachedEngineStatistics.getCachedMemorySize());
     }
   }
 
@@ -218,29 +219,31 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
           schemaRegion2.getSchemaRegionStatistics().getAsCachedSchemaRegionStatistics();
       // check correctness of statistics
       if (testParams.getCachedMNodeSize() > 3) {
-        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedNum());
-        Assert.assertEquals(4, cachedRegionStatistics1.getCachedNum());
-        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedNum());
-        Assert.assertEquals(4, cachedRegionStatistics2.getCachedNum());
+        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedMNodeNum());
+        Assert.assertEquals(4, cachedRegionStatistics1.getCachedMNodeNum());
+        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedMNodeNum());
+        Assert.assertEquals(4, cachedRegionStatistics2.getCachedMNodeNum());
       } else {
-        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedNum());
-        Assert.assertEquals(0, cachedRegionStatistics1.getCachedNum());
-        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedNum());
-        Assert.assertEquals(0, cachedRegionStatistics2.getCachedNum());
+        Assert.assertEquals(1, cachedRegionStatistics1.getPinnedMNodeNum());
+        Assert.assertEquals(0, cachedRegionStatistics1.getCachedMNodeNum());
+        Assert.assertEquals(1, cachedRegionStatistics2.getPinnedMNodeNum());
+        Assert.assertEquals(0, cachedRegionStatistics2.getCachedMNodeNum());
       }
       // check consistence between region and engine
       Assert.assertEquals(
-          cachedRegionStatistics1.getPinnedNum() + cachedRegionStatistics2.getPinnedNum(),
-          engineStatistics.getPinnedNum());
+          cachedRegionStatistics1.getPinnedMNodeNum() + cachedRegionStatistics2.getPinnedMNodeNum(),
+          engineStatistics.getPinnedMNodeNum());
       Assert.assertEquals(
-          cachedRegionStatistics1.getCachedNum() + cachedRegionStatistics2.getCachedNum(),
-          engineStatistics.getCachedNum());
+          cachedRegionStatistics1.getCachedMNodeNum() + cachedRegionStatistics2.getCachedMNodeNum(),
+          engineStatistics.getCachedMNodeNum());
       Assert.assertEquals(
-          cachedRegionStatistics1.getPinnedSize() + cachedRegionStatistics2.getPinnedSize(),
-          engineStatistics.getPinnedSize());
+          cachedRegionStatistics1.getPinnedMemorySize()
+              + cachedRegionStatistics2.getPinnedMemorySize(),
+          engineStatistics.getPinnedMemorySize());
       Assert.assertEquals(
-          cachedRegionStatistics1.getCachedSize() + cachedRegionStatistics2.getCachedSize(),
-          engineStatistics.getCachedSize());
+          cachedRegionStatistics1.getCachedMemorySize()
+              + cachedRegionStatistics2.getCachedMemorySize(),
+          engineStatistics.getCachedMemorySize());
     }
   }
 }

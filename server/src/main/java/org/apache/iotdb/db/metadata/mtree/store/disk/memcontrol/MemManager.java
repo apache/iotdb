@@ -38,30 +38,30 @@ public class MemManager {
   public void requestPinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
     regionStatistics.requestMemory(size);
-    regionStatistics.updatePinnedSize(size);
-    regionStatistics.updatePinnedNum(1);
+    regionStatistics.updatePinnedMemorySize(size);
+    regionStatistics.updatePinnedMNodeNum(1);
   }
 
   public void upgradeMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
-    regionStatistics.updatePinnedSize(size);
-    regionStatistics.updatePinnedNum(1);
-    regionStatistics.updateUnpinnedSize(-size);
-    regionStatistics.updateUnpinnedNum(-1);
+    regionStatistics.updatePinnedMemorySize(size);
+    regionStatistics.updatePinnedMNodeNum(1);
+    regionStatistics.updateUnpinnedMemorySize(-size);
+    regionStatistics.updateUnpinnedMNodeNum(-1);
   }
 
   public void releasePinnedMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
-    regionStatistics.updateUnpinnedSize(size);
-    regionStatistics.updateUnpinnedNum(1);
-    regionStatistics.updatePinnedSize(-size);
-    regionStatistics.updatePinnedNum(-1);
+    regionStatistics.updateUnpinnedMemorySize(size);
+    regionStatistics.updateUnpinnedMNodeNum(1);
+    regionStatistics.updatePinnedMemorySize(-size);
+    regionStatistics.updatePinnedMNodeNum(-1);
   }
 
   public void releaseMemResource(IMNode node) {
     int size = estimator.estimateSize(node);
-    regionStatistics.updateUnpinnedSize(-size);
-    regionStatistics.updateUnpinnedNum(-1);
+    regionStatistics.updateUnpinnedMemorySize(-size);
+    regionStatistics.updateUnpinnedMNodeNum(-1);
     regionStatistics.releaseMemory(size);
   }
 
@@ -70,8 +70,8 @@ public class MemManager {
     for (IMNode node : evictedNodes) {
       size += estimator.estimateSize(node);
     }
-    regionStatistics.updateUnpinnedNum(-evictedNodes.size());
-    regionStatistics.updateUnpinnedSize(-size);
+    regionStatistics.updateUnpinnedMNodeNum(-evictedNodes.size());
+    regionStatistics.updateUnpinnedMemorySize(-size);
     regionStatistics.releaseMemory(size);
   }
 
@@ -81,6 +81,6 @@ public class MemManager {
     } else {
       regionStatistics.releaseMemory(-deltaSize);
     }
-    regionStatistics.updatePinnedSize(deltaSize);
+    regionStatistics.updatePinnedMemorySize(deltaSize);
   }
 }

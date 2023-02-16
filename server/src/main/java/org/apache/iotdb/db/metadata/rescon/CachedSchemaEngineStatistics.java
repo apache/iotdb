@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategyNumBasedImpl;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -31,65 +26,50 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
 
-  private final AtomicLong unpinnedSize = new AtomicLong(0);
-  private final AtomicLong pinnedSize = new AtomicLong(0);
-  private final AtomicLong unpinnedNum = new AtomicLong(0);
-  private final AtomicLong pinnedNum = new AtomicLong(0);
-
-  private IReleaseFlushStrategy releaseFlushStrategy;
+  private final AtomicLong unpinnedMemorySize = new AtomicLong(0);
+  private final AtomicLong pinnedMemorySize = new AtomicLong(0);
+  private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
+  private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
 
   @Override
   public void init() {
     super.init();
-    unpinnedSize.getAndSet(0);
-    pinnedSize.getAndSet(0);
-    unpinnedNum.getAndSet(0);
-    pinnedNum.getAndSet(0);
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(unpinnedNum, pinnedNum);
-    } else {
-      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(memoryUsage);
-    }
+    unpinnedMemorySize.getAndSet(0);
+    pinnedMemorySize.getAndSet(0);
+    unpinnedMNodeNum.getAndSet(0);
+    pinnedMNodeNum.getAndSet(0);
   }
 
-  public boolean isExceedReleaseThreshold() {
-    return releaseFlushStrategy.isExceedReleaseThreshold();
+  public void updatePinnedMNodeNum(long delta) {
+    this.pinnedMNodeNum.addAndGet(delta);
   }
 
-  public boolean isExceedFlushThreshold() {
-    return releaseFlushStrategy.isExceedFlushThreshold();
+  public void updateUnpinnedMNodeNum(long delta) {
+    this.unpinnedMNodeNum.addAndGet(delta);
   }
 
-  public void updatePinnedNum(long delta) {
-    this.pinnedNum.addAndGet(delta);
+  public void updatePinnedMemorySize(long delta) {
+    this.pinnedMemorySize.addAndGet(delta);
   }
 
-  public void updateUnpinnedNum(long delta) {
-    this.unpinnedNum.addAndGet(delta);
+  public void updateUnpinnedMemorySize(long delta) {
+    this.unpinnedMemorySize.addAndGet(delta);
   }
 
-  public void updatePinnedSize(long delta) {
-    this.pinnedSize.addAndGet(delta);
+  public long getCachedMemorySize() {
+    return unpinnedMemorySize.get();
   }
 
-  public void updateUnpinnedSize(long delta) {
-    this.unpinnedSize.addAndGet(delta);
+  public long getPinnedMemorySize() {
+    return pinnedMemorySize.get();
   }
 
-  public long getCachedSize() {
-    return unpinnedSize.get();
+  public long getCachedMNodeNum() {
+    return unpinnedMNodeNum.get();
   }
 
-  public long getPinnedSize() {
-    return pinnedSize.get();
-  }
-
-  public long getCachedNum() {
-    return unpinnedNum.get();
-  }
-
-  public long getPinnedNum() {
-    return pinnedNum.get();
+  public long getPinnedMNodeNum() {
+    return pinnedMNodeNum.get();
   }
 
   @Override

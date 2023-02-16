@@ -219,9 +219,6 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    if (regionStatistics != null) {
-      regionStatistics.clear();
-    }
   }
 
   @Override

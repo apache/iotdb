@@ -20,8 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategyNumBasedImpl;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
 
@@ -57,6 +61,8 @@ public class CacheMemoryManager {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
+  private IReleaseFlushStrategy releaseFlushStrategy;
+
   private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
   private final Object blockObject = new Object();
 
@@ -78,6 +84,11 @@ public class CacheMemoryManager {
     engineStatistics =
         SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
             .getAsCachedSchemaEngineStatistics();
+    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
+      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(engineStatistics);
+    } else {
+      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(engineStatistics);
+    }
     flushTaskExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_FLUSH_POOL.getName());
@@ -86,12 +97,20 @@ public class CacheMemoryManager {
             CONCURRENT_NUM, ThreadName.SCHEMA_REGION_RELEASE_POOL.getName());
   }
 
+  public boolean isExceedReleaseThreshold() {
+    return releaseFlushStrategy.isExceedReleaseThreshold();
+  }
+
+  public boolean isExceedFlushThreshold() {
+    return releaseFlushStrategy.isExceedFlushThreshold();
+  }
+
   /**
    * Check the current memory usage. If the release threshold is exceeded, trigger the task to
    * perform an internal and external memory swap to release the memory.
    */
   public void ensureMemoryStatus() {
-    if (engineStatistics.isExceedReleaseThreshold() && !hasReleaseTask) {
+    if (isExceedReleaseThreshold() && !hasReleaseTask) {
       registerReleaseTask();
     }
   }
@@ -158,7 +177,7 @@ public class CacheMemoryManager {
       releaseCount++;
       synchronized (blockObject) {
         hasReleaseTask = false;
-        if (engineStatistics.isExceedFlushThreshold() && !hasFlushTask) {
+        if (isExceedFlushThreshold() && !hasFlushTask) {
           registerFlushTask();
         } else {
           blockObject.notifyAll();
@@ -235,6 +254,7 @@ public class CacheMemoryManager {
       flushTaskExecutor = null;
     }
     storeList.clear();
+    releaseFlushStrategy = null;
     engineStatistics = null;
   }
 

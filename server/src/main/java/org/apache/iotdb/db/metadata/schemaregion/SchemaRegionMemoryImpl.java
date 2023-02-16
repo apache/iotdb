@@ -352,6 +352,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       if (this.mtree != null) {
         this.mtree.clear();
       }
+      this.regionStatistics.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;

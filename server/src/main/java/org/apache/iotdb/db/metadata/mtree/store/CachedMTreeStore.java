@@ -463,7 +463,6 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
       file = null;
-      regionStatistics.clear();
     } finally {
       lock.unlockWrite();
     }
@@ -522,7 +521,8 @@ public class CachedMTreeStore implements IMTreeStore {
    * no node could be evicted. Update the memory status after evicting each node.
    */
   public void executeMemoryRelease() {
-    while (regionStatistics.isExceedReleaseThreshold() && regionStatistics.getCachedSize() != 0) {
+    while (CacheMemoryManager.getInstance().isExceedReleaseThreshold()
+        && regionStatistics.getCachedMemorySize() != 0) {
       if (!cacheManager.evict()) {
         break;
       }
@@ -562,7 +562,9 @@ public class CachedMTreeStore implements IMTreeStore {
       }
     } catch (Throwable e) {
       logger.error(
-          "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);
+          "Error occurred during MTree flush, current SchemaRegionId is {}",
+          regionStatistics.getSchemaRegionId(),
+          e);
       e.printStackTrace();
     }
   }

@@ -78,7 +78,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   public void releaseMemory(long size) {
     memoryUsage.addAndGet(-size);
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-      logger.info("Current series memory {} come back to normal level", memoryUsage);
+      logger.info(
+          "Current series memory {} come back to normal level, total series number is {}.",
+          memoryUsage,
+          totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
   }

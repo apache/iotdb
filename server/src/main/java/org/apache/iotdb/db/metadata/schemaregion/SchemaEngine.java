@@ -142,7 +142,7 @@ public class SchemaEngine {
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
-  private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
+  private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
 
     File schemaDir = new File(config.getSchemaDir());
@@ -223,6 +223,8 @@ public class SchemaEngine {
   }
 
   public void clear() {
+    // clearSchemaResource will shut down release and flush task in Schema_File mode, which must be
+    // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
     if (timedForceMLogThread != null) {
       timedForceMLogThread.shutdown();
@@ -230,6 +232,7 @@ public class SchemaEngine {
     }
 
     if (schemaRegionMap != null) {
+      // SchemaEngineStatistics will be clear after clear all schema region
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.clear();
       }

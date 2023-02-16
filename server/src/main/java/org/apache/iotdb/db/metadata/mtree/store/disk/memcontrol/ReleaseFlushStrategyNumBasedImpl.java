@@ -19,30 +19,28 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 
 /** Number-based threshold strategy */
 public class ReleaseFlushStrategyNumBasedImpl implements IReleaseFlushStrategy {
 
   private final int capacity;
 
-  private final AtomicLong unpinnedNum;
-  private final AtomicLong pinnedNum;
+  private final CachedSchemaEngineStatistics engineStatistics;
 
-  public ReleaseFlushStrategyNumBasedImpl(AtomicLong unpinnedNum, AtomicLong pinnedNum) {
-    this.unpinnedNum = unpinnedNum;
-    this.pinnedNum = pinnedNum;
+  public ReleaseFlushStrategyNumBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
+    this.engineStatistics = engineStatistics;
     this.capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode();
   }
 
   @Override
   public boolean isExceedReleaseThreshold() {
-    return pinnedNum.get() + unpinnedNum.get() > capacity * 0.6;
+    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getCachedMNodeNum()
+        > capacity * 0.6;
   }
 
   @Override
   public boolean isExceedFlushThreshold() {
-    return pinnedNum.get() + unpinnedNum.get() > capacity;
+    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getCachedMNodeNum() > capacity;
   }
 }
