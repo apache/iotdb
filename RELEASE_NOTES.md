@@ -19,6 +19,64 @@
 
 -->
 
+# Apache IoTDB 1.0.1
+
+## New Features
+
+* [IOTDB-5102] Support explain the sqls using align by device clause
+* [IOTDB-5282] Add SQL show variables, which can display the current cluster variables
+
+## Improvements
+
+* [IOTDB-4595] Add real-time monitoring data for tsfile merge
+* [IOTDB-5125] Stop the process when port is already in use when launching ConfigNode or DataNode
+* [IOTDB-5185] Fixed that old snapshot is not deleted in IoTConsensus
+* [IOTDB-5202] Support showing regions regarding database
+* [IOTDB-5205] Construct Cluster Node startup protocol, reject start or restart request of ConfigNode or DataNode when using wrong data
+* [IOTDB-5208] Fix increase of file handles when TsFileResource is degraded and compacted with fast performer
+* [IOTDB-5223] Cause DataNode startup to fail when multiple disks are configured in the data directory and the dataRegion consensus protocol uses Ratis
+* [IOTDB-5232] Add Schema Memory Usage metric monitor
+* [IOTDB-5249] Add interface to set datatype when users customize the payload formatter of mqtt
+* [IOTDB-5258] Add timeout parameter for ExportCSV/ExportTsFile Tool
+* [IOTDB-5306] Change the default port of ConfigNode and DataNode
+* [IOTDB-5326] Add cluster_name parameter to distinguish different cluster
+* [IOTDB-5389] Cause DataNode starup to fail when wal_mode is disabled in IoTConsensus
+
+## Bug Fixes
+
+* [IOTDB-4978] Fix possible deadLock while using select into
+* [IOTDB-5090] Fix the NPE when executing stop-datanode.sh
+* [IOTDB-5116] Fix wrong empty result set in aggregation query while there is no data in queried timeseries
+* [IOTDB-5118] Fix that datanode opens too many file handles （TYPE DIR）
+* [IOTDB-5174] Fixed restart failure when IoTConsensus hostname containing '-'
+* [IOTDB-5126] Fix that show-regions show IP rather than hostname even though the hostname is used when registering
+* [IOTDB-5135] Fix the Sync snapshot failure (also blocks ConfigNode snapshot) when sync file is empty
+* [IOTDB-5141] Fix fast compaction scheduler bug
+* [IOTDB-5144] Fix classCastException in IoTDBDatabaseMetadata of jdbc
+* [IOTDB-5158] Fix failure of getting devices from tsfile
+* [IOTDB-5170] Fix the problem that datanode is closed when executing stop-confignode.bat on Windows platform
+* [IOTDB-5210] Fix concurrent bug caused by init and close of driver
+* [IOTDB-5212] Upgrade an illegal CQ verification prompt from v0.14.0 to v1.0
+* [IOTDB-5215] Fix the wrong usage of chunkPointNumLowerBound in IoTDBDescriptor
+* [IOTDB-5216] Fix order by timeseries doesn't take effect in aligned last query
+* [IOTDB-5222] Fix the load of some metric related configuration
+* [IOTDB-5231] Fix that Datanode could not start when binding 9091 error
+* [IOTDB-5233] Correct the message of unsupported thrift interface of schema template
+* [IOTDB-5236] Fix DeleteData Python API cannot work
+* [IOTDB-5240] Fix schema template timeseries read/write error after restart
+* [IOTDB-5261] Fix the number of clients in client pool of AsyncIoTConsensusServiceClient can not be changed through dn_max_connection_for_internal_service
+* [IOTDB-5266] Refine the code of cross selector and fix the bug when using FileTImeIndex
+* [IOTDB-5269] Fix wrong data of devices ought to be deleted after executing `delete from` sql
+* [IOTDB-5277] Fix DataNode restart failure when SchemaRegion loading snapshot
+* [IOTDB-5278] Fix JDBC Driver cannot connect to the dbeaver
+* [IOTDB-5285] Fix TimePartition error when restarting with different time partition configuration
+* [IOTDB-5286] Fix target files are selected to participate in other compaction task
+* [IOTDB-5313] Fix Python client doesn't handle REDIRECTION_RECOMMEND correctly
+* [IOTDB-5452] Add leastDataRegionGroupNumSetByUser examination to ensure that leastDataRegionGroupNum will not be changed by system
+* [IOTDB-5498] Fix SessionPool OOM problem when the number of devices and sessions is large
+* [IOTDB-5501] Fix memory leak in MemoryPool
+* [IOTDB-5525] Fix the partition error of device after partition fetcher
+
 # Apache IoTDB 1.0.0
 
 ## New Features
