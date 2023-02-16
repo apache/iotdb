@@ -43,8 +43,6 @@ public class SessionWindow implements IWindow {
   public SessionWindow(long timeInterval, boolean ascending) {
     this.timeInterval = timeInterval;
     this.ascending = ascending;
-    this.startTime = Long.MAX_VALUE;
-    this.endTime = Long.MIN_VALUE;
   }
 
   @Override
@@ -78,6 +76,8 @@ public class SessionWindow implements IWindow {
     timeValue = ascending ? Math.max(timeValue, currentTime) : Math.min(timeValue, currentTime);
     // judge whether we need initialize timeValue
     if (!initializedTimeValue) {
+      startTime = currentTime;
+      endTime = currentTime;
       initializedTimeValue = true;
     }
   }
@@ -99,6 +99,8 @@ public class SessionWindow implements IWindow {
             && maxTime - minTime <= timeInterval;
     if (contains) {
       if (!initializedTimeValue) {
+        startTime = Long.MAX_VALUE;
+        endTime = Long.MIN_VALUE;
         initializedTimeValue = true;
       }
       timeValue = ascending ? Math.max(timeValue, maxTime) : Math.min(timeValue, minTime);
