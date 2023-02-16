@@ -89,7 +89,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
    *
    * <p>https://docs.google.com/spreadsheets/d/18XlOIi27ZIIdRnar2WNXVMxkZwjgwlPZmzJLVpZRpAA/edit#gid=0
    */
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection iotDBConnection = EnvFactory.getEnv().getConnection();
         Statement statement = iotDBConnection.createStatement()) {
       // create TimeSeries

@@ -105,6 +105,8 @@ public interface CommonConfig {
 
   CommonConfig setQueryThreadCount(int queryThreadCount);
 
+  CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
+
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);

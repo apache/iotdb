@@ -71,4 +71,6 @@ public interface IDriver {
 
   /** @return get SinkHandle of current IDriver */
   ISinkHandle getSinkHandle();
+
+  int getDependencyDriverIndex();
 }

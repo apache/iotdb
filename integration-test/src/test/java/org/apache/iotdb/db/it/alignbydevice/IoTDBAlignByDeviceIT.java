@@ -113,7 +113,7 @@ public class IoTDBAlignByDeviceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

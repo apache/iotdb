@@ -1085,7 +1085,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   private Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>>
       splitAggregationSourceByPartition(PlanNode root, DistributionPlanContext context) {
     // Step 0: get all SeriesAggregationSourceNode in PlanNodeTree
-    List<SeriesAggregationSourceNode> rawSources = findAggregationSourceNode(root);
+    List<SeriesAggregationSourceNode> rawSources = AggregationNode.findAggregationSourceNode(root);
 
     // Step 1: construct SeriesAggregationSourceNode for each data region of one Path
     List<SeriesAggregationSourceNode> sources = new ArrayList<>();
@@ -1117,7 +1117,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           boolean[] eachSeriesOneRegion,
           Map<PartialPath, Integer> regionCountPerSeries) {
     // Step 0: get all SeriesAggregationSourceNode in PlanNodeTree
-    List<SeriesAggregationSourceNode> rawSources = findAggregationSourceNode(root);
+    List<SeriesAggregationSourceNode> rawSources = AggregationNode.findAggregationSourceNode(root);
 
     // Step 1: construct SeriesAggregationSourceNode for each data region of one Path
     for (SeriesAggregationSourceNode child : rawSources) {
@@ -1167,18 +1167,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       sources.add(split);
     }
     return dataDistribution.size();
-  }
-
-  private List<SeriesAggregationSourceNode> findAggregationSourceNode(PlanNode node) {
-    if (node == null) {
-      return new ArrayList<>();
-    }
-    if (node instanceof SeriesAggregationSourceNode) {
-      return Collections.singletonList((SeriesAggregationSourceNode) node);
-    }
-    List<SeriesAggregationSourceNode> ret = new ArrayList<>();
-    node.getChildren().forEach(child -> ret.addAll(findAggregationSourceNode(child)));
-    return ret;
   }
 
   public List<PlanNode> visit(PlanNode node, DistributionPlanContext context) {

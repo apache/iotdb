@@ -69,6 +69,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
