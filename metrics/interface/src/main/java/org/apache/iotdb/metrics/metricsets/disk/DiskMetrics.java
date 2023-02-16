@@ -29,6 +29,8 @@ import java.util.Set;
 public class DiskMetrics implements IMetricSet {
   private final AbstractDiskMetricsManager diskMetricsManager =
       AbstractDiskMetricsManager.getDiskMetricsManager();
+
+  private final String processName;
   private static final String WRITE = "write";
   private static final String READ = "read";
   private static final String AVG_READ = "avg_read";
@@ -51,6 +53,10 @@ public class DiskMetrics implements IMetricSet {
   private static final String DISK_IO_QUEUE_SIZE = "disk_io_queue_size";
   private static final String PROCESS_IO_OPS = "process_io_ops";
   private static final String PROCESS_IO_SIZE = "process_io_size";
+
+  public DiskMetrics(String processName) {
+    this.processName = processName;
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -188,7 +194,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getReadOpsCountForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         READ);
     metricService.createAutoGauge(
@@ -197,7 +203,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getWriteOpsCountForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         WRITE);
     metricService.createAutoGauge(
@@ -206,7 +212,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getActualReadDataSizeForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         ACTUAL_READ);
     metricService.createAutoGauge(
@@ -215,7 +221,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getActualWriteDataSizeForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         ACTUAL_WRITE);
     metricService.createAutoGauge(
@@ -224,7 +230,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getAttemptReadSizeForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         ATTEMPT_READ);
     metricService.createAutoGauge(
@@ -233,7 +239,7 @@ public class DiskMetrics implements IMetricSet {
         diskMetricsManager,
         AbstractDiskMetricsManager::getAttemptWriteSizeForProcess,
         FROM,
-        diskMetricsManager.getProcessName(),
+        processName,
         NAME,
         ATTEMPT_WRITE);
   }
@@ -257,46 +263,14 @@ public class DiskMetrics implements IMetricSet {
 
     // metrics for datanode and config node
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_SIZE,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        ACTUAL_READ);
+        MetricType.AUTO_GAUGE, PROCESS_IO_SIZE, FROM, processName, NAME, ACTUAL_READ);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_SIZE,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        ACTUAL_WRITE);
+        MetricType.AUTO_GAUGE, PROCESS_IO_SIZE, FROM, processName, NAME, ACTUAL_WRITE);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_SIZE,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        ATTEMPT_READ);
+        MetricType.AUTO_GAUGE, PROCESS_IO_SIZE, FROM, processName, NAME, ATTEMPT_READ);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_SIZE,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        ATTEMPT_WRITE);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_OPS,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        READ);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        PROCESS_IO_OPS,
-        FROM,
-        diskMetricsManager.getProcessName(),
-        NAME,
-        WRITE);
+        MetricType.AUTO_GAUGE, PROCESS_IO_SIZE, FROM, processName, NAME, ATTEMPT_WRITE);
+    metricService.remove(MetricType.AUTO_GAUGE, PROCESS_IO_OPS, FROM, processName, NAME, READ);
+    metricService.remove(MetricType.AUTO_GAUGE, PROCESS_IO_OPS, FROM, processName, NAME, WRITE);
   }
 }

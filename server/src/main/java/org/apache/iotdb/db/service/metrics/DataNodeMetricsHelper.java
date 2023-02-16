@@ -40,7 +40,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new CompactionMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
-    MetricService.getInstance().addMetricSet(new DiskMetrics());
+    MetricService.getInstance().addMetricSet(new DiskMetrics("DataNode"));
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());

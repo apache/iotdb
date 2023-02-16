@@ -19,47 +19,14 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.Set;
 
 public abstract class AbstractDiskMetricsManager {
   private final Logger log = LoggerFactory.getLogger(AbstractDiskMetricsManager.class);
-  String processName;
-
-  @SuppressWarnings("squid:S4036")
-  protected AbstractDiskMetricsManager() {
-    try {
-      Process process = Runtime.getRuntime().exec("jps");
-      String pid = MetricConfigDescriptor.getInstance().getMetricConfig().getPid();
-      // In case of we cannot get the process name,
-      // process name is pid by default
-      processName = pid;
-      try (BufferedReader input =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-        String line;
-        while ((line = input.readLine()) != null) {
-          if (line.startsWith(pid + " ")) {
-            processName = line.split("\\s")[1];
-            break;
-          }
-        }
-      }
-    } catch (IOException e) {
-      log.warn("Failed to get the process name", e);
-    }
-  }
-
-  public String getProcessName() {
-    return processName;
-  }
 
   public abstract Map<String, Long> getReadDataSizeForDisk();
 
