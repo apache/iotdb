@@ -70,7 +70,7 @@ public class IndexController {
     restore();
   }
 
-  public long updateAndGet(long index) {
+  public long updateAndGet(long index, boolean forcePersist) {
     try {
       lock.writeLock().lock();
       long newCurrentIndex = Math.max(currentIndex, index);
@@ -81,7 +81,7 @@ public class IndexController {
           prefix,
           storageDir);
       currentIndex = newCurrentIndex;
-      checkPersist();
+      checkPersist(forcePersist);
       return currentIndex;
     } finally {
       lock.writeLock().unlock();
@@ -102,14 +102,14 @@ public class IndexController {
     return lastFlushedIndex;
   }
 
-  private void checkPersist() {
-    if (currentIndex - lastFlushedIndex >= checkpointGap) {
+  private void checkPersist(boolean forcePersist) {
+    if (forcePersist || currentIndex - lastFlushedIndex >= checkpointGap) {
       persist();
     }
   }
 
   private void persist() {
-    long flushIndex = currentIndex - currentIndex % checkpointGap;
+    long flushIndex = currentIndex;
     File oldFile = new File(storageDir, prefix + lastFlushedIndex);
     File newFile = new File(storageDir, prefix + flushIndex);
     try {
