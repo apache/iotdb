@@ -46,15 +46,14 @@ import java.util.Map;
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
-  private static boolean printDetail = true;
+  private static boolean printDetail = false;
 
   @SuppressWarnings({
     "squid:S3776",
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename =
-        "C:\\Users\\喵辉\\Documents\\projects\\iotdb\\server\\target\\testTsFile\\root.sg_pd\\0\\0\\1676533319209-2-0-0.tsfile";
+    String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
