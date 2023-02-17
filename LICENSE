@@ -207,7 +207,7 @@
 The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
 which is under Apache License 2.0:
 
-./.mvn/wrapper/MavenWrapperDownloader.java
+mvnw files from https://github.com/apache/maven-wrapper Apache 2.0
 
 --------------------------------------------------------------------------------
 
@@ -234,3 +234,56 @@ The following files include code modified from Michael Burman's gorilla-tsc proj
 Copyright: 2016-2018 Michael Burman and/or other contributors
 Project page: https://github.com/burmanm/gorilla-tsc
 License: http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Apache HBase project.
+
+./confignode/src/main/java/org/apache/iotdb/procedure/Procedure.java
+./confignode/src/main/java/org/apache/iotdb/procedure/ProcedureExecutor.java
+./confignode/src/main/java/org/apache/iotdb/procedure/StateMachineProcedure.java
+./confignode/src/main/java/org/apache/iotdb/procedure/TimeoutExecutorThread.java
+./confignode/src/main/java/org/apache/iotdb/procedure/StoppableThread.java
+
+Copyright: 2016-2018 Michael Burman and/or other contributors
+Project page: https://github.com/burmanm/gorilla-tsc
+License: http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Eclipse Collections project.
+
+./tsfile/src/main/java/org/apache/iotdb/tsfile/utils/ByteArrayList.java
+
+Copyright: 2021 Goldman Sachs
+Project page: https://www.eclipse.org/collections
+License: https://github.com/eclipse/eclipse-collections/blob/master/LICENSE-EDL-1.0.txt
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Micrometer project.
+
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmClassLoaderMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmCompileMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmGcMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmMemoryMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmThreadMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/logback/LogbackMetrics
+./metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/JvmUtils
+
+Copyright: 2017 VMware
+Project page: https://github.com/micrometer-metrics/micrometer
+License: https://github.com/micrometer-metrics/micrometer/blob/main/LICENSE
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Trino project(https://github.com/trinodb/trino),
+which is under Apache License 2.0:
+
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/QueryState.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/StateMachine.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/driver/Driver.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceState.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceStateMachine.java
+./server/src/main/java/org/apache/iotdb/db/mpp/plan/planner/LocalExecutionPlanner.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*

@@ -50,31 +50,19 @@ Currently, there are two versions of GORILLA encoding implementation, it is reco
 
 Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using GORILLA to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
-* RAKE
-
-The RAKE encoding is based only on bits counting operations. It is more suitable for the ‘1’s of binary numbers to be more sparsely.
-
-* RLBE
-
-The RLBE encoding proposes to combine delta, run-length and Fibonacci based encoding ideas. It has five steps: differential coding, binary encoding, run-length, Fibonacci coding and concatenation.
-It is more suitable for the differential value of time series is positive and small.
-
-* SPRINTZ
-
-The SPRINTZ encoding combines encodings in four steps: predicting, bit-packing, run-length encoding and entropy encoding. SPRINTZ algorithm is suitable for predictable time series. For delta function, the vast repeats or linearly increasing time series is the best target.
-
 * DICTIONARY
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
-* TEXTRLE
+* FREQ
 
-TEXT Run-Length Encoding (TEXTRLE) performs especially for data with strings of repeated characters (the length of the string is called a run).
+FREQ encoding is lossy. It transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. It is more suitable for sequence with obvious periodicity.
 
-* HUFFMAN
+> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
 
-It is more suitable for data with many high frequency values in skewed data distribution and many repeated characters.
-
+* ZIGZAG 
+  
+ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
 ## Correspondence between data type and encoding
 
@@ -84,13 +72,13 @@ The five encodings described in the previous sections are applicable to differen
 
 **The correspondence between the data type and its supported encodings**
 
-|Data Type	|                 Supported Encoding                 |
-|:---:|:--------------------------------------------------:|
-|BOOLEAN|                    	PLAIN, RLE                     |
-|INT32	|           PLAIN, RLE, TS_2DIFF, GORILLA, RAKE, RLBE, SPRINTZ            |
-|INT64	|           PLAIN, RLE, TS_2DIFF, GORILLA, RAKE, RLBE, SPRINTZ            |
-|FLOAT	|           PLAIN, RLE, TS_2DIFF, GORILLA, RAKE, RLBE, SPRINTZ            |
-|DOUBLE	| PLAIN, RLE, TS_2DIFF, GORILLA, RAKE, RLBE, SPRINTZ |
-|TEXT	|        PLAIN, DICTIONARY, TEXTRLE, HUFFMAN         |
+|Data Type	|Supported Encoding|
+|:---:|:---:|
+|BOOLEAN|	PLAIN, RLE|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
+|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
+|TEXT	|PLAIN, DICTIONARY|
 
 </div>

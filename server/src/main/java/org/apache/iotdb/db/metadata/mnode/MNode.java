@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +35,8 @@ public abstract class MNode implements IMNode {
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  protected CacheEntry cacheEntry;
 
   /** Constructor of MNode. */
   public MNode(IMNode parent, String name) {
@@ -69,13 +71,6 @@ public abstract class MNode implements IMNode {
    */
   @Override
   public PartialPath getPartialPath() {
-    if (fullPath != null) {
-      try {
-        return new PartialPath(fullPath);
-      } catch (IllegalPathException ignored) {
-
-      }
-    }
     List<String> detachedPath = new ArrayList<>();
     IMNode temp = this;
     detachedPath.add(temp.getName());
@@ -90,7 +85,7 @@ public abstract class MNode implements IMNode {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      fullPath = concatFullPath().intern();
+      fullPath = concatFullPath();
     }
     return fullPath;
   }
@@ -111,13 +106,9 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
-        && !isMeasurement()
-        && getSchemaTemplate() == null
-        && !isUseTemplate()
-        && getChildren().size() == 0;
+  public void moveDataToNewMNode(IMNode newMNode) {
+    newMNode.setParent(parent);
+    newMNode.setCacheEntry(cacheEntry);
   }
 
   @Override
@@ -195,5 +186,15 @@ public abstract class MNode implements IMNode {
   @Override
   public String toString() {
     return this.getName();
+  }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return cacheEntry;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
   }
 }

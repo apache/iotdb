@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -63,7 +63,7 @@ public class IoTDBStatement implements Statement {
    */
   private int queryTimeout = -1;
 
-  protected TSIService.Iface client;
+  protected IClientRPCService.Iface client;
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
@@ -83,7 +83,7 @@ public class IoTDBStatement implements Statement {
   /** Constructor of IoTDBStatement. */
   IoTDBStatement(
       IoTDBConnection connection,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       int fetchSize,
       ZoneId zoneId,
@@ -102,7 +102,7 @@ public class IoTDBStatement implements Statement {
   // only for test
   IoTDBStatement(
       IoTDBConnection connection,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       ZoneId zoneId,
       int seconds,
@@ -117,14 +117,15 @@ public class IoTDBStatement implements Statement {
     this.stmtId = statementId;
   }
 
-  IoTDBStatement(IoTDBConnection connection, TSIService.Iface client, long sessionId, ZoneId zoneId)
+  IoTDBStatement(
+      IoTDBConnection connection, IClientRPCService.Iface client, long sessionId, ZoneId zoneId)
       throws SQLException {
     this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId, 0);
   }
 
   IoTDBStatement(
       IoTDBConnection connection,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       ZoneId zoneId,
       int seconds)
@@ -257,7 +258,7 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
-    TSExecuteStatementResp execResp = client.executeStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeStatementV2(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (StatementExecutionException e) {
@@ -267,7 +268,7 @@ public class IoTDBStatement implements Statement {
     deepCopyResp(execResp);
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
-      if (execResp.queryDataSet == null) {
+      if (execResp.queryResult == null) {
         BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
         this.resultSet =
             new IoTDBNonAlignJDBCResultSet(
@@ -298,10 +299,10 @@ public class IoTDBStatement implements Statement {
                 sql,
                 queryId,
                 sessionId,
-                execResp.queryDataSet,
+                execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
-                true);
+                execResp.moreData);
       }
       return true;
     }
@@ -342,20 +343,20 @@ public class IoTDBStatement implements Statement {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            && result[i] != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           allSuccess = false;
-          message.append(
-              execResp.getSubStatus().get(i).message
-                  + " for SQL: \""
-                  + batchSQLList.get(i)
-                  + "\""
-                  + System.lineSeparator());
+          message
+              .append(execResp.getSubStatus().get(i).message)
+              .append(" for SQL: \"")
+              .append(batchSQLList.get(i))
+              .append("\"")
+              .append(System.lineSeparator());
         }
       } else {
         allSuccess =
             allSuccess
                 && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
+                    || execResp.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
         result[i] = execResp.getCode();
         message.setLength(0);
         message.append(execResp.getMessage());
@@ -405,7 +406,7 @@ public class IoTDBStatement implements Statement {
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     execReq.setJdbcQuery(true);
-    TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
+    TSExecuteStatementResp execResp = client.executeQueryStatementV2(execReq);
     queryId = execResp.getQueryId();
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -420,7 +421,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
       aliasColumn = listToBitSet(execResp.getAliasColumns());
     }
-    if (execResp.queryDataSet == null) {
+    if (execResp.queryResult == null) {
       this.resultSet =
           new IoTDBNonAlignJDBCResultSet(
               this,
@@ -450,13 +451,14 @@ public class IoTDBStatement implements Statement {
               sql,
               queryId,
               sessionId,
-              execResp.queryDataSet,
+              execResp.queryResult,
               execResp.tracingInfo,
               execReq.timeout,
               execResp.operationType,
               execResp.columns,
               execResp.sgColumns,
-              aliasColumn);
+              aliasColumn,
+              execResp.moreData);
     }
     return resultSet;
   }
@@ -466,8 +468,7 @@ public class IoTDBStatement implements Statement {
     for (int i = 0; i < listAlias.size(); i++) {
       byteAlias[i] = listAlias.get(i);
     }
-    BitSet aliasColumn = BitSet.valueOf(byteAlias);
-    return aliasColumn;
+    return BitSet.valueOf(byteAlias);
   }
 
   private void deepCopyResp(TSExecuteStatementResp queryRes) {
@@ -476,9 +477,21 @@ public class IoTDBStatement implements Statement {
 
     if (Objects.nonNull(tsQueryDataSet)) {
       deepCopyTsQueryDataSet(tsQueryDataSet);
-    } else {
+    } else if (Objects.nonNull(nonAlignDataSet)) {
       deepCopyNonAlignQueryDataSet(nonAlignDataSet);
+    } else {
+      deepCopyQueryResult(queryRes);
     }
+  }
+
+  private void deepCopyQueryResult(TSExecuteStatementResp queryRes) {
+    List<ByteBuffer> queryResult = queryRes.getQueryResult();
+    if (queryResult == null) {
+      return;
+    }
+    final List<ByteBuffer> queryResultCopy =
+        queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
+    queryRes.setQueryResult(queryResultCopy);
   }
 
   private void deepCopyNonAlignQueryDataSet(TSQueryNonAlignDataSet nonAlignDataSet) {

@@ -35,7 +35,6 @@ import java.nio.ByteBuffer;
 /** uncompress data according to type in metadata. */
 public interface IUnCompressor {
 
-  Logger logger = LoggerFactory.getLogger(IUnCompressor.class);
   /**
    * get the UnCompressor based on the CompressionType.
    *
@@ -155,8 +154,7 @@ public interface IUnCompressor {
       }
 
       try {
-        byte[] r = Snappy.uncompress(bytes);
-        return r;
+        return Snappy.uncompress(bytes);
       } catch (IOException e) {
         logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
@@ -167,8 +165,7 @@ public interface IUnCompressor {
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      int r = Snappy.uncompress(byteArray, offset, length, output, outOffset);
-      return r;
+      return Snappy.uncompress(byteArray, offset, length, output, outOffset);
     }
 
     @Override
@@ -178,8 +175,7 @@ public interface IUnCompressor {
       }
 
       try {
-        int r = Snappy.uncompress(compressed, uncompressed);
-        return r;
+        return Snappy.uncompress(compressed, uncompressed);
       } catch (IOException e) {
         logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
@@ -285,6 +281,7 @@ public interface IUnCompressor {
       if (null == byteArray) {
         return new byte[0];
       }
+
       return ICompressor.GZIPCompress.uncompress(byteArray);
     }
 
@@ -306,58 +303,13 @@ public interface IUnCompressor {
 
       byte[] res = ICompressor.GZIPCompress.uncompress(dataBefore);
       uncompressed.put(res);
+
       return res.length;
     }
 
     @Override
     public CompressionType getCodecName() {
       return CompressionType.GZIP;
-    }
-  }
-  class LZMA2UnCompressor implements IUnCompressor {
-
-    @Override
-    public int getUncompressedLength(byte[] array, int offset, int length) {
-      throw new UnsupportedOperationException("unsupported get uncompress length");
-    }
-
-    @Override
-    public int getUncompressedLength(ByteBuffer buffer) {
-      throw new UnsupportedOperationException("unsupported get uncompress length");
-    }
-
-    @Override
-    public byte[] uncompress(byte[] byteArray) throws IOException {
-      if (null == byteArray) {
-        return new byte[0];
-      }
-      return ICompressor.LZMA2Compress.uncompress(byteArray);
-    }
-
-    @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
-            throws IOException {
-      byte[] dataBefore = new byte[length];
-      System.arraycopy(byteArray, offset, dataBefore, 0, length);
-      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
-      System.arraycopy(res, 0, output, outOffset, res.length);
-      return res.length;
-    }
-
-    @Override
-    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-      int length = compressed.remaining();
-      byte[] dataBefore = new byte[length];
-      compressed.get(dataBefore, 0, length);
-
-      byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);
-      uncompressed.put(res);
-      return res.length;
-    }
-
-    @Override
-    public CompressionType getCodecName() {
-      return CompressionType.LZMA2;
     }
   }
 }

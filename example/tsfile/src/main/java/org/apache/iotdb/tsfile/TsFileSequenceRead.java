@@ -63,7 +63,7 @@ public class TsFileSequenceRead {
       System.out.println("file magic head: " + reader.readHeadMagic());
       System.out.println("file magic tail: " + reader.readTailMagic());
       System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
-      System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
+      System.out.println("Level 1 metadata size: " + reader.getTsFileMetadataSize());
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the

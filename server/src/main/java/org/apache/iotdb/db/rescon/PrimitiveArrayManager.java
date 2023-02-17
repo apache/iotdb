@@ -20,6 +20,7 @@ package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -40,6 +41,8 @@ public class PrimitiveArrayManager {
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 
+  public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM = CONFIG.getTvListSortAlgorithm();
+
   /**
    * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
    * POOLED_ARRAYS_MEMORY_THRESHOLD, make it smaller than its actual allowed value.
@@ -48,7 +51,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForWrite()
+      CONFIG.getAllocateMemoryForStorageEngine()
           * CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 
@@ -278,7 +281,7 @@ public class PrimitiveArrayManager {
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
+    int arrayNumber = getArrayRowCount(size);
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
@@ -319,5 +322,9 @@ public class PrimitiveArrayManager {
       default:
         throw new UnSupportedDataTypeException(dataType.name());
     }
+  }
+
+  public static int getArrayRowCount(int size) {
+    return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
   }
 }

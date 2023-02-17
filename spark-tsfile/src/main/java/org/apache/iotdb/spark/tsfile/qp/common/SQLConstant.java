@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-import java.util.HashMap;
+import org.spark_project.guava.collect.ImmutableMap;
+
 import java.util.Map;
 
 /** this class contains several constants used in SQL. */
@@ -66,75 +67,69 @@ public class SQLConstant {
   public static final int TOK_METADATA_CREATE = 51;
   public static final int TOK_METADATA_DELETE = 52;
   public static final int TOK_METADATA_SET_FILE_LEVEL = 53;
-  public static final int TOK_PORPERTY_CREATE = 54;
-  public static final int TOK_PORPERTY_ADD_LABEL = 55;
-  public static final int TOK_PORPERTY_DELETE_LABEL = 56;
-  public static final int TOK_PORPERTY_LINK = 57;
-  public static final int TOK_PORPERTY_UNLINK = 58;
+  public static final int TOK_PROPERTY_CREATE = 54;
+  public static final int TOK_PROPERTY_ADD_LABEL = 55;
+  public static final int TOK_PROPERTY_DELETE_LABEL = 56;
+  public static final int TOK_PROPERTY_LINK = 57;
+  public static final int TOK_PROPERTY_UNLINK = 58;
 
-  public static Map<Integer, String> tokenSymbol = new HashMap<Integer, String>();
-  public static Map<Integer, String> tokenNames = new HashMap<Integer, String>();
-  public static Map<Integer, Integer> reverseWords = new HashMap<Integer, Integer>();
-
-  static {
-    tokenSymbol.put(KW_AND, "&");
-    tokenSymbol.put(KW_OR, "|");
-    tokenSymbol.put(KW_NOT, "!");
-    tokenSymbol.put(EQUAL, "=");
-    tokenSymbol.put(NOTEQUAL, "<>");
-    tokenSymbol.put(EQUAL_NS, "<=>");
-    tokenSymbol.put(LESSTHANOREQUALTO, "<=");
-    tokenSymbol.put(LESSTHAN, "<");
-    tokenSymbol.put(GREATERTHANOREQUALTO, ">=");
-    tokenSymbol.put(GREATERTHAN, ">");
-  }
-
-  static {
-    tokenNames.put(KW_AND, "and");
-    tokenNames.put(KW_OR, "or");
-    tokenNames.put(KW_NOT, "not");
-    tokenNames.put(EQUAL, "equal");
-    tokenNames.put(NOTEQUAL, "not_equal");
-    tokenNames.put(EQUAL_NS, "equal_ns");
-    tokenNames.put(LESSTHANOREQUALTO, "lessthan_or_equalto");
-    tokenNames.put(LESSTHAN, "lessthan");
-    tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
-    tokenNames.put(GREATERTHAN, "greaterthan");
-
-    tokenNames.put(TOK_SELECT, "TOK_SELECT");
-    tokenNames.put(TOK_FROM, "TOK_FROM");
-    tokenNames.put(TOK_WHERE, "TOK_WHERE");
-    tokenNames.put(TOK_INSERT, "TOK_INSERT");
-    tokenNames.put(TOK_DELETE, "TOK_DELETE");
-    tokenNames.put(TOK_UPDATE, "TOK_UPDATE");
-    tokenNames.put(TOK_QUERY, "TOK_QUERY");
-
-    tokenNames.put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE");
-    tokenNames.put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP");
-    tokenNames.put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT");
-    tokenNames.put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE");
-    tokenNames.put(TOK_DATALOAD, "TOK_DATALOAD");
-
-    tokenNames.put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
-    tokenNames.put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
-    tokenNames.put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
-    tokenNames.put(TOK_PORPERTY_CREATE, "TOK_PORPERTY_CREATE");
-    tokenNames.put(TOK_PORPERTY_ADD_LABEL, "TOK_PORPERTY_ADD_LABEL");
-    tokenNames.put(TOK_PORPERTY_DELETE_LABEL, "TOK_PORPERTY_DELETE_LABEL");
-    tokenNames.put(TOK_PORPERTY_LINK, "TOK_PORPERTY_LINK");
-    tokenNames.put(TOK_PORPERTY_UNLINK, "TOK_PORPERTY_UNLINK");
-  }
-
-  static {
-    reverseWords.put(KW_AND, KW_OR);
-    reverseWords.put(KW_OR, KW_AND);
-    reverseWords.put(EQUAL, NOTEQUAL);
-    reverseWords.put(NOTEQUAL, EQUAL);
-    reverseWords.put(LESSTHAN, GREATERTHANOREQUALTO);
-    reverseWords.put(GREATERTHANOREQUALTO, LESSTHAN);
-    reverseWords.put(LESSTHANOREQUALTO, GREATERTHAN);
-    reverseWords.put(GREATERTHAN, LESSTHANOREQUALTO);
-  }
+  public static final Map<Integer, String> tokenSymbol =
+      new ImmutableMap.Builder<Integer, String>()
+          .put(KW_AND, "&")
+          .put(KW_OR, "|")
+          .put(KW_NOT, "!")
+          .put(EQUAL, "=")
+          .put(NOTEQUAL, "<>")
+          .put(EQUAL_NS, "<=>")
+          .put(LESSTHANOREQUALTO, "<=")
+          .put(LESSTHAN, "<")
+          .put(GREATERTHANOREQUALTO, ">=")
+          .put(GREATERTHAN, ">")
+          .build();
+  public static final Map<Integer, String> tokenNames =
+      new ImmutableMap.Builder<Integer, String>()
+          .put(KW_AND, "and")
+          .put(KW_OR, "or")
+          .put(KW_NOT, "not")
+          .put(EQUAL, "equal")
+          .put(NOTEQUAL, "not_equal")
+          .put(EQUAL_NS, "equal_ns")
+          .put(LESSTHANOREQUALTO, "lessthan_or_equalto")
+          .put(LESSTHAN, "lessthan")
+          .put(GREATERTHANOREQUALTO, "greaterthan_or_equalto")
+          .put(GREATERTHAN, "greaterthan")
+          .put(TOK_SELECT, "TOK_SELECT")
+          .put(TOK_FROM, "TOK_FROM")
+          .put(TOK_WHERE, "TOK_WHERE")
+          .put(TOK_INSERT, "TOK_INSERT")
+          .put(TOK_DELETE, "TOK_DELETE")
+          .put(TOK_UPDATE, "TOK_UPDATE")
+          .put(TOK_QUERY, "TOK_QUERY")
+          .put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE")
+          .put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP")
+          .put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT")
+          .put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE")
+          .put(TOK_DATALOAD, "TOK_DATALOAD")
+          .put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE")
+          .put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE")
+          .put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL")
+          .put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE")
+          .put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL")
+          .put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL")
+          .put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK")
+          .put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK")
+          .build();
+  public static final Map<Integer, Integer> reverseWords =
+      new ImmutableMap.Builder<Integer, Integer>()
+          .put(KW_AND, KW_OR)
+          .put(KW_OR, KW_AND)
+          .put(EQUAL, NOTEQUAL)
+          .put(NOTEQUAL, EQUAL)
+          .put(LESSTHAN, GREATERTHANOREQUALTO)
+          .put(GREATERTHANOREQUALTO, LESSTHAN)
+          .put(LESSTHANOREQUALTO, GREATERTHAN)
+          .put(GREATERTHAN, LESSTHANOREQUALTO)
+          .build();
 
   public static boolean isReservedPath(String pathStr) {
     return pathStr.equals(SQLConstant.RESERVED_TIME)

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.service.basic;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -47,7 +47,7 @@ public class StandaloneServiceProvider extends ServiceProvider {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
         && !(plan instanceof FlushPlan)
-        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+        && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineReadonlyException();
     }
     return executor.processNonQuery(plan);

@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
+Persist all the data points in the memory table of the database to the disk, and seal the data file. In cluster mode, we provide commands to persist the specified database cache of local node and persist the specified database cache of the cluster.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
@@ -30,58 +30,44 @@ Frequently call flush can result in small data files that degrade query performa
 
 ```sql
 IoTDB> FLUSH 
+IoTDB> FLUSH ON LOCAL
+IoTDB> FLUSH ON CLUSTER
 IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
-```
-
-## MERGE
-
-Execute Level Compaction and unsequence Compaction task. Currently IoTDB supports the following two types of SQL to manually trigger the compaction process of data files:
-
-* `MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed very fast by rewriting the overlapped Chunks only, while there is some redundant data on the disk eventually.
-* `FULL MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed slow due to it takes more time to rewrite all data in overlapped files. However, there won't be any redundant data on the disk eventually.
-
-```sql
-IoTDB> MERGE
-IoTDB> FULL MERGE
+IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
+IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
 ## CLEAR CACHE
 
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear local node cache and clear the cluster cache.
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
-## SET STSTEM TO READONLY / WRITABLE
+## SET SYSTEM TO READONLY / RUNNING
 
-Manually set IoTDB system to read-only or writable mode.
+Manually set IoTDB system to running, read-only mode. In cluster mode, we provide commands to set the local node status and set the cluster status, valid for the entire cluster by default.
 
 ```sql
-IoTDB> SET SYSTEM TO READONLY
-IoTDB> SET SYSTEM TO WRITABLE
-```
-
-## SCHEMA SNAPSHOT
-
-To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file. This feature doesn't support scenarios involving Schema Template, Tag/Attribute, or Aligned Timeseries. 
-
-```sql
-IoTDB> CREATE SNAPSHOT FOR SCHEMA
+IoTDB> SET SYSTEM TO RUNNING
+IoTDB> SET SYSTEM TO READONLY ON LOCAL
+IoTDB> SET SYSTEM TO READONLY ON CLUSTER
 ```
 
 
-## Timeout
+## Kill Query
 
-IoTDB supports session and query level timeout.
+IoTDB supports setting session connection timeouts and query timeouts, and also allows to stop the executing query manually.
 
 ### Session timeout
 
 Session timeout controls when idle sessions are closed. An idle session is one that had not initiated any query or non-query operations for a period of time.
 
-Session timeout is disabled by default and can be set using the `session_timeout_threshold` parameter in IoTDB configuration file.
+Session timeout is disabled by default and can be set using the `dn_session_timeout_threshold` parameter in IoTDB configuration file.
 
 ### Query timeout
 
@@ -118,7 +104,8 @@ You can abort the specified query by specifying `queryId`. If `queryId` is not s
 To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
 
 | Time | queryId | statement |
-| ---- | ------- | --------- |
+|------|---------|-----------|
 |      |         |           |
 
 The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+

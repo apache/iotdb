@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.utils.windowing.runtime;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.IoTThreadFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 
@@ -39,8 +39,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
       LoggerFactory.getLogger(WindowEvaluationTaskPoolManager.class);
 
   private WindowEvaluationTaskPoolManager() {
-    final int nThreads =
-        IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread();
+    final int nThreads = IoTDBDescriptor.getInstance().getConfig().getWindowEvaluationThreadCount();
     LOGGER.info("WindowEvaluationTaskPoolManager is initializing, thread number: {}", nThreads);
     pool =
         new ThreadPoolExecutor(
@@ -79,7 +78,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
 
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread(),
+            IoTDBDescriptor.getInstance().getConfig().getWindowEvaluationThreadCount(),
             ThreadName.WINDOW_EVALUATION_SERVICE.getName());
   }
 

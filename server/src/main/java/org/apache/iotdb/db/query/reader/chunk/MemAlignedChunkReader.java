@@ -20,82 +20,38 @@ package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 /** To read aligned chunk data in memory */
-public class MemAlignedChunkReader implements IChunkReader, IPointReader {
+public class MemAlignedChunkReader implements IChunkReader {
 
-  private IPointReader timeValuePairIterator;
-  private Filter filter;
-  private boolean hasCachedTimeValuePair;
-  private TimeValuePair cachedTimeValuePair;
   private List<IPageReader> pageReaderList;
 
   public MemAlignedChunkReader(AlignedReadOnlyMemChunk readableChunk, Filter filter) {
-    timeValuePairIterator = readableChunk.getPointReader();
-    this.filter = filter;
     // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList =
         Collections.singletonList(
             new MemAlignedPageReader(
-                timeValuePairIterator,
+                readableChunk.getTsBlock(),
                 (AlignedChunkMetadata) readableChunk.getChunkMetaData(),
                 filter));
   }
 
   @Override
-  public boolean hasNextTimeValuePair() throws IOException {
-    if (hasCachedTimeValuePair) {
-      return true;
-    }
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (filter == null
-          || filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        hasCachedTimeValuePair = true;
-        cachedTimeValuePair = timeValuePair;
-        break;
-      }
-    }
-    return hasCachedTimeValuePair;
-  }
-
-  @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
-    if (hasCachedTimeValuePair) {
-      hasCachedTimeValuePair = false;
-      return cachedTimeValuePair;
-    } else {
-      return timeValuePairIterator.nextTimeValuePair();
-    }
-  }
-
-  @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
-    if (!hasCachedTimeValuePair) {
-      cachedTimeValuePair = timeValuePairIterator.nextTimeValuePair();
-      hasCachedTimeValuePair = true;
-    }
-    return cachedTimeValuePair;
-  }
-
-  @Override
   public boolean hasNextSatisfiedPage() throws IOException {
-    return hasNextTimeValuePair();
+    throw new IOException("mem chunk reader does not support this method");
   }
 
   @Override
   public BatchData nextPageData() throws IOException {
-    return pageReaderList.remove(0).getAllSatisfiedPageData();
+    throw new IOException("mem chunk reader does not support this method");
   }
 
   @Override

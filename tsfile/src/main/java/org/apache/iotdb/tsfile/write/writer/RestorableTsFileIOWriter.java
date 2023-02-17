@@ -75,42 +75,19 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    if (logger.isDebugEnabled()) {
-      logger.debug("{} is opened.", file.getName());
-    }
-    this.file = file;
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+    this(file, true);
+  }
 
-    // file doesn't exist
-    if (file.length() == 0) {
-      startFile();
-      crashed = true;
-      canWrite = true;
-      return;
-    }
-
-    if (file.exists()) {
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-
-        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
-        minPlanIndex = reader.getMinPlanIndex();
-        maxPlanIndex = reader.getMaxPlanIndex();
-        if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
-          crashed = false;
-          canWrite = false;
-          out.close();
-        } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
-          out.close();
-          throw new NotCompatibleTsFileException(
-              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
-        } else {
-          crashed = true;
-          canWrite = true;
-          // remove broken data
-          out.truncate(truncatedSize);
-        }
-      }
-    }
+  /**
+   * @param file a given tsfile path you want to (continue to) write
+   * @throws IOException if write failed, or the file is broken but autoRepair==false.
+   */
+  public RestorableTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
+    this(file, true);
+    this.maxMetadataSize = maxMetadataSize;
+    this.enableMemoryControl = true;
+    this.chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    this.checkMetadataSizeAndMayFlush();
   }
 
   public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
@@ -249,6 +226,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
+  /**
+   * Whether this TsFile is crashed.
+   *
+   * @return false when this TsFile is complete
+   */
   public boolean hasCrashed() {
     return crashed;
   }

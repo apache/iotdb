@@ -33,5 +33,6 @@ public enum FilterSerializeId {
   OR,
   IN,
   REGEXP,
-  LIKE
+  LIKE,
+  BETWEEN
 }

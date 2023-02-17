@@ -40,20 +40,18 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
 
-## Syntax Description
+## Syntax Convention
 
 - **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
-  - The node names in path or path prefix as parameter:
-    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
-    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
-    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+- **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 ## Native APIs
 
@@ -88,7 +86,7 @@ session =
         .password(String password)
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
-        .enableCacheLeader(boolean enableCacheLeader)
+        .enableRedirection(boolean enableRedirection)
         .version(Version version)
         .build();
 ```
@@ -117,15 +115,15 @@ void close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Storage Group Management
+#### Database Management
 
-* Set storage group
+* CREATE DATABASE
 
 ```java
 void setStorageGroup(String storageGroupId)    
 ```
 
-* Delete one or several storage groups
+* Delete one or several databases
 
 ```java
 void deleteStorageGroup(String storageGroup)
@@ -151,7 +149,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 ```
 void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
+      List <CompressionType> compressors, List<String> measurementAliasList);
 ```
 
 Attention: Alias of measurements are **not supported** currently.
@@ -286,7 +284,9 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
+To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
+
+**Please notice that, we strongly recommend not setting templates on the nodes above the database to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -325,7 +325,7 @@ Attention: Unsetting the template named 'templateName' from node at path 'prefix
 
 ### Data Manipulation Interface (DML Interface)
 
-##### Insert
+#### Insert
 
 It is recommended to use insertTablet to help improve write efficiency.
 
@@ -363,6 +363,17 @@ void insertTablets(Map<String, Tablet> tablet)
 ```
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
+
+  The correspondence between the Object type and the TSDataType type is shown in the following table.
+
+  | TSDataType | Object         |
+  | ---------- | -------------- |
+  | BOOLEAN    | Boolean        |
+  | INT32      | Integer        |
+  | INT64      | Long           |
+  | FLOAT      | Float          |
+  | DOUBLE     | Double         |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
@@ -512,6 +523,7 @@ If you can not get a session connection in 60 seconds, there is a warning log bu
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
+You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in distributed cluster.
 
 For query operations:
 
@@ -529,7 +541,7 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 ## Cluster information related APIs (only works in the cluster mode)
 
-Cluster information related APIs allow users get the cluster info like where a storage group will be 
+Cluster information related APIs allow users get the cluster info like where a database will be 
 partitioned to, the status of each node in the cluster.
 
 To use the APIs, add dependency in your pom file:
@@ -539,7 +551,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.13.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -591,7 +603,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -601,7 +613,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * Get metadata partition information of input path:
 ```java  
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

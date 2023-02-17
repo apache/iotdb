@@ -37,9 +37,14 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.txt
 
 *.jar
+!trigger-example.jar
+!TriggerFireTimesCounter.jar
+!udf-example.jar
+
 *.gz
 *.tar.gz
 *.tar
+*.tokens
 #src/test/resources/logback.xml
 
 ### CSV ###

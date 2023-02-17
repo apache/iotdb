@@ -18,45 +18,40 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
-import org.apache.iotdb.db.service.thrift.ThriftService;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
-import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
+import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
 
-/** A service to handle jdbc request from client. */
+import java.lang.reflect.InvocationTargetException;
+
+/** A service to handle RPC request from client. */
 public class RPCService extends ThriftService implements RPCServiceMBean {
 
-  private TSServiceImpl impl;
+  private IClientRPCServiceWithHandler impl;
 
   public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return getInstance();
-  }
-
-  @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
+          NoSuchMethodException, InvocationTargetException {
     impl =
-        (TSServiceImpl)
+        (IClientRPCServiceWithHandler)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
+                .getDeclaredConstructor()
                 .newInstance();
     initSyncedServiceImpl(null);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      processor = new ProcessorWithMetrics(impl);
-    } else {
-      processor = new Processor<>(impl);
-    }
+    processor = new ProcessorWithMetrics(impl);
   }
 
   @Override
@@ -67,7 +62,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.RPC_CLIENT.getName(),
+              ThreadName.CLIENT_RPC_PROCESSOR.getName(),
               config.getRpcAddress(),
               config.getRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -77,7 +72,8 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.CLIENT_RPC_SERVICE.getName());
+    MetricService.getInstance().addMetricSet(new RPCServiceMetrics(thriftServiceThread));
   }
 
   @Override

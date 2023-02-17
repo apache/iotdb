@@ -21,9 +21,6 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 
 /**
@@ -43,8 +40,6 @@ public abstract class GorillaEncoderV2 extends Encoder {
 
   private byte buffer = 0;
   protected int bitsLeft = Byte.SIZE;
-
-  protected static final Logger logger = LoggerFactory.getLogger(GorillaEncoderV2.class);
 
   protected GorillaEncoderV2() {
     super(TSEncoding.GORILLA);

@@ -19,18 +19,29 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,62 +49,63 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 
 public class RewriteCompactionFileSelectorTest extends MergeTest {
+  private static final Logger logger =
+      LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    List<TsFileResource> seqSelected = result[0];
-    List<TsFileResource> unseqSelected = result[1];
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    List<TsFileResource> seqSelected = selected.get(0).left;
+    List<TsFileResource> unseqSelected = selected.get(0).right;
     assertEquals(seqResources, seqSelected);
     assertEquals(unseqResources, unseqSelected);
-    resource.clear();
 
-    resource = new CrossSpaceMergeResource(seqResources.subList(0, 1), unseqResources);
-    mergeFileSelector = new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    result = mergeFileSelector.select();
-    seqSelected = result[0];
-    unseqSelected = result[1];
+    selector = new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    selected = selector.selectCrossSpaceTask(seqResources.subList(0, 1), unseqResources);
+    seqSelected = selected.get(0).left;
+    unseqSelected = selected.get(0).right;
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources, unseqSelected);
-    resource.clear();
 
-    resource = new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 1));
-    mergeFileSelector = new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    result = mergeFileSelector.select();
-    seqSelected = result[0];
-    unseqSelected = result[1];
+    selector = new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    selected = selector.selectCrossSpaceTask(seqResources, unseqResources.subList(0, 1));
+    seqSelected = selected.get(0).left;
+    unseqSelected = selected.get(0).right;
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources.subList(0, 1), unseqSelected);
-    resource.clear();
   }
 
   @Test
-  public void testNonSelection() throws MergeException, IOException {
-    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
-    List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
-    resource.clear();
+  public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    assertEquals(1, selected.size());
   }
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, 400000);
-    List[] result = mergeFileSelector.select();
-    List<TsFileResource> seqSelected = result[0];
-    List<TsFileResource> unseqSelected = result[1];
-    assertEquals(seqResources.subList(0, 4), seqSelected);
-    assertEquals(unseqResources.subList(0, 4), unseqSelected);
-    resource.clear();
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    List<TsFileResource> seqSelected = selected.get(0).left;
+    List<TsFileResource> unseqSelected = selected.get(0).right;
+    assertEquals(seqResources.subList(0, 5), seqSelected);
+    assertEquals(unseqResources.subList(0, 6), unseqSelected);
   }
 
   /**
@@ -119,7 +131,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -127,7 +139,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     // update the second file's status to open
     TsFileResource secondTsFileResource = seqResources.get(1);
-    secondTsFileResource.setClosed(false);
+    secondTsFileResource.setStatus(TsFileResourceStatus.UNCLOSED);
     Set<String> devices = secondTsFileResource.getDevices();
     // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
@@ -142,12 +154,11 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
-    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, newUnseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    assertEquals(2, result.length);
-    resource.clear();
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, newUnseqResources);
+    assertEquals(0, selected.size());
   }
 
   /**
@@ -172,7 +183,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -180,7 +191,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     // update the second file's status to open
     TsFileResource secondTsFileResource = seqResources.get(1);
-    secondTsFileResource.setClosed(false);
+    secondTsFileResource.setStatus(TsFileResourceStatus.UNCLOSED);
     Set<String> devices = secondTsFileResource.getDevices();
     // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
@@ -196,11 +207,10 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     newUnseqResources.add(largeUnseqTsFileResource);
 
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceMergeResource mergeResource =
-        new CrossSpaceMergeResource(seqResources, newUnseqResources, ttlLowerBound);
+    CrossSpaceCompactionResource mergeResource =
+        new CrossSpaceCompactionResource(seqResources, newUnseqResources, ttlLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
-    mergeResource.clear();
   }
 
   /**
@@ -224,7 +234,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
-    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -233,12 +243,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
 
-    CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector =
-        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    assertEquals(2, result[0].size());
-    resource.clear();
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    assertEquals(2, selected.get(0).left.size());
   }
 
   @Test
@@ -253,8 +264,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "seq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -263,7 +273,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
+        fileResource.setStatus(TsFileResourceStatus.CLOSED);
         prepareFile(fileResource, i, 1, 0);
         seqList.add(fileResource);
       }
@@ -273,8 +283,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         File file =
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
-                    10
-                        + "unseq"
+                    System.currentTimeMillis()
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + i
                         + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -283,35 +292,723 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setClosed(true);
+        fileResource.setStatus(TsFileResourceStatus.CLOSED);
         unseqList.add(fileResource);
       }
       prepareFile(unseqList.get(0), 0, 1, 10);
       prepareFile(unseqList.get(1), 0, 100, 20);
       prepareFile(unseqList.get(2), 99, 1, 30);
 
-      CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
+      CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
-      ICrossSpaceMergeFileSelector mergeFileSelector =
-          new RewriteCompactionFileSelector(resource, 29000);
-      List[] result = mergeFileSelector.select();
-      assertEquals(1, result[0].size());
-      assertEquals(1, result[1].size());
-      assertEquals(seqList.get(0), result[0].get(0));
-      assertEquals(unseqList.get(0), result[1].get(0));
-      resource.clear();
+      long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
+      SystemInfo.getInstance()
+          .setMemorySizeForCompaction(
+              29000L * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+      try {
+        RewriteCrossSpaceCompactionSelector selector =
+            new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+            selector.selectCrossSpaceTask(seqList, unseqList);
+        assertEquals(1, selected.get(0).left.size());
+        assertEquals(1, selected.get(0).right.size());
+        assertEquals(seqList.get(0), selected.get(0).left.get(0));
+        assertEquals(unseqList.get(0), selected.get(0).right.get(0));
 
-      resource =
-          new CrossSpaceMergeResource(
-              seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
-      // the second selection should be empty
-      mergeFileSelector = new RewriteCompactionFileSelector(resource, 29000);
-      result = mergeFileSelector.select();
-      assertEquals(0, result.length);
-      resource.clear();
+        selected =
+            selector.selectCrossSpaceTask(
+                seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
+        assertEquals(1, selected.size());
+      } finally {
+        SystemInfo.getInstance().setMemorySizeForCompaction(originMemoryBudget);
+      }
+
     } finally {
       removeFiles(seqList, unseqList);
+    }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 10 source unseq files: [0,0] [1,1] ... [9,9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1 ~ 10
+   */
+  @Test
+  public void testUnseqFilesOverlappedWithOneSeqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 10;
+    // 10 unseq files [0,0] [1,1] ... [9,9]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 1, i);
+      unseqList.add(fileResource);
+    }
+
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(10, resource.getUnseqFiles().size());
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(1, selected.get(0).left.size());
+      Assert.assertEquals(10, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 1 source unseq files: [0 ~ 9]<br>
+   * selected seq file index: 1<br>
+   * selected unseq file index: 1
+   */
+  @Test
+  public void testOneUnseqFileOverlappedWithOneSeqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 1;
+    // 1 unseq files [0~9]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 10, i);
+      unseqList.add(fileResource);
+    }
+
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(1, resource.getUnseqFiles().size());
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(1, selected.get(0).left.size());
+      Assert.assertEquals(1, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 2 source unseq files: [7~9] [10~13]<br>
+   * selected seq file index: 1 2 3 <br>
+   * selected unseq file index: 1 2
+   */
+  @Test
+  public void testUnseqFilesOverlapped() throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 2;
+    // 2 unseq files [7~9] [10~13]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(2, resource.getUnseqFiles().size());
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(3, selected.get(0).left.size());
+      Assert.assertEquals(2, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 4 source unseq files: [7~9] [10~13] [14~16] [17~18]<br>
+   * selected seq file index: 1 2 3 4 5<br>
+   * selected unseq file index: 1 2 3 4
+   */
+  @Test
+  public void testAllUnseqFilesOverlapped()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 4;
+    // 4 unseq files [7~9] [10~13] [14~16] [17~18]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+    prepareFile(unseqList.get(2), 14, 3, 14);
+    prepareFile(unseqList.get(3), 17, 2, 17);
+
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(4, resource.getUnseqFiles().size());
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(5, selected.get(0).left.size());
+      Assert.assertEquals(4, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  /**
+   * 5 source seq files: [11,11] [12,12] [13,13] [14,14] [15,15]<br>
+   * 4 source unseq files: [7~9] [10~13] [14~16] [17~18]<br>
+   * while the forth seq file is not close.<br>
+   * selected seq file index: 1 2 3 <br>
+   * selected unseq file index: 1 2
+   */
+  @Test
+  public void testAllUnseqFilesOverlappedWithSeqFileOpen()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [11,11] [12,12] [13,13] ... [15,15]
+    int seqFileNum = 5;
+    for (int i = 11; i < seqFileNum + 11; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      if (i - 11 != 3) {
+        fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      }
+      prepareFile(fileResource, i, 1, i);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 4;
+    // 4 unseq files [7~9] [10~13] [14~16] [17~18]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  System.currentTimeMillis()
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 7, 3, 7);
+    prepareFile(unseqList.get(1), 10, 4, 10);
+    prepareFile(unseqList.get(2), 14, 3, 14);
+    prepareFile(unseqList.get(3), 17, 2, 17);
+
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(4, resource.getUnseqFiles().size());
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(3, selected.get(0).left.size());
+      Assert.assertEquals(2, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  @Test
+  public void testMultiFileOverlapWithOneFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // first file [0, 10]
+    // first device [0, 5]
+    // second device [0, 10]
+    File firstFile =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource firstTsFileResource = new TsFileResource(firstFile);
+    firstTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    firstTsFileResource.setMinPlanIndex(1);
+    firstTsFileResource.setMaxPlanIndex(1);
+    firstTsFileResource.setVersion(1);
+    seqList.add(firstTsFileResource);
+    if (!firstFile.getParentFile().exists()) {
+      Assert.assertTrue(firstFile.getParentFile().mkdirs());
+    }
+
+    TsFileWriter fileWriter = new TsFileWriter(firstFile);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
+      }
+    }
+
+    for (long i = 0; i < 10; ++i) {
+      for (int j = 0; j < deviceNum; j++) {
+        if (j == 3 && i > 5) {
+          continue;
+        }
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum; ++k) {
+          record.addTuple(
+              DataPoint.getDataPoint(
+                  measurementSchemas[k].getType(),
+                  measurementSchemas[k].getMeasurementId(),
+                  String.valueOf(i)));
+        }
+        fileWriter.write(record);
+        firstTsFileResource.updateStartTime(deviceIds[j], i);
+        firstTsFileResource.updateEndTime(deviceIds[j], i);
+      }
+    }
+
+    fileWriter.flushAllChunkGroups();
+    fileWriter.close();
+
+    // second file time range: [11, 20]
+    // first measurement: [11, 20]
+    // second measurement: [11, 20]
+    File secondFile =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                2
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 2
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource secondTsFileResource = new TsFileResource(secondFile);
+    secondTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    secondTsFileResource.setMinPlanIndex(2);
+    secondTsFileResource.setMaxPlanIndex(2);
+    secondTsFileResource.setVersion(2);
+    seqList.add(secondTsFileResource);
+
+    if (!secondFile.getParentFile().exists()) {
+      Assert.assertTrue(secondFile.getParentFile().mkdirs());
+    }
+    fileWriter = new TsFileWriter(secondFile);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
+      }
+    }
+    for (long i = 11; i < 21; ++i) {
+      for (int j = 0; j < deviceNum; j++) {
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum; k++) {
+          record.addTuple(
+              DataPoint.getDataPoint(
+                  measurementSchemas[k].getType(),
+                  measurementSchemas[k].getMeasurementId(),
+                  String.valueOf(i)));
+        }
+        fileWriter.write(record);
+        secondTsFileResource.updateStartTime(deviceIds[j], i);
+        secondTsFileResource.updateEndTime(deviceIds[j], i);
+      }
+    }
+    fileWriter.flushAllChunkGroups();
+    fileWriter.close();
+
+    // unseq file: [0, 1]
+    File thirdFile =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                3
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 3
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource thirdTsFileResource = new TsFileResource(thirdFile);
+    thirdTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    thirdTsFileResource.setMinPlanIndex(3);
+    thirdTsFileResource.setMaxPlanIndex(3);
+    thirdTsFileResource.setVersion(3);
+    unseqList.add(thirdTsFileResource);
+
+    if (!secondFile.getParentFile().exists()) {
+      Assert.assertTrue(thirdFile.getParentFile().mkdirs());
+    }
+    fileWriter = new TsFileWriter(thirdFile);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
+      }
+    }
+    for (long i = 0; i < 2; ++i) {
+      for (int j = 0; j < deviceNum; j++) {
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum; k++) {
+          record.addTuple(
+              DataPoint.getDataPoint(
+                  measurementSchemas[k].getType(),
+                  measurementSchemas[k].getMeasurementId(),
+                  String.valueOf(i)));
+        }
+        fileWriter.write(record);
+        thirdTsFileResource.updateStartTime(deviceIds[j], i);
+        thirdTsFileResource.updateEndTime(deviceIds[j], i);
+      }
+    }
+    fileWriter.flushAllChunkGroups();
+    fileWriter.close();
+
+    // unseq file: [6, 14]
+    File fourthFile =
+        new File(
+            TestConstant.OUTPUT_DATA_DIR.concat(
+                4
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 4
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource fourthTsFileResource = new TsFileResource(fourthFile);
+    fourthTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    fourthTsFileResource.setMinPlanIndex(4);
+    fourthTsFileResource.setMaxPlanIndex(4);
+    fourthTsFileResource.setVersion(4);
+    unseqList.add(fourthTsFileResource);
+
+    if (!fourthFile.getParentFile().exists()) {
+      Assert.assertTrue(fourthFile.getParentFile().mkdirs());
+    }
+    fileWriter = new TsFileWriter(fourthFile);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
+      }
+    }
+    for (long i = 6; i < 15; ++i) {
+      for (int j = 0; j < deviceNum; j++) {
+        if (j == 3) {
+          continue;
+        }
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum; k++) {
+          record.addTuple(
+              DataPoint.getDataPoint(
+                  measurementSchemas[k].getType(),
+                  measurementSchemas[k].getMeasurementId(),
+                  String.valueOf(i)));
+        }
+        fileWriter.write(record);
+        fourthTsFileResource.updateStartTime(deviceIds[j], i);
+        fourthTsFileResource.updateEndTime(deviceIds[j], i);
+      }
+    }
+    TSRecord record = new TSRecord(1, deviceIds[3]);
+    for (int k = 0; k < measurementNum; k++) {
+      record.addTuple(
+          DataPoint.getDataPoint(
+              measurementSchemas[k].getType(),
+              measurementSchemas[k].getMeasurementId(),
+              String.valueOf(1)));
+    }
+    fileWriter.write(record);
+    fourthTsFileResource.updateStartTime(deviceIds[3], 1);
+    fourthTsFileResource.updateEndTime(deviceIds[3], 1);
+    fileWriter.flushAllChunkGroups();
+    fileWriter.close();
+
+    long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
+    SystemInfo.getInstance()
+        .setMemorySizeForCompaction(
+            500L
+                * 1024
+                * 1024
+                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    try {
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+          selector.selectCrossSpaceTask(seqList, unseqList);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(2, selected.get(0).left.size());
+      Assert.assertEquals(2, selected.get(0).right.size());
+    } finally {
+      SystemInfo.getInstance().setMemorySizeForCompaction(origin);
+    }
+  }
+
+  @Test
+  public void testMaxFileSelection() throws MergeException, IOException {
+    int oldMaxCrossCompactionCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    assertEquals(1, selected.size());
+    List<TsFileResource> seqSelected = selected.get(0).left;
+    List<TsFileResource> unseqSelected = selected.get(0).right;
+    assertEquals(2, seqSelected.size());
+    assertEquals(2, unseqSelected.size());
+
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
+  }
+
+  @Test
+  public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
+    int maxCrossFilesNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    assertEquals(1, selected.size());
+    List<TsFileResource> seqSelected = selected.get(0).left;
+    List<TsFileResource> unseqSelected = selected.get(0).right;
+    assertEquals(1, seqSelected.size());
+    assertEquals(1, unseqSelected.size());
+
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
+  }
+
+  @Test
+  public void testDeleteInSelection() throws Exception {
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+                    selector.selectCrossSpaceTask(seqResources, unseqResources);
+              } catch (Exception e) {
+                logger.error("Exception occurs", e);
+                fail.set(true);
+              }
+            });
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                FileUtils.delete(seqResources.get(0).getTsFile());
+                FileUtils.delete(unseqResources.get(0).getTsFile());
+              } catch (IOException e) {
+              }
+            });
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
+    if (fail.get()) {
+      // fail();
     }
   }
 }

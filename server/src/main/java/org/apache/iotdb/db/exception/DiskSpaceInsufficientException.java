@@ -29,6 +29,6 @@ public class DiskSpaceInsufficientException extends StorageEngineException {
   public DiskSpaceInsufficientException(List<String> folders) {
     super(
         String.format("Can't get next folder from [%s], because they are all full.", folders),
-        TSStatusCode.DISK_SPACE_INSUFFICIENT_ERROR.getStatusCode());
+        TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
   }
 }

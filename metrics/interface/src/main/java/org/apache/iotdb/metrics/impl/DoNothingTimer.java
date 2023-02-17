@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public class DoNothingTimer implements Timer {
+public class DoNothingTimer implements Timer, DoNothingMetric {
   @Override
   public void update(long duration, TimeUnit unit) {
     // do nothing

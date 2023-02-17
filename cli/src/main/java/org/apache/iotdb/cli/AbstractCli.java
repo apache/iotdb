@@ -19,7 +19,6 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -72,12 +71,17 @@ public abstract class AbstractCli {
   private static final String EXECUTE_NAME = "execute";
   private static final String NULL = "null";
 
+  static final int CODE_OK = 0;
+  static final int CODE_ERROR = 1;
+
   static final String ISO8601_ARGS = "disableISO8601";
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
   private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
   static final String RPC_COMPRESS_ARGS = "c";
   private static final String RPC_COMPRESS_NAME = "rpcCompressed";
+  static final String TIMEOUT_ARGS = "timeout";
+  private static final String TIMEOUT_NAME = "queryTimeout";
   static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
   static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
   static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
@@ -96,6 +100,7 @@ public abstract class AbstractCli {
   private static final String IMPORT_CMD = "import";
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
+  static int queryTimeout = 0;
   static String timestampPrecision = "ms";
   static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
   private static boolean continuePrint = false;
@@ -117,6 +122,8 @@ public abstract class AbstractCli {
   static ServerProperties properties = null;
 
   private static boolean cursorBeforeFirst = true;
+
+  static int lastProcessStatus = CODE_OK;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -195,6 +202,15 @@ public abstract class AbstractCli {
             .desc("Rpc Compression enabled or not")
             .build();
     options.addOption(isRpcCompressed);
+
+    Option queryTimeout =
+        Option.builder(TIMEOUT_ARGS)
+            .argName(TIMEOUT_NAME)
+            .hasArg()
+            .desc(
+                "The timeout in second. Using the configuration of server if it's not set (optional)")
+            .build();
+    options.addOption(queryTimeout);
     return options;
   }
 
@@ -238,6 +254,15 @@ public abstract class AbstractCli {
       continuePrint = true;
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
+    }
+  }
+
+  static void setQueryTimeout(String timeoutString) {
+    long timeout = Long.parseLong(timeoutString.trim());
+    if (timeout > Integer.MAX_VALUE || timeout < 0) {
+      queryTimeout = 0;
+    } else {
+      queryTimeout = Integer.parseInt(timeoutString.trim());
     }
   }
 
@@ -298,7 +323,7 @@ public abstract class AbstractCli {
     }
   }
 
-  static void displayLogo(String version) {
+  static void displayLogo(String version, String buildInfo) {
     println(
         " _____       _________  ______   ______    \n"
             + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
@@ -307,6 +332,9 @@ public abstract class AbstractCli {
             + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
             + "|_____|'.__.' |_____|  |______.'|_______/  version "
             + version
+            + " (Build: "
+            + (buildInfo != null ? buildInfo : "UNKNOWN")
+            + ")"
             + "\n"
             + "                                           \n");
   }
@@ -318,6 +346,7 @@ public abstract class AbstractCli {
   }
 
   static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
+    lastProcessStatus = CODE_OK;
     String specialCmd = cmd.toLowerCase().trim();
 
     if (QUIT_COMMAND.equals(specialCmd) || EXIT_COMMAND.equals(specialCmd)) {
@@ -328,27 +357,27 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)) {
-      setTimestampDisplay(specialCmd, cmd);
+      lastProcessStatus = setTimestampDisplay(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
     if (specialCmd.startsWith(SET_TIME_ZONE)) {
-      setTimeZone(specialCmd, cmd, connection);
+      lastProcessStatus = setTimeZone(specialCmd, cmd, connection);
       return OperationResult.CONTINUE_OPER;
     }
 
     if (specialCmd.startsWith(SET_FETCH_SIZE)) {
-      setFetchSize(specialCmd, cmd);
+      lastProcessStatus = setFetchSize(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
     if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      setMaxDisplayNum(specialCmd, cmd);
+      lastProcessStatus = setMaxDisplayNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
-      showTimeZone(connection);
+      lastProcessStatus = showTimeZone(connection);
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
@@ -361,11 +390,11 @@ public abstract class AbstractCli {
     }
 
     if (specialCmd.startsWith(IMPORT_CMD)) {
-      importCmd(specialCmd, cmd, connection);
+      lastProcessStatus = importCmd(specialCmd, cmd, connection);
       return OperationResult.CONTINUE_OPER;
     }
 
-    executeQuery(connection, cmd);
+    lastProcessStatus = executeQuery(connection, cmd);
     return OperationResult.NO_OPER;
   }
 
@@ -390,21 +419,22 @@ public abstract class AbstractCli {
             SET_MAX_DISPLAY_NUM));
   }
 
-  private static void setTimestampDisplay(String specialCmd, String cmd) {
+  private static int setTimestampDisplay(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(
           String.format(
               "Time display format error, please input like %s=ISO8601", SET_TIMESTAMP_DISPLAY));
-      return;
+      return CODE_ERROR;
     }
     try {
       timeFormat = RpcUtils.setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
-      return;
+      return CODE_ERROR;
     }
     println("Time display type has set to " + cmd.split("=")[1].trim());
+    return CODE_OK;
   }
 
   /**
@@ -414,86 +444,94 @@ public abstract class AbstractCli {
    * @param specialCmd
    * @param cmd
    * @param connection
+   * @return execute result code
    */
-  private static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
+  private static int setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Time zone format error, please input like %s=+08:00", SET_TIME_ZONE));
-      return;
+      return CODE_ERROR;
     }
     try {
       connection.setTimeZone(cmd.split("=")[1].trim());
     } catch (Exception e) {
       println(String.format("Time zone format error: %s", e.getMessage()));
-      return;
+      return CODE_ERROR;
     }
     println("Time zone has set to " + values[1].trim());
+    return CODE_OK;
   }
 
-  private static void setFetchSize(String specialCmd, String cmd) {
+  private static int setFetchSize(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
-      return;
+      return CODE_ERROR;
     }
     try {
       setFetchSize(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Fetch size format error, %s", e.getMessage()));
-      return;
+      return CODE_ERROR;
     }
     println("Fetch size has set to " + values[1].trim());
+    return CODE_OK;
   }
 
-  private static void setMaxDisplayNum(String specialCmd, String cmd) {
+  private static int setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(
           String.format(
               "Max display number format error, please input like %s = 10000",
               SET_MAX_DISPLAY_NUM));
-      return;
+      return CODE_ERROR;
     }
     try {
       setMaxDisplayNumber(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("Max display number format error, %s", e.getMessage()));
-      return;
+      return CODE_ERROR;
     }
     println("Max display number has set to " + values[1].trim());
+    return CODE_OK;
   }
 
-  private static void showTimeZone(IoTDBConnection connection) {
+  private static int showTimeZone(IoTDBConnection connection) {
     try {
       println("Current time zone: " + connection.getTimeZone());
     } catch (Exception e) {
       println("Cannot get time zone from server side because: " + e.getMessage());
+      return CODE_ERROR;
     }
+    return CODE_OK;
   }
 
-  private static void importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
+  private static int importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split(" ");
     if (values.length != 2) {
       println(
           "Please input like: import /User/myfile. "
               + "Noted that your file path cannot contain any space character)");
-      return;
+      return CODE_ERROR;
     }
     println(cmd.split(" ")[1]);
     try {
-      ImportCsv.importFromTargetPath(
+      return ImportCsv.importFromTargetPath(
           host,
-          Integer.valueOf(port),
+          Integer.parseInt(port),
           username,
           password,
           cmd.split(" ")[1],
           connection.getTimeZone());
     } catch (IoTDBConnectionException e) {
       e.printStackTrace();
+      return CODE_ERROR;
     }
   }
 
-  private static void executeQuery(IoTDBConnection connection, String cmd) {
+  private static int executeQuery(IoTDBConnection connection, String cmd) {
+    int executeStatus = CODE_OK;
     long startTime = System.currentTimeMillis();
     try (Statement statement = connection.createStatement()) {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
@@ -533,10 +571,11 @@ public abstract class AbstractCli {
               }
             } catch (IOException e) {
               e.printStackTrace();
+              executeStatus = CODE_ERROR;
             }
           }
           // output tracing activity
-          if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
+          if (((IoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
             maxSizeList = new ArrayList<>(2);
             lists = cacheTracingInfo(resultSet, maxSizeList);
             outputTracingInfo(lists, maxSizeList);
@@ -547,9 +586,11 @@ public abstract class AbstractCli {
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
+      executeStatus = CODE_ERROR;
     } finally {
       resetArgs();
     }
+    return executeStatus;
   }
 
   /**
@@ -560,7 +601,7 @@ public abstract class AbstractCli {
    * @param columnCount the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
    * @param zoneId your time zone
-   * @return List<List<String>> result
+   * @return {@literal List<List<String>> result}
    * @throws SQLException throw exception
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -661,8 +702,8 @@ public abstract class AbstractCli {
     maxSizeList.add(0, ACTIVITY_STR.length());
     maxSizeList.add(1, ELAPSED_TIME_STR.length());
 
-    List<String> activityList = ((AbstractIoTDBJDBCResultSet) resultSet).getActivityList();
-    List<Long> elapsedTimeList = ((AbstractIoTDBJDBCResultSet) resultSet).getElapsedTimeList();
+    List<String> activityList = ((IoTDBJDBCResultSet) resultSet).getActivityList();
+    List<Long> elapsedTimeList = ((IoTDBJDBCResultSet) resultSet).getElapsedTimeList();
     String[] statisticsInfoList = {
       "seriesPathNum", "seqFileNum", "unSeqFileNum", "seqChunkInfo", "unSeqChunkInfo", "pageNumInfo"
     };
@@ -672,7 +713,7 @@ public abstract class AbstractCli {
       if (i == activityList.size() - 1) {
         // cache Statistics
         for (String infoName : statisticsInfoList) {
-          String info = ((AbstractIoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
+          String info = ((IoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
           lists.get(0).add(info);
           lists.get(1).add("");
           if (info.length() > maxSizeList.get(0)) {

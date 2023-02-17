@@ -88,11 +88,11 @@ public class DataMigrationExample {
     int count = 0;
     while (schemaIter.next()) {
       count++;
-      Path currentPath = new Path(schemaIter.getString("timeseries"), true);
+      Path currentPath = new Path(schemaIter.getString("Timeseries"), true);
       Future future =
           executorService.submit(
               new LoadThread(
-                  count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
+                  count, currentPath, TSDataType.valueOf(schemaIter.getString("DataType"))));
       futureList.add(future);
     }
     readerPool.closeResultSet(schemaDataSet);

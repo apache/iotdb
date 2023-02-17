@@ -20,15 +20,17 @@
 package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
 
-public class DoNothingMetricService extends MetricService {
+public class DoNothingMetricService extends AbstractMetricService {
+
   @Override
-  protected void collectFileSystemInfo() {
+  public void reloadInternalReporter(InternalIoTDBReporter internalReporter) {
     // do nothing
   }
 
   @Override
-  protected void reloadProperties(ReloadLevel reloadLevel) {
+  protected void reloadService(ReloadLevel reloadLevel) {
     // do nothing
   }
 }

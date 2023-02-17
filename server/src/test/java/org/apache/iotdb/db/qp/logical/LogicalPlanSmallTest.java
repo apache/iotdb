@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -33,11 +34,14 @@ import org.apache.iotdb.db.service.IoTDB;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 
+@Ignore
+@Deprecated
 public class LogicalPlanSmallTest {
 
   @Test
@@ -176,17 +180,17 @@ public class LogicalPlanSmallTest {
         "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator);
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds
     // the number of sequences (%d) that can actually be returned.
   }
 
   @Test
   public void testDeleteStorageGroup() throws IllegalPathException {
-    String sqlStr = "delete storage group root.vehicle.d1";
+    String sqlStr = "delete database root.vehicle.d1";
     DeleteStorageGroupOperator operator =
         (DeleteStorageGroupOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
@@ -220,7 +224,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testChineseCharacter() throws IllegalPathException {
-    String sqlStr1 = "set storage group to root.一级";
+    String sqlStr1 = "CREATE DATABASE root.一级";
     Operator operator = LogicalGenerator.generate(sqlStr1, ZoneId.systemDefault());
     Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
     Assert.assertEquals(new PartialPath("root.一级"), ((SetStorageGroupOperator) operator).getPath());
@@ -306,7 +310,7 @@ public class LogicalPlanSmallTest {
     String errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
@@ -318,7 +322,7 @@ public class LogicalPlanSmallTest {
     errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(

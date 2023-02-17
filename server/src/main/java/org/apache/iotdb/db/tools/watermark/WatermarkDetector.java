@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.tools.watermark;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 
 import org.apache.thrift.EncodingUtils;
 
@@ -68,7 +68,7 @@ public class WatermarkDetector {
         dataType);
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   public static boolean isWatermarked(
       String filePath,
       String secretKey,
@@ -171,12 +171,7 @@ public class WatermarkDetector {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      try {
-        ZoneId zoneId = ZoneId.systemDefault();
-        timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId);
-      } catch (LogicalOperatorException e1) {
-        throw new LogicalOperatorException("The format of timestamp is not unexpected.");
-      }
+      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, ZoneId.systemDefault());
     }
     return timestamp;
   }

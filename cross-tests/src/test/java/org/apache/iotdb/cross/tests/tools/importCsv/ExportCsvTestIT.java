@@ -70,7 +70,7 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] params = {"-td", "target/", "-q", "select c1,c2,c3 from root.test.t1"};
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
     };
@@ -90,7 +90,7 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
       "1.0,\"\"abc\",aa\",\"abbe's\""
@@ -111,7 +111,7 @@ public class ExportCsvTestIT extends AbstractScript {
     };
     prepareData();
     testMethod(params, null);
-    CSVParser parser = readCsvFile("target/dump0.csv");
+    CSVParser parser = readCsvFile("target/dump0_0.csv");
     String[] realRecords = {
       "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
     };
@@ -123,19 +123,26 @@ public class ExportCsvTestIT extends AbstractScript {
   }
 
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    Session session = null;
+    try {
+      session = new Session("127.0.0.1", 6667, "root", "root");
+      session.open();
 
-    String deviceId = "root.test.t1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("c1");
-    measurements.add("c2");
-    measurements.add("c3");
+      String deviceId = "root.test.t1";
+      List<String> measurements = new ArrayList<>();
+      measurements.add("c1");
+      measurements.add("c2");
+      measurements.add("c3");
 
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    values.add("\"abc\",aa");
-    values.add("abbe's");
-    session.insertRecord(deviceId, 1L, measurements, values);
+      List<String> values = new ArrayList<>();
+      values.add("1.0");
+      values.add("\"abc\",aa");
+      values.add("abbe's");
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
   }
 }

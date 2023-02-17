@@ -27,6 +27,7 @@ import org.apache.iotdb.jdbc.Constant;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -52,11 +53,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@Ignore // No longer forward compatible since v0.14
 public class IoTDBQueryVersionAdaptionIT {
 
   private static String[] sqls =
       new String[] {
-        "set storage group to root.ln",
+        "CREATE DATABASE root.ln",
         "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)",
@@ -101,7 +103,7 @@ public class IoTDBQueryVersionAdaptionIT {
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
-        "set storage group to root.sgcc",
+        "CREATE DATABASE root.sgcc",
         "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
@@ -240,7 +242,6 @@ public class IoTDBQueryVersionAdaptionIT {
                 + resultSet.getString(VALUE_STR)
                 + ","
                 + resultSet.getString(DATA_TYPE_STR);
-        System.out.println(ans);
         Assert.assertTrue(retSet.contains(ans));
         cnt++;
       }

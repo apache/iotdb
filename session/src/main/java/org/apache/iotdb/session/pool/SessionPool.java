@@ -20,10 +20,12 @@ package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Config;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -82,9 +84,22 @@ public class SessionPool {
   private final int port;
   private final String user;
   private final String password;
-  private final int fetchSize;
-  private final ZoneId zoneId;
-  private final boolean enableCacheLeader;
+  private int fetchSize;
+  private ZoneId zoneId;
+  private boolean enableRedirection;
+  private boolean enableQueryRedirection = false;
+
+  private int thriftDefaultBufferSize;
+  private int thriftMaxFrameSize;
+
+  /**
+   * Timeout of query can be set by users. A negative number means using the default configuration
+   * of server. And value 0 will disable the function of query timeout.
+   */
+  private long queryTimeoutInMs = -1;
+
+  // The version number of the client which used for compatibility in the server
+  private Version version;
 
   // parameters for Session#open()
   private final int connectionTimeoutInMs;
@@ -93,6 +108,9 @@ public class SessionPool {
   // whether the queue is closed.
   private boolean closed;
 
+  // Redirect-able SessionPool
+  private final List<String> nodeUrls;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -100,12 +118,32 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -116,12 +154,33 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, boolean enableCompression) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -131,19 +190,45 @@ public class SessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableCacheLeader) {
+      boolean enableRedirection) {
     this(
         host,
         port,
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         enableCompression,
         null,
-        enableCacheLeader,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        enableRedirection,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableRedirection) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableRedirection,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SessionPool(
@@ -154,12 +239,33 @@ public class SessionPool {
         user,
         password,
         maxSize,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         60_000,
         false,
         zoneId,
-        Config.DEFAULT_CACHE_LEADER_MODE,
-        Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public SessionPool(
+      List<String> nodeUrls, String user, String password, int maxSize, ZoneId zoneId) {
+    this(
+        nodeUrls,
+        user,
+        password,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   @SuppressWarnings("squid:S107")
@@ -173,19 +279,93 @@ public class SessionPool {
       long waitToGetSessionTimeoutInMs,
       boolean enableCompression,
       ZoneId zoneId,
-      boolean enableCacheLeader,
-      int connectionTimeoutInMs) {
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
+    this.nodeUrls = null;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
     this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
-    this.enableCacheLeader = enableCacheLeader;
+    this.enableRedirection = enableRedirection;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.version = version;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  public SessionPool(
+      List<String> nodeUrls,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    this.maxSize = maxSize;
+    this.host = null;
+    this.port = -1;
+    this.nodeUrls = nodeUrls;
+    this.user = user;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
+    this.enableCompression = enableCompression;
+    this.zoneId = zoneId;
+    this.enableRedirection = enableRedirection;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.version = version;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  private Session constructNewSession() {
+    Session session;
+    if (nodeUrls == null) {
+      // Construct custom Session
+      session =
+          new Session.Builder()
+              .host(host)
+              .port(port)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .thriftDefaultBufferSize(thriftDefaultBufferSize)
+              .thriftMaxFrameSize(thriftMaxFrameSize)
+              .enableRedirection(enableRedirection)
+              .version(version)
+              .build();
+    } else {
+      // Construct redirect-able Session
+      session =
+          new Session.Builder()
+              .nodeUrls(nodeUrls)
+              .username(user)
+              .password(password)
+              .fetchSize(fetchSize)
+              .zoneId(zoneId)
+              .thriftDefaultBufferSize(thriftDefaultBufferSize)
+              .thriftMaxFrameSize(thriftMaxFrameSize)
+              .enableRedirection(enableRedirection)
+              .version(version)
+              .build();
+    }
+    session.setEnableQueryRedirection(enableQueryRedirection);
+    return session;
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -254,9 +434,15 @@ public class SessionPool {
     if (shouldCreate) {
       // create a new one.
       if (logger.isDebugEnabled()) {
-        logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        if (nodeUrls == null) {
+          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
+        } else {
+          logger.debug("Create a new redirect Session {}, {}, {}", nodeUrls, user, password);
+        }
       }
-      session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+
+      session = constructNewSession();
+
       try {
         session.open(enableCompression, connectionTimeoutInMs);
         // avoid someone has called close() the session pool
@@ -352,7 +538,7 @@ public class SessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
-    Session session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
+    Session session = constructNewSession();
     try {
       session.open(enableCompression, connectionTimeoutInMs);
       // avoid someone has called close() the session pool
@@ -466,8 +652,7 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, false);
+    insertAlignedTablet(tablet, false);
   }
 
   /**
@@ -480,8 +665,21 @@ public class SessionPool {
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    tablet.setAligned(true);
-    insertTablet(tablet, sorted);
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedTablet(tablet, sorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedTablet failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
   }
 
   /**
@@ -501,10 +699,7 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
-    }
-    insertTablets(tablets, false);
+    insertAlignedTablets(tablets, false);
   }
 
   /**
@@ -538,10 +733,21 @@ public class SessionPool {
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      tablet.setAligned(true);
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedTablets(tablets, sorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedTablets failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
     }
-    insertTablets(tablets, sorted);
   }
 
   /**
@@ -1145,12 +1351,58 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  public void testInsertTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertTablet(tablet, sorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("testInsertTablet failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
   public void testInsertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         session.testInsertTablets(tablets);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("testInsertTablets failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertTablets(tablets, sorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -1395,6 +1647,8 @@ public class SessionPool {
     }
   }
 
+  /** @deprecated Use {@link #createDatabase(String)} instead. */
+  @Deprecated
   public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1414,6 +1668,8 @@ public class SessionPool {
     }
   }
 
+  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  @Deprecated
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1433,6 +1689,8 @@ public class SessionPool {
     }
   }
 
+  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  @Deprecated
   public void deleteStorageGroups(List<String> storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1444,6 +1702,63 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteStorageGroups failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void createDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createDatabase(database);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createDatabase failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void deleteDatabase(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deleteDatabase(database);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("deleteDatabase failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deleteDatabases(databases);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("deleteDatabases failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -1941,6 +2256,26 @@ public class SessionPool {
     return null;
   }
 
+  public void setSchemaTemplate(String templateName, String prefixPath)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.setSchemaTemplate(templateName, prefixPath);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("setSchemaTemplate [%s] on [%s] failed", templateName, prefixPath), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1948,6 +2283,7 @@ public class SessionPool {
       try {
         session.unsetSchemaTemplate(prefixPath, templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(
@@ -1967,6 +2303,7 @@ public class SessionPool {
       try {
         session.dropSchemaTemplate(templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(String.format("dropSchemaTemplate [%s] failed", templateName), e);
@@ -2068,18 +2405,63 @@ public class SessionPool {
   }
 
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  public SessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  public SessionDataSetWrapper executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime);
+        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("executeRawDataQuery failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("executeLastDataQuery failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        SessionDataSet resp = session.executeLastDataQuery(paths);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("executeLastDataQuery failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -2110,8 +2492,43 @@ public class SessionPool {
     return password;
   }
 
+  public void setFetchSize(int fetchSize) {
+    this.fetchSize = fetchSize;
+    for (Session session : queue) {
+      session.setFetchSize(fetchSize);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setFetchSize(fetchSize);
+    }
+  }
+
   public int getFetchSize() {
     return fetchSize;
+  }
+
+  public void setTimeZone(String zoneId)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.setTimeZone(zoneId);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(String.format("setTimeZone to [%s] failed", zoneId), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    this.zoneId = ZoneId.of(zoneId);
+    for (Session session : queue) {
+      session.setTimeZoneOfSession(zoneId);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setTimeZoneOfSession(zoneId);
+    }
   }
 
   public ZoneId getZoneId() {
@@ -2126,27 +2543,104 @@ public class SessionPool {
     return enableCompression;
   }
 
-  public boolean isEnableCacheLeader() {
-    return enableCacheLeader;
+  public void setEnableRedirection(boolean enableRedirection) {
+    this.enableRedirection = enableRedirection;
+    for (Session session : queue) {
+      session.setEnableRedirection(enableRedirection);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setEnableRedirection(enableRedirection);
+    }
+  }
+
+  public boolean isEnableRedirection() {
+    return enableRedirection;
+  }
+
+  public void setEnableQueryRedirection(boolean enableQueryRedirection) {
+    this.enableQueryRedirection = enableQueryRedirection;
+    for (Session session : queue) {
+      session.setEnableQueryRedirection(enableQueryRedirection);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setEnableQueryRedirection(enableQueryRedirection);
+    }
+  }
+
+  public boolean isEnableQueryRedirection() {
+    return enableQueryRedirection;
   }
 
   public int getConnectionTimeoutInMs() {
     return connectionTimeoutInMs;
   }
 
+  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
+
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        TSConnectionInfoResp resp = session.fetchAllConnections();
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("fetchAllConnections failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (Throwable t) {
+        putBack(session);
+        throw t;
+      }
+    }
+    return null;
+  }
+
+  public void setVersion(Version version) {
+    this.version = version;
+    for (Session session : queue) {
+      session.setVersion(version);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setVersion(version);
+    }
+  }
+
+  public Version getVersion() {
+    return version;
+  }
+
+  public void setQueryTimeout(long timeoutInMs) {
+    this.queryTimeoutInMs = timeoutInMs;
+    for (Session session : queue) {
+      session.setQueryTimeout(timeoutInMs);
+    }
+    for (Session session : occupied.keySet()) {
+      session.setQueryTimeout(timeoutInMs);
+    }
+  }
+
+  public long getQueryTimeout() {
+    return queryTimeoutInMs;
+  }
+
   public static class Builder {
 
-    private String host = Config.DEFAULT_HOST;
-    private int port = Config.DEFAULT_PORT;
-    private int maxSize = Config.DEFAULT_SESSION_POOL_MAX_SIZE;
-    private String user = Config.DEFAULT_USER;
-    private String password = Config.DEFAULT_PASSWORD;
-    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private String host = SessionConfig.DEFAULT_HOST;
+    private int port = SessionConfig.DEFAULT_PORT;
+    private List<String> nodeUrls = null;
+    private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
+    private String user = SessionConfig.DEFAULT_USER;
+    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
+    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
+    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
-    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
-    private int connectionTimeoutInMs = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
+    private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
+    private Version version = SessionConfig.DEFAULT_VERSION;
+    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     public Builder host(String host) {
       this.host = host;
@@ -2155,6 +2649,11 @@ public class SessionPool {
 
     public Builder port(int port) {
       this.port = port;
+      return this;
+    }
+
+    public Builder nodeUrls(List<String> nodeUrls) {
+      this.nodeUrls = nodeUrls;
       return this;
     }
 
@@ -2188,13 +2687,23 @@ public class SessionPool {
       return this;
     }
 
+    public Builder thriftDefaultBufferSize(int thriftDefaultBufferSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      return this;
+    }
+
+    public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
     public Builder enableCompression(boolean enableCompression) {
       this.enableCompression = enableCompression;
       return this;
     }
 
-    public Builder enableCacheLeader(boolean enableCacheLeader) {
-      this.enableCacheLeader = enableCacheLeader;
+    public Builder enableRedirection(boolean enableRedirection) {
+      this.enableRedirection = enableRedirection;
       return this;
     }
 
@@ -2203,19 +2712,49 @@ public class SessionPool {
       return this;
     }
 
+    public Builder version(Version version) {
+      this.version = version;
+      return this;
+    }
+
+    public Builder timeOut(long timeOut) {
+      this.timeOut = timeOut;
+      return this;
+    }
+
     public SessionPool build() {
-      return new SessionPool(
-          host,
-          port,
-          user,
-          password,
-          maxSize,
-          fetchSize,
-          waitToGetSessionTimeoutInMs,
-          enableCompression,
-          zoneId,
-          enableCacheLeader,
-          connectionTimeoutInMs);
+      if (nodeUrls == null) {
+        return new SessionPool(
+            host,
+            port,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableRedirection,
+            connectionTimeoutInMs,
+            version,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize);
+      } else {
+        return new SessionPool(
+            nodeUrls,
+            user,
+            password,
+            maxSize,
+            fetchSize,
+            waitToGetSessionTimeoutInMs,
+            enableCompression,
+            zoneId,
+            enableRedirection,
+            connectionTimeoutInMs,
+            version,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize);
+      }
     }
   }
 }

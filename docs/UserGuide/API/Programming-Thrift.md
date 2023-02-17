@@ -81,7 +81,7 @@ TSStatus setTimeZone(1:TSSetTimeZoneReq req);
 // get server's properties
 ServerProperties getProperties();
 
-// set storage group
+// CREATE DATABASE
 TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 // create timeseries

@@ -21,9 +21,9 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -61,7 +61,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       String sql,
       long queryId,
       long sessionId,
@@ -205,6 +205,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   @Override
   protected void constructOneRow() {
+    ioTDBRpcDataSet.lastReadWasNull = false;
     for (int i = 0; i < tsQueryNonAlignDataSet.timeList.size(); i++) {
       times[i] = null;
       ioTDBRpcDataSet.values[i] = null;

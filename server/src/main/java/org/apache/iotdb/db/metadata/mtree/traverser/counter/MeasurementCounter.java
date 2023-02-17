@@ -18,17 +18,38 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+
+import java.util.ArrayList;
+import java.util.List;
 
 // This method implements the measurement count function.
 // One MultiMeasurement will only be count once.
 public class MeasurementCounter extends CounterTraverser {
 
-  public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
-    isMeasurementTraverser = true;
+  private List<String> timeseries = new ArrayList<>();
+  private boolean hasTag = false;
+
+  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
+    shouldTraverseTemplate = true;
+  }
+
+  public MeasurementCounter(
+      IMNode startNode,
+      PartialPath path,
+      IMTreeStore store,
+      List<String> timeseries,
+      boolean hasTag)
+      throws MetadataException {
+    super(startNode, path, store);
+    shouldTraverseTemplate = true;
+    this.timeseries = timeseries;
+    this.hasTag = hasTag;
   }
 
   @Override
@@ -40,6 +61,11 @@ public class MeasurementCounter extends CounterTraverser {
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (!node.isMeasurement()) {
       return false;
+    }
+    if (hasTag) {
+      if (!timeseries.contains(node.getFullPath())) {
+        return true;
+      }
     }
     count++;
     return true;

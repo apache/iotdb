@@ -109,8 +109,8 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB support SQL like language. In addition, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
-  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
+  * IoTDB and InfluxDB support SQL like language. 
+  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API.
   * TimescaleDB uses the SQL the same as PG.
   
 * Schema:
@@ -263,9 +263,6 @@ I listed some interesting features that these systems may differ.
 
   Now only IoTDB supports a JDBC driver (though not all interfaces are implemented), and makes it possible to integrate many other JDBC driver based softwares.
 
-* Standard SQL:
-
-  As mentioned before, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 
@@ -301,11 +298,11 @@ It is somehow right. But, if you consider the performance, you may change your m
 
 * Write:
 
-We test the performance of writing from two aspects: *batch size* and *client num*. The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
+We test the performance of writing from two aspects: *batch size* and *client num*. The number of database is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
 
 * Read:
 
-10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
+10 clients read data concurrently. The number of database is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
 The data type is *double*, encoding type is *GORILLA*
 
 * Compression:
@@ -325,12 +322,6 @@ The write throughput (points/second) is:
 
 ![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
 <span id = "exp1"> <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center></span>
-
-
-The write delay (ms) is:
-
-![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/118790013-f1395080-b8c7-11eb-9e22-3310fa4ec804.png)
-<center>Figure 2. Batch Size with Write Delay (ms) IoTDB v0.11.1</center>
 
 * client num:
 

@@ -23,6 +23,8 @@ using namespace std;
 
 Session *session;
 
+#define DEFAULT_ROW_NUMBER 1000000
+
 void createAlignedTimeseries() {
     string alignedDeviceId = "root.sg1.d1";
     vector<string> measurements = {"s1", "s2", "s3"};
@@ -40,32 +42,34 @@ void createAlignedTimeseries() {
 }
 
 void createSchemaTemplate() {
-    Template temp("template1", false);
+    if (!session->checkTemplateExists("template1")) {
+        Template temp("template1", false);
 
-    InternalNode iNodeD99("d99", true);
+        InternalNode iNodeD99("d99", true);
 
-    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+        MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+        MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+        MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+        MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
 
-    iNodeD99.addChild(mNodeD99S1);
-    iNodeD99.addChild(mNodeD99S2);
+        iNodeD99.addChild(mNodeD99S1);
+        iNodeD99.addChild(mNodeD99S2);
 
-    temp.addToTemplate(iNodeD99);
-    temp.addToTemplate(mNodeS1);
-    temp.addToTemplate(mNodeS2);
+        temp.addToTemplate(iNodeD99);
+        temp.addToTemplate(mNodeS1);
+        temp.addToTemplate(mNodeS2);
 
-    session->createSchemaTemplate(temp);
-    session->setSchemaTemplate("template1", "root.sg2");
+        session->createSchemaTemplate(temp);
+        session->setSchemaTemplate("template1", "root.sg3.d1");
+    }
 }
 
 void ActivateTemplate() {
-    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+    session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showDevices() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with storage group");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with database");
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
     }
@@ -149,21 +153,24 @@ void insertAlignedRecords() {
 void insertAlignedTablet() {
     pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT32);
     pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::DOUBLE);
-    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::BOOLEAN);
+    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::DOUBLE);
     vector<pair<string, TSDataType::TSDataType>> schemas;
     schemas.push_back(pairA);
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 10);
+    Tablet tablet("root.sg2.d2", schemas, 100000);
     tablet.setAligned(true);
 
-    for (int64_t time = 20; time < 30; time++) {
-        int row = tablet.rowSize++;
+    for (int64_t time = 0; time < DEFAULT_ROW_NUMBER; time++) {
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
-        tablet.values[0][row] = "1";
-        tablet.values[1][row] = "1.0";
-        tablet.values[2][row] = "true";
+        int randVal1 = 123456;
+        double randVal2 = 123456.1234;
+        double randVal3 = 123456.1234;
+        tablet.addValue(0, row, &randVal1);
+        tablet.addValue(1, row, &randVal2);
+        tablet.addValue(2, row, &randVal3);
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insertTablet(tablet, true);
             tablet.reset();
@@ -185,34 +192,43 @@ void insertAlignedTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d1", schemas, 10);
-    Tablet tablet2("root.sg1.d2", schemas, 10);
-    Tablet tablet3("root.sg1.d3", schemas, 10);
+    Tablet tablet1("root.sg1.d1", schemas, 100);
+    Tablet tablet2("root.sg1.d2", schemas, 100);
+    Tablet tablet3("root.sg1.d3", schemas, 100);
 
     unordered_map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 30; time < 40; time++) {
-        int row1 = tablet1.rowSize++;
-        int row2 = tablet2.rowSize++;
-        int row3 = tablet3.rowSize++;
+    for (int64_t time = 0; time < 20; time++) {
+        size_t row1 = tablet1.rowSize++;
+        size_t row2 = tablet2.rowSize++;
+        size_t row3 = tablet3.rowSize++;
         tablet1.timestamps[row1] = time;
         tablet2.timestamps[row2] = time;
         tablet3.timestamps[row3] = time;
 
-        tablet1.values[0][row1] = "1";
-        tablet2.values[0][row2] = "2";
-        tablet3.values[0][row3] = "3";
+        int randVal11 = rand();
+        int randVal12 = rand();
+        int randVal13 = rand();
+        tablet1.addValue(0, row1, &randVal11);
+        tablet2.addValue(0, row2, &randVal12);
+        tablet3.addValue(0, row3, &randVal13);
 
-        tablet1.values[1][row1] = "1.0";
-        tablet2.values[1][row2] = "2.0";
-        tablet3.values[1][row3] = "3.0";
+        double randVal21 = rand() / 99.9;
+        double randVal22 = rand() / 99.9;
+        double randVal23 = rand() / 99.9;
+        tablet1.addValue(1, row1, &randVal21);
+        tablet2.addValue(1, row2, &randVal22);
+        tablet3.addValue(1, row3, &randVal23);
 
-        tablet1.values[2][row1] = "true";
-        tablet2.values[2][row2] = "false";
-        tablet3.values[2][row3] = "true";
+        bool randVal31 = (bool)(rand() % 2);
+        bool randVal32 = (bool)(rand() % 2);
+        bool randVal33 = (bool)(rand() % 2);
+        tablet1.addValue(2, row1, &randVal31);
+        tablet2.addValue(2, row2, &randVal32);
+        tablet3.addValue(2, row3, &randVal33);
 
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertAlignedTablets(tabletMap, true);
@@ -233,30 +249,33 @@ void insertAlignedTablets() {
 
 void insertNullableTabletWithAlignedTimeseries() {
     pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT32);
-    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::DOUBLE);
+    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
     pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::BOOLEAN);
     vector<pair<string, TSDataType::TSDataType>> schemas;
     schemas.push_back(pairA);
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 10);
+    Tablet tablet("root.sg1.d4", schemas, 20);
     tablet.setAligned(true);
 
-    for (int64_t time = 40; time < 50; time++) {
-        int row = tablet.rowSize++;
+    for (int64_t time = 0; time < 20; time++) {
+        size_t row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
+            int randVal1 = rand();
+            int64_t randVal2 = rand();
+            bool randVal3 = (bool)(rand() % 2);
             if (i == 0) {
-                tablet.values[i][row] = "1";
+                tablet.addValue(i, row, &randVal1);
             } else if (i == 1) {
-                tablet.values[i][row] = "1.0";
+                tablet.addValue(i, row, &randVal2);
             } else {
-                tablet.values[i][row] = "true";
+                tablet.addValue(i, row, &randVal3);
             }
             // mark null value
-            if (row % 3 == i) {
-                tablet.bitMaps[i]->mark(row);
+            if ((row % 3) == (unsigned int) i) {
+                tablet.bitMaps[i].mark(row);
             }
         }
         if (tablet.rowSize == tablet.maxRowNumber) {
@@ -272,7 +291,7 @@ void insertNullableTabletWithAlignedTimeseries() {
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.**");
     cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
@@ -289,14 +308,18 @@ void query() {
 }
 
 void deleteData() {
-    string path = "root.sg1.d1.s1";
+    string path = "root.**";
     int64_t deleteTime = 49;
     session->deleteData(path, deleteTime);
 }
 
 void deleteTimeseries() {
     vector<string> paths;
-    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
+    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4",
+                                        "root.sg1.d2.s1", "root.sg1.d2.s2", "root.sg1.d2.s3",
+                                        "root.sg1.d3.s1", "root.sg1.d3.s2", "root.sg1.d3.s3",
+                                        "root.sg1.d4.s1", "root.sg1.d4.s2", "root.sg1.d4.s3",
+                                        "root.sg2.d2.s1", "root.sg2.d2.s2", "root.sg2.d2.s3", };
     for (const string &timeseries: alignedTimeseries) {
         if (session->checkTimeseriesExists(timeseries)) {
             paths.push_back(timeseries);
@@ -305,7 +328,17 @@ void deleteTimeseries() {
     session->deleteTimeseries(paths);
 }
 
+void deleteStorageGroups() {
+    vector<string> storageGroups;
+    storageGroups.emplace_back("root.sg1");
+    storageGroups.emplace_back("root.sg2");
+    session->deleteStorageGroups(storageGroups);
+}
+
+
 int main() {
+    LOG_LEVEL = LEVEL_DEBUG;
+
     session = new Session("127.0.0.1", 6667, "root", "root");
 
     cout << "session open\n" << endl;
@@ -315,7 +348,7 @@ int main() {
     try {
         session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException &e) {
+    catch (IoTDBException &e) {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
@@ -344,8 +377,13 @@ int main() {
     cout << "insertAlignedRecords\n" << endl;
     insertAlignedRecords();
 
-    cout << "insertAlignedTablet\n" << endl;
+    cout << "insertAlignedTablet" << endl;
+    cout << "Insert " << DEFAULT_ROW_NUMBER << " records." << endl;
+    time_t now1 = time(0);
     insertAlignedTablet();
+    time_t now2 = time(0);
+    time_t useTime = now2 - now1;
+    cout << "Use time: " << useTime << "s.\n" << endl;
 
     cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
@@ -361,6 +399,9 @@ int main() {
 
     cout << "deleteTimeseries\n" << endl;
     deleteTimeseries();
+
+    cout << "deleteStorageGroups\n" << endl;
+    deleteStorageGroups();
 
     cout << "session close\n" << endl;
     session->close();

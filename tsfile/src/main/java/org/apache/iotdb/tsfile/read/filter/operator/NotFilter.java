@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
@@ -27,6 +28,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /** NotFilter necessary. Use InvertExpressionVisitor */
@@ -111,5 +114,29 @@ public class NotFilter implements Filter, Serializable {
   @Override
   public int hashCode() {
     return Objects.hash(that);
+  }
+
+  @Override
+  public List<TimeRange> getTimeRanges() {
+    List<TimeRange> list = that.getTimeRanges();
+    if (list.isEmpty()) {
+      return list;
+    }
+    List<TimeRange> res = new ArrayList<>();
+    if (list.get(0).getMin() != Long.MIN_VALUE) {
+      res.add(new TimeRange(Long.MIN_VALUE, list.get(0).getMin() - 1));
+    }
+    for (int i = 1, size = list.size(); i < size; i++) {
+      long left = list.get(i - 1).getMax() + 1;
+      long right = list.get(i).getMin() - 1;
+      if (left <= right) {
+        res.add(new TimeRange(left, right));
+      }
+    }
+
+    if (list.get(list.size() - 1).getMax() != Long.MAX_VALUE) {
+      res.add(new TimeRange(list.get(list.size() - 1).getMax() + 1, Long.MAX_VALUE));
+    }
+    return res;
   }
 }

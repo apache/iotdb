@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -35,7 +36,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class SumAggrResult extends AggregateResult {
+public class SumAggrResult extends AggregateResult implements RemovableAggregateResult {
 
   private TSDataType seriesDataType;
 
@@ -59,6 +60,7 @@ public class SumAggrResult extends AggregateResult {
       } else {
         preValue += statistics.getSumDoubleValue();
       }
+      setTime(statistics.getStartTime());
       setDoubleValue(preValue);
     }
   }
@@ -78,6 +80,7 @@ public class SumAggrResult extends AggregateResult {
       updateSum(batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -89,6 +92,7 @@ public class SumAggrResult extends AggregateResult {
         updateSum(values[i]);
       }
     }
+    setTime(timestamps[0]);
   }
 
   @Override
@@ -96,6 +100,7 @@ public class SumAggrResult extends AggregateResult {
     while (valueIterator.hasNext()) {
       updateSum(valueIterator.next());
     }
+    setTime(timestamps[0]);
   }
 
   private void updateSum(Object sumVal) throws UnSupportedDataTypeException {
@@ -139,6 +144,19 @@ public class SumAggrResult extends AggregateResult {
       SumAggrResult anotherSum = (SumAggrResult) another;
       double preValue = getDoubleValue();
       setDoubleValue(preValue + anotherSum.getDoubleValue());
+    }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    if (another instanceof SumAggrResult && ((SumAggrResult) another).isNotNull()) {
+      SumAggrResult anotherSum = (SumAggrResult) another;
+      double preValue = getDoubleValue();
+      if (preValue == anotherSum.getDoubleValue()) {
+        reset();
+      } else {
+        setDoubleValue(preValue - anotherSum.getDoubleValue());
+      }
     }
   }
 

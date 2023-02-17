@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
 import java.sql.SQLException;
 

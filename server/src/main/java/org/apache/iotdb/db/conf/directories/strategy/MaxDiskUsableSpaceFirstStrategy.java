@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
@@ -35,11 +35,11 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
-      if (!CommonUtils.hasSpace(folder)) {
+      if (!JVMCommonUtils.hasSpace(folder)) {
         continue;
       }
 
-      long space = CommonUtils.getUsableSpace(folder);
+      long space = JVMCommonUtils.getUsableSpace(folder);
       if (space > maxSpace) {
         maxSpace = space;
         maxIndex = i;

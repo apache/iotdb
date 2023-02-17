@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.query.pool;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,32 +43,19 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
     int threadCnt =
         Math.min(
             Runtime.getRuntime().availableProcessors(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
+            IoTDBDescriptor.getInstance().getConfig().getSubRawQueryThreadCount());
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              pool,
-              p -> ((ThreadPoolExecutor) p).getActiveCount(),
-              Tag.NAME.toString(),
-              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-              Tag.STATUS.toString(),
-              "running");
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              pool,
-              p -> ((ThreadPoolExecutor) p).getQueue().size(),
-              Tag.NAME.toString(),
-              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-              Tag.STATUS.toString(),
-              "waiting");
-    }
+    MetricService.getInstance().addMetricSet(new RawQueryReadTaskPoolManagerMetrics(this));
+  }
+
+  public long getActiveCount() {
+    return ((ThreadPoolExecutor) pool).getActiveCount();
+  }
+
+  public long getWaitingCount() {
+    return ((ThreadPoolExecutor) pool).getQueue().size();
   }
 
   public static RawQueryReadTaskPoolManager getInstance() {
@@ -94,7 +78,7 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
       int threadCnt =
           Math.min(
               Runtime.getRuntime().availableProcessors(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
+              IoTDBDescriptor.getInstance().getConfig().getSubRawQueryThreadCount());
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
               threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());

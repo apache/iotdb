@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -44,6 +43,10 @@ public class LongStatistics extends Statistics<Long> {
     return TSDataType.INT64;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 40;
@@ -95,12 +98,6 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToLong(minBytes);
-    maxValue = BytesUtils.bytesToLong(maxBytes);
-  }
-
-  @Override
   public Long getMinValue() {
     return minValue;
   }
@@ -127,7 +124,8 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Long statistics does not support: long sum");
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.INT64, "long sum"));
   }
 
   @Override
@@ -183,56 +181,6 @@ public class LongStatistics extends Statistics<Long> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.longToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.longToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.longToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.longToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override

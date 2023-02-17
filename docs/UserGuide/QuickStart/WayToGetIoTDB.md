@@ -35,9 +35,9 @@ To use IoTDB, you need to have:
 2. Maven >= 3.6 (Optional)
 3. Set the max open files num as 65535 to avoid "too many open files" problem.
 
->Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw.sh' or 'mvnw.cmd'.
+>Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw' or 'mvnw.cmd'.
 >
->### Installation from  binary files
+>### Installation from binary files
 
 You can download the binary file from:
 [Download page](https://iotdb.apache.org/Download/)
@@ -51,7 +51,13 @@ You can download the source code from:
 git clone https://github.com/apache/iotdb.git
 ```
 
-Under the root path of iotdb:
+After that, go to the root path of IoTDB. If you want to build the version that we have released, you need to create and check out a new branch by command `git checkout -b my_{project.version} v{project.version}`. E.g., you want to build the version `0.12.4`, you can execute this command to make it:
+
+```shell
+> git checkout -b my_0.12.4 v0.12.4
+```
+
+Then you can execute this command to build the version that you want:
 
 ```
 > mvn clean package -DskipTests
@@ -68,6 +74,15 @@ If you would like to build the IoTDB server, you can run the following command u
 ```
 
 After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
+
+If you would like to build a module, you can execute command `mvn clean package -pl {module.name} -am -DskipTests` under the root path of IoTDB.
+If you need the jar with dependencies, you can add parameter `-P get-jar-with-dependencies` after the command. E.g., If you need the jar of jdbc with dependencies, you can execute this command:
+
+```shell
+> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+```
+
+Then you can find it under the path `{module.name}/target`.
 
 ### Installation by Docker (Dockerfile)
 
@@ -120,16 +135,16 @@ $ docker exec -it <C_ID> /bin/bash
 $ (now you have enter the container): /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 
-Or,  if you have a iotdb-cli locally, execute the following command: 
+Or, if you have an iotdb-cli locally, execute the following command: 
 ```shell
 $ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
-5. If you want to write codes to insert data and query data, please add the following dependence:
+5. If you want to write codes to insert data and query data, please add the following dependencies:
 ```xml
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.13.0-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
 ```
 Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
 
-public interface IWritableMemChunkGroup {
+public interface IWritableMemChunkGroup extends WALEntryValue {
 
-  void writeValues(
+  boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
@@ -42,7 +43,8 @@ public interface IWritableMemChunkGroup {
 
   boolean contains(String measurement);
 
-  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+  boolean writeWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 
@@ -50,4 +52,6 @@ public interface IWritableMemChunkGroup {
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   long getCurrentTVListSize(String measurement);
+
+  long getMaxTime();
 }

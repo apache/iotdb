@@ -19,111 +19,153 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
-/** The utils class to load configure. Read from yaml file. */
+/** The utils class to load properties */
 public class MetricConfigDescriptor {
-  private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
-  private MetricConfig metricConfig;
-
-  public MetricConfig getMetricConfig() {
-    return metricConfig;
-  }
+  /** The metric config of metric service */
+  private final MetricConfig metricConfig;
 
   private MetricConfigDescriptor() {
-    loadProps();
-  }
-
-  public static MetricConfigDescriptor getInstance() {
-    return MetricConfigDescriptorHolder.INSTANCE;
-  }
-
-  /**
-   * find the config file path.
-   *
-   * @return the file path
-   */
-  private String getPropsUrl() {
-    String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
-    if (url == null) {
-      logger.warn(
-          "Cannot find IOTDB_CONF environment variable when loading "
-              + "config file {}, use default configuration",
-          MetricConstant.CONFIG_NAME);
-      return null;
-    } else {
-      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
-    }
-    return url;
-  }
-
-  /** Load a property file and set MetricConfig variables. If not found file, use default value. */
-  public void loadProps() {
-    String url = getPropsUrl();
-    Constructor constructor = new Constructor(MetricConfig.class);
-    Yaml yaml = new Yaml(constructor);
-    if (url != null) {
-      try (InputStream inputStream = new FileInputStream(new File(url))) {
-        logger.info("Start to read config file {}", url);
-        metricConfig = (MetricConfig) yaml.load(inputStream);
-        return;
-      } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default config.", url, e);
-      }
-    } else {
-      logger.warn("Fail to find config file, use default");
-    }
     metricConfig = new MetricConfig();
   }
 
-  public ReloadLevel loadHotProperties() {
-    String url = getPropsUrl();
-    Constructor constructor = new Constructor(MetricConfig.class);
-    Yaml yaml = new Yaml(constructor);
-    MetricConfig newMetricConfig = null;
-    if (url != null) {
-      try (InputStream inputStream = new FileInputStream(new File(url))) {
-        logger.info("Start to read config file {}", url);
-        newMetricConfig = (MetricConfig) yaml.load(inputStream);
-      } catch (IOException e) {
-        logger.warn("Fail to find config file : {}, use default", url, e);
-      }
-    } else {
-      logger.warn("Fail to find config file, use default");
-    }
+  /** Load properties into metric config */
+  public void loadProps(Properties properties) {
+    MetricConfig loadConfig = generateFromProperties(properties);
+    metricConfig.copy(loadConfig);
+  }
+
+  /**
+   * Load properties into metric config when reload service.
+   *
+   * @return reload level of metric service
+   */
+  public ReloadLevel loadHotProps(Properties properties) {
+    MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
-    if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
-        // start service or stop service.
-        reloadLevel =
-            (newMetricConfig.getEnableMetric())
-                ? ReloadLevel.START_METRIC
-                : ReloadLevel.STOP_METRIC;
-      } else if (metricConfig.getEnableMetric()) {
-        // restart reporters or restart service
-        if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
-            || !metricConfig
-                .getPredefinedMetrics()
-                .equals(newMetricConfig.getPredefinedMetrics())) {
-          reloadLevel = ReloadLevel.RESTART_METRIC;
-        } else {
-          reloadLevel = ReloadLevel.RESTART_REPORTER;
-        }
+    if (!metricConfig.equals(newMetricConfig)) {
+      if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
+          || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+          || !metricConfig
+              .getAsyncCollectPeriodInSecond()
+              .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
+        // restart metric service
+        reloadLevel = ReloadLevel.RESTART_METRIC;
+      } else if (!metricConfig
+          .getInternalReportType()
+          .equals(newMetricConfig.getInternalReportType())) {
+        // restart internal reporter
+        reloadLevel = ReloadLevel.RESTART_INTERNAL_REPORTER;
+      } else {
+        // restart reporters
+        reloadLevel = ReloadLevel.RESTART_REPORTER;
       }
       metricConfig.copy(newMetricConfig);
     }
     return reloadLevel;
   }
 
+  /** Load properties into metric config */
+  private MetricConfig generateFromProperties(Properties properties) {
+    MetricConfig loadConfig = new MetricConfig();
+
+    String reporterList =
+        getProperty(
+            "metric_reporter_list",
+            String.join(
+                ",",
+                loadConfig.getMetricReporterList().stream()
+                    .map(ReporterType::toString)
+                    .collect(Collectors.toSet())),
+            properties);
+    loadConfig.setMetricReporterList(reporterList);
+
+    loadConfig.setMetricFrameType(
+        MetricFrameType.valueOf(
+            getProperty(
+                "metric_frame_type", String.valueOf(loadConfig.getMetricFrameType()), properties)));
+
+    loadConfig.setMetricLevel(
+        MetricLevel.valueOf(
+            getProperty("metric_level", String.valueOf(loadConfig.getMetricLevel()), properties)));
+
+    loadConfig.setAsyncCollectPeriodInSecond(
+        Integer.parseInt(
+            getProperty(
+                "metric_async_collect_period",
+                String.valueOf(loadConfig.getAsyncCollectPeriodInSecond()),
+                properties)));
+
+    loadConfig.setPrometheusReporterPort(
+        Integer.parseInt(
+            getProperty(
+                "metric_prometheus_reporter_port",
+                String.valueOf(loadConfig.getPrometheusReporterPort()),
+                properties)));
+
+    MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
+    reporterConfig.setHost(
+        getProperty("iotdb_reporter_host", reporterConfig.getHost(), properties));
+
+    reporterConfig.setPort(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_port", String.valueOf(reporterConfig.getPort()), properties)));
+
+    reporterConfig.setUsername(
+        getProperty("iotdb_reporter_username", reporterConfig.getUsername(), properties));
+
+    reporterConfig.setPassword(
+        getProperty("iotdb_reporter_password", reporterConfig.getPassword(), properties));
+
+    reporterConfig.setMaxConnectionNumber(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_max_connection_number",
+                String.valueOf(reporterConfig.getMaxConnectionNumber()),
+                properties)));
+
+    reporterConfig.setLocation(
+        getProperty("iotdb_reporter_location", reporterConfig.getLocation(), properties));
+
+    reporterConfig.setPushPeriodInSecond(
+        Integer.valueOf(
+            getProperty(
+                "iotdb_reporter_push_period",
+                String.valueOf(reporterConfig.getPushPeriodInSecond()),
+                properties)));
+
+    loadConfig.setInternalReportType(
+        InternalReporterType.valueOf(
+            properties.getProperty(
+                "dn_metric_internal_reporter_type",
+                loadConfig.getInternalReportType().toString())));
+
+    return loadConfig;
+  }
+
+  /** Get property from confignode or datanode */
+  private String getProperty(String target, String defaultValue, Properties properties) {
+    return properties.getProperty(
+        "dn_" + target, properties.getProperty("cn_" + target, defaultValue));
+  }
+
   private static class MetricConfigDescriptorHolder {
     private static final MetricConfigDescriptor INSTANCE = new MetricConfigDescriptor();
+  }
+
+  public static MetricConfigDescriptor getInstance() {
+    return MetricConfigDescriptorHolder.INSTANCE;
+  }
+
+  public MetricConfig getMetricConfig() {
+    return metricConfig;
   }
 }

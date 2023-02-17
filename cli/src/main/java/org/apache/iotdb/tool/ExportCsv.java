@@ -36,9 +36,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.QuoteMode;
 import org.apache.thrift.TException;
 import org.jline.reader.LineReader;
 
@@ -46,7 +43,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -75,6 +71,9 @@ public class ExportCsv extends AbstractCsvTool {
   private static final String QUERY_COMMAND_ARGS = "q";
   private static final String QUERY_COMMAND_NAME = "queryCommand";
 
+  private static final String LINES_PER_FILE_ARGS = "linesPerFile";
+  private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
+
   private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
 
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
@@ -88,13 +87,15 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static String timestampPrecision;
 
+  private static int linesPerFile = 10000;
+
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
   /** main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
-    CommandLine commandLine;
+    CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
     hf.setOptionComparator(null); // avoid reordering
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -102,25 +103,25 @@ public class ExportCsv extends AbstractCsvTool {
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
       System.out.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     if (commandLine.hasOption(HELP_ARGS)) {
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
-
+    int exitCode = CODE_OK;
     try {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
-        return;
+        System.exit(CODE_ERROR);
       }
 
       session = new Session(host, Integer.parseInt(port), username, password);
@@ -149,23 +150,29 @@ public class ExportCsv extends AbstractCsvTool {
 
     } catch (IOException e) {
       System.out.println("Failed to operate on file, because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (ArgsErrorException e) {
       System.out.println("Invalid args: " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } catch (TException e) {
       System.out.println(
           "Can not get the timestamp precision from server because " + e.getMessage());
+      exitCode = CODE_ERROR;
     } finally {
       if (session != null) {
         try {
           session.close();
         } catch (IoTDBConnectionException e) {
+          exitCode = CODE_ERROR;
           System.out.println(
               "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
+    System.exit(exitCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
@@ -187,6 +194,9 @@ public class ExportCsv extends AbstractCsvTool {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
+    }
+    if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
+      linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
     }
   }
 
@@ -261,6 +271,14 @@ public class ExportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opQuery);
 
+    Option opLinesPerFile =
+        Option.builder(LINES_PER_FILE_ARGS)
+            .argName(LINES_PER_FILE_ARGS_NAME)
+            .hasArg()
+            .desc("Lines per dump file.")
+            .build();
+    options.addOption(opLinesPerFile);
+
     Option opHelp =
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
@@ -296,10 +314,24 @@ public class ExportCsv extends AbstractCsvTool {
    * @param index used to create dump file name
    */
   private static void dumpResult(String sql, int index) {
-    final String path = targetDirectory + targetFile + index + ".csv";
+    final String path = targetDirectory + targetFile + index;
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
-      writeCsvFile(sessionDataSet, path);
+      List<Object> headers = new ArrayList<>();
+      List<String> names = sessionDataSet.getColumnNames();
+      List<String> types = sessionDataSet.getColumnTypes();
+      if (needDataTypePrinted) {
+        for (int i = 0; i < names.size(); i++) {
+          if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
+            headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
+          } else {
+            headers.add(names.get(i));
+          }
+        }
+      } else {
+        headers.addAll(names);
+      }
+      writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
@@ -322,58 +354,46 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
+  public static void writeCsvFile(
+      SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    CSVPrinter printer =
-        CSVFormat.DEFAULT
-            .withFirstRecordAsHeader()
-            .withEscape('\\')
-            .withQuoteMode(QuoteMode.NONE)
-            .print(new PrintWriter(filePath));
-
-    List<Object> headers = new ArrayList<>();
-    List<String> names = sessionDataSet.getColumnNames();
-    List<String> types = sessionDataSet.getColumnTypes();
-
-    if (needDataTypePrinted) {
-      for (int i = 0; i < names.size(); i++) {
-        if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
-          headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
+    int fileIndex = 0;
+    boolean hasNext = true;
+    while (hasNext) {
+      int i = 0;
+      final String finalFilePath = filePath + "_" + fileIndex + ".csv";
+      final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
+      csvPrinterWrapper.printRecord(headers);
+      while (i++ < linesPerFile) {
+        if (sessionDataSet.hasNext()) {
+          RowRecord rowRecord = sessionDataSet.next();
+          if (rowRecord.getTimestamp() != 0) {
+            csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
+          }
+          rowRecord
+              .getFields()
+              .forEach(
+                  field -> {
+                    String fieldStringValue = field.getStringValue();
+                    if (!"null".equals(field.getStringValue())) {
+                      if (field.getDataType() == TSDataType.TEXT
+                          && !fieldStringValue.startsWith("root.")) {
+                        fieldStringValue = "\"" + fieldStringValue + "\"";
+                      }
+                      csvPrinterWrapper.print(fieldStringValue);
+                    } else {
+                      csvPrinterWrapper.print("");
+                    }
+                  });
+          csvPrinterWrapper.println();
         } else {
-          headers.add(names.get(i));
+          hasNext = false;
+          break;
         }
       }
-    } else {
-      headers.addAll(names);
+      fileIndex++;
+      csvPrinterWrapper.flush();
+      csvPrinterWrapper.close();
     }
-    printer.printRecord(headers);
-
-    while (sessionDataSet.hasNext()) {
-      RowRecord rowRecord = sessionDataSet.next();
-      ArrayList<String> record = new ArrayList<>();
-      if (rowRecord.getTimestamp() != 0) {
-        record.add(timeTrans(rowRecord.getTimestamp()));
-      }
-      rowRecord
-          .getFields()
-          .forEach(
-              field -> {
-                String fieldStringValue = field.getStringValue();
-                if (!"null".equals(field.getStringValue())) {
-                  if (field.getDataType() == TSDataType.TEXT
-                      && !fieldStringValue.startsWith("root.")) {
-                    fieldStringValue = "\"" + fieldStringValue + "\"";
-                  }
-                  record.add(fieldStringValue);
-                } else {
-                  record.add("");
-                }
-              });
-      printer.printRecord(record);
-    }
-
-    printer.flush();
-    printer.close();
-    return true;
   }
 }

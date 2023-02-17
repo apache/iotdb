@@ -103,8 +103,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public int readInt(ByteBuffer buffer) {
-      int r = readT(buffer);
-      return r;
+      return readT(buffer);
     }
 
     /**
@@ -219,8 +218,8 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public long readLong(ByteBuffer buffer) {
-      long r = readT(buffer);
-      return r;
+
+      return readT(buffer);
     }
 
     @Override

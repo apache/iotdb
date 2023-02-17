@@ -234,7 +234,7 @@ public class MetadataIndexConstructorTest {
       assertFalse(iterator.hasNext());
 
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
-          reader.getAllTimeseriesMetadata();
+          reader.getAllTimeseriesMetadata(false);
       for (int j = 0; j < actualDevices.size(); j++) {
         for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
           assertEquals(
@@ -376,19 +376,19 @@ public class MetadataIndexConstructorTest {
       if (singleMeasurement != null) {
         for (String measurement : singleMeasurement[i]) {
           measurements.add(measurement);
-          correctPaths.add(new Path(device, measurement).getFullPath());
+          correctPaths.add(new Path(device, measurement, true).getFullPath());
         }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
-        correctPaths.add(new Path(device, "").getFullPath());
+        correctPaths.add(new Path(device, "", true).getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
-          correctPaths.add(new Path(device, measurementName).getFullPath());
+          correctPaths.add(new Path(device, measurementName, true).getFullPath());
         }
       }
       Collections.sort(measurements);

@@ -39,8 +39,7 @@ public class SinglePrecisionDecoderV2 extends IntGorillaDecoder {
 
   @Override
   public final float readFloat(ByteBuffer in) {
-    float r = Float.intBitsToFloat(readInt(in));
-    return r;
+    return Float.intBitsToFloat(readInt(in));
   }
 
   @Override

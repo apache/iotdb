@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.pool;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 
@@ -41,7 +41,7 @@ public class QueryTaskManager extends AbstractPoolManager {
     int threadCnt =
         Math.min(
             Runtime.getRuntime().availableProcessors(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+            IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount());
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
   }
 
@@ -65,7 +65,7 @@ public class QueryTaskManager extends AbstractPoolManager {
       int threadCnt =
           Math.min(
               Runtime.getRuntime().availableProcessors(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+              IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount());
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
     }

@@ -39,8 +39,7 @@ public class DoublePrecisionDecoderV2 extends LongGorillaDecoder {
 
   @Override
   public final double readDouble(ByteBuffer in) {
-    double r = Double.longBitsToDouble(readLong(in));
-    return r;
+    return Double.longBitsToDouble(readLong(in));
   }
 
   @Override

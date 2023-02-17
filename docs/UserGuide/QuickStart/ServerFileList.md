@@ -27,9 +27,9 @@
 
 ## Configuration Files
 > under conf directory
-1. iotdb-engine.properties
+1. iotdb-datanode.properties
 2. logback.xml
-3. iotdb-env.sh
+3. datanode-env.sh
 4. jmx.access
 5. jmx.password
 6. iotdb-sync-client.properties
@@ -64,10 +64,10 @@
 > under directory basedir/wal
 
 1. {StorageGroupName}-{TsFileName}/wal1
-    + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
+    + every database has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 
 #### TsFile
-> under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
+> under directory data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/
 
 1. {time}-{version}-{mergeCnt}.tsfile
     + normal data file
@@ -85,10 +85,10 @@
     + close flag file, to mark a tsfile closing so during restarts we can continue to close it or reopen it
 
 #### Version
-> under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
+> under directory basedir/system/databases/{DatabaseName}/{DataRegionId}/{TimePartitionId} or upgrade
 
 1. Version-{version}
-    + version file, record the max version in fileName of a storage group
+    + version file, record the max version in fileName of a database
 
 #### Upgrade
 > under directory basedir/system/upgrade
@@ -97,7 +97,7 @@
     + record which files have been upgraded
 
 #### Merge
-> under directory basedir/system/storage_groups/{StorageGroup}/
+> under directory basedir/system/databases/{StorageGroup}/
 
 1. merge.mods
     + modification file generated during a merge
@@ -115,46 +115,3 @@
 1. Ration-{compressionRatioSum}-{calTimes}
     + record compression ratio of each tsfile
 
----
-
-# Cluster-Mode
-> Attention: the following files are newly added
-
-## Configuration Files
-1. iotdb-cluster.properties
-
-## State Related Files
-> under directory basedir/
-
-1. node_identifier
-    + the identifier of the local node in a cluster
-2. partitions
-    + partition table file, records the distribution of data
-3. {time}_{random}.task
-    + pullSnapshotTask file, record the slots and owners. When a node joins a cluster,
-    it will create pullSnapshotTask file to track which data to be pulled
-    + under directory basedir/raft/{nodeIdentifier}/snapshot_task/
-
-## Raft Related Files
-> under directory basedir/system/raftLog/{nodeIdentifier}/
-
-### Raft Log
-1. .data-{version}
-    + raft committed logs, only save the latest 1000(configurable) committed logs
-
-### Raft Meta
-1. logMeta
-    + raft meta, like hardState and Meta
-        + hardState: voteFor, term
-        + Meta: commitLogTerm, commitLogIndex, lastLogTerm, lastLogIndex
-        + ...
-2. logMeta.tmp
-    + temp file, to avoid damaging the logMeta when updating it
-
-### Raft Catch Up
-> under directory basedir/remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/
-
-1. {fileName}.tsfile
-    + remote TsFile, will be loaded during snapshot installation
-2. {fileName}.tsfile.mod
-    + remote TsFile modification file, will be loaded during snapshot installation

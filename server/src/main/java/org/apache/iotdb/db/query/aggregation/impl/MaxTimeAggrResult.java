@@ -111,4 +111,9 @@ public class MaxTimeAggrResult extends AggregateResult {
       setLongValue(value);
     }
   }
+
+  @Override
+  public long getTime() {
+    return getLongValue();
+  }
 }

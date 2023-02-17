@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -44,7 +44,7 @@ public class WildcardsRemover {
   private int currentLimit =
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
 
-  /** Records the path number that the MManager totally returned. */
+  /** Records the path number that the SchemaProcessor totally returned. */
   private int consumed = 0;
 
   /**
@@ -71,8 +71,8 @@ public class WildcardsRemover {
       throws LogicalOptimizeException {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
-          IoTDB.metaManager.getMeasurementPathsWithAlias(
-              path, currentLimit, currentOffset, isPrefixMatch);
+          IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
+              path, currentLimit, currentOffset, isPrefixMatch, false);
       consumed += pair.right;
       currentOffset -= Math.min(currentOffset, pair.right);
       currentLimit -= pair.left.size();
@@ -123,7 +123,11 @@ public class WildcardsRemover {
     return remainingExpressions;
   }
 
-  /** @return should break the loop or not */
+  /**
+   * Check whether the path number is over limit.
+   *
+   * @return should break the loop or not
+   */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
     if (resultColumns.size()

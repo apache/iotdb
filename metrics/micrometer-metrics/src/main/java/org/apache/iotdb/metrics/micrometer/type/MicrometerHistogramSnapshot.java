@@ -21,8 +21,6 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.Arrays;
 
 public class MicrometerHistogramSnapshot implements HistogramSnapshot {
@@ -81,10 +79,5 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   public long getMin() {
     // need distributionSummary to push 0 percentiles
     return (long) getValue(0.0);
-  }
-
-  @Override
-  public void dump(OutputStream output) {
-    this.histogramSnapshot.outputSummary((PrintStream) output, 100);
   }
 }
