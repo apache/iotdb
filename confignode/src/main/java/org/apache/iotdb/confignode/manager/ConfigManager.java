@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -53,32 +55,30 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
+import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
@@ -146,13 +147,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -453,7 +454,6 @@ public class ConfigManager implements IManager {
     clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
-    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
     return clusterParameters;
   }
 
@@ -501,11 +501,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
+  public DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan) {
     TSStatus status = confirmLeader();
-    CountStorageGroupResp result = new CountStorageGroupResp();
+    CountDatabaseResp result = new CountDatabaseResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.countMatchedStorageGroups(countStorageGroupPlan);
+      return clusterSchemaManager.countMatchedStorageGroups(countDatabasePlan);
     } else {
       result.setStatus(status);
     }
@@ -513,22 +513,32 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getStorageGroupReq) {
+  public DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
     } else {
-      StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
+      DatabaseSchemaResp dataSet = new DatabaseSchemaResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public synchronized TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setStorageGroup(setStorageGroupPlan);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan);
     } else {
       return status;
     }
@@ -539,14 +549,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // remove wild
-      Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
-          getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
+      Map<String, TDatabaseSchema> deleteStorageSchemaMap =
+          getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
       if (deleteStorageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
             String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
       }
-      ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
+      ArrayList<TDatabaseSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
     } else {
@@ -583,7 +593,7 @@ public class ConfigManager implements IManager {
     // Build GetSchemaPartitionPlan
     Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    List<String> allStorageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<String> allStorageGroups = getClusterSchemaManager().getDatabaseNames();
     List<PartialPath> allStorageGroupPaths = new ArrayList<>();
     for (String storageGroup : allStorageGroups) {
       try {
@@ -641,7 +651,7 @@ public class ConfigManager implements IManager {
     }
 
     List<String> devicePaths = patternTree.getAllDevicePatterns();
-    List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+    List<String> storageGroups = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
@@ -665,12 +675,58 @@ public class ConfigManager implements IManager {
         partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    LOGGER.debug(
-        "GetOrCreateSchemaPartition receive devicePaths: {}, return TSchemaPartitionResp: {}",
-        devicePaths,
-        resp);
+    if (CONF.isEnablePrintingNewlyCreatedPartition()) {
+      printNewCreatedSchemaPartition(devicePaths, resp);
+    }
 
     return resp;
+  }
+
+  private void printNewCreatedSchemaPartition(
+      List<String> devicePaths, TSchemaPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
+    StringBuilder devicePathString = new StringBuilder("{");
+    for (String devicePath : devicePaths) {
+      devicePathString.append(lineSeparator).append("\t").append(devicePath).append(",");
+    }
+    devicePathString.append(lineSeparator).append("}");
+
+    StringBuilder schemaPartitionRespString = new StringBuilder("{");
+    schemaPartitionRespString
+        .append(lineSeparator)
+        .append("\tTSStatus=")
+        .append(resp.getStatus().getCode())
+        .append(",");
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        resp.getSchemaPartitionTable();
+    for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> databaseEntry :
+        schemaPartitionTable.entrySet()) {
+      String database = databaseEntry.getKey();
+      schemaPartitionRespString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
+      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> slotEntry :
+          databaseEntry.getValue().entrySet()) {
+        schemaPartitionRespString
+            .append(lineSeparator)
+            .append("\t\t")
+            .append(slotEntry.getKey())
+            .append(", ")
+            .append(slotEntry.getValue())
+            .append(",");
+      }
+      schemaPartitionRespString.append(lineSeparator).append("\t},");
+    }
+    schemaPartitionRespString.append(lineSeparator).append("}");
+
+    LOGGER.info(
+        "[GetOrCreateSchemaPartition]:"
+            + lineSeparator
+            + "Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+        devicePathString,
+        schemaPartitionRespString);
   }
 
   @Override
@@ -724,7 +780,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TDataPartitionTableResp getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq) {
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan) {
     // Construct empty response
     TDataPartitionTableResp resp = new TDataPartitionTableResp();
 
@@ -734,16 +790,87 @@ public class ConfigManager implements IManager {
     }
 
     DataPartitionResp queryResult =
-        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
-
+        partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
     resp = queryResult.convertToTDataPartitionTableResp();
 
-    LOGGER.debug(
-        "GetOrCreateDataPartition success. receive PartitionSlotsMap: {}, return: {}",
-        getOrCreateDataPartitionReq.getPartitionSlotsMap(),
-        resp);
+    if (CONF.isEnablePrintingNewlyCreatedPartition()) {
+      printNewCreatedDataPartition(getOrCreateDataPartitionPlan, resp);
+    }
 
     return resp;
+  }
+
+  private void printNewCreatedDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
+    final String lineSeparator = System.lineSeparator();
+    StringBuilder partitionSlotsMapString = new StringBuilder("{");
+    for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> databaseEntry :
+        getOrCreateDataPartitionPlan.getPartitionSlotsMap().entrySet()) {
+      String database = databaseEntry.getKey();
+      partitionSlotsMapString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
+      for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> slotEntry :
+          databaseEntry.getValue().entrySet()) {
+        partitionSlotsMapString
+            .append(lineSeparator)
+            .append("\t\t")
+            .append(slotEntry.getKey())
+            .append(",")
+            .append(slotEntry.getValue());
+      }
+      partitionSlotsMapString.append(lineSeparator).append("\t},");
+    }
+    partitionSlotsMapString.append(lineSeparator).append("}");
+
+    StringBuilder dataPartitionRespString = new StringBuilder("{");
+    dataPartitionRespString
+        .append(lineSeparator)
+        .append("\tTSStatus=")
+        .append(resp.getStatus().getCode())
+        .append(",");
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        dataPartitionTable = resp.getDataPartitionTable();
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        databaseEntry : dataPartitionTable.entrySet()) {
+      String database = databaseEntry.getKey();
+      dataPartitionRespString
+          .append(lineSeparator)
+          .append("\tDatabase=")
+          .append(database)
+          .append(": {");
+      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          seriesSlotEntry : databaseEntry.getValue().entrySet()) {
+        dataPartitionRespString
+            .append(lineSeparator)
+            .append("\t\t")
+            .append(seriesSlotEntry.getKey())
+            .append(": {");
+        for (Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> timeSlotEntry :
+            seriesSlotEntry.getValue().entrySet()) {
+          dataPartitionRespString
+              .append(lineSeparator)
+              .append("\t\t\t")
+              .append(timeSlotEntry.getKey())
+              .append(", ")
+              .append(timeSlotEntry.getValue())
+              .append(",");
+        }
+        dataPartitionRespString.append(lineSeparator).append("\t\t},");
+      }
+      dataPartitionRespString.append(lineSeparator).append("\t}");
+    }
+    dataPartitionRespString.append(lineSeparator).append("}");
+
+    LOGGER.info(
+        "[GetOrCreateDataPartition]:"
+            + lineSeparator
+            + "Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        partitionSlotsMapString,
+        dataPartitionRespString);
   }
 
   private TSStatus confirmLeader() {
@@ -952,10 +1079,6 @@ public class ConfigManager implements IManager {
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
-    }
-
-    if (clusterParameters.getLeastDataRegionGroupNum() != CONF.getLeastDataRegionGroupNum()) {
-      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
     }
 
     return null;
@@ -1200,12 +1323,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
+  public TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return getClusterSchemaManager().showStorageGroup(getStorageGroupPlan);
     } else {
-      return new TShowStorageGroupResp().setStatus(status);
+      return new TShowDatabaseResp().setStatus(status);
     }
   }
 
@@ -1234,7 +1357,7 @@ public class ConfigManager implements IManager {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (!clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString())) {
+      if (!clusterSchemaManager.getDatabaseNames().contains(storageGroup.toString())) {
         noExistSg.add(storageGroup);
       }
     }

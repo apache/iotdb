@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
@@ -50,25 +51,20 @@ public class LocalSinkHandleTest {
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
+    // Construct SinkHandle.
+    LocalSinkHandle localSinkHandle =
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
             localFragmentInstanceId,
-            remoteFragmentInstanceId,
             remotePlanNodeId,
             queue,
             Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
 
-    // Construct SinkHandle.
-    LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     localSourceHandle.isBlocked();
     // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding
@@ -91,7 +87,8 @@ public class LocalSinkHandleTest {
     Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
             Long.MAX_VALUE);
@@ -107,7 +104,12 @@ public class LocalSinkHandleTest {
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .free(queryId, localFragmentInstanceId.getInstanceId(), remotePlanNodeId, mockTsBlockSize);
+        .free(
+            queryId,
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
+            remotePlanNodeId,
+            mockTsBlockSize);
 
     // Set no-more-TsBlocks.
     localSinkHandle.setNoMoreTsBlocks();
@@ -137,25 +139,20 @@ public class LocalSinkHandleTest {
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
+    // Construct SinkHandle.
+    LocalSinkHandle localSinkHandle =
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
             localFragmentInstanceId,
-            remoteFragmentInstanceId,
             remotePlanNodeId,
             queue,
             Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
 
-    // Construct SinkHandle.
-    LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     localSourceHandle.isBlocked();
     // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding
@@ -179,7 +176,8 @@ public class LocalSinkHandleTest {
     Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
             Long.MAX_VALUE);

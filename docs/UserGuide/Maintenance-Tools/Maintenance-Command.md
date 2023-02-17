@@ -134,9 +134,9 @@ Note：
 
 ### ResultSet
 Time：Start time of query，DataType is `INT64`  
-QueryId：Cluster - level unique query identifier，DataType is `TEXT`  
+QueryId：Cluster - level unique query identifier，DataType is `TEXT`, format is `yyyyMMdd_HHmmss_index_dataNodeId`  
 DataNodeId：DataNode which do execution of query，DataType is `INT32`  
-ElapsedTime：Execution time of query，`second` for unit，DataType is `FLOAT`  
+ElapsedTime：Execution time of query (Imperfectly accurate)，`second` for unit，DataType is `FLOAT`  
 Statement：Origin string of query，DataType is `TEXT`
 
 ```
@@ -175,6 +175,11 @@ SQL result：
 SQL string：
 ```SQL
 SHOW QUERIES limit 5
+```
+
+Equivalent to
+```SQL
+SHOW QUERIES ORDER BY ElapsedTime DESC limit 5
 ```
 
 SQL result：

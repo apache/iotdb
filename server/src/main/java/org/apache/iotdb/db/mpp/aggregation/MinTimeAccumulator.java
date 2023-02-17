@@ -37,18 +37,18 @@ public class MinTimeAccumulator implements Accumulator {
   // Column should be like: | ControlColumn | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateMinTime(column[1].getLong(i));
         return i;

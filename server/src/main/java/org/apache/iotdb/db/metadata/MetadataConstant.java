@@ -39,6 +39,7 @@ public class MetadataConstant {
   public static final String ROOT = "root";
   public static final String METADATA_TXT_LOG = "mlog.txt";
   public static final String METADATA_LOG = "mlog.bin";
+  public static final String METADATA_LOG_DESCRIPTION = "mlog.description";
   public static final String TAG_LOG = "tlog.txt";
   public static final String TEMPLATE_FILE = "template_log.bin";
   public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";

@@ -73,7 +73,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   protected String getDatabaseName() {
     if (databaseName == null) {
       databaseName =
-          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((DataDriverContext) operatorContext.getDriverContext())
               .getDataRegion()
               .getDatabaseName();
     }

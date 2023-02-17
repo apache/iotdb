@@ -45,7 +45,6 @@ public enum ThreadName {
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
   QUERY_SERVICE("Query"),
-  SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   TTL_CHECK_SERVICE("TTL-CHECK"),
@@ -62,8 +61,9 @@ public enum ThreadName {
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
-
-  ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool");
+  ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+  SCHEMA_REGION_RELEASE_POOL("SchemaRegion-Release-Task"),
+  SCHEMA_REGION_FLUSH_POOL("SchemaRegion-Flush-Task");
 
   private final String name;
 

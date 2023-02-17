@@ -37,10 +37,9 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -191,12 +190,10 @@ public class PartitionCache {
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
-        TStorageGroupSchemaResp storageGroupSchemaResp =
-            client.getMatchedStorageGroupSchemas(ROOT_PATH);
+        TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          Set<String> storageGroupNames =
-              storageGroupSchemaResp.getStorageGroupSchemaMap().keySet();
+          Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
         }
@@ -236,10 +233,9 @@ public class PartitionCache {
         // try to create databases one by one until done or one database fail
         Set<String> successFullyCreatedStorageGroup = new HashSet<>();
         for (String storageGroupName : storageGroupNamesNeedCreated) {
-          TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+          TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
-          TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-          TSStatus tsStatus = client.setStorageGroup(req);
+          TSStatus tsStatus = client.setDatabase(storageGroupSchema);
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
           } else {
@@ -749,9 +745,9 @@ public class PartitionCache {
         String storageGroupName = entry1.getKey();
         if (null != storageGroupName) {
           DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroupName);
-          if (null == result) {
+          boolean needToUpdateCache = (null == result);
+          if (needToUpdateCache) {
             result = new DataPartitionTable();
-            dataPartitionCache.put(storageGroupName, result);
           }
           Map<TSeriesPartitionSlot, SeriesPartitionTable>
               seriesPartitionSlotSeriesPartitionTableMap = result.getDataPartitionMap();
@@ -774,6 +770,9 @@ public class PartitionCache {
                 result3.putAll(entry2.getValue());
               }
             }
+          }
+          if (needToUpdateCache) {
+            dataPartitionCache.put(storageGroupName, result);
           }
         }
       }

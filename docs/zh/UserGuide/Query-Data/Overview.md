@@ -33,7 +33,9 @@ SELECT [LAST] selectExpr [, selectExpr] ...
     [GROUP BY {
         ([startTime, endTime), interval [, slidingStep]) |
         LEVEL = levelNum [, levelNum] ... |
-        TAGS(tagKey [, tagKey] ... )
+        TAGS(tagKey [, tagKey] ... |
+        VARIATION(expression[,delta][,ignoreNull=true/false])|
+        SERIES(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
@@ -73,7 +75,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 ### `GROUP BY` 子句
 
 - `GROUP BY` 子句指定对序列进行分段或分组聚合的方式。
-- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前仅支持**按时间区间分段**，未来将支持更多分段方式。
+- 分段聚合是指按照时间维度，针对同时间序列中不同数据点之间的时间关系，对数据在行的方向进行分段，每个段得到一个聚合值。目前支持**按时间区间分段**、**按事件分段**和**按事件条件分段**，未来将支持更多分段方式。
 - 分组聚合是指针对不同时间序列，在时间序列的潜在业务属性上分组，每个组包含若干条时间序列，每个组得到一个聚合值。支持**按路径层级分组**和**按序列标签分组**两种分组方式。
 - 分段聚合和分组聚合可以混合使用。
 - 详细说明及示例见文档 [分段分组聚合](./Group-By.md) 。
@@ -270,7 +272,13 @@ Total line number = 10
 It costs 0.016s
 ```
 
-## 使用方式
+## 查询执行接口
+
+在 IoTDB 中，提供两种方式执行数据查询操作：
+- 使用 IoTDB-SQL 执行查询。
+- 常用查询的高效执行接口，包括时间序列原始数据范围查询、最新点查询、简单聚合查询。
+
+### 使用 IoTDB-SQL 执行查询
 
 数据查询语句支持在 SQL 命令行终端、JDBC、JAVA / C++ / Python / Go 等编程语言 API、RESTful API 中使用。
 
@@ -285,3 +293,47 @@ It costs 0.016s
   ```
 
 - 在 RESTful API 中使用，详见 [HTTP API](../API/RestService.md) 。
+
+### 常用查询的高效执行接口
+
+各编程语言的 API 为常用的查询提供了高效执行接口，可以省去 SQL 解析等操作的耗时。包括：
+
+* 时间序列原始数据范围查询：
+  - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+
+```java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
+```
+
+* 最新点查询：
+  - 查询最后一条时间戳大于等于某个时间点的数据。
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
+```
+
+* 聚合查询：
+  - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+  - 支持按照时间区间分段查询。
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
+```

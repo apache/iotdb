@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -47,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -380,12 +380,12 @@ public class QueryLogicalPlanUtil {
                   ((AlignedPath) schemaMap.get("root.sg.d2.a")).getSchemaList()),
               Arrays.asList(
                   new AggregationDescriptor(
-                      AggregationType.SUM.name().toLowerCase(),
+                      TAggregationType.SUM.name().toLowerCase(),
                       AggregationStep.SINGLE,
                       Collections.singletonList(
                           new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
                   new AggregationDescriptor(
-                      AggregationType.FIRST_VALUE.name().toLowerCase(),
+                      TAggregationType.FIRST_VALUE.name().toLowerCase(),
                       AggregationStep.SINGLE,
                       Collections.singletonList(
                           new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
@@ -400,7 +400,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.SUM.name().toLowerCase(),
+                    TAggregationType.SUM.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
@@ -412,7 +412,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.SUM.name().toLowerCase(),
+                    TAggregationType.SUM.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
@@ -424,7 +424,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.FIRST_VALUE.name().toLowerCase(),
+                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -436,7 +436,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.FIRST_VALUE.name().toLowerCase(),
+                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
@@ -448,7 +448,7 @@ public class QueryLogicalPlanUtil {
             new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
@@ -460,7 +460,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
@@ -472,7 +472,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -515,17 +515,17 @@ public class QueryLogicalPlanUtil {
                   ((AlignedPath) schemaMap.get("root.sg.d2.a")).getSchemaList()),
               Arrays.asList(
                   new AggregationDescriptor(
-                      AggregationType.MAX_VALUE.name().toLowerCase(),
+                      TAggregationType.MAX_VALUE.name().toLowerCase(),
                       AggregationStep.PARTIAL,
                       Collections.singletonList(
                           new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
                   new AggregationDescriptor(
-                      AggregationType.LAST_VALUE.name().toLowerCase(),
+                      TAggregationType.LAST_VALUE.name().toLowerCase(),
                       AggregationStep.PARTIAL,
                       Collections.singletonList(
                           new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
                   new AggregationDescriptor(
-                      AggregationType.COUNT.name().toLowerCase(),
+                      TAggregationType.COUNT.name().toLowerCase(),
                       AggregationStep.PARTIAL,
                       Collections.singletonList(
                           new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
@@ -540,7 +540,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
@@ -552,7 +552,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
@@ -564,12 +564,12 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
@@ -581,12 +581,12 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -607,43 +607,55 @@ public class QueryLogicalPlanUtil {
             sourceNodeList,
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
+                    1,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
             null,
             Ordering.DESC);
@@ -670,7 +682,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
@@ -682,12 +694,12 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -705,7 +717,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
@@ -717,12 +729,12 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
@@ -820,32 +832,32 @@ public class QueryLogicalPlanUtil {
             Collections.singletonList(filterNode),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -858,25 +870,31 @@ public class QueryLogicalPlanUtil {
             Collections.singletonList(aggregationNode),
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
                 new CrossSeriesAggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
             null,
             Ordering.DESC);
@@ -936,17 +954,17 @@ public class QueryLogicalPlanUtil {
             Collections.singletonList(filterNode1),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
@@ -994,17 +1012,17 @@ public class QueryLogicalPlanUtil {
             Collections.singletonList(filterNode2),
             Arrays.asList(
                 new AggregationDescriptor(
-                    AggregationType.COUNT.name().toLowerCase(),
+                    TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
-                    AggregationType.MAX_VALUE.name().toLowerCase(),
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
                 new AggregationDescriptor(
-                    AggregationType.LAST_VALUE.name().toLowerCase(),
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),

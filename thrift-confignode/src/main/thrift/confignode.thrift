@@ -145,53 +145,51 @@ struct TSetDataNodeStatusReq {
   2: required string status
 }
 
-// StorageGroup
-struct TSetStorageGroupReq {
-  1: required TStorageGroupSchema storageGroup
-}
-
-struct TDeleteStorageGroupReq {
+// Database
+struct TDeleteDatabaseReq {
   1: required string prefixPath
 }
 
-struct TDeleteStorageGroupsReq {
+struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
 }
 
 struct TSetSchemaReplicationFactorReq {
-  1: required string storageGroup
+  1: required string database
   2: required i32 schemaReplicationFactor
 }
 
 struct TSetDataReplicationFactorReq {
-  1: required string storageGroup
+  1: required string database
   2: required i32 dataReplicationFactor
 }
 
 struct TSetTimePartitionIntervalReq {
-  1: required string storageGroup
+  1: required string database
   2: required i64 timePartitionInterval
 }
 
-struct TCountStorageGroupResp {
+struct TCountDatabaseResp {
   1: required common.TSStatus status
   2: optional i32 count
 }
 
-struct TStorageGroupSchemaResp {
+struct TDatabaseSchemaResp {
   1: required common.TSStatus status
-  // map<string, TStorageGroupSchema>
-  2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
+  // map<string, TDatabaseSchema>
+  2: optional map<string, TDatabaseSchema> databaseSchemaMap
 }
 
-struct TStorageGroupSchema {
+struct TDatabaseSchema {
   1: required string name
   2: optional i64 TTL
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupNum
-  7: optional i32 maxDataRegionGroupNum
+  6: optional i32 minSchemaRegionGroupNum
+  7: optional i32 maxSchemaRegionGroupNum
+  8: optional i32 minDataRegionGroupNum
+  9: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -201,7 +199,7 @@ struct TSchemaPartitionReq {
 
 struct TSchemaPartitionTableResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TConsensusGroupId>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, TConsensusGroupId>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TConsensusGroupId>> schemaPartitionTable
 }
 
@@ -213,7 +211,7 @@ struct TSchemaNodeManagementReq {
 
 struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
   3: optional set<common.TSchemaNode> matchedNode
 }
@@ -226,18 +224,18 @@ struct TTimeSlotList {
 
 // Data
 struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
   1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
 struct TGetRegionIdReq {
-    1: required string storageGroup
+    1: required string database
     2: required common.TConsensusGroupType type
     3: optional common.TSeriesPartitionSlot seriesSlotId
     4: optional string deviceId
@@ -251,7 +249,7 @@ struct TGetRegionIdResp {
 }
 
 struct TGetTimeSlotListReq {
-    1: required string storageGroup
+    1: required string database
     2: required common.TSeriesPartitionSlot seriesSlotId
     3: optional i64 startTime
     4: optional i64 endTime
@@ -263,7 +261,7 @@ struct TGetTimeSlotListResp {
 }
 
 struct TGetSeriesSlotListReq {
-    1: required string storageGroup
+    1: required string database
     2: optional common.TConsensusGroupType type
 }
 
@@ -339,10 +337,9 @@ struct TClusterParameters {
   9: required string readConsistencyLevel
   10: required double schemaRegionPerDataNode
   11: required double dataRegionPerProcessor
-  12: required i32 leastDataRegionGroupNum
-  13: required i32 seriesPartitionSlotNum
-  14: required string seriesPartitionExecutorClass
-  15: required double diskSpaceWarningThreshold
+  12: required i32 seriesPartitionSlotNum
+  13: required string seriesPartitionExecutorClass
+  14: required double diskSpaceWarningThreshold
 }
 
 struct TConfigNodeRegisterReq {
@@ -485,32 +482,36 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
-// Show storageGroup
-struct TStorageGroupInfo {
+// Show Database
+struct TDatabaseInfo {
   1: required string name
   2: required i64 TTL
   3: required i32 schemaReplicationFactor
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 dataRegionNum
+  7: required i32 minSchemaRegionNum
+  8: required i32 maxSchemaRegionNum
+  9: required i32 dataRegionNum
+  10: required i32 minDataRegionNum
+  11: required i32 maxDataRegionNum
 }
 
-struct TShowStorageGroupResp {
+struct TShowDatabaseResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, TStorageGroupInfo>
-  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
+  // map<DatabaseName, TDatabaseInfo>
+  2: optional map<string, TDatabaseInfo> databaseInfoMap
 }
 
 // Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
-  2: optional list<string> storageGroups
+  2: optional list<string> databases
 }
 
 struct TRegionInfo {
   1: required common.TConsensusGroupId consensusGroupId
-  2: required string storageGroup
+  2: required string database
   3: required i32 dataNodeId
   4: required string clientRpcIp
   5: required i32 clientRpcPort
@@ -518,6 +519,7 @@ struct TRegionInfo {
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType
+  10: optional i64 createTime
 }
 
 struct TShowRegionResp {
@@ -772,54 +774,66 @@ service IConfigNodeRPCService {
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
-  // StorageGroup
+  // Database
   // ======================================================
 
   /**
-   * Set a new StorageGroup, all fields in TStorageGroupSchema can be customized
+   * Set a new Databse, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
-   * @return SUCCESS_STATUS if the new StorageGroup set successfully
-   *         PATH_ILLEGAL if the new StorageGroup's name is illegal
-   *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup already exist
+   * @return SUCCESS_STATUS if the new Database set successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_ALREADY_EXISTS if the Database already exist
    */
-  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
+  common.TSStatus setDatabase(TDatabaseSchema databaseSchema)
 
   /**
-   * Generate a DeleteStorageGroupProcedure to delete a specific StorageGroup
+   * Alter a Database's schema, including
+   * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
    *
-   * @return SUCCESS_STATUS if the DeleteStorageGroupProcedure submitted successfully
-   *         TIMESERIES_NOT_EXIST if the specific StorageGroup doesn't exist
-   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteStorageGroupProcedure
+   * @return SUCCESS_STATUS if the specified DatabaseSchema is altered successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
-  common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+  common.TSStatus alterDatabase(TDatabaseSchema databaseSchema)
 
   /**
-   * Generate a set of DeleteStorageGroupProcedure to delete some specific StorageGroups
+   * Generate a DeleteDatabaseProcedure to delete a specified Database
    *
-   * @return SUCCESS_STATUS if the DeleteStorageGroupProcedure submitted successfully
-   *         TIMESERIES_NOT_EXIST if the specific StorageGroup doesn't exist
-   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteStorageGroupProcedure
+   * @return SUCCESS_STATUS if the DeleteDatabaseProcedure submitted successfully
+   *         TIMESERIES_NOT_EXIST if the specific Database doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteDatabaseProcedure
    */
-  common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
+  common.TSStatus deleteDatabase(TDeleteDatabaseReq req)
 
-  /** Update the specific StorageGroup's TTL */
+  /**
+   * Generate a set of DeleteDatabaseProcedure to delete some specific Databases
+   *
+   * @return SUCCESS_STATUS if the DeleteDatabaseProcedure submitted successfully
+   *         TIMESERIES_NOT_EXIST if the specific Database doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteDatabaseProcedure
+   */
+  common.TSStatus deleteDatabases(TDeleteDatabasesReq req)
+
+  /** Update the specific Database's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)
 
-  /** Update the specific StorageGroup's SchemaReplicationFactor */
+  /** Update the specific Database's SchemaReplicationFactor */
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
-  /** Update the specific StorageGroup's DataReplicationFactor */
+  /** Update the specific Database's DataReplicationFactor */
   common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
 
-  /** Update the specific StorageGroup's PartitionInterval */
+  /** Update the specific Database's PartitionInterval */
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  /** Count the matched StorageGroups */
-  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
+  /** Count the matched Databases */
+  TCountDatabaseResp countMatchedDatabases(list<string> DatabasePathPattern)
 
-  /** Get the matched StorageGroups' TStorageGroupSchema */
-  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
+  /** Get the matched Databases' TDatabaseSchema */
+  TDatabaseSchemaResp getMatchedDatabaseSchemas(list<string> DatabasePathPattern)
 
   // ======================================================
   // SchemaPartition
@@ -839,7 +853,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the SchemaPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new SchemaRegions
-   *         STORAGE_GROUP_NOT_EXIST if some StorageGroups don't exist
+   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
@@ -869,7 +883,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the DataPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new DataRegions
-   *         STORAGE_GROUP_NOT_EXIST if some StorageGroups don't exist
+   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
@@ -1084,8 +1098,8 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
 
-  /** Show cluster StorageGroups' information */
-  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
+  /** Show cluster Databases' information */
+  TShowDatabaseResp showDatabase(list<string> databasePathPattern)
 
   /**
    * Show the matched cluster Regions' information

@@ -26,6 +26,8 @@ import io.airlift.units.Duration;
 /** The execution context of a {@link DriverTask} */
 public class ExecutionContext {
   private CpuTimer.CpuDuration cpuDuration;
+
+  private long scheduledTimeInNanos;
   private Duration timeSlice;
 
   public CpuTimer.CpuDuration getCpuDuration() {
@@ -34,6 +36,14 @@ public class ExecutionContext {
 
   public void setCpuDuration(CpuTimer.CpuDuration cpuDuration) {
     this.cpuDuration = cpuDuration;
+  }
+
+  public long getScheduledTimeInNanos() {
+    return scheduledTimeInNanos;
+  }
+
+  public void setScheduledTimeInNanos(long scheduledTimeInNanos) {
+    this.scheduledTimeInNanos = scheduledTimeInNanos;
   }
 
   public Duration getTimeSlice() {

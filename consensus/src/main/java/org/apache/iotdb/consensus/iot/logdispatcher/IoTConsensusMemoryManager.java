@@ -30,6 +30,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class IoTConsensusMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(IoTConsensusMemoryManager.class);
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
+  private final AtomicLong queueMemorySizeInByte = new AtomicLong(0);
+  private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
   private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
   private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
 
@@ -61,11 +63,23 @@ public class IoTConsensusMemoryManager {
             return memorySize + size;
           }
         });
+    if (result.get()) {
+      if (fromQueue) {
+        queueMemorySizeInByte.addAndGet(size);
+      } else {
+        syncMemorySizeInByte.addAndGet(size);
+      }
+    }
     return result.get();
   }
 
-  public void free(long size) {
+  public void free(long size, boolean fromQueue) {
     long currentUsedMemory = memorySizeInByte.addAndGet(-size);
+    if (fromQueue) {
+      queueMemorySizeInByte.addAndGet(-size);
+    } else {
+      syncMemorySizeInByte.addAndGet(-size);
+    }
     logger.debug(
         "{} free {} bytes, total memory size: {} bytes.",
         Thread.currentThread().getName(),
@@ -80,6 +94,14 @@ public class IoTConsensusMemoryManager {
 
   long getMemorySizeInByte() {
     return memorySizeInByte.get();
+  }
+
+  long getQueueMemorySizeInByte() {
+    return queueMemorySizeInByte.get();
+  }
+
+  long getSyncMemorySizeInByte() {
+    return syncMemorySizeInByte.get();
   }
 
   private static final IoTConsensusMemoryManager INSTANCE = new IoTConsensusMemoryManager();

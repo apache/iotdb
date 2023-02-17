@@ -27,12 +27,22 @@ public class SchemaDriverContext extends DriverContext {
   private final ISchemaRegion schemaRegion;
 
   public SchemaDriverContext(
-      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
-    super(fragmentInstanceContext);
+      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion, int pipelineId) {
+    super(fragmentInstanceContext, pipelineId);
     this.schemaRegion = schemaRegion;
+  }
+
+  public SchemaDriverContext(SchemaDriverContext parentContext, int pipelineId) {
+    super(parentContext.getFragmentInstanceContext(), pipelineId);
+    this.schemaRegion = parentContext.schemaRegion;
   }
 
   public ISchemaRegion getSchemaRegion() {
     return schemaRegion;
+  }
+
+  @Override
+  public DriverContext createSubDriverContext(int pipelineId) {
+    return new SchemaDriverContext(this, pipelineId);
   }
 }

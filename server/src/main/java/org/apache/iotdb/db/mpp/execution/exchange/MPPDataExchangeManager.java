@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -42,9 +43,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -53,9 +51,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_TASK_SERVER;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.GET_DATA_BLOCK_NUM_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_SERVER;
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -117,6 +118,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             GET_DATA_BLOCK_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(
+            GET_DATA_BLOCK_NUM_SERVER, req.getEndSequenceId() - req.getStartSequenceId());
       }
     }
 
@@ -149,6 +152,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER, e.getEndSequenceId() - e.getStartSequenceId());
       }
     }
 
@@ -162,18 +167,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getTargetPlanNodeId(),
             e.getTargetFragmentInstanceId(),
             e.getSourceFragmentInstanceId());
-        if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
-            || !sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .containsKey(e.getTargetPlanNodeId())
-            || sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .get(e.getTargetPlanNodeId())
-                .isAborted()
-            || sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .get(e.getTargetPlanNodeId())
-                .isFinished()) {
+
+        Map<String, ISourceHandle> sourceHandleMap =
+            sourceHandles.get(e.getTargetFragmentInstanceId());
+        SourceHandle sourceHandle =
+            sourceHandleMap == null
+                ? null
+                : (SourceHandle) sourceHandleMap.get(e.getTargetPlanNodeId());
+
+        if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
           // In some scenario, when the SourceHandle sends the data block ACK event, its upstream
           // may
           // have already been stopped. For example, in the query whit LimitOperator, the downstream
@@ -184,13 +186,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           return;
         }
 
-        SourceHandle sourceHandle =
-            (SourceHandle)
-                sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
         sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(SEND_NEW_DATA_BLOCK_NUM_SERVER, e.getBlockSizes().size());
       }
     }
 
@@ -203,28 +203,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getTargetPlanNodeId(),
             e.getTargetFragmentInstanceId(),
             e.getSourceFragmentInstanceId());
-        if (!sourceHandles.containsKey(e.getTargetFragmentInstanceId())
-            || !sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .containsKey(e.getTargetPlanNodeId())
-            || sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .get(e.getTargetPlanNodeId())
-                .isAborted()
-            || sourceHandles
-                .get(e.getTargetFragmentInstanceId())
-                .get(e.getTargetPlanNodeId())
-                .isFinished()) {
+
+        Map<String, ISourceHandle> sourceHandleMap =
+            sourceHandles.get(e.getTargetFragmentInstanceId());
+        SourceHandle sourceHandle =
+            sourceHandleMap == null
+                ? null
+                : (SourceHandle) sourceHandleMap.get(e.getTargetPlanNodeId());
+
+        if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
           logger.debug(
               "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
               e.getTargetFragmentInstanceId());
           return;
         }
-        SourceHandle sourceHandle =
-            (SourceHandle)
-                sourceHandles
-                    .getOrDefault(e.getTargetFragmentInstanceId(), Collections.emptyMap())
-                    .get(e.getTargetPlanNodeId());
+
         sourceHandle.setNoMoreTsBlocks(e.getLastSequenceId());
       }
     }
@@ -242,18 +235,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
       logger.debug("[ScHListenerOnFinish]");
-      if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
-          || !sourceHandles
-              .get(sourceHandle.getLocalFragmentInstanceId())
-              .containsKey(sourceHandle.getLocalPlanNodeId())) {
+      Map<String, ISourceHandle> sourceHandleMap =
+          sourceHandles.get(sourceHandle.getLocalFragmentInstanceId());
+      if (sourceHandleMap == null
+          || sourceHandleMap.remove(sourceHandle.getLocalPlanNodeId()) == null) {
         logger.debug("[ScHListenerAlreadyReleased]");
-      } else {
-        sourceHandles
-            .get(sourceHandle.getLocalFragmentInstanceId())
-            .remove(sourceHandle.getLocalPlanNodeId());
       }
-      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
-          && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+
+      if (sourceHandleMap != null && sourceHandleMap.isEmpty()) {
         sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
     }
@@ -262,6 +251,38 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     public void onAborted(ISourceHandle sourceHandle) {
       logger.debug("[ScHListenerOnAbort]");
       onFinished(sourceHandle);
+    }
+
+    @Override
+    public void onFailure(ISourceHandle sourceHandle, Throwable t) {
+      logger.warn("Source handle failed due to: ", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
+  /**
+   * Listen to the state changes of a source handle of pipeline. Since we register nothing in the
+   * exchangeManager, so we don't need to remove it too.
+   */
+  static class PipelineSourceHandleListenerImpl implements SourceHandleListener {
+
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSourceHandleListenerImpl(
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinished(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnFinish]");
+    }
+
+    @Override
+    public void onAborted(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnAbort]");
     }
 
     @Override
@@ -324,6 +345,48 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /**
+   * Listen to the state changes of a sink handle of pipeline. And since the finish of pipeline sink
+   * handle doesn't equal the finish of the whole fragment, therefore we don't need to notify
+   * fragment context. But if it's aborted or failed, it can lead to the total fail.
+   */
+  static class PipelineSinkHandleListenerImpl implements SinkHandleListener {
+
+    private final FragmentInstanceContext context;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSinkHandleListenerImpl(
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.context = context;
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinish(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnFinish]");
+    }
+
+    @Override
+    public void onEndOfBlocks(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnEndOfTsBlocks]");
+    }
+
+    @Override
+    public Optional<Throwable> onAborted(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnAbort]");
+      return context.getFailureCause();
+    }
+
+    @Override
+    public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      logger.warn("Sink handle failed due to", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
@@ -357,7 +420,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   @Override
-  public synchronized ISinkHandle createLocalSinkHandle(
+  public synchronized ISinkHandle createLocalSinkHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -376,8 +439,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localFragmentInstanceId);
 
     SharedTsBlockQueue queue;
-    if (sourceHandles.containsKey(remoteFragmentInstanceId)
-        && sourceHandles.get(remoteFragmentInstanceId).containsKey(remotePlanNodeId)) {
+    Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(remoteFragmentInstanceId);
+    LocalSourceHandle localSourceHandle =
+        sourceHandleMap == null ? null : (LocalSourceHandle) sourceHandleMap.get(remotePlanNodeId);
+    if (localSourceHandle != null) {
       logger.debug("Get shared tsblock queue from local source handle");
       queue =
           ((LocalSourceHandle) sourceHandles.get(remoteFragmentInstanceId).get(remotePlanNodeId))
@@ -390,13 +455,29 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
             localFragmentInstanceId,
             queue,
             new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
     sinkHandles.put(localFragmentInstanceId, localSinkHandle);
     return localSinkHandle;
+  }
+
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sinkHandle map.
+   */
+  public ISinkHandle createLocalSinkHandleForPipeline(
+      DriverContext driverContext, String planNodeId) {
+    logger.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
+            planNodeId,
+            localMemoryManager);
+    return new LocalSinkHandle(
+        queue,
+        new PipelineSinkHandleListenerImpl(
+            driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
   @Override
@@ -435,8 +516,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return sinkHandle;
   }
 
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sourceHandle map.
+   */
+  public ISourceHandle createLocalSourceHandleForPipeline(
+      SharedTsBlockQueue queue, DriverContext context) {
+    logger.debug("Create local source handle for {}", context.getDriverTaskID());
+    return new LocalSourceHandle(
+        queue,
+        new PipelineSourceHandleListenerImpl(context::failed),
+        context.getDriverTaskID().toString());
+  }
+
   @Override
-  public synchronized ISourceHandle createLocalSourceHandle(
+  public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -466,7 +560,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
             queue,
@@ -484,8 +577,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
-    if (sourceHandles.containsKey(localFragmentInstanceId)
-        && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
+    Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
+    if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
           "Source handle for plan node "
               + localPlanNodeId
@@ -549,17 +642,5 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             fragmentInstanceId.instanceId)
         + "."
         + suffix;
-  }
-
-  public ISinkHandle getISinkHandle(TFragmentInstanceId fragmentInstanceId) {
-    return sinkHandles.get(fragmentInstanceId);
-  }
-
-  public List<ISourceHandle> getISourceHandle(TFragmentInstanceId fragmentInstanceId) {
-    if (sourceHandles.containsKey(fragmentInstanceId)) {
-      return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
-    } else {
-      return new ArrayList<>();
-    }
   }
 }

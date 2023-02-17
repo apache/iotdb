@@ -45,6 +45,8 @@ public abstract class PlanNode implements IConsensusRequest {
 
   private PlanNodeId id;
 
+  private volatile long metricTime = 0L;
+
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
@@ -62,8 +64,29 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  public long getMetricTime() {
+    return metricTime;
+  }
+
+  public void setMetricTime(long metricTime) {
+    this.metricTime = metricTime;
+  }
+
   @Override
   public abstract PlanNode clone();
+
+  /**
+   * Create sub node which has exactly the same function of origin node, only its children is a part
+   * of it, which is composed by the [startIndex, endIndex) of origin children list.
+   *
+   * @param subNodeId the sub node id
+   * @param startIndex the start Index of origin children
+   * @param endIndex the endIndex Index of origin children
+   */
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    throw new UnsupportedOperationException(
+        String.format("Can't create subNode for %s", this.getClass().toString()));
+  }
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
     if (!(children == null

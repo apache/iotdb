@@ -63,6 +63,14 @@ public class TimeJoinNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new TimeJoinNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        getMergeOrder(),
+        new ArrayList<>(children.subList(startIndex, endIndex)));
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)

@@ -46,10 +46,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
 
@@ -67,7 +68,7 @@ public abstract class AbstractMetricService {
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
 
   /** The list of metric sets. */
-  protected List<IMetricSet> metricSets = new ArrayList<>();
+  protected Set<IMetricSet> metricSets = new HashSet<>();
 
   public AbstractMetricService() {
     // empty constructor
@@ -76,15 +77,19 @@ public abstract class AbstractMetricService {
   /** Start metric service. */
   public void startService() {
     startCoreModule();
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.bindTo(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.bindTo(this);
+      }
     }
   }
 
   /** Stop metric service. */
   public void stopService() {
-    for (IMetricSet metricSet : metricSets) {
-      metricSet.unbindFrom(this);
+    synchronized (this) {
+      for (IMetricSet metricSet : metricSets) {
+        metricSet.unbindFrom(this);
+      }
     }
     stopCoreModule();
   }
@@ -370,7 +375,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Bind metrics and store metric set. */
-  public void addMetricSet(IMetricSet metricSet) {
+  public synchronized void addMetricSet(IMetricSet metricSet) {
     if (!metricSets.contains(metricSet)) {
       metricSet.bindTo(this);
       metricSets.add(metricSet);
@@ -378,7 +383,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Remove metrics. */
-  public void removeMetricSet(IMetricSet metricSet) {
+  public synchronized void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);
       metricSets.remove(metricSet);

@@ -33,8 +33,8 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -42,10 +42,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTe
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -54,22 +54,22 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSche
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
-import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
+import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
@@ -100,9 +100,7 @@ public class ClusterSchemaManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int LEAST_SCHEMA_REGION_GROUP_NUM = CONF.getLeastSchemaRegionGroupNum();
   private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final int LEAST_DATA_REGION_GROUP_NUM = CONF.getLeastDataRegionGroupNum();
   private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
 
   private final IManager configManager;
@@ -117,25 +115,19 @@ public class ClusterSchemaManager {
   // Consensus read/write interfaces
   // ======================================================
 
-  /**
-   * Set StorageGroup
-   *
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully. STORAGE_GROUP_ALREADY_EXISTS if
-   *     the StorageGroup is already set. PERSISTENCE_FAILURE if fail to set StorageGroup in
-   *     MTreeAboveSG.
-   */
-  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
+  /** Set Database */
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus result;
-    if (setStorageGroupPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
+    if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
       IllegalPathException illegalPathException =
           new IllegalPathException(
-              setStorageGroupPlan.getSchema().getName(),
+              databaseSchemaPlan.getSchema().getName(),
               "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       return RpcUtils.getStatus(
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
     try {
-      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
+      clusterSchemaInfo.checkContainsStorageGroup(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -148,7 +140,7 @@ public class ClusterSchemaManager {
     }
 
     // Cache StorageGroupSchema
-    result = getConsensusManager().write(setStorageGroupPlan).getStatus();
+    result = getConsensusManager().write(databaseSchemaPlan).getStatus();
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     adjustMaxRegionGroupNum();
@@ -156,9 +148,67 @@ public class ClusterSchemaManager {
     return result;
   }
 
+  /** Alter Database */
+  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+    TSStatus result;
+    boolean isDatabaseExisted;
+    TDatabaseSchema storageGroupSchema = databaseSchemaPlan.getSchema();
+
+    try {
+      isDatabaseExisted = clusterSchemaInfo.isDatabaseExisted(storageGroupSchema.getName());
+    } catch (IllegalPathException e) {
+      // Reject if DatabaseName is illegal
+      result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
+      result.setMessage("Failed to alter database. " + e.getMessage());
+      return result;
+    }
+
+    if (!isDatabaseExisted) {
+      // Reject if Database doesn't exist
+      result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      result.setMessage(
+          "Failed to alter database. The Database "
+              + storageGroupSchema.getName()
+              + " doesn't exist.");
+      return result;
+    }
+
+    if (storageGroupSchema.isSetMinSchemaRegionGroupNum()) {
+      // Validate alter SchemaRegionGroupNum
+      int minSchemaRegionGroupNum =
+          getMinRegionGroupNum(storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
+      if (storageGroupSchema.getMinSchemaRegionGroupNum() <= minSchemaRegionGroupNum) {
+        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
+        result.setMessage(
+            String.format(
+                "Failed to alter database. The SchemaRegionGroupNum could only be increased. "
+                    + "Current SchemaRegionGroupNum: %d, Alter SchemaRegionGroupNum: %d",
+                minSchemaRegionGroupNum, storageGroupSchema.getMinSchemaRegionGroupNum()));
+        return result;
+      }
+    }
+    if (storageGroupSchema.isSetMinDataRegionGroupNum()) {
+      // Validate alter DataRegionGroupNum
+      int minDataRegionGroupNum =
+          getMinRegionGroupNum(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
+      if (storageGroupSchema.getMinDataRegionGroupNum() <= minDataRegionGroupNum) {
+        result = new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode());
+        result.setMessage(
+            String.format(
+                "Failed to alter database. The DataRegionGroupNum could only be increased. "
+                    + "Current DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d",
+                minDataRegionGroupNum, storageGroupSchema.getMinDataRegionGroupNum()));
+        return result;
+      }
+    }
+
+    // Alter DatabaseSchema
+    return getConsensusManager().write(databaseSchemaPlan).getStatus();
+  }
+
   /** Delete StorageGroup synchronized to protect the safety of adjustMaxRegionGroupNum */
-  public synchronized TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
-    TSStatus result = getConsensusManager().write(deleteStorageGroupPlan).getStatus();
+  public synchronized TSStatus deleteStorageGroup(DeleteDatabasePlan deleteDatabasePlan) {
+    TSStatus result = getConsensusManager().write(deleteDatabasePlan).getStatus();
     // Adjust the maximum RegionGroup number of each StorageGroup after deleting the storage group
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       adjustMaxRegionGroupNum();
@@ -171,8 +221,8 @@ public class ClusterSchemaManager {
    *
    * @return CountStorageGroupResp
    */
-  public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
-    return getConsensusManager().read(countStorageGroupPlan).getDataset();
+  public DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan) {
+    return getConsensusManager().read(countDatabasePlan).getDataset();
   }
 
   /**
@@ -180,25 +230,24 @@ public class ClusterSchemaManager {
    *
    * @return StorageGroupSchemaDataSet
    */
-  public DataSet getMatchedStorageGroupSchema(GetStorageGroupPlan getStorageGroupPlan) {
+  public DataSet getMatchedStorageGroupSchema(GetDatabasePlan getStorageGroupPlan) {
     return getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
   /** Only used in cluster tool show StorageGroup */
-  public TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan) {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+  public TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan) {
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp) getMatchedStorageGroupSchema(getStorageGroupPlan);
+    if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
-      return new TShowStorageGroupResp().setStatus(storageGroupSchemaResp.getStatus());
+      return new TShowDatabaseResp().setStatus(databaseSchemaResp.getStatus());
     }
 
-    Map<String, TStorageGroupInfo> infoMap = new ConcurrentHashMap<>();
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
-      String name = storageGroupSchema.getName();
-      TStorageGroupInfo storageGroupInfo = new TStorageGroupInfo();
-      storageGroupInfo.setName(name);
+    Map<String, TDatabaseInfo> infoMap = new ConcurrentHashMap<>();
+    for (TDatabaseSchema storageGroupSchema : databaseSchemaResp.getSchemaMap().values()) {
+      String database = storageGroupSchema.getName();
+      TDatabaseInfo storageGroupInfo = new TDatabaseInfo();
+      storageGroupInfo.setName(database);
       storageGroupInfo.setTTL(storageGroupSchema.getTTL());
       storageGroupInfo.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
       storageGroupInfo.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
@@ -206,34 +255,41 @@ public class ClusterSchemaManager {
 
       try {
         storageGroupInfo.setSchemaRegionNum(
-            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.SchemaRegion));
+            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.SchemaRegion));
         storageGroupInfo.setDataRegionNum(
-            getPartitionManager().getRegionGroupCount(name, TConsensusGroupType.DataRegion));
-      } catch (StorageGroupNotExistsException e) {
+            getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
+        storageGroupInfo.setMinSchemaRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setMaxSchemaRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
+        storageGroupInfo.setMinDataRegionNum(
+            getMinRegionGroupNum(database, TConsensusGroupType.DataRegion));
+        storageGroupInfo.setMaxDataRegionNum(
+            getMaxRegionGroupNum(database, TConsensusGroupType.DataRegion));
+      } catch (DatabaseNotExistsException e) {
         // Return immediately if some StorageGroups doesn't exist
-        return new TShowStorageGroupResp()
+        return new TShowDatabaseResp()
             .setStatus(
                 new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                     .setMessage(e.getMessage()));
       }
 
-      infoMap.put(name, storageGroupInfo);
+      infoMap.put(database, storageGroupInfo);
     }
 
-    return new TShowStorageGroupResp().setStorageGroupInfoMap(infoMap).setStatus(StatusUtils.OK);
+    return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
   public Map<String, Long> getAllTTLInfo() {
-    StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp)
-            getMatchedStorageGroupSchema(new GetStorageGroupPlan(Arrays.asList("root", "**")));
+    DatabaseSchemaResp databaseSchemaResp =
+        (DatabaseSchemaResp)
+            getMatchedStorageGroupSchema(new GetDatabasePlan(Arrays.asList("root", "**")));
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
-    if (storageGroupSchemaResp.getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some StorageGroups doesn't exist
       return infoMap;
     }
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaResp.getSchemaMap().values()) {
+    for (TDatabaseSchema storageGroupSchema : databaseSchemaResp.getSchemaMap().values()) {
       infoMap.put(storageGroupSchema.getName(), storageGroupSchema.getTTL());
     }
     return infoMap;
@@ -248,7 +304,7 @@ public class ClusterSchemaManager {
    */
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
-    Map<String, TStorageGroupSchema> storageSchemaMap =
+    Map<String, TDatabaseSchema> storageSchemaMap =
         clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(
             setTTLPlan.getStorageGroupPathPattern());
 
@@ -313,35 +369,23 @@ public class ClusterSchemaManager {
 
   /**
    * Only leader use this interface. Adjust the maxSchemaRegionGroupNum and maxDataRegionGroupNum of
-   * each StorageGroup bases on existing cluster resources
+   * each StorageGroup based on existing cluster resources
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all StorageGroupSchemas
-    Map<String, TStorageGroupSchema> storageGroupSchemaMap =
-        getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+    Map<String, TDatabaseSchema> storageGroupSchemaMap =
+        getMatchedDatabaseSchemasByName(getDatabaseNames());
+    if (storageGroupSchemaMap.size() == 0) {
+      // Skip when there are no StorageGroups
+      return;
+    }
+
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
-    // Adjust least_data_region_group_num
-    // TODO: The least_data_region_group_num should be maintained separately by different
-    // TODO: StorageGroup
-    int leastDataRegionGroupNum =
-        (int)
-            Math.ceil(
-                (double) totalCpuCoreNum
-                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
-    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
-      // The leastDataRegionGroupNum should be the maximum integer that satisfy:
-      // 1 <= leastDataRegionGroupNum <= 5(default)
-      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
-      LOGGER.info(
-          "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
-          leastDataRegionGroupNum);
-    }
-
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
-    for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
+    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
         // Adjust maxSchemaRegionGroupNum for each StorageGroup.
         // All StorageGroups share the DataNodes equally.
@@ -351,24 +395,13 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(
                     storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
-            Math.max(
-                // The least number of SchemaRegionGroup of each StorageGroup is specified
-                // by parameter least_schema_region_group_num, which is currently unconfigurable.
-                LEAST_SCHEMA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxSchemaRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxSchemaRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
-                            // (createdStorageGroupNum * schemaReplicationFactor)
-                            SCHEMA_REGION_PER_DATA_NODE
-                                * dataNodeNum
-                                / storageGroupNum
-                                * storageGroupSchema.getSchemaReplicationFactor()),
-                    allocatedSchemaRegionGroupCount));
+            calcMaxRegionGroupNum(
+                storageGroupSchema.getMinSchemaRegionGroupNum(),
+                SCHEMA_REGION_PER_DATA_NODE,
+                dataNodeNum,
+                storageGroupNum,
+                storageGroupSchema.getSchemaReplicationFactor(),
+                allocatedSchemaRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -381,24 +414,13 @@ public class ClusterSchemaManager {
             getPartitionManager()
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
-            Math.max(
-                // The least number of DataRegionGroup of each StorageGroup is specified
-                // by parameter least_data_region_group_num.
-                LEAST_DATA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxDataRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxDataRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
-                            // (createdStorageGroupNum * dataReplicationFactor)
-                            DATA_REGION_PER_PROCESSOR
-                                * totalCpuCoreNum
-                                / storageGroupNum
-                                * storageGroupSchema.getDataReplicationFactor()),
-                    allocatedDataRegionGroupCount));
+            calcMaxRegionGroupNum(
+                storageGroupSchema.getMinDataRegionGroupNum(),
+                DATA_REGION_PER_PROCESSOR,
+                totalCpuCoreNum,
+                storageGroupNum,
+                storageGroupSchema.getDataReplicationFactor(),
+                allocatedDataRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -407,11 +429,33 @@ public class ClusterSchemaManager {
         adjustMaxRegionGroupNumPlan.putEntry(
             storageGroupSchema.getName(),
             new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
-      } catch (StorageGroupNotExistsException e) {
+      } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Adjust maxRegionGroupNum failed because StorageGroup doesn't exist", e);
       }
     }
     getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+  }
+
+  public static int calcMaxRegionGroupNum(
+      int minRegionGroupNum,
+      double resourceWeight,
+      int resource,
+      int storageGroupNum,
+      int replicationFactor,
+      int allocatedRegionGroupCount) {
+    return Math.max(
+        // The maxRegionGroupNum should be great or equal to the minRegionGroupNum
+        minRegionGroupNum,
+        Math.max(
+            (int)
+                // Use Math.ceil here to ensure that the maxRegionGroupNum
+                // will be increased as long as the number of cluster DataNodes is increased
+                Math.ceil(
+                    // The maxRegionGroupNum of the current StorageGroup is expected to be:
+                    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+                    resourceWeight * resource / (double) (storageGroupNum * replicationFactor)),
+            // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+            allocatedRegionGroupCount));
   }
 
   // ======================================================
@@ -419,63 +463,72 @@ public class ClusterSchemaManager {
   // ======================================================
 
   /**
-   * Only leader use this interface.
+   * Only leader use this interface. Get all Databases name
    *
-   * @param storageGroup StorageGroupName
-   * @return The specific StorageGroupSchema
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @return List<DatabaseName>, all Databases' name
    */
-  public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
-      throws StorageGroupNotExistsException {
-    return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
+  public List<String> getDatabaseNames() {
+    return clusterSchemaInfo.getDatabaseNames();
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface. Get the specified Database's schema
    *
-   * @param storageGroup StorageGroupName
-   * @param consensusGroupType SchemaRegion for SchemaReplicationFactor and DataRegion for
-   *     DataReplicationFactor
-   * @return SchemaReplicationFactor or DataReplicationFactor
-   * @throws StorageGroupNotExistsException When the specific StorageGroup doesn't exist
+   * @param database DatabaseName
+   * @return The specific DatabaseSchema
+   * @throws DatabaseNotExistsException When the specific Database doesn't exist
    */
-  public int getReplicationFactor(String storageGroup, TConsensusGroupType consensusGroupType)
-      throws StorageGroupNotExistsException {
-    TStorageGroupSchema storageGroupSchema = getStorageGroupSchemaByName(storageGroup);
-    return consensusGroupType == TConsensusGroupType.SchemaRegion
+  public TDatabaseSchema getDatabaseSchemaByName(String database)
+      throws DatabaseNotExistsException {
+    return clusterSchemaInfo.getMatchedDatabaseSchemaByName(database);
+  }
+
+  /**
+   * Only leader use this interface. Get the specified Databases' schema
+   *
+   * @param rawPathList List<DatabaseName>
+   * @return the matched DatabaseSchemas
+   */
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
+    return clusterSchemaInfo.getMatchedDatabaseSchemasByName(rawPathList);
+  }
+
+  /**
+   * Only leader use this interface. Get the replication factor of specified Database
+   *
+   * @param database DatabaseName
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return SchemaReplicationFactor or DataReplicationFactor
+   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
+   */
+  public int getReplicationFactor(String database, TConsensusGroupType consensusGroupType)
+      throws DatabaseNotExistsException {
+    TDatabaseSchema storageGroupSchema = getDatabaseSchemaByName(database);
+    return TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
         ? storageGroupSchema.getSchemaReplicationFactor()
         : storageGroupSchema.getDataReplicationFactor();
   }
 
   /**
-   * Only leader use this interface.
+   * Only leader use this interface. Get the maxRegionGroupNum of specified Database.
    *
-   * @param rawPathList List<StorageGroupName>
-   * @return the matched StorageGroupSchemas
+   * @param database DatabaseName
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @return minSchemaRegionGroupNum or minDataRegionGroupNum
    */
-  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
-      List<String> rawPathList) {
-    return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
+  public int getMinRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+    return clusterSchemaInfo.getMinRegionGroupNum(database, consensusGroupType);
   }
 
   /**
-   * Only leader use this interface.
+   * Only leader use this interface. Get the maxRegionGroupNum of specified Database.
    *
-   * @return List<StorageGroupName>, all StorageGroups' name
-   */
-  public List<String> getStorageGroupNames() {
-    return clusterSchemaInfo.getStorageGroupNames();
-  }
-
-  /**
-   * Only leader use this interface. Get the maxRegionGroupNum of specific StorageGroup.
-   *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMaxRegionGroupNum(String storageGroup, TConsensusGroupType consensusGroupType) {
-    return clusterSchemaInfo.getMaxRegionGroupNum(storageGroup, consensusGroupType);
+  public int getMaxRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+    return clusterSchemaInfo.getMaxRegionGroupNum(database, consensusGroupType);
   }
 
   /**

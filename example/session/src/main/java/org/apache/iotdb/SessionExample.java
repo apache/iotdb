@@ -19,6 +19,7 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.template.Template;
@@ -66,7 +67,7 @@ public class SessionExample {
             .port(6667)
             .username("root")
             .password("root")
-            .version(Version.V_0_13)
+            .version(Version.V_1_0)
             .build();
     session.open(false);
 
@@ -76,7 +77,7 @@ public class SessionExample {
     try {
       session.createDatabase("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw e;
       }
     }
@@ -93,10 +94,12 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    //    query();
+    query();
     //    queryWithTimeout();
-    //    rawDataQuery();
-    //    lastDataQuery();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
@@ -780,6 +783,46 @@ public class SessionExample {
     }
   }
 
+  private static void aggregationQuery()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
+    try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void groupByQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
+    try (SessionDataSet sessionDataSet =
+        session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
   private static void queryByIterator()
       throws IoTDBConnectionException, StatementExecutionException {
     try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
@@ -828,18 +871,9 @@ public class SessionExample {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
   }
 
-  private static void setTimeout() throws StatementExecutionException {
-    Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
-    tempSession.setQueryTimeout(60000);
-  }
-
-  private static void createClusterSession() throws IoTDBConnectionException {
-    ArrayList<String> nodeList = new ArrayList<>();
-    nodeList.add("127.0.0.1:6669");
-    nodeList.add("127.0.0.1:6667");
-    nodeList.add("127.0.0.1:6668");
-    Session clusterSession = new Session(nodeList, "root", "root");
-    clusterSession.open();
-    clusterSession.close();
+  private static void setTimeout() throws StatementExecutionException, IoTDBConnectionException {
+    try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000)) {
+      tempSession.setQueryTimeout(60000);
+    }
   }
 }

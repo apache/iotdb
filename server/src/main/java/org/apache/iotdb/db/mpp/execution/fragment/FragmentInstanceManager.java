@@ -24,12 +24,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
+import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.mpp.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -38,6 +39,8 @@ import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -123,21 +126,27 @@ public class FragmentInstanceManager {
                                 fragmentInstanceId,
                                 stateMachine,
                                 instance.getSessionInfo(),
-                                intoOperationExecutor));
+                                dataRegion,
+                                instance.getTimeFilter()));
 
                 try {
-                  DataDriver driver =
+                  List<PipelineDriverFactory> driverFactories =
                       planner.plan(
                           instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
-                          context,
-                          instance.getTimeFilter(),
-                          dataRegion);
+                          context);
+
+                  List<IDriver> drivers = new ArrayList<>();
+                  driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                  // get the sinkHandle of last driver
+                  ISinkHandle sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
                       context,
-                      driver,
+                      drivers,
+                      sinkHandle,
                       stateMachine,
                       failedInstances,
                       instance.getTimeOut());
@@ -181,19 +190,23 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId,
-                              stateMachine,
-                              instance.getSessionInfo(),
-                              intoOperationExecutor));
+                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
-                SchemaDriver driver =
+                List<PipelineDriverFactory> driverFactories =
                     planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
+
+                List<IDriver> drivers = new ArrayList<>();
+                driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                // get the sinkHandle of last driver
+                ISinkHandle sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
                     context,
-                    driver,
+                    drivers,
+                    sinkHandle,
                     stateMachine,
                     failedInstances,
                     instance.getTimeOut());
@@ -292,6 +305,10 @@ public class FragmentInstanceManager {
                   && (now - context.getStartTime()) > QUERY_TIMEOUT_MS;
             })
         .forEach(entry -> entry.getValue().failed(new TimeoutException()));
+  }
+
+  public ExecutorService getIntoOperationExecutor() {
+    return intoOperationExecutor;
   }
 
   private static class InstanceHolder {

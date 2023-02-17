@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
@@ -51,7 +54,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
@@ -157,8 +159,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(deleteStorageGroupStatement, context);
   }
 
-  public R visitSetStorageGroup(SetStorageGroupStatement setStorageGroupStatement, C context) {
-    return visitStatement(setStorageGroupStatement, context);
+  public R visitSetDatabase(DatabaseSchemaStatement databaseSchemaStatement, C context) {
+    return visitStatement(databaseSchemaStatement, context);
+  }
+
+  public R visitAlterDatabase(DatabaseSchemaStatement databaseSchemaStatement, C context) {
+    return visitStatement(databaseSchemaStatement, context);
   }
 
   // Alter TTL
@@ -464,5 +470,15 @@ public abstract class StatementVisitor<R, C> {
   public R visitDropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement, C context) {
     return visitStatement(dropSchemaTemplateStatement, context);
+  }
+
+  public R visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement, C context) {
+    return visitStatement(internalBatchActivateTemplateStatement, context);
+  }
+
+  public R visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement, C context) {
+    return visitStatement(internalCreateMultiTimeSeriesStatement, context);
   }
 }

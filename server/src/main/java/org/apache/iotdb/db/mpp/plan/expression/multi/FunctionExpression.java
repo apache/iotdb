@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -49,11 +50,7 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
-  /**
-   * true: aggregation function<br>
-   * false: time series generating function
-   */
-  private Boolean isBuiltInAggregationFunctionExpressionCache;
+  private FunctionType functionType;
 
   private final String functionName;
   private final LinkedHashMap<String, String> functionAttributes;
@@ -101,13 +98,30 @@ public class FunctionExpression extends Expression {
     return visitor.visitFunctionExpression(this, context);
   }
 
+  private void initializeFunctionType() {
+    final String functionName = this.functionName.toLowerCase();
+    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.AGGREGATION_FUNCTION;
+    } else if (BuiltinFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.BUILT_IN_FUNCTION;
+    } else {
+      functionType = FunctionType.UDF;
+    }
+  }
+
   @Override
   public boolean isBuiltInAggregationFunctionExpression() {
-    if (isBuiltInAggregationFunctionExpressionCache == null) {
-      isBuiltInAggregationFunctionExpressionCache =
-          BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
+    if (functionType == null) {
+      initializeFunctionType();
     }
-    return isBuiltInAggregationFunctionExpressionCache;
+    return functionType == FunctionType.AGGREGATION_FUNCTION;
+  }
+
+  public Boolean isBuiltInFunction() {
+    if (functionType == null) {
+      initializeFunctionType();
+    }
+    return functionType == FunctionType.BUILT_IN_FUNCTION;
   }
 
   @Override
@@ -197,7 +211,8 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression()) {
+    if (isBuiltInAggregationFunctionExpression()
+        || (isBuiltInFunction() && BuiltinFunction.isMappable(functionName))) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)

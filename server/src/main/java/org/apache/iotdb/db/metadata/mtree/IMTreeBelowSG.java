@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -143,8 +141,6 @@ public interface IMTreeBelowSG {
    */
   IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
-  List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
-
   /**
    * Fetch all measurement path
    *
@@ -166,7 +162,7 @@ public interface IMTreeBelowSG {
 
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
-  List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
+  long countAllMeasurement() throws MetadataException;
 
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
 

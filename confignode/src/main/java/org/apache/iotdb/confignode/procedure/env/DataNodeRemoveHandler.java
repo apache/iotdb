@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
@@ -171,7 +172,7 @@ public class DataNodeRemoveHandler {
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn(
           "{}, Cannot find region replica nodes in createPeer, regionId: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
@@ -203,13 +204,13 @@ public class DataNodeRemoveHandler {
 
     LOGGER.info(
         "{}, Send action createNewRegionPeer finished, regionId: {}, newPeerDataNodeId: {}",
-        REMOVE_DATANODE_PROCESS,
+        REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(destDataNode));
     if (isFailed(status)) {
       LOGGER.error(
           "{}, Send action createNewRegionPeer error, regionId: {}, newPeerDataNodeId: {}, result: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId,
           getIdWithRpcEndpoint(destDataNode),
           status);
@@ -239,7 +240,7 @@ public class DataNodeRemoveHandler {
       LOGGER.warn(
           "{}, There are no other DataNodes could be selected to perform the add peer process, "
               + "please check RegionGroup: {} by show regions sql command",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
@@ -259,7 +260,7 @@ public class DataNodeRemoveHandler {
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
-        REMOVE_DATANODE_PROCESS,
+        REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(selectedDataNode.get()),
         getIdWithRpcEndpoint(destDataNode));
@@ -302,7 +303,7 @@ public class DataNodeRemoveHandler {
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
-        REMOVE_DATANODE_PROCESS,
+        REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(rpcClientDataNode));
     return status;
@@ -340,7 +341,7 @@ public class DataNodeRemoveHandler {
                     DataNodeRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
-        REMOVE_DATANODE_PROCESS,
+        REGION_MIGRATE_PROCESS,
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
@@ -589,7 +590,7 @@ public class DataNodeRemoveHandler {
 
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
-            REMOVE_DATANODE_PROCESS,
+            REGION_MIGRATE_PROCESS,
             regionId,
             newLeaderNode);
       }
@@ -603,7 +604,7 @@ public class DataNodeRemoveHandler {
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId,
           newLeaderNode);
     }

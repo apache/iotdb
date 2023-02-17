@@ -35,11 +35,13 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -89,10 +91,14 @@ public abstract class PageManager implements IPageManager {
 
   private final FileChannel channel;
 
+  // handle timeout interruption during reading
+  private File pmtFile;
+  private FileChannel readChannel;
+
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
 
-  PageManager(FileChannel channel, int lastPageIndex, String logPath)
+  PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
     this.dirtyPages = new ConcurrentHashMap<>();
@@ -102,6 +108,8 @@ public abstract class PageManager implements IPageManager {
         lastPageIndex >= 0 ? new AtomicInteger(lastPageIndex) : new AtomicInteger(0);
     this.treeTrace = new int[16];
     this.channel = channel;
+    this.pmtFile = pmtFile;
+    this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
 
     // recover if log exists
     int pageAcc = (int) recoverFromLog(logPath) / PAGE_LENGTH;
@@ -131,11 +139,11 @@ public abstract class PageManager implements IPageManager {
 
     // complete log file
     if (!res.isEmpty()) {
-      FileOutputStream outputStream = new FileOutputStream(logPath, true);
-      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-      long length = outputStream.getChannel().size();
-      outputStream.close();
-      return length;
+      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
+        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+        long length = outputStream.getChannel().size();
+        return length;
+      }
     }
     return 0L;
   }
@@ -555,9 +563,12 @@ public abstract class PageManager implements IPageManager {
     return page;
   }
 
-  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
+  private synchronized int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException {
     dst.clear();
-    return channel.read(dst, getPageAddress(pageIndex));
+    if (!readChannel.isOpen()) {
+      readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
+    }
+    return readChannel.read(dst, getPageAddress(pageIndex));
   }
 
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)

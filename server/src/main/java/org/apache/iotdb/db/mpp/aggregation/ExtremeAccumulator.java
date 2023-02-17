@@ -41,16 +41,16 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   @Override
-  public int addInput(Column[] column, IWindow curWindow) {
+  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow);
+        return addIntInput(column, curWindow, ignoringNull);
       case INT64:
-        return addLongInput(column, curWindow);
+        return addLongInput(column, curWindow, ignoringNull);
       case FLOAT:
-        return addFloatInput(column, curWindow);
+        return addFloatInput(column, curWindow, ignoringNull);
       case DOUBLE:
-        return addDoubleInput(column, curWindow);
+        return addDoubleInput(column, curWindow, ignoringNull);
       case TEXT:
       case BOOLEAN:
       default:
@@ -221,18 +221,18 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  private int addIntInput(Column[] column, IWindow curWindow) {
+  private int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntResult(column[2].getInt(i));
       }
@@ -253,18 +253,18 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addLongInput(Column[] column, IWindow curWindow) {
+  private int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongResult(column[2].getLong(i));
       }
@@ -285,18 +285,18 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addFloatInput(Column[] column, IWindow curWindow) {
+  private int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatResult(column[2].getFloat(i));
       }
@@ -317,18 +317,18 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private int addDoubleInput(Column[] column, IWindow curWindow) {
+  private int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
     int curPositionCount = column[0].getPositionCount();
 
     for (int i = 0; i < curPositionCount; i++) {
       // skip null value in control column
-      if (column[0].isNull(i)) {
+      if (ignoringNull && column[0].isNull(i)) {
         continue;
       }
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleResult(column[2].getDouble(i));
       }

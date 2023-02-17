@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.it;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.template.TemplateNode;
@@ -57,7 +56,6 @@ public class IoTDBSessionSchemaTemplateIT {
 
   @Before
   public void setUp() throws Exception {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvFactory.getEnv().initClusterEnvironment();
     session = EnvFactory.getEnv().getSessionConnection();
   }

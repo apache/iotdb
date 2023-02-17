@@ -51,6 +51,8 @@
     <logger name="org.apache.iotdb.db.service.DataNode" level="WARN"/>
     <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
+    <logger name="org.apache.iotdb.db.conf.IoTDBDescriptor" level="WARN"/>
+    <logger name="org.apache.iotdb.tsfile.common.conf.TSFileDescriptor" level="WARN"/>
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
     <root level="INFO">
         <appender-ref ref="stdout"/>

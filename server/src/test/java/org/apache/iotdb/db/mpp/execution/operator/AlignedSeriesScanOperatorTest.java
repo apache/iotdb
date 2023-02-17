@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
@@ -113,15 +114,16 @@ public class AlignedSeriesScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId, AlignedSeriesScanOperator.class.getSimpleName());
 
       AlignedSeriesScanOperator seriesScanOperator =
           new AlignedSeriesScanOperator(
               planNodeId,
               alignedPath,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -190,37 +192,32 @@ public class AlignedSeriesScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId1, AlignedSeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           2, planNodeId2, AlignedSeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId6 = new PlanNodeId("6");
-      fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(6, planNodeId6, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId7 = new PlanNodeId("7");
-      fragmentInstanceContext.addOperatorContext(
-          7, planNodeId7, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId8 = new PlanNodeId("8");
-      fragmentInstanceContext.addOperatorContext(
-          8, planNodeId8, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               planNodeId1,
               alignedPath1,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -242,7 +239,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedSeriesScanOperator(
               planNodeId2,
               alignedPath2,
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -264,11 +261,11 @@ public class AlignedSeriesScanOperatorTest {
               SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.BOOLEAN,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
@@ -281,11 +278,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               true);
@@ -298,11 +295,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               allSensors,
               TSDataType.INT64,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               true);
@@ -315,11 +312,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               allSensors,
               TSDataType.FLOAT,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               true);
@@ -332,11 +329,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               allSensors,
               TSDataType.DOUBLE,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               true);
@@ -349,11 +346,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(7),
               planNodeId8,
               measurementPath8,
               allSensors,
               TSDataType.TEXT,
-              fragmentInstanceContext.getOperatorContexts().get(7),
               null,
               null,
               true);
@@ -364,7 +361,7 @@ public class AlignedSeriesScanOperatorTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(8),
+              driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,
                   seriesScanOperator2,
@@ -501,37 +498,32 @@ public class AlignedSeriesScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId1, AlignedSeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           2, planNodeId2, AlignedSeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId6 = new PlanNodeId("6");
-      fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(6, planNodeId6, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId7 = new PlanNodeId("7");
-      fragmentInstanceContext.addOperatorContext(
-          7, planNodeId7, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId8 = new PlanNodeId("8");
-      fragmentInstanceContext.addOperatorContext(
-          8, planNodeId8, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               planNodeId1,
               alignedPath1,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               null,
               null,
               false);
@@ -553,7 +545,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedSeriesScanOperator(
               planNodeId2,
               alignedPath2,
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               null,
               null,
               false);
@@ -575,11 +567,11 @@ public class AlignedSeriesScanOperatorTest {
               SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.BOOLEAN,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               false);
@@ -592,11 +584,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               false);
@@ -609,11 +601,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               allSensors,
               TSDataType.INT64,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               false);
@@ -626,11 +618,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               allSensors,
               TSDataType.FLOAT,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               false);
@@ -643,11 +635,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               allSensors,
               TSDataType.DOUBLE,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               false);
@@ -660,11 +652,11 @@ public class AlignedSeriesScanOperatorTest {
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.DOUBLE);
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(7),
               planNodeId8,
               measurementPath8,
               allSensors,
               TSDataType.TEXT,
-              fragmentInstanceContext.getOperatorContexts().get(7),
               null,
               null,
               false);
@@ -675,7 +667,7 @@ public class AlignedSeriesScanOperatorTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(8),
+              driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,
                   seriesScanOperator2,

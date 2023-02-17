@@ -331,8 +331,6 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
-
     conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
@@ -543,6 +541,15 @@ public class IoTDBDescriptor {
       conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setDegreeOfParallelism(
+        Integer.parseInt(
+            properties.getProperty(
+                "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
+
+    if (conf.getDegreeOfParallelism() <= 0) {
+      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
     conf.setMaxAllowedConcurrentQueries(
         Integer.parseInt(
             properties.getProperty(
@@ -552,21 +559,6 @@ public class IoTDBDescriptor {
     if (conf.getMaxAllowedConcurrentQueries() <= 0) {
       conf.setMaxAllowedConcurrentQueries(1000);
     }
-
-    conf.setSubRawQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
-
-    if (conf.getSubRawQueryThreadCount() <= 0) {
-      conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
-
-    conf.setRawQueryBlockingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "raw_query_blocking_queue_capacity",
-                Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
@@ -583,14 +575,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
 
-    conf.setEnableExternalSort(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
-    conf.setExternalSortThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
     conf.setUpgradeThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -1290,6 +1274,10 @@ public class IoTDBDescriptor {
 
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    } else {
+      logger.info("MQTT host is not configured, will use dn_rpc_address.");
+      conf.setMqttHost(
+          properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress().trim()));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
@@ -1650,15 +1638,14 @@ public class IoTDBDescriptor {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 8;
-    int schemaCacheProportion = 1;
-    int partitionCacheProportion = 0;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
     int lastCacheProportion = 1;
 
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
-      conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
@@ -1672,8 +1659,6 @@ public class IoTDBDescriptor {
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
         lastCacheProportion = Integer.parseInt(proportions[3].trim());
       }
-    } else {
-      conf.setDefaultSchemaMemoryConfig(true);
     }
 
     conf.setAllocateMemoryForSchemaRegion(
@@ -1707,11 +1692,6 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
-    }
-
-    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
-    if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =
@@ -1957,40 +1937,6 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForStorageEngine(
         conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
     SystemInfo.getInstance().allocateWriteMemory();
-  }
-
-  public void initClusterSchemaMemoryAllocate() {
-    if (!conf.isDefaultSchemaMemoryConfig()) {
-      // the config has already been updated as user config in properties file
-      return;
-    }
-
-    // process the default schema memory allocate
-
-    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
-
-    int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
-    int partitionCacheProportion = 1;
-    int lastCacheProportion = 1;
-
-    conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * schemaRegionProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
-
-    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
-
-    conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * partitionCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
-
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
-    logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   private static class IoTDBDescriptorHolder {

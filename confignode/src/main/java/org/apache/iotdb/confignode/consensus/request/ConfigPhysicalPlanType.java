@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request;
 
 import java.util.HashMap;
@@ -33,17 +34,18 @@ public enum ConfigPhysicalPlanType {
   RemoveDataNode((short) 102),
   UpdateDataNodeConfiguration((short) 103),
 
-  /** StorageGroup */
-  SetStorageGroup((short) 200),
+  /** Database */
+  CreateDatabase((short) 200),
   SetTTL((short) 201),
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
   SetTimePartitionInterval((short) 204),
   AdjustMaxRegionGroupNum((short) 205),
-  DeleteStorageGroup((short) 206),
-  PreDeleteStorageGroup((short) 207),
-  GetStorageGroup((short) 208),
-  CountStorageGroup((short) 209),
+  DeleteDatabase((short) 206),
+  PreDeleteDatabase((short) 207),
+  GetDatabase((short) 208),
+  CountDatabase((short) 209),
+  AlterDatabase((short) 210),
 
   /** Region */
   CreateRegionGroups((short) 300),

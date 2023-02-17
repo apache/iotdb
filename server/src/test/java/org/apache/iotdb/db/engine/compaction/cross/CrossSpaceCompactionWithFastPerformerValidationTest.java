@@ -24,9 +24,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
@@ -69,6 +69,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
@@ -2128,7 +2129,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
@@ -2224,8 +2225,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
-                tsFileManager.getSequenceListByTimePartition(0),
-                tsFileManager.getUnsequenceListByTimePartition(0))
+                tsFileManager.getOrCreateSequenceListByTimePartition(0),
+                tsFileManager.getOrCreateUnsequenceListByTimePartition(0))
             .get(0);
     Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
     Assert.assertEquals(1, sourceFiles.getUnseqFiles().size());
@@ -2234,7 +2235,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles());
     performer.setSourceFiles(sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles());
     performer.setTargetFiles(targetResources);
-    performer.setSummary(new CompactionTaskSummary());
+    performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
@@ -2251,8 +2252,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         0,
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
-                tsFileManager.getSequenceListByTimePartition(0),
-                tsFileManager.getUnsequenceListByTimePartition(0))
+                tsFileManager.getOrCreateSequenceListByTimePartition(0),
+                tsFileManager.getOrCreateUnsequenceListByTimePartition(0))
             .size());
 
     // Target file of the first task should not be selected to participate in other inner compaction
@@ -2271,8 +2272,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     // compaction task
     List<CrossCompactionTaskResource> pairs =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
-            tsFileManager.getSequenceListByTimePartition(0),
-            tsFileManager.getUnsequenceListByTimePartition(0));
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, pairs.size());
     Assert.assertEquals(2, pairs.get(0).getSeqFiles().size());
     Assert.assertEquals(1, pairs.get(0).getUnseqFiles().size());

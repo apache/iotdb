@@ -25,12 +25,12 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
-import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowManager;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+import static org.apache.iotdb.db.mpp.execution.operator.window.WindowManagerFactory.genWindowManager;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -46,19 +46,35 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private final IWindowManager windowManager;
 
+  // needSkip is the signal to determine whether to skip the points out of current window to get
+  // endTime when the resultSet needs to output endTime.
+  // If the resultSet needs endTime, needSkip will be set to true when the operator is skipping the
+  // points out of current window.
+  private boolean needSkip = false;
+
+  // child.hasNext() may return true even there is no more data, the operator may exit without
+  // updating the cached data in aggregator.
+  // We need hasCachedDataInAggregator to prevent operator exit when there is cached data in
+  // aggregators.
+  private boolean hasCachedDataInAggregator = false;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
-      long maxReturnSize) {
+      long maxReturnSize,
+      WindowParameter windowParameter) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
-    this.windowManager = new TimeWindowManager(timeRangeIterator);
+    this.windowManager = genWindowManager(windowParameter, timeRangeIterator);
+    this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 
   private boolean hasMoreData() {
-    return inputTsBlock != null || child.hasNextWithTimer();
+    return !(inputTsBlock == null || inputTsBlock.isEmpty())
+        || child.hasNextWithTimer()
+        || hasCachedDataInAggregator;
   }
 
   @Override
@@ -68,35 +84,55 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected boolean calculateNextAggregationResult() {
-    while (!calculateFromRawData()) {
+
+    // if needSkip is true, just get the tsBlock directly.
+    while (needSkip || !calculateFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
         canCallNext = false;
+        if (needSkip) {
+          break;
+        }
       } else if (child.hasNextWithTimer()) {
         // if child still has next but can't be invoked now
         return false;
       } else {
-        // If there are no points belong to last window, the last window will not
-        // initialize window and aggregators
-        if (!windowManager.isCurWindowInit()) {
+        // If there are no points belong to last time window, the last time window will not
+        // initialize window and aggregators. Specially for time window.
+        if (windowManager.notInitedLastTimeWindow()) {
           initWindowAndAggregators();
         }
         break;
       }
     }
 
-    updateResultTsBlock();
     // Step into next window
-    windowManager.next();
+    // if needSkip is true, don't need to enter next window again
+    if (!needSkip) {
+      windowManager.next();
+    }
+    // When some windows without cached endTime trying to output endTime,
+    // they need to skip the points in lastWindow in advance to get endTime
+    if (windowManager.needSkipInAdvance()) {
+      needSkip = true;
+      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+      if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
+        return canCallNext;
+      }
+      needSkip = false;
+    }
+
+    updateResultTsBlock();
+    // After updating, the data in aggregators is consumed.
+    hasCachedDataInAggregator = false;
 
     return true;
   }
 
   private boolean calculateFromRawData() {
-
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
       return false;
@@ -116,7 +152,17 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        lastReadRowIndex =
+            Math.max(
+                lastReadRowIndex,
+                aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
+      }
+      // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
+      // aggregators.
+      if (lastReadRowIndex != 0) {
+        // todo update the keep value in group by series, it will be removed in the future
+        windowManager.setKeep(lastReadRowIndex);
+        hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
@@ -135,7 +181,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult(resultTsBlockBuilder, aggregators, windowManager.currentOutputTime());
+    windowManager.appendAggregationResult(resultTsBlockBuilder, aggregators);
   }
 
   private boolean skipPreviousWindowAndInitCurWindow() {
@@ -155,7 +201,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private void initWindowAndAggregators() {
-    windowManager.initCurWindow(inputTsBlock);
+    windowManager.initCurWindow();
     IWindow curWindow = windowManager.getCurWindow();
     for (Aggregator aggregator : aggregators) {
       aggregator.updateWindow(curWindow);

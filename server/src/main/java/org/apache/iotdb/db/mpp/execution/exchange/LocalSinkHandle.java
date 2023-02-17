@@ -33,15 +33,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
 public class LocalSinkHandle implements ISinkHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
-  private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final String remotePlanNodeId;
-  private final TFragmentInstanceId localFragmentInstanceId;
+  private TFragmentInstanceId localFragmentInstanceId;
   private final SinkHandleListener sinkHandleListener;
 
   private final SharedTsBlockQueue queue;
@@ -51,14 +49,17 @@ public class LocalSinkHandle implements ISinkHandle {
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
+  public LocalSinkHandle(SharedTsBlockQueue queue, SinkHandleListener sinkHandleListener) {
+    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.queue = Validate.notNull(queue);
+    this.queue.setSinkHandle(this);
+    blocked = queue.getCanAddTsBlock();
+  }
+
   public LocalSinkHandle(
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
       SinkHandleListener sinkHandleListener) {
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
@@ -189,15 +190,7 @@ public class LocalSinkHandle implements ISinkHandle {
     logger.debug("[EndCloseLocalSinkHandle]");
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
-  }
-
-  public String getRemotePlanNodeId() {
-    return remotePlanNodeId;
-  }
-
-  SharedTsBlockQueue getSharedTsBlockQueue() {
+  public SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
 

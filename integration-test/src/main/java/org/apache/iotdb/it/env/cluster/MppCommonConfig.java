@@ -178,8 +178,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSchemaRegionGroupPerDatabase(int schemaRegionGroupPerDatabase) {
-    setProperty("schema_region_group_per_database", String.valueOf(schemaRegionGroupPerDatabase));
+  public CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase) {
+    setProperty(
+        "default_schema_region_group_num_per_database",
+        String.valueOf(schemaRegionGroupPerDatabase));
     return this;
   }
 
@@ -190,8 +192,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionGroupPerDatabase(int dataRegionGroupPerDatabase) {
-    setProperty("data_region_group_per_database", String.valueOf(dataRegionGroupPerDatabase));
+  public CommonConfig setDefaultDataRegionGroupNumPerDatabase(int dataRegionGroupPerDatabase) {
+    setProperty(
+        "default_data_region_group_num_per_database", String.valueOf(dataRegionGroupPerDatabase));
     return this;
   }
 
@@ -306,17 +309,17 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
-    setProperty("least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     if (queryThreadCount <= 0) {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
     return this;
   }
 
@@ -329,6 +332,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
     return this;
   }
 }

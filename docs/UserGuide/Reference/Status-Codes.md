@@ -43,7 +43,7 @@ With Status Code, instead of writing codes like `if (e.getErrorMessage().contain
 Here is a list of Status Code and related message:
 
 | Status Code | Status Type                       | Meanings                                                                                  |
-| :---------- | :-------------------------------- | :---------------------------------------------------------------------------------------- |
+|:------------|:----------------------------------|:------------------------------------------------------------------------------------------|
 | 200         | SUCCESS_STATUS                    |                                                                                           |
 | 201         | INCOMPATIBLE_VERSION              | Incompatible version                                                                      |
 | 202         | CONFIGURATION_ERROR               | Configuration error                                                                       |
@@ -55,6 +55,7 @@ Here is a list of Status Code and related message:
 | 303         | ILLEGAL_PARAMETER                 | Parameter is illegal                                                                      |
 | 304         | OVERLAP_WITH_EXISTING_TASK        | Current task has some conflict with existing tasks                                        |
 | 305         | INTERNAL_SERVER_ERROR             | Internal server error                                                                     |
+| 306         | DISPATCH_ERROR                    | Meet error while dispatching                                                              |
 | 400         | REDIRECTION_RECOMMEND             | Recommend Client redirection                                                              |
 | 500         | DATABASE_NOT_EXIST                | Database does not exist                                                                   |
 | 501         | DATABASE_ALREADY_EXISTS           | Database already exist                                                                    |
@@ -132,6 +133,7 @@ Here is a list of Status Code and related message:
 | 904         | CONSENSUS_NOT_INITIALIZED         | Consensus is not initialized and cannot provide service                                   |
 | 905         | REGION_LEADER_CHANGE_ERROR        | Region leader migration failed                                                            |
 | 906         | NO_AVAILABLE_REGION_GROUP         | Cannot find an available region group                                                     |
+| 907         | LACK_DATA_PARTITION_ALLOCATION    | Lacked some data partition allocation result in the response                              |
 | 1000        | DATANODE_ALREADY_REGISTERED       | DataNode already registered in cluster                                                    |
 | 1001        | NO_ENOUGH_DATANODE                | The number of DataNode is not enough, cannot remove DataNode or create enough replication |
 | 1002        | ADD_CONFIGNODE_ERROR              | Add ConfigNode error                                                                      |
@@ -144,12 +146,12 @@ Here is a list of Status Code and related message:
 | 1100        | LOAD_FILE_ERROR                   | Meet error while loading file                                                             |
 | 1101        | LOAD_PIECE_OF_TSFILE_ERROR        | Error when load a piece of TsFile when loading                                            |
 | 1102        | DESERIALIZE_PIECE_OF_TSFILE_ERROR | Error when deserialize a piece of TsFile                                                  |
-| 1103        | CREATE_PIPE_SINK_ERROR            | Failed to create a PIPE sink                                                              |
-| 1104        | PIPE_ERROR                        | PIPE error                                                                                |
-| 1105        | PIPESERVER_ERROR                  | PIPE server error                                                                         |
-| 1106        | SYNC_CONNECTION_ERROR             | Meet error while sync connecting                                                          |
-| 1107        | SYNC_FILE_REDIRECTION_ERROR       | Sync TsFile redirection error                                                             |
-| 1108        | SYNC_FILE_ERROR                   | Sync TsFile error                                                                         |
+| 1103        | SYNC_CONNECTION_ERROR             | Sync connection error                                                                     |
+| 1104        | SYNC_FILE_REDIRECTION_ERROR       | Sync TsFile redirection error                                                             |
+| 1105        | SYNC_FILE_ERROR                   | Sync TsFile error                                                                         |
+| 1106        | CREATE_PIPE_SINK_ERROR            | Failed to create a PIPE sink                                                              |
+| 1107        | PIPE_ERROR                        | PIPE error                                                                                |
+| 1108        | PIPESERVER_ERROR                  | PIPE server error                                                                         |
 | 1109        | VERIFY_METADATA_ERROR             | Meet error in validate timeseries schema                                                  |
 | 1200        | UDF_LOAD_CLASS_ERROR              | Error when loading UDF class                                                              |
 | 1201        | UDF_DOWNLOAD_ERROR                | DataNode cannot download UDF from ConfigNode                                              |

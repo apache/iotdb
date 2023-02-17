@@ -34,6 +34,8 @@ SELECT [LAST] selectExpr [, selectExpr] ...
         ([startTime, endTime), interval [, slidingStep]) |
         LEVEL = levelNum [, levelNum] ... |
         TAGS(tagKey [, tagKey] ... )
+        VARIATION(expression[,delta][,ignoreNull=true/false])|
+        SERIES(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
@@ -73,7 +75,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 ### `GROUP BY` clause
 
 - The `GROUP BY` clause specifies how the time series are aggregated by segment or group.
-- Segmented aggregation refers to segmenting data in the row direction according to the time dimension, aiming at the time relationship between different data points in the same time series, and obtaining an aggregated value for each segment. Currently only **segmentation by time interval** is supported, and more segmentation methods will be supported in the future.
+- Segmented aggregation refers to segmenting data in the row direction according to the time dimension, aiming at the time relationship between different data points in the same time series, and obtaining an aggregated value for each segment. Currently only **segmentation by time interval**、**group by variation** and **group by series** is supported, and more segmentation methods will be supported in the future.
 - Group aggregation refers to grouping the potential business attributes of time series for different time series. Each group contains several time series, and each group gets an aggregated value. Support **group by path level** and **group by tag** two grouping methods.
 - Segment aggregation and group aggregation can be mixed.
 - For details and examples, see the document [Group By Aggregation](./Group-By.md).
@@ -263,7 +265,13 @@ Total line number = 10
 It costs 0.016s
 ```
 
-## Usage in Different Clients
+## Execution Interface
+
+In IoTDB, there are two ways to execute data query:
+- Execute queries using IoTDB-SQL.
+- Efficient execution interfaces for common queries, including time-series raw data query, last query, and aggregation query.
+
+### Execute queries using IoTDB-SQL
 
 Data query statements can be used in SQL command-line terminals, JDBC, JAVA / C++ / Python / Go and other native APIs, and RESTful APIs.
 
@@ -278,3 +286,47 @@ Data query statements can be used in SQL command-line terminals, JDBC, JAVA / C+
    ````
 
 - Used in RESTful API, see [HTTP API](../API/RestService.md) for details.
+
+### Efficient execution interfaces
+
+The native APIs provide efficient execution interfaces for commonly used queries, which can save time-consuming operations such as SQL parsing. include:
+
+* Time-series raw data query with time range:
+  - The specified query time range is a left-closed right-open interval, including the start time but excluding the end time.
+
+```java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
+```
+
+* Last query:
+  - Query the last data, whose timestamp is greater than or equal LastTime.
+
+```java
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime);
+```
+
+* Aggregation query:
+  - Support specified query time range: The specified query time range is a left-closed right-open interval, including the start time but not the end time.
+  - Support GROUP BY TIME.
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
+```

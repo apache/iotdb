@@ -38,11 +38,11 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
-import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
@@ -122,8 +122,8 @@ public class ConfigNodeProcedureEnv {
    * @return tsStatus
    */
   public TSStatus deleteConfig(String name) {
-    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
-    return getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
+    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
+    return getClusterSchemaManager().deleteStorageGroup(deleteDatabasePlan);
   }
 
   /**
@@ -132,8 +132,7 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDelete(
-      PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
+  public void preDelete(PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
     getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 
@@ -496,9 +495,8 @@ public class ConfigNodeProcedureEnv {
     for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
       try {
         ttlMap.put(
-            storageGroup,
-            getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
-      } catch (StorageGroupNotExistsException e) {
+            storageGroup, getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL());
+      } catch (DatabaseNotExistsException e) {
         // Notice: This line will never reach since we've checked before
         LOG.error("StorageGroup doesn't exist", e);
       }
@@ -523,8 +521,8 @@ public class ConfigNodeProcedureEnv {
     return req;
   }
 
-  public long getTTL(String storageGroup) throws StorageGroupNotExistsException {
-    return getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL();
+  public long getTTL(String storageGroup) throws DatabaseNotExistsException {
+    return getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {

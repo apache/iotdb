@@ -132,9 +132,9 @@ SHOW QUERIES | (QUERY PROCESSLIST)
 
 ### 结果集
 Time：查询开始时间，数据类型为`INT64`  
-QueryId：集群级别唯一的查询标识，数据类型为`TEXT`  
+QueryId：集群级别唯一的查询标识，数据类型为`TEXT`，格式为`yyyyMMdd_HHmmss_index_dataNodeId`
 DataNodeId：执行该查询的节点，数据类型为`INT32`  
-ElapsedTime：查询已执行时间，以`秒`为单位，数据类型为`FLOAT`  
+ElapsedTime：查询已执行时间（不完全精确），以`秒`为单位，数据类型为`FLOAT`  
 Statement：查询的原始语句，数据类型为`TEXT` 
 
 ```
@@ -173,6 +173,11 @@ SHOW QUERIES WHERE ElapsedTime > 30
 SQL 语句为：
 ```SQL
 SHOW QUERIES limit 5
+```
+
+等价于
+```SQL
+SHOW QUERIES ORDER BY ElapsedTime DESC limit 5
 ```
 
 该 SQL 语句的执行结果如下：

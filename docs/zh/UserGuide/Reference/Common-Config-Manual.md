@@ -102,6 +102,24 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor |
 | 改后生效方式 | 仅允许在第一次启动服务前修改                                                    |
 
+* schema\_region\_group\_extension\_policy
+
+|   名字   | schema\_region\_group\_extension\_policy |
+|:------:|:-----------------------------------------|
+|   描述   | SchemaRegionGroup 的扩容策略                  |
+|   类型   | string                                   |
+|  默认值   | AUTO                                     |
+| 改后生效方式 | 重启服务生效                                   |
+
+* default\_schema\_region\_group\_num\_per\_database
+
+|   名字   | default\_schema\_region\_group\_num\_per\_database                                                                                                      |
+|:------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 当选用 CUSTOM-SchemaRegionGroup 扩容策略时，此参数为每个 Database 拥有的 SchemaRegionGroup 数量；当选用 AUTO-SchemaRegionGroup 扩容策略时，此参数为每个 Database 最少拥有的 SchemaRegionGroup 数量 |
+|   类型   | int                                                                                                                                                     |
+|  默认值   | 1                                                                                                                                                       |
+| 改后生效方式 | 重启服务生效                                                                                                                                                  |
+
 * schema\_region\_per\_data\_node
 
 |   名字   | schema\_region\_per\_data\_node       |
@@ -120,14 +138,14 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | AUTO                                   |
 | 改后生效方式 | 重启服务生效                                 |
 
-* data\_region\_group\_per\_database
+* default\_data\_region\_group\_num\_per\_database
 
-|   名字   | data\_region\_group\_per\_database                                  |
-|:------:|:--------------------------------------------------------------------|
-|   描述   | 当选用 CUSTOM-DataRegionGroup 扩容策略时，每个 Database 拥有的 DataRegionGroup 数量 |
-|   类型   | int                                                                 |
-|  默认值   | 1                                                                   |
-| 改后生效方式 | 重启服务生效                                                              |
+|   名字   | data\_region\_group\_per\_database                                                                                                              |
+|:------:|:------------------------------------------------------------------------------------------------------------------------------------------------|
+|   描述   | 当选用 CUSTOM-DataRegionGroup 扩容策略时，此参数为每个 Database 拥有的 DataRegionGroup 数量；当选用 AUTO-DataRegionGroup 扩容策略时，此参数为每个 Database 最少拥有的 DataRegionGroup 数量 |
+|   类型   | int                                                                                                                                             |
+|  默认值   | 2                                                                                                                                               |
+| 改后生效方式 | 重启服务生效                                                                                                                                          |
 
 * data\_region\_per\_processor
 
@@ -137,15 +155,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   类型   | double                       |
 |  默认值   | 1.0                          |
 | 改后生效方式 | 重启服务生效                       |
-
-* least\_data\_region\_group\_num
-
-|   名字   | least\_data\_region\_group\_num     |
-|:------:|:------------------------------------|
-|   描述   | 每个 Database 的 DataRegionGroup 的最少数量 |
-|   类型   | int                                 |
-|  默认值   | 5                                   |
-| 改后生效方式 | 重启服务生效                              |
 
 * enable\_data\_partition\_inherit\_policy
 
@@ -187,32 +196,32 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * time\_partition\_interval
 
-|     名字     | time\_partition\_interval       |
-| :----------: | :------------------------------ |
-|     描述     | Database 默认的数据时间分区间隔 |
-|     类型     | Long                            |
-|     单位     | 毫秒                            |
-|    默认值    | 604800000                       |
-| 改后生效方式 | 仅允许在第一次启动服务前修改    |
+|   名字   | time\_partition\_interval |
+|:------:|:--------------------------|
+|   描述   | Database 默认的数据时间分区间隔      |
+|   类型   | Long                      |
+|   单位   | 毫秒                        |
+|  默认值   | 604800000                 |
+| 改后生效方式 | 仅允许在第一次启动服务前修改            |
 
 * heartbeat\_interval\_in\_ms
 
-|     名字     | heartbeat\_interval\_in\_ms |
-| :----------: | :-------------------------- |
-|     描述     | 集群节点间的心跳间隔        |
-|     类型     | Long                        |
-|     单位     | ms                          |
-|    默认值    | 1000                        |
-| 改后生效方式 | 重启服务生效                |
+|   名字   | heartbeat\_interval\_in\_ms |
+|:------:|:----------------------------|
+|   描述   | 集群节点间的心跳间隔                  |
+|   类型   | Long                        |
+|   单位   | ms                          |
+|  默认值   | 1000                        |
+| 改后生效方式 | 重启服务生效                      |
 
 * disk\_space\_warning\_threshold
 
-|     名字     | disk\_space\_warning\_threshold |
-| :----------: | :------------------------------ |
-|     描述     | DataNode 磁盘剩余阈值           |
-|     类型     | double(percentage)              |
-|    默认值    | 0.05                            |
-| 改后生效方式 | 重启服务生效                    |
+|   名字   | disk\_space\_warning\_threshold |
+|:------:|:--------------------------------|
+|   描述   | DataNode 磁盘剩余阈值                 |
+|   类型   | double(percentage)              |
+|  默认值   | 0.05                            |
+| 改后生效方式 | 重启服务生效                          |
 
 ### 内存控制配置
 
