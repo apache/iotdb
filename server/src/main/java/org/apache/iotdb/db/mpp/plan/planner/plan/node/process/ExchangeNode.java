@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ExchangeNode extends SingleChildProcessNode {
 
@@ -72,10 +73,10 @@ public class ExchangeNode extends SingleChildProcessNode {
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
     if (remoteSourceNode != null) {
-      FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
-      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getPlanNodeId());
       node.setRemoteSourceNode(remoteSourceNode);
     }
+    node.setOutputColumnNames(outputColumnNames);
+    node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
     return node;
   }
 
@@ -172,7 +173,6 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   public void setRemoteSourceNode(MultiChildrenSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
-    this.setOutputColumnNames(remoteSourceNode.getOutputColumnNames());
   }
 
   public TEndPoint getUpstreamEndpoint() {

@@ -59,9 +59,9 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
   @Override
   public List<String> getOutputColumnNames() {
     return children.stream()
-            .map(PlanNode::getOutputColumnNames)
-            .flatMap(List::stream)
-            .collect(Collectors.toList());
+        .map(PlanNode::getOutputColumnNames)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
   }
 
   @Override

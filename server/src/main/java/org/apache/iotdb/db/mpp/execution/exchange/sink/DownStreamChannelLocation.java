@@ -29,8 +29,10 @@ import java.nio.ByteBuffer;
 
 public class DownStreamChannelLocation {
 
-  private final TEndPoint remoteEndpoint;
-  private final TFragmentInstanceId remoteFragmentInstanceId;
+  // We fill these fields util FI was produced
+  private TEndPoint remoteEndpoint;
+  private TFragmentInstanceId remoteFragmentInstanceId;
+
   private final String remotePlanNodeId;
 
   /**
@@ -46,6 +48,20 @@ public class DownStreamChannelLocation {
     this.remoteEndpoint = remoteEndpoint;
     this.remoteFragmentInstanceId = remoteFragmentInstanceId;
     this.remotePlanNodeId = remotePlanNodeId;
+  }
+
+  public DownStreamChannelLocation(String remotePlanNodeId) {
+    this.remoteEndpoint = null;
+    this.remoteFragmentInstanceId = null;
+    this.remotePlanNodeId = remotePlanNodeId;
+  }
+
+  public void setRemoteEndpoint(TEndPoint remoteEndpoint) {
+    this.remoteEndpoint = remoteEndpoint;
+  }
+
+  public void setRemoteFragmentInstanceId(TFragmentInstanceId remoteFragmentInstanceId) {
+    this.remoteFragmentInstanceId = remoteFragmentInstanceId;
   }
 
   public TEndPoint getRemoteEndpoint() {

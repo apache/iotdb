@@ -60,6 +60,9 @@ public abstract class MultiChildrenSinkNode extends SinkNode {
   }
 
   @Override
+  public abstract PlanNode clone();
+
+  @Override
   public List<PlanNode> getChildren() {
     return children;
   }
