@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStra
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
+import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Semaphore;
 
 /**
  * CacheMemoryManager is used to register the CachedMTreeStore and create the CacheManager.
@@ -58,8 +58,8 @@ public class CacheMemoryManager {
   private ExecutorService releaseTaskProcessor;
   private ExecutorService releaseTaskMonitor;
 
-  private Semaphore flushSemaphore;
-  private Semaphore releaseSemaphore;
+  private FiniteSemaphore flushSemaphore;
+  private FiniteSemaphore releaseSemaphore;
 
   private volatile boolean hasFlushTask;
   private int flushCount = 0;
@@ -87,8 +87,8 @@ public class CacheMemoryManager {
   }
 
   public void init() {
-    flushSemaphore = new Semaphore(0);
-    releaseSemaphore = new Semaphore(0);
+    flushSemaphore = new FiniteSemaphore(2, 0);
+    releaseSemaphore = new FiniteSemaphore(2, 0);
     engineStatistics =
         SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
             .getAsCachedSchemaEngineStatistics();
