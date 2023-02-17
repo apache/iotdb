@@ -87,6 +87,7 @@ public class SyncStatus {
       size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
+    controller.updateAndGet(0L, true);
     iotConsensusMemoryManager.free(size, false);
   }
 

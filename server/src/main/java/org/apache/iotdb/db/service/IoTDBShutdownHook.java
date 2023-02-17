@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -68,6 +69,18 @@ public class IoTDBShutdownHook extends Thread {
           .getAllConsensusGroupIds()
           .parallelStream()
           .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
+    }
+
+    // close consensusImpl
+    try {
+      if (SchemaRegionConsensusImpl.getInstance() != null) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (DataRegionConsensusImpl.getInstance() != null) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
+    } catch (Exception e) {
+      logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
     }
 
     // clear lock file
