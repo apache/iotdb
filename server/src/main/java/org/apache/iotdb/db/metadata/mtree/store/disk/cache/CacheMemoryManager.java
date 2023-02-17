@@ -268,10 +268,14 @@ public class CacheMemoryManager {
   }
 
   public void clear() {
-    releaseTaskMonitor.shutdownNow();
-    releaseTaskMonitor = null;
-    flushTaskMonitor.shutdownNow();
-    releaseTaskMonitor = null;
+    if (releaseTaskMonitor != null) {
+      releaseTaskMonitor.shutdownNow();
+      releaseTaskMonitor = null;
+    }
+    if (flushTaskMonitor != null) {
+      flushTaskMonitor.shutdownNow();
+      releaseTaskMonitor = null;
+    }
     if (releaseTaskProcessor != null) {
       while (true) {
         if (!hasReleaseTask) break;
