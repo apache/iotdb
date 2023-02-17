@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -39,7 +40,7 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   // The remoteSourceNode is used to record the remote source info for current ExchangeNode
   // It is not the child of current ExchangeNode
-  private FragmentSinkNode remoteSourceNode;
+  private MultiChildrenSinkNode remoteSourceNode;
 
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
@@ -157,7 +158,7 @@ public class ExchangeNode extends SingleChildProcessNode {
         getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
-  public FragmentSinkNode getRemoteSourceNode() {
+  public MultiChildrenSinkNode getRemoteSourceNode() {
     return remoteSourceNode;
   }
 
@@ -169,7 +170,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
   }
 
-  public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
+  public void setRemoteSourceNode(MultiChildrenSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
     this.setOutputColumnNames(remoteSourceNode.getOutputColumnNames());
   }

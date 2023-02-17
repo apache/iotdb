@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
+import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -32,10 +34,18 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.SinkNode;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DistributionPlanner {
   private Analysis analysis;
@@ -68,16 +78,63 @@ public class DistributionPlanner {
                 && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
             root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
-    adjustUpStream(nodeGroupContext.exchangeNodes);
+    adjustUpStream(nodeGroupContext);
     return newRoot;
   }
 
   /**
-   * adjust upStream of exchangeNodes, generate
-   *
-   * @param exchangeNodes
+   * Adjust upStream of exchangeNodes, generate {@link
+   * org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode} or {@link
+   * org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode} for the children of
+   * ExchangeNodes with Same DataRegion.
    */
-  private void adjustUpStream(List<ExchangeNode> exchangeNodes) {}
+  private void adjustUpStream(NodeGroupContext context) {
+    if(context.exchangeNodes.isEmpty()) {
+      return;
+    }
+
+    // group children of ExchangeNodes
+    Map<TRegionReplicaSet, List<PlanNode>> nodeGroups = new HashMap<>();
+    context.exchangeNodes.forEach(
+        exchangeNode ->
+            nodeGroups
+                .computeIfAbsent(
+                    context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).region,
+                    exchangeNodes -> new ArrayList<>())
+                .add(exchangeNode.getChild()));
+
+    // add IdentitySinkNode/ShuffleSinkNode as parent for nodes of each group
+    nodeGroups
+        .values()
+        .forEach(
+            planNodeList -> {
+              MultiChildrenSinkNode parent =
+                  analysis.getStatement() instanceof QueryStatement
+                          && analysis.getMergeOrderParameter() != null
+                          && !analysis.getMergeOrderParameter().isEmpty()
+                          && analysis.getMergeOrderParameter().getSortItemList().get(0).getSortKey()
+                              == SortKey.DEVICE
+                      ? new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                      : new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId());
+              parent.addChildren(planNodeList);
+              // we put the parent in list to get it quickly by dataRegion of one ExchangeNode
+              planNodeList.add(parent);
+            });
+
+    // add child for each ExchangeNode,
+    // the child is IdentitySinkNode/ShuffleSinkNode we generate last step
+    Map<TRegionReplicaSet, Integer> visitedCount = new HashMap<>();
+
+    context.exchangeNodes.forEach(
+        exchangeNode -> {
+          TRegionReplicaSet regionOfChild = context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).region;
+          visitedCount.compute(regionOfChild, (region, count) -> (count == null) ? 0 : count + 1);
+          List<PlanNode> planNodeList =
+              nodeGroups.get(regionOfChild);
+          exchangeNode.addChild(planNodeList.get(planNodeList.size() - 1));
+          exchangeNode.setIndexOfUpstreamSinkHandle(visitedCount.get(regionOfChild));
+        });
+  }
 
   public SubPlan splitFragment(PlanNode root) {
     FragmentBuilder fragmentBuilder = new FragmentBuilder(context);
@@ -169,9 +226,8 @@ public class DistributionPlanner {
       if (root instanceof ExchangeNode) {
         // We add a FragmentSinkNode for newly created PlanFragment
         ExchangeNode exchangeNode = (ExchangeNode) root;
-        FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
-        sinkNode.setChild(exchangeNode.getChild());
-        sinkNode.setDownStreamPlanNodeId(exchangeNode.getPlanNodeId());
+        Validate.isTrue(exchangeNode.getChild() instanceof MultiChildrenSinkNode, "check..");
+        MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) (exchangeNode.getChild());
 
         // Record the source node info in the ExchangeNode so that we can keep the connection of
         // these nodes/fragments

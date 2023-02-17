@@ -69,6 +69,10 @@ public abstract class MultiChildrenSinkNode extends SinkNode {
     this.children.add(child);
   }
 
+  public void addChildren(List<PlanNode> children) {
+    this.children.addAll(children);
+  }
+
   @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;

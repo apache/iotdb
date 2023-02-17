@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,8 +31,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class IdentitySinkNode extends MultiChildrenSinkNode {
+
+  public IdentitySinkNode(PlanNodeId id) {
+    super(id);
+  }
 
   public IdentitySinkNode(
       PlanNodeId id, List<DownStreamChannelLocation> downStreamChannelLocationList) {
@@ -52,7 +58,15 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return children.stream()
+            .map(PlanNode::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList());
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitIdentitySink(this, context);
   }
 
   @Override
