@@ -1207,6 +1207,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+    } else if (windowType == WindowType.SESSION_WINDOW) {
+      GroupByParameter groupByParameter =
+          new GroupBySessionParameter(
+              ((GroupBySessionComponent) groupByComponent).getTimeInterval());
+      analysis.setGroupByParameter(groupByParameter);
     } else {
       throw new SemanticException("Unsupported window type");
     }
