@@ -106,6 +106,9 @@ public class AbstractCompactionTest {
   private final long oldLowerTargetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
+  private int oldMinCrossCompactionUnseqLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
   protected static File STORAGE_GROUP_DIR =
       new File(
           TestConstant.BASE_OUTPUT_PATH
@@ -374,6 +377,9 @@ public class AbstractCompactionTest {
     CompactionTaskManager.getInstance().stop();
     seqResources.clear();
     unseqResources.clear();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()

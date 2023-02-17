@@ -72,6 +72,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySeriesComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
@@ -215,7 +216,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "For delete statement, where clause can only contain time expressions, "
           + "value filter is not currently supported.";
 
-  private static final String IGNORINGNULL = "IgnoringNull";
+  private static final String IGNORENULL = "IgnoreNull";
 
   private ZoneId zoneId;
 
@@ -935,7 +936,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         if (groupByAttribute.TIME() != null || groupByAttribute.interval != null) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(
-                "Only one of group by time or group by variation can be supported at a time");
+                "Only one of group by time or group by variation/series can be supported at a time");
           }
 
           groupByKeys.add("COMMON");
@@ -957,12 +958,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         } else if (groupByAttribute.VARIATION() != null) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(
-                "Only one of group by time or group by variation can be supported at a time");
+                "Only one of group by time or group by variation/series can be supported at a time");
           }
 
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
               parseGroupByClause(groupByAttribute, WindowType.EVENT_WINDOW));
+        } else if (groupByAttribute.SERIES() != null) {
+          if (groupByKeys.contains("COMMON")) {
+            throw new SemanticException(
+                "Only one of group by time or group by variation/series can be supported at a time");
+          }
+
+          groupByKeys.add("COMMON");
+          queryStatement.setGroupByComponent(
+              parseGroupByClause(groupByAttribute, WindowType.SERIES_WINDOW));
         } else {
           throw new SemanticException("Unknown GROUP BY type.");
         }
@@ -1186,19 +1196,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     boolean ignoringNull = true;
     if (ctx.attributePair() != null && !ctx.attributePair().isEmpty()) {
-      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORINGNULL)) {
+      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORENULL)) {
         ignoringNull = Boolean.parseBoolean(ctx.attributePair().value.getText());
       }
     }
-
+    List<ExpressionContext> expressions = ctx.expression();
     if (windowType == WindowType.EVENT_WINDOW) {
+      ExpressionContext expressionContext = expressions.get(0);
       GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
       groupByVariationComponent.setControlColumnExpression(
-          parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null));
+          parseExpression(expressionContext, expressionContext.OPERATOR_NOT() == null));
       groupByVariationComponent.setDelta(
           ctx.delta == null ? 0 : Double.parseDouble(ctx.delta.getText()));
       groupByVariationComponent.setIgnoringNull(ignoringNull);
       return groupByVariationComponent;
+    } else if (windowType == WindowType.SERIES_WINDOW) {
+      ExpressionContext conditionExpressionContext = expressions.get(0);
+      GroupBySeriesComponent groupBySeriesComponent = new GroupBySeriesComponent();
+      groupBySeriesComponent.setControlColumnExpression(
+          parseExpression(
+              conditionExpressionContext, conditionExpressionContext.OPERATOR_NOT() == null));
+      if (expressions.size() == 2) {
+        groupBySeriesComponent.setKeepExpression(
+            parseExpression(expressions.get(1), expressions.get(1).OPERATOR_NOT() == null));
+      }
+      groupBySeriesComponent.setIgnoringNull(ignoringNull);
+      return groupBySeriesComponent;
     } else {
       throw new SemanticException("Unsupported window type");
     }

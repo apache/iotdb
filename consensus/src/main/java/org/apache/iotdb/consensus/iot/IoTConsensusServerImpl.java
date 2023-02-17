@@ -92,9 +92,8 @@ public class IoTConsensusServerImpl {
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
-
+  private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
-
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
@@ -108,7 +107,6 @@ public class IoTConsensusServerImpl {
   private final ConsensusReqReader reader;
   private volatile boolean active;
   private String newSnapshotDirName;
-  private static final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
@@ -381,9 +379,9 @@ public class IoTConsensusServerImpl {
     }
     for (File file : versionFiles) {
       snapShotIndex =
-          Long.max(
+          Math.max(
               snapShotIndex,
-              Long.parseLong(snapshotIndexPatten.matcher(file.getName()).replaceAll("")));
+              Long.parseLong(SNAPSHOT_INDEX_PATTEN.matcher(file.getName()).replaceAll("")));
     }
     return snapShotIndex;
   }
@@ -900,6 +898,7 @@ public class IoTConsensusServerImpl {
                     request.getStartSyncIndex(),
                     nextSyncIndex);
                 requestCache.remove(request);
+                nextSyncIndex = Math.max(nextSyncIndex, request.getEndSyncIndex() + 1);
                 break;
               }
             }

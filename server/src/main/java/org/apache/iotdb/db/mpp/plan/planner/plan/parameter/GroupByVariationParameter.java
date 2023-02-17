@@ -54,7 +54,7 @@ public class GroupByVariationParameter extends GroupByParameter {
     return delta;
   }
 
-  public static GroupByParameter deserializeVariation(ByteBuffer buffer) {
+  public static GroupByParameter deserialize(ByteBuffer buffer) {
     boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
     double delta = ReadWriteIOUtils.readDouble(buffer);
     return new GroupByVariationParameter(ignoringNull, delta);

@@ -35,8 +35,12 @@ public class WindowManagerFactory {
                 (EventWindowParameter) windowParameter, timeRangeIterator.isAscending())
             : genVariationEventWindowManager(
                 (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
+      case SERIES_WINDOW:
+        return new SeriesWindowManager((SeriesWindowParameter) windowParameter);
       default:
-        throw new IllegalArgumentException("Not support this type of aggregation window.");
+        throw new IllegalArgumentException(
+            "Not support this type of aggregation window :"
+                + windowParameter.getWindowType().name());
     }
   }
 

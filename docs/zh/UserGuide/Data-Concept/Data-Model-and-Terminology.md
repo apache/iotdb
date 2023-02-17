@@ -88,7 +88,7 @@ wildcard
   * [ 0-9 a-z A-Z _ ] （字母，数字，下划线）
   * ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
 * 特别地，如果系统在 Windows 系统上部署，那么 database 路径结点名是大小写不敏感的。例如，同时创建`root.ln` 和 `root.LN` 是不被允许的。
-* 如果需要在路径结点名中用特殊字符，可以用反引号引用路径结点名，具体使用方法可以参考[语法约定](../Reference/Syntax-Conventions.md)。
+* 如果需要在路径结点名中用特殊字符，可以用反引号引用路径结点名，具体使用方法可以参考[语法约定](../Syntax-Conventions/Literal-Values.md)。
 
 ### 路径模式（Path Pattern）
 

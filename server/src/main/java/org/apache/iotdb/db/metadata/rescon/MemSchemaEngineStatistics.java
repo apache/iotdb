@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -26,72 +25,87 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MemoryStatistics {
+/** This class is used to record the global statistics of SchemaEngine in Memory mode */
+public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
-  private static final Logger logger = LoggerFactory.getLogger(MemoryStatistics.class);
+  private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
-  /** threshold total size of MTree */
+  /** Total size of schema region */
   private long memoryCapacity;
 
-  private final AtomicLong memoryUsage = new AtomicLong(0);
+  protected final AtomicLong memoryUsage = new AtomicLong(0);
+
+  private final AtomicLong totalSeriesNumber = new AtomicLong(0);
 
   private volatile boolean allowToCreateNewSeries;
 
-  private static class MemoryStatisticsHolder {
-
-    private MemoryStatisticsHolder() {
-      // allowed to do nothing
-    }
-
-    private static final MemoryStatistics INSTANCE = new MemoryStatistics();
-  }
-
-  public static MemoryStatistics getInstance() {
-    return MemoryStatisticsHolder.INSTANCE;
-  }
-
-  private MemoryStatistics() {}
-
+  @Override
   public void init() {
     memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     memoryUsage.getAndSet(0);
+    totalSeriesNumber.getAndSet(0);
     allowToCreateNewSeries = true;
   }
 
+  @Override
   public boolean isAllowToCreateNewSeries() {
     return allowToCreateNewSeries;
   }
 
+  @Override
   public boolean isExceedCapacity() {
     return memoryUsage.get() > memoryCapacity;
   }
 
+  @Override
   public long getMemoryCapacity() {
     return memoryCapacity;
   }
 
+  @Override
   public long getMemoryUsage() {
     return memoryUsage.get();
   }
 
   public void requestMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v += size);
+    memoryUsage.addAndGet(size);
     if (memoryUsage.get() >= memoryCapacity) {
-      logger.warn("Current series number {} is too large...", memoryUsage);
+      logger.warn("Current series memory {} is too large...", memoryUsage);
       allowToCreateNewSeries = false;
     }
   }
 
   public void releaseMemory(long size) {
-    memoryUsage.getAndUpdate(v -> v -= size);
+    memoryUsage.addAndGet(-size);
     if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-      logger.info("Current series number {} come back to normal level", memoryUsage);
+      logger.info(
+          "Current series memory {} come back to normal level, total series number is {}.",
+          memoryUsage,
+          totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
   }
 
-  public void clear() {
-    memoryUsage.getAndSet(0);
-    allowToCreateNewSeries = true;
+  @Override
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
+  }
+
+  public void addTimeseries(long addedNum) {
+    totalSeriesNumber.addAndGet(addedNum);
+  }
+
+  public void deleteTimeseries(long deletedNum) {
+    totalSeriesNumber.addAndGet(-deletedNum);
+  }
+
+  @Override
+  public MemSchemaEngineStatistics getAsMemSchemaEngineStatistics() {
+    return this;
+  }
+
+  @Override
+  public CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics() {
+    throw new UnsupportedOperationException("Wrong SchemaEngineStatistics Type");
   }
 }
