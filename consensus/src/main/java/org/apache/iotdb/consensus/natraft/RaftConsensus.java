@@ -140,6 +140,7 @@ public class RaftConsensus implements IConsensus {
     clientManager.close();
     stateMachineMap.values().parallelStream().forEach(RaftMember::stop);
     registerManager.deregisterAll();
+    FlowMonitorManager.INSTANCE.close();
   }
 
   @Override
