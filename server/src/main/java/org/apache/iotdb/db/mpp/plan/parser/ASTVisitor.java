@@ -1579,11 +1579,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void checkIdentifier(String src) {
-    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+  private static void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches() || PathUtils.isRealNumber(src)) {
       throw new SQLParserException(
           String.format(
-              "%s is illegal, identifier not enclosed with backticks can only consist of digits, characters and underscore.",
+              "%s is illegal, identifier not enclosed with backticks can not be a real number and can only consist of digits, characters and underscore.",
               src));
     }
   }
@@ -1656,7 +1656,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return src;
   }
 
-  private String parseIdentifier(String src) {
+  public static String parseIdentifier(String src) {
     if (src.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && src.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       return src.substring(1, src.length() - 1)
@@ -2591,7 +2591,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
-    String name = parseIdentifier(parseIdentifier(ctx.templateName.getText()));
+    String name = parseIdentifier(ctx.templateName.getText());
     List<List<String>> measurementsList = new ArrayList<>();
     List<List<TSDataType>> dataTypesList = new ArrayList<>();
     List<List<TSEncoding>> encodingsList = new ArrayList<>();

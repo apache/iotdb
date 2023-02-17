@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
@@ -1412,6 +1413,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      req.setName(ASTVisitor.parseIdentifier(req.getName()));
+
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
@@ -1465,7 +1468,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
-
+      req.setName(ASTVisitor.parseIdentifier(req.getName()));
       Statement statement = StatementGenerator.createStatement(req);
       if (statement == null) {
         resp.setStatus(
@@ -1570,6 +1573,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
+
+      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
@@ -1613,6 +1618,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
+      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
@@ -1658,6 +1664,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
+
+      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
