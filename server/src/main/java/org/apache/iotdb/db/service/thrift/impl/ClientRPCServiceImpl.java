@@ -1413,7 +1413,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      req.setName(ASTVisitor.parseIdentifier(req.getName()));
+      req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
@@ -1468,7 +1468,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
-      req.setName(ASTVisitor.parseIdentifier(req.getName()));
+      req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
       Statement statement = StatementGenerator.createStatement(req);
       if (statement == null) {
         resp.setStatus(
@@ -1574,7 +1574,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
+      req.setTemplateName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getTemplateName()));
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
@@ -1618,7 +1618,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
-      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
+      req.setTemplateName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getTemplateName()));
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
@@ -1665,7 +1665,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      req.setTemplateName(ASTVisitor.parseIdentifier(req.getTemplateName()));
+      req.setTemplateName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getTemplateName()));
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
 
@@ -1809,6 +1809,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             MetricLevel.IMPORTANT,
             "name",
             operation.getName());
+  }
+
+  private String checkIdentifierAndRemoveBackQuotesIfNecessary(String identifier) {
+    return identifier == null ? null : ASTVisitor.parseIdentifier(identifier);
   }
 
   @Override
