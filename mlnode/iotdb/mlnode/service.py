@@ -18,14 +18,16 @@
 import threading
 import time
 
+import multiprocessing as mp
+
 from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from iotdb.mlnode.config import config
-from iotdb.mlnode.handler import MLNodeRPCServiceHandler
-from iotdb.mlnode.log import logger
-from iotdb.thrift.mlnode import IMLNodeRPCService
+from config import config
+from handler import MLNodeRPCServiceHandler
+from log import logger
+from utils.thrift.mlnode import IMLNodeRPCService
 
 
 class RPCService(threading.Thread):
@@ -56,5 +58,6 @@ class MLNode(object):
 
 
 if __name__ == "__main__":
+    mp.set_start_method('spawn', force=True)
     server = MLNode()
     server.start()

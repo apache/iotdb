@@ -37,15 +37,28 @@ def _create_tunning_task(configs, task_map, task_id):
 
 
 class Manager(object):
-    def __init__(self):
+    def __init__(self, pool_num):
         self.resource_manager = mp.Manager()
         self.task_map = self.resource_manager.dict()
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # leave to the os to clean up zombie processes
+        self.pool = mp.Pool(pool_num)
+
+    def __call__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            cls._instance = super().__call__(*args, **kwargs)
+        return cls._instance
     
-    def _create_training_task(self, configs):
-        print("creating...")
-        task = ForecastingTrainingTask(configs)
-        task.start()
+    def createSingleTrainingTask_Pool(self, configs):
+        task_id = self.generate_taskid()
+        self.pool.apply_async(_create_training_task, args=(configs, self.task_map, task_id, ))
+        self.task_map[task_id] = self.resource_manager.dict()
+        return task_id
+    
+    def createTuneTrainingTask_Pool(self, configs):
+        task_id = self.generate_taskid()
+        self.pool.apply_async(_create_tunning_task, args=(configs, self.task_map, task_id, ))
+        self.task_map[task_id] = self.resource_manager.dict()
+        return task_id
 
     def createSingleTrainingTask(self, configs):
         task_id = self.generate_taskid()
@@ -99,17 +112,19 @@ class Manager(object):
                 if (not psutil.pid_exists(pid)) and self.task_map[task_id][pid] == 'running':
                     self.task_map[task_id][pid] = 'failed'
         
-    
-if __name__ == '__main__':
-    mp.set_start_method('spawn')
-    manager = Manager()
-    configs = default_configs()
-    task_id = manager.createTuneTrainingTask(configs)
 
-    while True:
-        time.sleep(5)
-        manager.update_process_state()
-        print(manager.task_map[task_id])
+# TaskManager = Manager(10)
+
+if __name__ == '__main__':
+    # manager = Manager()
+    # configs = default_configs()
+    # task_id = manager.createTuneTrainingTask(configs)
+
+    # while True:
+    #     time.sleep(5)
+    #     manager.update_process_state()
+    #     print(manager.task_map[task_id])
+    pass
 
 
 

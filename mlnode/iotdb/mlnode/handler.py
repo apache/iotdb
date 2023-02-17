@@ -17,12 +17,15 @@
 #
 from enum import Enum
 
-from iotdb.thrift.common.ttypes import TSStatus
-from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+from utils.thrift.common.ttypes import TSStatus
+from utils.thrift.mlnode import IMLNodeRPCService
+from utils.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
                                         TForecastResp)
 
+
+from manager import Manager
+from data_provider.build_dataset_debug import *
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
@@ -39,12 +42,16 @@ def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
+        self.taskManager = Manager(10)
         pass
 
     def deleteModel(self, req: TDeleteModelReq):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
+        config = default_configs()
+        self.taskManager.createSingleTrainingTask_Pool(config)
+        print(id(self.taskManager))
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def forecast(self, req: TForecastReq):

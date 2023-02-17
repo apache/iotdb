@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.exception import BadNodeUrlError
-from iotdb.mlnode.log import logger
+from exception import BadNodeUrlError
+from log import logger
 
-from iotdb.thrift.common.ttypes import TEndPoint
+from utils.thrift.common.ttypes import TEndPoint
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:

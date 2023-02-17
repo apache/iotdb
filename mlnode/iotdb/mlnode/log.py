@@ -19,7 +19,7 @@ import logging
 import os
 from logging.config import fileConfig
 
-from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
+from constant import (MLNODE_CONF_DIRECTORY_NAME,
                                    MLNODE_LOG_CONF_FILE_NAME)
 
 log_conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_LOG_CONF_FILE_NAME)

@@ -19,12 +19,12 @@ import os
 
 from dynaconf import Dynaconf
 
-from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
+from constant import (MLNODE_CONF_DIRECTORY_NAME,
                                    MLNODE_CONF_FILE_NAME)
-from iotdb.mlnode.exception import BadNodeUrlError
-from iotdb.mlnode.log import logger
-from iotdb.mlnode.util import parse_endpoint_url
-from iotdb.thrift.common.ttypes import TEndPoint
+from exception import BadNodeUrlError
+from log import logger
+from util import parse_endpoint_url
+from utils.thrift.common.ttypes import TEndPoint
 
 
 class MLNodeConfig(object):

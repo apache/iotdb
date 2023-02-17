@@ -18,9 +18,9 @@
 from thrift.protocol import TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.mlnode.log import logger
-from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TDeleteModelReq
+from log import logger
+from utils.thrift.mlnode import IMLNodeRPCService
+from utils.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
 
 class MLNodeClient(object):
@@ -39,6 +39,10 @@ class MLNodeClient(object):
 
         protocol = TCompactProtocol.TCompactProtocol(transport)
         self.__client = IMLNodeRPCService.Client(protocol)
+    
+    def create_training_task(self):
+        req = TCreateTrainingTaskReq()
+        return self.__client.createTrainingTask(req)
 
     def delete_model(self, model_path: str):
         req = TDeleteModelReq(model_path)
@@ -48,4 +52,4 @@ class MLNodeClient(object):
 if __name__ == "__main__":
     # test rpc service
     client = MLNodeClient(host="127.0.0.1", port=10810)
-    print(client.delete_model("test_model_path"))
+    print(client.create_training_task())
