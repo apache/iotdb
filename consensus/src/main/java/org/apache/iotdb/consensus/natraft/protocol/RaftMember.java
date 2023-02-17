@@ -567,9 +567,26 @@ public class RaftMember {
     WEAK_ACCEPT
   }
 
+  public boolean isLeader() {
+    return Objects.equals(status.leader.get(), thisNode);
+  }
+
   public TSStatus processRequest(IConsensusRequest request) {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
+    }
+
+    if (getLeader() == null) {
+      waitLeader();
+    }
+
+    if (!isLeader()) {
+      Peer leader = getLeader();
+      if (leader == null) {
+        return StatusUtils.NO_LEADER;
+      } else {
+        return forwardRequest(request, leader.getEndpoint(), leader.getGroupId());
+      }
     }
 
     logger.debug("{}: Processing request {}", name, request);

@@ -126,7 +126,7 @@ public class ReplicateTest {
    * The three nodes use the requests in the queue to replicate the requests to the other two nodes
    */
   @Test
-  public void ReplicateUsingQueueTest() throws IOException, InterruptedException {
+  public void Replicate3NodeTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingQueueTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
@@ -206,13 +206,8 @@ public class ReplicateTest {
     Assert.assertEquals(-1, servers.get(0).getMember(gid).getLastIndex());
     Assert.assertEquals(-1, servers.get(1).getMember(gid).getLastIndex());
 
-    Set<TestEntry> allEntries = new HashSet<>();
     for (int i = 0; i < CHECK_POINT; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
-      servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
-      Assert.assertEquals(i, servers.get(0).getMember(gid).getLastIndex());
-      Assert.assertEquals(i, servers.get(1).getMember(gid).getLastIndex());
-      allEntries.add(new TestEntry(i, peers.get(2)));
     }
 
     for (int i = 0; i < 2; i++) {
