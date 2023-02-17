@@ -291,6 +291,8 @@ public class FragmentInstanceContext extends QueryContext {
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       if (sharedQueryDataSource != null) {
+        closedFilePaths = new HashSet<>();
+        unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery(sharedQueryDataSource);
       }
     } finally {
