@@ -29,7 +29,7 @@
     </dependency>
 ```
 
-这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的[示例](https://github.com/apache/iotdb/tree/master/example/inflxudb-protocol-example/src/main/java/org/apache/iotdb/influxdb/InfluxDBExample.java)
+这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的[示例](https://github.com/apache/iotdb/blob/master/example/influxdb-protocol-example/src/main/java/org/apache/iotdb/influxdb/InfluxDBExample.java)
 
 
 ## 1.切换方案

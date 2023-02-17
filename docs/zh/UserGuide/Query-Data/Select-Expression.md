@@ -86,7 +86,7 @@ IoTDB 中支持的内置函数列表见文档 [运算符和函数](../Operators-
 
 #### 自定义时间序列生成函数
 
-IoTDB 支持通过 [用户自定义函数](./User-Defined-Function.md) 能力进行函数功能扩展。
+IoTDB 支持通过用户自定义函数（点击查看： [用户自定义函数](../Operators-Functions/User-Defined-Function.md) ）能力进行函数功能扩展。
 
 ## 嵌套表达式举例
 
