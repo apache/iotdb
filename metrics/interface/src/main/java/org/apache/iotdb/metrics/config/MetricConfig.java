@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -53,9 +52,6 @@ public class MetricConfig {
 
   /** The iotdb config for iotdb reporter to push metric data. */
   private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
-
-  /** The type of internal reporter. */
-  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
 
   /** The address of iotdb instance that is monitored. */
   private String rpcAddress = "0.0.0.0";
@@ -94,14 +90,6 @@ public class MetricConfig {
         this.metricReporterList.add(ReporterType.valueOf(type));
       }
     }
-  }
-
-  public InternalReporterType getInternalReportType() {
-    return internalReporterType;
-  }
-
-  public void setInternalReportType(InternalReporterType internalReporterType) {
-    this.internalReporterType = internalReporterType;
   }
 
   public MetricLevel getMetricLevel() {
@@ -161,7 +149,6 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
-    internalReporterType = newMetricConfig.getInternalReportType();
 
     iotdbReporterConfig.copy(newMetricConfig.getIotdbReporterConfig());
   }
@@ -177,8 +164,7 @@ public class MetricConfig {
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
-        && iotdbReporterConfig.equals(anotherMetricConfig.getIotdbReporterConfig())
-        && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
+        && iotdbReporterConfig.equals(anotherMetricConfig.getIotdbReporterConfig());
   }
 
   public static class IoTDBReporterConfig {

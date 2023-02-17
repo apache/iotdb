@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -58,11 +57,6 @@ public class MetricConfigDescriptor {
               .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
         // restart metric service
         reloadLevel = ReloadLevel.RESTART_METRIC;
-      } else if (!metricConfig
-          .getInternalReportType()
-          .equals(newMetricConfig.getInternalReportType())) {
-        // restart internal reporter
-        reloadLevel = ReloadLevel.RESTART_INTERNAL_REPORTER;
       } else {
         // restart reporters
         reloadLevel = ReloadLevel.RESTART_REPORTER;
@@ -143,12 +137,6 @@ public class MetricConfigDescriptor {
                 "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
-
-    loadConfig.setInternalReportType(
-        InternalReporterType.valueOf(
-            properties.getProperty(
-                "dn_metric_internal_reporter_type",
-                loadConfig.getInternalReportType().toString())));
 
     return loadConfig;
   }
