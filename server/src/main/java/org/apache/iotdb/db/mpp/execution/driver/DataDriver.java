@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 
 import com.google.common.util.concurrent.SettableFuture;
+
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.List;
