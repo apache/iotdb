@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -84,12 +83,7 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
     SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root,
-            pathPattern,
-            false,
-            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1,
-            0);
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(root, pathPattern, false, 0, 0);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 

@@ -518,15 +518,6 @@ Different configuration parameters take effect in the following three ways:
 |Default| true |
 |Effective|After restarting system|
 
-* max\_deduplicated\_path\_num
-
-|Name| max\_deduplicated\_path\_num |
-|:---:|:---|
-|Description| allowed max numbers of deduplicated path in one query. |
-|Type| Int32 |
-|Default| 1000 |
-|Effective|After restarting system|
-
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |

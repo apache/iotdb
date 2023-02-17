@@ -85,12 +85,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    setProperty("max_deduplicated_path_num", String.valueOf(maxQueryDeduplicatedPathNum));
-    return this;
-  }
-
-  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
