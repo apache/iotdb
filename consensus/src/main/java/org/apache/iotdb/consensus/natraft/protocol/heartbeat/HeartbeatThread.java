@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * HeartbeatThread takes the responsibility to send heartbeats (when this node is a leader), check
  * if the leader is still online (when this node is a follower) or start elections (when this node
- * is a elector).
+ * is an elector).
  */
 public class HeartbeatThread implements Runnable {
 

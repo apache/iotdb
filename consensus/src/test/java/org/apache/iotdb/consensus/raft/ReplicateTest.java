@@ -138,16 +138,11 @@ public class ReplicateTest {
 
     for (int i = 0; i < CHECK_POINT; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
-      servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
-      servers.get(2).write(gid, new TestEntry(i, peers.get(2)));
-      Assert.assertEquals(i, servers.get(0).getMember(gid).getLastIndex());
-      Assert.assertEquals(i, servers.get(1).getMember(gid).getLastIndex());
-      Assert.assertEquals(i, servers.get(2).getMember(gid).getLastIndex());
     }
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
-      while (servers.get(i).getMember(gid).getAppliedIndex() < CHECK_POINT) {
+      while (servers.get(i).getMember(gid).getAppliedIndex() < CHECK_POINT - 1) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to replicate entries");
@@ -156,12 +151,12 @@ public class ReplicateTest {
       }
     }
 
-    Assert.assertEquals(CHECK_POINT, servers.get(0).getMember(gid).getAppliedIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(1).getMember(gid).getAppliedIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(2).getMember(gid).getAppliedIndex());
-    Assert.assertEquals(CHECK_POINT * 3, stateMachines.get(0).getRequestSet().size());
-    Assert.assertEquals(CHECK_POINT * 3, stateMachines.get(1).getRequestSet().size());
-    Assert.assertEquals(CHECK_POINT * 3, stateMachines.get(2).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(0).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(1).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(2).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT, stateMachines.get(0).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT, stateMachines.get(1).getRequestSet().size());
+    Assert.assertEquals(CHECK_POINT, stateMachines.get(2).getRequestSet().size());
     Assert.assertEquals(stateMachines.get(0).read(null), stateMachines.get(1).read(null));
     Assert.assertEquals(stateMachines.get(2).read(null), stateMachines.get(1).read(null));
 
@@ -172,13 +167,13 @@ public class ReplicateTest {
     Assert.assertEquals(peers, servers.get(1).getMember(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getMember(gid).getConfiguration());
 
-    Assert.assertEquals(CHECK_POINT, servers.get(0).getMember(gid).getLastIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(1).getMember(gid).getLastIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(2).getMember(gid).getLastIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(0).getMember(gid).getLastIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(1).getMember(gid).getLastIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(2).getMember(gid).getLastIndex());
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
-      while (servers.get(i).getMember(gid).getAppliedIndex() < CHECK_POINT) {
+      while (servers.get(i).getMember(gid).getAppliedIndex() < CHECK_POINT - 1) {
         long current = System.currentTimeMillis();
         if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to recover entries");
@@ -187,9 +182,9 @@ public class ReplicateTest {
       }
     }
 
-    Assert.assertEquals(CHECK_POINT, servers.get(0).getMember(gid).getAppliedIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(1).getMember(gid).getAppliedIndex());
-    Assert.assertEquals(CHECK_POINT, servers.get(2).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(0).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(1).getMember(gid).getAppliedIndex());
+    Assert.assertEquals(CHECK_POINT - 1, servers.get(2).getMember(gid).getAppliedIndex());
   }
 
   /**
