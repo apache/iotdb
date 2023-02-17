@@ -63,7 +63,6 @@ public class HorizontallyConcatNode extends MultiChildProcessNode {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)
         .flatMap(List::stream)
-        .distinct()
         .collect(Collectors.toList());
   }
 

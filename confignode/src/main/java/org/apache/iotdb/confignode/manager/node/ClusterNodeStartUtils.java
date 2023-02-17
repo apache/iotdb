@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -23,13 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -193,24 +192,6 @@ public class ClusterNodeStartUtils {
               nodeId,
               nodeType.getNodeType(),
               nodeId));
-      return status;
-    }
-
-    boolean isNodeAlive;
-    NodeStatus nodeStatus = configManager.getNodeManager().getNodeStatusByNodeId(nodeId);
-    isNodeAlive = nodeStatus != null && !NodeStatus.Unknown.equals(nodeStatus);
-    if (isNodeAlive) {
-      /* Reject restart because the Node is still alive */
-      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
-      status.setMessage(
-          String.format(
-              "Reject %s restart. Because there already exists an alive Node with the same nodeId=%d in the target cluster."
-                  + POSSIBLE_SOLUTIONS
-                  + "\t1. Maybe you've just shutdown this Node recently. Please wait about %s for the ConfigNode-leader to mark this Node as Unknown before retry start. You can use SQL \"show cluster details\" to find out this Node's status."
-                  + "\n\t2. Maybe you start this Node by copying the 'data' dir of another alive Node. Please delete 'data' dir and retry start.",
-              nodeType.getNodeType(),
-              nodeId,
-              (BaseNodeCache.HEARTBEAT_TIMEOUT_TIME / 1000) + "s"));
       return status;
     }
 

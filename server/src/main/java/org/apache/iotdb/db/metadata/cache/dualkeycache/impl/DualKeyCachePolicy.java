@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,25 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
+package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-public class MemManagerHolder {
-
-  private static IMemManager memManagerInstance;
-
-  public static void initMemManagerInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      memManagerInstance = new MemManagerNodeNumBasedImpl();
-    } else {
-      memManagerInstance = new MemManagerNodeEstimatedSizeBasedImpl();
-    }
-  }
-
-  public static IMemManager getMemManagerInstance() {
-    return memManagerInstance;
-  }
-
-  private MemManagerHolder() {}
+public enum DualKeyCachePolicy {
+  LRU;
 }

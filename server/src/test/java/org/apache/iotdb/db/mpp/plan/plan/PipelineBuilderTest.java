@@ -679,22 +679,23 @@ public class PipelineBuilderTest {
   @Test
   public void testGetChildNumInEachPipeline() {
     List<PlanNode> allChildren = new ArrayList<>();
-    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode1"), null));
     allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode1")));
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode1"), null));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode2")));
     allChildren.add(new SeriesScanNode(new PlanNodeId("localNode2"), null));
 
     int[] childNumInEachPipeline =
-        operatorTreeGenerator.getChildNumInEachPipeline(allChildren, 2, 3);
+        operatorTreeGenerator.getChildNumInEachPipeline(allChildren, 2, 2);
     assertEquals(2, childNumInEachPipeline.length);
     assertEquals(2, childNumInEachPipeline[0]);
     assertEquals(1, childNumInEachPipeline[1]);
 
     allChildren.add(new SeriesScanNode(new PlanNodeId("localNode3"), null));
     allChildren.add(new SeriesScanNode(new PlanNodeId("localNode4"), null));
-    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode2")));
     allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode3")));
-    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode5"), null));
     allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode4")));
+    allChildren.add(new SeriesScanNode(new PlanNodeId("localNode5"), null));
+    allChildren.add(new ExchangeNode(new PlanNodeId("remoteNode5")));
     childNumInEachPipeline = operatorTreeGenerator.getChildNumInEachPipeline(allChildren, 5, 3);
     assertEquals(3, childNumInEachPipeline.length);
     assertEquals(2, childNumInEachPipeline[0]);
