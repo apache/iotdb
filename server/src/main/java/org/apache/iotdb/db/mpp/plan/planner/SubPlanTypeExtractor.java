@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 
@@ -95,6 +101,43 @@ public class SubPlanTypeExtractor {
       updateTypeProviderByAggregationDescriptor(node.getGroupByLevelDescriptors());
       return visitPlan(node, context);
     }
+
+    @Override
+    public Void visitGroupByTag(GroupByTagNode node, Void context) {
+      node.getTagValuesToAggregationDescriptors()
+          .values()
+          .forEach(this::updateTypeProviderByAggregationDescriptor);
+      return visitPlan(node, context);
+    }
+
+    // region PlanNode of last query
+    // No need to deal with type of last query
+    @Override
+    public Void visitLastQueryScan(LastQueryScanNode node, Void context) {
+      return null;
+    }
+
+    @Override
+    public Void visitAlignedLastQueryScan(AlignedLastQueryScanNode node, Void context) {
+      return null;
+    }
+
+    @Override
+    public Void visitLastQuery(LastQueryNode node, Void context) {
+      return null;
+    }
+
+    @Override
+    public Void visitLastQueryMerge(LastQueryMergeNode node, Void context) {
+      return null;
+    }
+
+    @Override
+    public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
+      return null;
+    }
+
+    // end region PlanNode of last query
 
     private void updateTypeProviderByAggregationDescriptor(
         List<? extends AggregationDescriptor> aggregationDescriptorList) {

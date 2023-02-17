@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -37,18 +37,18 @@ public class FlushManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         flushManager,
         FlushManager::getNumberOfWaitingTasks,
         Tag.NAME.toString(),
         "flush",
         Tag.STATUS.toString(),
         "waiting");
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         flushManager,
         FlushManager::getNumberOfWorkingTasks,
         Tag.NAME.toString(),
@@ -60,14 +60,14 @@ public class FlushManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         "flush",
         Tag.STATUS.toString(),
         "waiting");
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         "flush",

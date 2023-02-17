@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -53,18 +52,32 @@ public class ConcatPathRewriter {
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
 
     if (queryStatement.isAlignByDevice()) {
-      queryStatement.getSelectComponent().getResultColumns().stream()
-          .map(ResultColumn::getExpression)
-          .forEach(
-              expression ->
-                  ExpressionAnalyzer.constructPatternTreeFromExpression(
-                      expression, prefixPaths, patternTree));
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            resultColumn.getExpression(), prefixPaths, patternTree);
+      }
+      if (queryStatement.hasGroupByExpression()) {
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            queryStatement.getGroupByComponent().getControlColumnExpression(),
+            prefixPaths,
+            patternTree);
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
           concatSelectWithFrom(
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
+
+      // concat GROUP BY VARIATION with FROM
+      if (queryStatement.hasGroupByExpression()) {
+        queryStatement
+            .getGroupByComponent()
+            .setControlColumnExpression(
+                contactGroupByWithFrom(
+                    queryStatement.getGroupByComponent().getControlColumnExpression(),
+                    prefixPaths));
+      }
     }
 
     // concat WHERE with FROM
@@ -101,14 +114,22 @@ public class ConcatPathRewriter {
             String.format(
                 "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
       }
-      resultColumns.addAll(
-          resultExpressions.stream()
-              .map(
-                  expression ->
-                      new ResultColumn(
-                          expression, resultColumn.getAlias(), resultColumn.getColumnType()))
-              .collect(Collectors.toList()));
+
+      for (Expression resultExpression : resultExpressions) {
+        resultColumns.add(
+            new ResultColumn(
+                resultExpression, resultColumn.getAlias(), resultColumn.getColumnType()));
+      }
     }
     return resultColumns;
+  }
+
+  private Expression contactGroupByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+    if (resultExpressions.size() != 1) {
+      throw new IllegalStateException("Expression in group by should indicate one value");
+    }
+    return resultExpressions.get(0);
   }
 }

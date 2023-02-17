@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -44,13 +44,13 @@ public class FlowMonitor {
   private long currWindowStart;
   private long currWindowSum;
   private long windowInterval;
-  private TEndPoint node;
+  private Peer node;
   private int maxWindowSize;
   private BufferedWriter writer;
   private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private RaftConfig config;
 
-  public FlowMonitor(TEndPoint node, RaftConfig config) throws IOException {
+  public FlowMonitor(Peer node, RaftConfig config) throws IOException {
     this.maxWindowSize = config.getFlowMonitorMaxWindowSize();
     this.windows = new ArrayDeque<>(maxWindowSize);
     this.windowInterval = config.getFlowMonitorWindowInterval();
@@ -61,7 +61,12 @@ public class FlowMonitor {
 
   private void initSerializer() throws IOException {
     String path =
-        config.getStorageDir() + File.separator + node.getIp() + "-" + node.getPort() + FILE_SUFFIX;
+        config.getStorageDir()
+            + File.separator
+            + node.getEndpoint().getIp()
+            + "-"
+            + node.getEndpoint().getPort()
+            + FILE_SUFFIX;
     File file = new File(path);
     file.delete();
     writer = new BufferedWriter(new FileWriter(file));

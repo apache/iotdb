@@ -58,7 +58,7 @@ public class IoTDBQueryVersionAdaptionIT {
 
   private static String[] sqls =
       new String[] {
-        "set storage group to root.ln",
+        "CREATE DATABASE root.ln",
         "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)",
@@ -103,7 +103,7 @@ public class IoTDBQueryVersionAdaptionIT {
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
-        "set storage group to root.sgcc",
+        "CREATE DATABASE root.sgcc",
         "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
@@ -141,7 +141,7 @@ public class IoTDBQueryVersionAdaptionIT {
   }
 
   private static void importData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
@@ -169,7 +169,7 @@ public class IoTDBQueryVersionAdaptionIT {
           "1509466140000,false,20.98,v1,false,false,20.98,",
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root where time>10");
       Assert.assertTrue(hasResultSet);
@@ -226,7 +226,7 @@ public class IoTDBQueryVersionAdaptionIT {
                 "1509466140000,root.ln.wf01.wt01.temperature,20.98177,FLOAT",
                 "1509466140000,root.ln.wf01.wt01.status,false,BOOLEAN"));
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root order by time desc");
@@ -260,7 +260,7 @@ public class IoTDBQueryVersionAdaptionIT {
           "1509465600000,root.sgcc.wf03.wt01,25.96,true,null,"
         };
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute("select * from root.* where temperature >= 25.957603 align by device");

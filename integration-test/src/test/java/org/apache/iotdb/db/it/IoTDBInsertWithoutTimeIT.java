@@ -46,20 +46,20 @@ public class IoTDBInsertWithoutTimeIT {
 
   private static final List<String> sqls =
       Arrays.asList(
-          "SET STORAGE GROUP TO root.sg1",
+          "CREATE DATABASE root.sg1",
           "CREATE TIMESERIES root.sg1.d1.s1 INT64",
           "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
           "CREATE TIMESERIES root.sg1.d1.s3 TEXT");
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeseries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void createTimeseries() {

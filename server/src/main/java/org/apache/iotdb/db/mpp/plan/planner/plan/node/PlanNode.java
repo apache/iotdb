@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,9 @@ public abstract class PlanNode implements IConsensusRequest {
 
   private PlanNodeId id;
 
-  public PlanNode(PlanNodeId id) {
+  private volatile long metricTime = 0L;
+
+  protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
   }
@@ -63,17 +64,39 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  public long getMetricTime() {
+    return metricTime;
+  }
+
+  public void setMetricTime(long metricTime) {
+    this.metricTime = metricTime;
+  }
+
   @Override
   public abstract PlanNode clone();
 
+  /**
+   * Create sub node which has exactly the same function of origin node, only its children is a part
+   * of it, which is composed by the [startIndex, endIndex) of origin children list.
+   *
+   * @param subNodeId the sub node id
+   * @param startIndex the start Index of origin children
+   * @param endIndex the endIndex Index of origin children
+   */
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    throw new UnsupportedOperationException(
+        String.format("Can't create subNode for %s", this.getClass().toString()));
+  }
+
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    Validate.isTrue(
-        children == null
-            || allowedChildCount() == CHILD_COUNT_NO_LIMIT
-            || children.size() == allowedChildCount(),
-        String.format(
-            "Child count is not correct for PlanNode. Expected: %d, Value: %d",
-            allowedChildCount(), getChildrenCount(children)));
+    if (!(children == null
+        || allowedChildCount() == CHILD_COUNT_NO_LIMIT
+        || children.size() == allowedChildCount())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Child count is not correct for PlanNode. Expected: %d, Value: %d",
+              allowedChildCount(), getChildrenCount(children)));
+    }
     PlanNode node = clone();
     if (children != null) {
       children.forEach(node::addChild);

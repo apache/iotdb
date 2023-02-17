@@ -23,19 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
@@ -60,29 +55,29 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     this.insertRowStatementList = insertRowStatementList;
 
     // set device path, measurements, and data types
-    if (insertRowStatementList == null || insertRowStatementList.size() == 0) {
+    if (insertRowStatementList == null || insertRowStatementList.isEmpty()) {
       return;
     }
     devicePath = insertRowStatementList.get(0).getDevicePath();
     isAligned = insertRowStatementList.get(0).isAligned;
-    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
+    Set<String> measurementSet = new HashSet<>();
+    List<String> measurementList = new ArrayList<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      List<String> measurements = Arrays.asList(insertRowStatement.getMeasurements());
-      Map<String, TSDataType> subMap =
-          measurements.stream()
-              .collect(
-                  Collectors.toMap(
-                      key -> key, key -> insertRowStatement.dataTypes[measurements.indexOf(key)]));
-      measurementsAndDataType.putAll(subMap);
+      String[] measurements = insertRowStatement.getMeasurements();
+      for (String measurement : measurements) {
+        if (!measurementSet.contains(measurement)) {
+          measurementList.add(measurement);
+          measurementSet.add(measurement);
+        }
+      }
     }
-    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
-    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
+    measurements = measurementList.toArray(new String[0]);
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      timePartitionSlotSet.add(StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
+      timePartitionSlotSet.add(TimePartitionUtils.getTimePartition(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }
@@ -94,6 +89,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
         .collectRedirectInfo(dataPartition);
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
   }

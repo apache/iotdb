@@ -28,7 +28,7 @@ SHOW CHILD PATHS pathPattern
 
 Return all child paths and their node types of all the paths matching pathPattern.
 
-node types: ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> TIMESERIES
+node types: ROOT -> DB INTERNAL -> DATABASE -> INTERNAL -> DEVICE -> TIMESERIES
 
 
 Example：
@@ -134,7 +134,7 @@ It costs 0.002s
 
 ## Show Devices
 
-* SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH DATABASE)? limitClause? #showDevices
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
@@ -174,24 +174,24 @@ It costs 0.001s
 
 `isAligned` indicates whether the timeseries under the device are aligned.
 
-To view devices' information with storage group, we can use `SHOW DEVICES WITH STORAGE GROUP` statement.
+To view devices' information with database, we can use `SHOW DEVICES WITH DATABASE` statement.
 
-* `SHOW DEVICES WITH STORAGE GROUP` statement presents all devices' information with their storage group.
-* `SHOW DEVICES <PathPattern> WITH STORAGE GROUP` statement specifies the `PathPattern` and returns the 
-devices' information under the given level with their storage group information.
+* `SHOW DEVICES WITH DATABASE` statement presents all devices' information with their database.
+* `SHOW DEVICES <PathPattern> WITH DATABASE` statement specifies the `PathPattern` and returns the 
+devices' information under the given level with their database information.
 
 SQL statement is as follows:
 
 ```
-IoTDB> show devices with storage group
-IoTDB> show devices root.ln.** with storage group
+IoTDB> show devices with database
+IoTDB> show devices root.ln.** with database
 ```
 
 You can get results below:
 
 ```
 +-------------------+-------------+---------+
-|            devices|storage group|isAligned|
+|            devices|     database|isAligned|
 +-------------------+-------------+---------+
 |  root.ln.wf01.wt01|      root.ln|    false|
 |  root.ln.wf02.wt02|      root.ln|    false|
@@ -202,7 +202,7 @@ Total line number = 4
 It costs 0.003s
 
 +-----------------+-------------+---------+
-|          devices|storage group|isAligned|
+|          devices|     database|isAligned|
 +-----------------+-------------+---------+
 |root.ln.wf01.wt01|      root.ln|    false|
 |root.ln.wf02.wt02|      root.ln|    false|

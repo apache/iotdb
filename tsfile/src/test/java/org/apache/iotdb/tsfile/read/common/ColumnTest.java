@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -52,28 +54,11 @@ public class ColumnTest {
     Assert.assertEquals(5, timeColumn.getPositionCount());
     Assert.assertEquals(5, timeColumn.getLong(0));
     Assert.assertEquals(9, timeColumn.getLong(4));
-    try {
-      timeColumn.getLong(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     timeColumn = (TimeColumn) timeColumn.subColumn(3);
     Assert.assertEquals(2, timeColumn.getPositionCount());
     Assert.assertEquals(8, timeColumn.getLong(0));
     Assert.assertEquals(9, timeColumn.getLong(1));
-    try {
-      timeColumn.getLong(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      timeColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -87,28 +72,11 @@ public class ColumnTest {
     Assert.assertEquals(5, binaryColumn.getPositionCount());
     Assert.assertEquals("5", binaryColumn.getBinary(0).toString());
     Assert.assertEquals("9", binaryColumn.getBinary(4).toString());
-    try {
-      binaryColumn.getBinary(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     binaryColumn = (BinaryColumn) binaryColumn.subColumn(3);
     Assert.assertEquals(2, binaryColumn.getPositionCount());
     Assert.assertEquals("8", binaryColumn.getBinary(0).toString());
     Assert.assertEquals("9", binaryColumn.getBinary(1).toString());
-    try {
-      binaryColumn.getBinary(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      binaryColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -123,28 +91,11 @@ public class ColumnTest {
     Assert.assertEquals(5, booleanColumn.getPositionCount());
     Assert.assertFalse(booleanColumn.getBoolean(0));
     Assert.assertFalse(booleanColumn.getBoolean(4));
-    try {
-      booleanColumn.getBoolean(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     booleanColumn = (BooleanColumn) booleanColumn.subColumn(3);
     Assert.assertEquals(2, booleanColumn.getPositionCount());
     Assert.assertTrue(booleanColumn.getBoolean(0));
     Assert.assertFalse(booleanColumn.getBoolean(1));
-    try {
-      booleanColumn.getBoolean(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      booleanColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -158,28 +109,11 @@ public class ColumnTest {
     Assert.assertEquals(5, doubleColumn.getPositionCount());
     Assert.assertEquals(5.0, doubleColumn.getDouble(0), 0.001);
     Assert.assertEquals(9.0, doubleColumn.getDouble(4), 0.001);
-    try {
-      doubleColumn.getDouble(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     doubleColumn = (DoubleColumn) doubleColumn.subColumn(3);
     Assert.assertEquals(2, doubleColumn.getPositionCount());
     Assert.assertEquals(8.0, doubleColumn.getDouble(0), 0.001);
     Assert.assertEquals(9.0, doubleColumn.getDouble(1), 0.001);
-    try {
-      doubleColumn.getDouble(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      doubleColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -193,28 +127,11 @@ public class ColumnTest {
     Assert.assertEquals(5, floatColumn.getPositionCount());
     Assert.assertEquals(5.0, floatColumn.getFloat(0), 0.001);
     Assert.assertEquals(9.0, floatColumn.getFloat(4), 0.001);
-    try {
-      floatColumn.getFloat(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     floatColumn = (FloatColumn) floatColumn.subColumn(3);
     Assert.assertEquals(2, floatColumn.getPositionCount());
     Assert.assertEquals(8.0, floatColumn.getFloat(0), 0.001);
     Assert.assertEquals(9.0, floatColumn.getFloat(1), 0.001);
-    try {
-      floatColumn.getFloat(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      floatColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -228,28 +145,11 @@ public class ColumnTest {
     Assert.assertEquals(5, intColumn.getPositionCount());
     Assert.assertEquals(5, intColumn.getInt(0));
     Assert.assertEquals(9, intColumn.getInt(4));
-    try {
-      intColumn.getInt(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     intColumn = (IntColumn) intColumn.subColumn(3);
     Assert.assertEquals(2, intColumn.getPositionCount());
     Assert.assertEquals(8, intColumn.getInt(0));
     Assert.assertEquals(9, intColumn.getInt(1));
-    try {
-      intColumn.getInt(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      intColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 
   @Test
@@ -263,28 +163,21 @@ public class ColumnTest {
     Assert.assertEquals(5, longColumn.getPositionCount());
     Assert.assertEquals(5, longColumn.getLong(0));
     Assert.assertEquals(9, longColumn.getLong(4));
-    try {
-      longColumn.getLong(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     longColumn = (LongColumn) longColumn.subColumn(3);
     Assert.assertEquals(2, longColumn.getPositionCount());
     Assert.assertEquals(8, longColumn.getLong(0));
     Assert.assertEquals(9, longColumn.getLong(1));
-    try {
-      longColumn.getLong(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      longColumn.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
+  }
+
+  @Test
+  public void nullColumnTest() {
+    NullColumn nullColumn = new NullColumn(10);
+    Column subRegion = nullColumn.getRegion(7, 2);
+    Column subColumn = subRegion.subColumn(1);
+
+    Assert.assertEquals(2, subRegion.getPositionCount());
+    Assert.assertEquals(1, subColumn.getPositionCount());
   }
 
   @Test
@@ -296,27 +189,10 @@ public class ColumnTest {
     Assert.assertEquals(5, column.getPositionCount());
     Assert.assertEquals(1, column.getLong(0));
     Assert.assertEquals(1, column.getLong(4));
-    try {
-      column.getLong(5);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
+
     column = (RunLengthEncodedColumn) column.subColumn(3);
     Assert.assertEquals(2, column.getPositionCount());
     Assert.assertEquals(1, column.getLong(0));
     Assert.assertEquals(1, column.getLong(1));
-    try {
-      column.getLong(2);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("position is not valid"));
-    }
-    try {
-      column.subColumn(3);
-      Assert.fail();
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().contains("fromIndex is not valid"));
-    }
   }
 }

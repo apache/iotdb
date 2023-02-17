@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 
 import org.slf4j.Logger;
@@ -34,7 +34,7 @@ public class FlowMonitorManager {
   private static final Logger logger = LoggerFactory.getLogger(FlowMonitorManager.class);
   public static final FlowMonitorManager INSTANCE = new FlowMonitorManager();
 
-  private Map<TEndPoint, FlowMonitor> monitorMap = new ConcurrentHashMap<>();
+  private Map<Peer, FlowMonitor> monitorMap = new ConcurrentHashMap<>();
   private RaftConfig config;
 
   private FlowMonitorManager() {}
@@ -50,30 +50,30 @@ public class FlowMonitorManager {
     monitorMap.clear();
   }
 
-  public void register(TEndPoint node) {
-    logger.info("Registering flow monitor {}", node);
+  public void register(Peer peer) {
+    logger.info("Registering flow monitor {}", peer);
     monitorMap.computeIfAbsent(
-        node,
-        n -> {
+        peer,
+        p -> {
           try {
-            return new FlowMonitor(n, config);
+            return new FlowMonitor(p, config);
           } catch (IOException e) {
-            logger.warn("Cannot register flow monitor for {}", node, e);
+            logger.warn("Cannot register flow monitor for {}", peer, e);
             return null;
           }
         });
   }
 
-  public void report(TEndPoint node, long val) {
-    FlowMonitor flowMonitor = monitorMap.get(node);
+  public void report(Peer peer, long val) {
+    FlowMonitor flowMonitor = monitorMap.get(peer);
     if (flowMonitor != null) {
       flowMonitor.report(val);
     } else {
-      logger.warn("Flow monitor {} is not registered", node);
+      logger.warn("Flow monitor {} is not registered", peer);
     }
   }
 
-  public double averageFlow(TEndPoint node, int windowsToUse) {
-    return monitorMap.get(node).averageFlow(windowsToUse);
+  public double averageFlow(Peer peer, int windowsToUse) {
+    return monitorMap.get(peer).averageFlow(windowsToUse);
   }
 }

@@ -47,6 +47,21 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
+### 生命周期
+
+了解元数据的生命周期及相关名词，有助于更顺畅地使用元数据模板。在描述这一概念时，有六个关键词分别指向特定的过程，分别是“创建”、“挂载”、“激活”、“解除”、“卸载”、和“删除”。下图展示了一个模板从创建、挂到删除的全部过程。当用户操作执行其中任一过程时，系统都会执行对应条件检查，如条件检查通过，则操作成功，否则，操作会被拒绝：
+
+1. 创建模板时，检查确认正在创建的模板名称与所有已存在的模板不重复；
+2. 在某节点挂载模板，需检查该节点的所有祖先节点与子孙节点，确认均未挂载任何模板；
+3. 在某节点激活模板，需检查确认该节点或其祖先已挂载对应模板，且该节点下不存在与模板中同名的物理量；
+4. 在某节点解除模板时，需确认该节点已经激活了模板，请注意，解除模板会删除该节点通过模板实例化的物理量及其数据点；
+5. 在某节点卸载模板时，需检查确认该节点曾挂载该模板，且其所有子孙节点均不处于模板激活状态；
+6. 删除模板时，需检查确认模板没有挂载在任何一个节点上。
+
+最后需要补充的是，**对挂载模板与激活模板进行区分，是为了服务一种常见的场景**：在 Apache IoTDB 元数据模型 MTree 中，经常需要在数量众多的节点上“应用”元数据模板，而这些节点一般拥有共同的祖先节点。因此，可以在其共同祖先节点**挂载**模板，而不必对其大量的孩子节点进行挂载操作。对于需要“应用”模板的节点，则应该使用**激活模板**的操作。
+
+<img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_template_lifetime_zh.png?raw=true" alt="example with template">
+
 ## 使用
 
 目前，用户可以通过 Session 编程接口或 IoTDB-SQL 来使用元数据模板，包括模板的创建、修改、挂载与卸载等。Session 编程接口的详细文档可参见[此处](../API/Programming-Java-Native-API.md)，IoTDB-SQL 的详细文档可参加[此处](../Operate-Metadata/Template.md)。下文将以 Session 中使用方法为例，进行简要介绍。
@@ -89,7 +104,7 @@ Class MeasurementNode extends Node {
 
 * 构造元数据模板
 
-构造上图中的元数据模板，并挂载到对应节点，可参考如下代码。**请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来地更新及各模块的协作。**
+构造上图中的元数据模板，并挂载到对应节点，可参考如下代码。**请注意，我们强烈建议您将模板设置在 database 或 database 下层的节点中，以更好地适配未来地更新及各模块的协作。**
 
 ``` java
 MeasurementNode nodeV = new MeasurementNode("velocity", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -107,4 +122,4 @@ createSchemaTemplate(template);
 setSchemaTemplate("template", "root.Beijing");
 ```
 
-挂载元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了存储组后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。
+挂载元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了 database 后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。

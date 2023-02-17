@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeDeviceVisitor;
-import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorFactory;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -41,6 +43,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -49,7 +53,7 @@ import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_M
 
 public class ClusterSchemaTree implements ISchemaTree {
 
-  private List<String> storageGroups;
+  private Set<String> databases;
 
   private final SchemaNode root;
 
@@ -71,24 +75,24 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    SchemaTreeMeasurementVisitor visitor =
-        new SchemaTreeMeasurementVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+            root, pathPattern, isPrefixMatch, slimit, soffset);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
-    SchemaTreeMeasurementVisitor visitor =
-        new SchemaTreeMeasurementVisitor(
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
             root,
             pathPattern,
+            false,
             IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1,
-            0,
-            false);
+            0);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
-  @Override
   public List<MeasurementPath> getAllMeasurement() {
     return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
   }
@@ -101,13 +105,15 @@ public class ClusterSchemaTree implements ISchemaTree {
    */
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
-    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+    SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
     return visitor.getAllResult();
   }
 
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
-    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, false);
+    SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, false);
     return visitor.getAllResult();
   }
 
@@ -149,6 +155,38 @@ public class ClusterSchemaTree implements ISchemaTree {
         devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
   }
 
+  public List<Integer> compute(
+      ISchemaComputation schemaComputation, List<Integer> indexOfTargetMeasurements) {
+    PartialPath devicePath = schemaComputation.getDevicePath();
+    String[] measurements = schemaComputation.getMeasurements();
+
+    String[] nodes = devicePath.getNodes();
+    SchemaNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        return indexOfTargetMeasurements;
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    if (cur == null) {
+      return indexOfTargetMeasurements;
+    }
+    if (cur.isEntity()) {
+      schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
+    }
+    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    SchemaNode node;
+    for (int index : indexOfTargetMeasurements) {
+      node = cur.getChild(measurements[index]);
+      if (node == null) {
+        indexOfMissingMeasurements.add(index);
+      } else {
+        schemaComputation.computeMeasurement(index, node.getAsMeasurementNode());
+      }
+    }
+    return indexOfMissingMeasurements;
+  }
+
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
     for (MeasurementPath measurementPath : measurementPathList) {
       appendSingleMeasurementPath(measurementPath);
@@ -159,12 +197,17 @@ public class ClusterSchemaTree implements ISchemaTree {
     appendSingleMeasurement(
         measurementPath,
         (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.getTagMap(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
   }
 
   public void appendSingleMeasurement(
-      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+      PartialPath path,
+      MeasurementSchema schema,
+      Map<String, String> tagMap,
+      String alias,
+      boolean isAligned) {
     String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -177,6 +220,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             measurementNode.setAlias(alias);
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
+          measurementNode.setTagMap(tagMap);
           child = measurementNode;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
@@ -189,6 +233,9 @@ public class ClusterSchemaTree implements ISchemaTree {
       } else if (i == nodes.length - 2 && !child.isEntity()) {
         SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
         cur.replaceChild(nodes[i], entityNode);
+        if (!entityNode.isAligned()) {
+          entityNode.setAligned(isAligned);
+        }
         child = entityNode;
       }
       cur = child;
@@ -274,35 +321,35 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get storage group name by path
+   * Get database name by path
    *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
    *
    * @param pathName only full path, cannot be path pattern
-   * @return storage group in the given path
+   * @return database in the given path
    */
   @Override
-  public String getBelongedStorageGroup(String pathName) {
-    for (String storageGroup : storageGroups) {
-      if (PathUtils.isStartWith(pathName, storageGroup)) {
-        return storageGroup;
+  public String getBelongedDatabase(String pathName) {
+    for (String database : databases) {
+      if (PathUtils.isStartWith(pathName, database)) {
+        return database;
       }
     }
-    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+    throw new RuntimeException("No matched database. Please check the path " + pathName);
   }
 
   @Override
-  public String getBelongedStorageGroup(PartialPath path) {
-    return getBelongedStorageGroup(path.getFullPath());
+  public String getBelongedDatabase(PartialPath path) {
+    return getBelongedDatabase(path.getFullPath());
   }
 
   @Override
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public Set<String> getDatabases() {
+    return databases;
   }
 
-  public void setStorageGroups(List<String> storageGroups) {
-    this.storageGroups = storageGroups;
+  public void setDatabases(Set<String> databases) {
+    this.databases = databases;
   }
 
   @TestOnly

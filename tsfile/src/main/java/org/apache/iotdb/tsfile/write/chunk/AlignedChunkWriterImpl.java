@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -32,6 +34,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -125,6 +128,30 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
   }
 
+  public void write(long time, int value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, long value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, boolean value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, float value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, double value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
+  public void write(long time, Binary value, boolean isNull, int valueIndex) {
+    valueChunkWriterList.get(valueIndex).write(time, value, isNull);
+  }
+
   public void write(long time, TsPrimitiveType[] points) {
     valueIndex = 0;
     for (TsPrimitiveType point : points) {
@@ -162,6 +189,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
     }
+  }
+
+  public void writeTime(long time) {
+    timeChunkWriter.write(time);
   }
 
   public void write(TimeColumn timeColumn, Column[] valueColumns, int batchSize) {
@@ -270,6 +301,16 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
+  public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    timeChunkWriter.writePageHeaderAndDataIntoBuff(data, header);
+  }
+
+  public void writePageHeaderAndDataIntoValueBuff(
+      ByteBuffer data, PageHeader header, int valueIndex) throws PageException {
+    valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
+  }
+
   @Override
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     timeChunkWriter.writeToFileWriter(tsfileWriter);
@@ -303,6 +344,14 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
+  public void sealCurrentTimePage() {
+    timeChunkWriter.sealCurrentPage();
+  }
+
+  public void sealCurrentValuePage(int valueIndex) {
+    valueChunkWriterList.get(valueIndex).sealCurrentPage();
+  }
+
   @Override
   public void clearPageWriter() {
     timeChunkWriter.clearPageWriter();
@@ -311,20 +360,48 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  /** Used for compaction to control the target chunk size. */
-  public boolean checkIsChunkSizeOverThreshold(long threshold) {
-    if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+  @Override
+  public boolean checkIsChunkSizeOverThreshold(
+      long size, long pointNum, boolean returnTrueIfChunkEmpty) {
+    if ((returnTrueIfChunkEmpty && timeChunkWriter.getPointNum() == 0)
+        || (timeChunkWriter.getPointNum() >= pointNum
+            || timeChunkWriter.estimateMaxSeriesMemSize() >= size)) {
       return true;
     }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
-      if (valueChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+      if (valueChunkWriter.estimateMaxSeriesMemSize() >= size) {
         return true;
       }
     }
     return false;
   }
 
-  public TSDataType getCurrentValueChunkType() {
-    return valueChunkWriterList.get(valueIndex).getDataType();
+  @Override
+  public boolean checkIsUnsealedPageOverThreshold(
+      long size, long pointNum, boolean returnTrueIfPageEmpty) {
+    if ((returnTrueIfPageEmpty && timeChunkWriter.getPageWriter().getPointNumber() == 0)
+        || timeChunkWriter.checkIsUnsealedPageOverThreshold(size, pointNum)) {
+      return true;
+    }
+    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
+      if (valueChunkWriter.checkIsUnsealedPageOverThreshold(size)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public ValueChunkWriter getValueChunkWriterByIndex(int valueIndex) {
+    return valueChunkWriterList.get(valueIndex);
+  }
+
+  /** Test only */
+  public TimeChunkWriter getTimeChunkWriter() {
+    return timeChunkWriter;
+  }
+
+  /** Test only */
+  public List<ValueChunkWriter> getValueChunkWriterList() {
+    return valueChunkWriterList;
   }
 }

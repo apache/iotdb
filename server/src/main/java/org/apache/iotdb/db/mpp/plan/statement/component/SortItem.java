@@ -80,4 +80,8 @@ public class SortItem {
   public int hashCode() {
     return Objects.hash(sortKey, ordering);
   }
+
+  public String toSQLString() {
+    return getSortKey().toString() + " " + getOrdering().toString();
+  }
 }

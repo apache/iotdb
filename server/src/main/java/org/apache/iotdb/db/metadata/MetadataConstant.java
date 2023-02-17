@@ -39,14 +39,14 @@ public class MetadataConstant {
   public static final String ROOT = "root";
   public static final String METADATA_TXT_LOG = "mlog.txt";
   public static final String METADATA_LOG = "mlog.bin";
+  public static final String METADATA_LOG_DESCRIPTION = "mlog.description";
   public static final String TAG_LOG = "tlog.txt";
   public static final String TEMPLATE_FILE = "template_log.bin";
   public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
   public static final String SCHEMA_FILE_NAME = "schema_file.pst";
   public static final String SCHEMA_LOG_FILE_NAME = "schema_file_log.bin";
 
-  public static final String METADATA_LOG_SNAPSHOT = "mlog.bin.snapshot";
-  public static final String METADATA_LOG_SNAPSHOT_TMP = "mlog.bin.snapshot.tmp";
+  public static final String SCHEMA_FILE_SNAPSHOT = "schema_file.pst.snapshot";
   public static final String TAG_LOG_SNAPSHOT = "tlog.txt.snapshot";
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
@@ -85,5 +85,9 @@ public class MetadataConstant {
       default:
         throw new RuntimeException("Undefined MNode type " + type);
     }
+  }
+
+  public static boolean isStorageGroupType(byte type) {
+    return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
 }

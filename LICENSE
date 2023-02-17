@@ -274,3 +274,16 @@ The following files include code modified from Micrometer project.
 Copyright: 2017 VMware
 Project page: https://github.com/micrometer-metrics/micrometer
 License: https://github.com/micrometer-metrics/micrometer/blob/main/LICENSE
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Trino project(https://github.com/trinodb/trino),
+which is under Apache License 2.0:
+
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/QueryState.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/StateMachine.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/driver/Driver.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceState.java
+./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceStateMachine.java
+./server/src/main/java/org/apache/iotdb/db/mpp/plan/planner/LocalExecutionPlanner.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*

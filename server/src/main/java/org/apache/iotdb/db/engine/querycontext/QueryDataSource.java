@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
 
 /**
  * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
@@ -35,18 +39,20 @@ public class QueryDataSource {
   /**
    * TsFileResources used by query job.
    *
-   * <p>Note: Sequences under the same virtual storage group share two lists of TsFileResources (seq
-   * and unseq).
+   * <p>Note: Sequences under the same data region share two lists of TsFileResources (seq and
+   * unseq).
    */
-  private List<TsFileResource> seqResources;
+  private final List<TsFileResource> seqResources;
 
-  private List<TsFileResource> unseqResources;
+  private final List<TsFileResource> unseqResources;
 
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
+
+  private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
@@ -75,11 +81,16 @@ public class QueryDataSource {
 
   /** @return an updated filter concerning TTL */
   public Filter updateFilterUsingTTL(Filter filter) {
+    return updateFilterUsingTTL(filter, dataTTL);
+  }
+
+  /** @return an updated filter concerning TTL */
+  public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {
-        filter = new AndFilter(filter, TimeFilter.gtEq(System.currentTimeMillis() - dataTTL));
+        filter = new AndFilter(filter, TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL));
       } else {
-        filter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
+        filter = TimeFilter.gtEq(DateTimeUtils.currentTime() - dataTTL);
       }
     }
     return filter;
@@ -114,5 +125,25 @@ public class QueryDataSource {
 
   public int getUnseqResourcesSize() {
     return unseqResources.size();
+  }
+
+  public void fillOrderIndexes(String deviceId, boolean ascending) {
+    TreeMap<Long, List<Integer>> orderTimeToIndexMap =
+        ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
+    int index = 0;
+    for (TsFileResource resource : unseqResources) {
+      orderTimeToIndexMap
+          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
+          .add(index++);
+    }
+
+    index = 0;
+    int[] unSeqFileOrderIndex = new int[unseqResources.size()];
+    for (List<Integer> orderIndexes : orderTimeToIndexMap.values()) {
+      for (Integer orderIndex : orderIndexes) {
+        unSeqFileOrderIndex[index++] = orderIndex;
+      }
+    }
+    this.unSeqFileOrderIndex = unSeqFileOrderIndex;
   }
 }

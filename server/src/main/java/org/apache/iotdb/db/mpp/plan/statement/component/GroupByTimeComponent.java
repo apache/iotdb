@@ -39,7 +39,7 @@ public class GroupByTimeComponent extends StatementNode {
   private boolean isSlidingStepByMonth = false;
 
   // if it is left close and right open interval
-  private boolean leftCRightO;
+  private boolean leftCRightO = true;
 
   public GroupByTimeComponent() {}
 
@@ -97,5 +97,40 @@ public class GroupByTimeComponent extends StatementNode {
 
   public void setIntervalByMonth(boolean isIntervalByMonth) {
     this.isIntervalByMonth = isIntervalByMonth;
+  }
+
+  public String toSQLString() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("GROUP BY TIME").append(' ');
+    sqlBuilder.append('(');
+    if (startTime != 0 || endTime != 0) {
+      if (isLeftCRightO()) {
+        sqlBuilder
+            .append('[')
+            .append(startTime)
+            .append(',')
+            .append(' ')
+            .append(endTime)
+            .append(')');
+      } else {
+        sqlBuilder
+            .append('(')
+            .append(startTime)
+            .append(',')
+            .append(' ')
+            .append(endTime)
+            .append(']');
+      }
+      sqlBuilder.append(',').append(' ');
+    }
+    String intervalStr = interval + (isIntervalByMonth ? "mo" : "ms");
+    String slidingStepStr = slidingStep + (isSlidingStepByMonth ? "mo" : "ms");
+    sqlBuilder.append(intervalStr);
+    if (!slidingStepStr.equals(intervalStr)) {
+      sqlBuilder.append(',').append(' ');
+      sqlBuilder.append(slidingStepStr);
+    }
+    sqlBuilder.append(')');
+    return sqlBuilder.toString();
   }
 }

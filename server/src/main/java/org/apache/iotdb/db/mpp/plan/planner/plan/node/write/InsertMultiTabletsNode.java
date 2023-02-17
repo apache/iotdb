@@ -20,10 +20,9 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -41,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNode {
 
@@ -91,7 +91,7 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   List<InsertTabletNode> insertTabletNodeList;
 
   /** record the result of insert tablets */
-  private Map<Integer, TSStatus> results = new HashMap<>();
+  private final Map<Integer, TSStatus> results = new HashMap<>();
 
   public InsertMultiTabletsNode(PlanNodeId id) {
     super(id);
@@ -136,16 +136,8 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      if (!insertTabletNode.validateAndSetSchema(schemaTree)) {
-        return false;
-      }
-      if (!this.hasFailedMeasurements() && insertTabletNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertTabletNode.failedMeasurementIndex2Info;
-      }
-    }
-    return true;
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
   }
 
   @Override
@@ -202,39 +194,10 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public List<PartialPath> getDevicePaths() {
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      partialPaths.add(insertTabletNode.devicePath);
-    }
-    return partialPaths;
-  }
-
-  @Override
-  public List<String[]> getMeasurementsList() {
-    List<String[]> measurementsList = new ArrayList<>();
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      measurementsList.add(insertTabletNode.measurements);
-    }
-    return measurementsList;
-  }
-
-  @Override
-  public List<TSDataType[]> getDataTypesList() {
-    List<TSDataType[]> dataTypesList = new ArrayList<>();
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      dataTypesList.add(insertTabletNode.dataTypes);
-    }
-    return dataTypesList;
-  }
-
-  @Override
-  public List<Boolean> getAlignedList() {
-    List<Boolean> alignedList = new ArrayList<>();
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      alignedList.add(insertTabletNode.isAligned);
-    }
-    return alignedList;
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertTabletNodeList.stream()
+        .map(InsertTabletNode::getSchemaValidation)
+        .collect(Collectors.toList());
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {

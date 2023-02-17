@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,14 +38,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.NoSuchFileException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
-
-  private static final FileReaderManager FILE_READER_MANAGER = FileReaderManager.getInstance();
 
   /** start time */
   protected long startTime;
@@ -64,19 +62,17 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(startTime, outputStream);
-    ReadWriteIOUtils.write(endTime, outputStream);
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
-    return new FileTimeIndex(
-        ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public FileTimeIndex deserialize(ByteBuffer buffer) {
-    return new FileTimeIndex(buffer.getLong(), buffer.getLong());
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -86,23 +82,30 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
-    FILE_READER_MANAGER.increaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
-    try {
-      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
-      return new HashSet<>(fileReader.getAllDevices());
+    tsFileResource.readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
+      // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+      ReadWriteIOUtils.readBytes(inputStream, 2);
+      return DeviceTimeIndex.getDevices(inputStream);
     } catch (NoSuchFileException e) {
       // deleted by ttl
       if (tsFileResource.isDeleted()) {
         return Collections.emptySet();
       } else {
-        logger.error("Can't read file {} from disk ", tsFilePath, e);
-        throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+        logger.error(
+            "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+        throw new RuntimeException(
+            "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
       }
     } catch (Exception e) {
-      logger.error("Failed to get devices from tsfile: {}", tsFilePath, e);
-      throw new RuntimeException("Failed to get devices from tsfile:: " + tsFilePath);
+      logger.error(
+          "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+      throw new RuntimeException(
+          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
     } finally {
-      FILE_READER_MANAGER.decreaseFileReaderReference(tsFileResource, tsFileResource.isClosed());
+      tsFileResource.readUnlock();
     }
   }
 
@@ -223,5 +226,20 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public boolean mayContainsDevice(String device) {
     return true;
+  }
+
+  @Override
+  public long[] getStartAndEndTime(String deviceId) {
+    return new long[] {startTime, endTime};
+  }
+
+  @Override
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+    return new Pair<>(startTime, endTime);
+  }
+
+  @Override
+  public byte getTimeIndexType() {
+    return ITimeIndex.FILE_TIME_INDEX_TYPE;
   }
 }

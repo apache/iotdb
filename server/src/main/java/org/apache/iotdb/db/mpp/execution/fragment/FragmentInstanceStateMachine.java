@@ -75,12 +75,14 @@ public class FragmentInstanceStateMachine {
     instanceState =
         new StateMachine<>(
             "FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
-    instanceState.addStateChangeListener(
-        newState -> {
-          try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
-            LOGGER.info("[StateChanged] To {}", newState);
-          }
-        });
+    if (LOGGER.isDebugEnabled()) {
+      instanceState.addStateChangeListener(
+          newState -> {
+            try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
+              LOGGER.debug("[StateChanged] To {}", newState);
+            }
+          });
+    }
   }
 
   public long getCreatedTime() {

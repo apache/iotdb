@@ -19,17 +19,18 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
-import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
+import org.apache.iotdb.commons.exception.sync.SyncHandshakeException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 
 public interface ISyncClient {
   /**
    * Create connection and handshake before sending messages
    *
-   * @return true if success; false if failed to check IoTDB version.
    * @throws SyncConnectionException cannot create connection to receiver
+   * @throws SyncHandshakeException cannot handshake with receiver
    */
-  boolean handshake() throws SyncConnectionException;
+  void handshake() throws SyncConnectionException;
 
   /**
    * Send {@link PipeData} to receiver and load.

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.schema.tree;
 
-public interface ITreeNode {
+import java.io.Serializable;
+
+public interface ITreeNode extends Serializable {
 
   String getName();
 }

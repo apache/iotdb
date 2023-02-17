@@ -30,10 +30,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.ServiceLoader;
-
-import static org.apache.iotdb.db.utils.JarLoaderUtil.getExternalJarURLs;
 
 /** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
@@ -87,7 +86,7 @@ public class PayloadFormatManager {
       logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
     }
 
-    URL[] jarURLs = getExternalJarURLs(mqttDir);
+    URL[] jarURLs = getPluginJarURLs(mqttDir);
     logger.debug("MQTT Plugin jarURLs: {}", jarURLs);
 
     for (URL jarUrl : jarURLs) {
@@ -111,5 +110,20 @@ public class PayloadFormatManager {
         logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
       }
     }
+  }
+
+  /**
+   * get all jar files in the given folder
+   *
+   * @param folderPath
+   * @return all jar files' URL
+   * @throws IOException
+   */
+  private static URL[] getPluginJarURLs(String folderPath) throws IOException {
+    HashSet<File> fileSet =
+        new HashSet<>(
+            org.apache.commons.io.FileUtils.listFiles(
+                SystemFileFactory.INSTANCE.getFile(folderPath), new String[] {"jar"}, true));
+    return org.apache.commons.io.FileUtils.toURLs(fileSet.toArray(new File[0]));
   }
 }

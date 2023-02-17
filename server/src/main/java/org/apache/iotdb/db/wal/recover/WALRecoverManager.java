@@ -52,11 +52,11 @@ public class WALRecoverManager {
 
   /** true when the recover procedure has started */
   private volatile boolean hasStarted = false;
-  /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
+  /** start recovery after all data regions have submitted unsealed zero-level TsFiles */
   private volatile CountDownLatch allDataRegionScannedLatch;
   /** threads to recover wal nodes */
   private ExecutorService recoverThreadPool;
-  /** stores all UnsealedTsFileRecoverPerformer submitted by virtual storage group processors */
+  /** stores all UnsealedTsFileRecoverPerformer submitted by data region processors */
   private final Map<String, UnsealedTsFileRecoverPerformer> absolutePath2RecoverPerformer =
       new ConcurrentHashMap<>();
 
@@ -79,7 +79,7 @@ public class WALRecoverManager {
           }
         }
       }
-      // wait until all virtual storage groups have submitted their unsealed TsFiles,
+      // wait until all data regions have submitted their unsealed TsFiles,
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -70,7 +70,7 @@ public class HeartbeatThread implements Runnable {
 
   protected RaftConfig config;
 
-  HeartbeatThread(RaftMember localMember, RaftConfig config) {
+  public HeartbeatThread(RaftMember localMember, RaftConfig config) {
     this.localMember = localMember;
     memberName = localMember.getName();
     heartBeatService =
@@ -125,7 +125,7 @@ public class HeartbeatThread implements Runnable {
               logger.info(
                   "{}: The leader {} timed out", memberName, localMember.getStatus().getLeader());
               localMember.getStatus().setRole(RaftRole.CANDIDATE);
-              localMember.getStatus().setLeader(null);
+              localMember.setLeader(null);
             } else {
               logger.trace(
                   "{}: Heartbeat from leader {} is still valid",
@@ -171,9 +171,11 @@ public class HeartbeatThread implements Runnable {
     try {
       localMember.getLogManager().getLock().readLock().lock();
       request.setTerm(localMember.getStatus().getTerm().get());
-      request.setLeader(localMember.getThisNode());
+      request.setLeader(localMember.getThisNode().getEndpoint());
+      request.setLeaderId(localMember.getThisNode().getNodeId());
       request.setCommitLogIndex(localMember.getLogManager().getCommitLogIndex());
       request.setCommitLogTerm(localMember.getLogManager().getCommitLogTerm());
+      request.setGroupId(localMember.getRaftGroupId().convertToTConsensusGroupId());
     } finally {
       localMember.getLogManager().getLock().readLock().unlock();
     }
@@ -182,33 +184,28 @@ public class HeartbeatThread implements Runnable {
 
   /** Send each node (except the local node) in list a heartbeat. */
   @SuppressWarnings("java:S2445")
-  private void sendHeartbeats(Collection<TEndPoint> nodes) {
-    if (logger.isDebugEnabled()) {
-      logger.trace(
-          "{}: Send heartbeat to {} followers, commit log index = {}",
-          memberName,
-          nodes.size() - 1,
-          request.getCommitLogIndex());
-    }
-    synchronized (nodes) {
-      // avoid concurrent modification
-      for (TEndPoint node : nodes) {
-        if (node.equals(localMember.getThisNode())) {
-          continue;
-        }
-        if (Thread.currentThread().isInterrupted()) {
-          Thread.currentThread().interrupt();
-          return;
-        }
-
-        if (localMember.getRole() != RaftRole.LEADER) {
-          // if the character changes, abort the remaining heartbeats
-          logger.warn("The leadership of node {} is ended.", localMember.getThisNode());
-          return;
-        }
-
-        sendHeartbeatAsync(node);
+  private void sendHeartbeats(Collection<Peer> nodes) {
+    logger.debug(
+        "{}: Send heartbeat to {} followers, commit log index = {}",
+        memberName,
+        nodes.size() - 1,
+        request.getCommitLogIndex());
+    for (Peer node : nodes) {
+      if (node.equals(localMember.getThisNode())) {
+        continue;
       }
+      if (Thread.currentThread().isInterrupted()) {
+        Thread.currentThread().interrupt();
+        return;
+      }
+
+      if (localMember.getRole() != RaftRole.LEADER) {
+        // if the character changes, abort the remaining heartbeats
+        logger.warn("The leadership of node {} is ended.", localMember.getThisNode());
+        return;
+      }
+
+      sendHeartbeatAsync(node);
     }
   }
 
@@ -217,12 +214,12 @@ public class HeartbeatThread implements Runnable {
    *
    * @param node
    */
-  void sendHeartbeatAsync(TEndPoint node) {
-    AsyncRaftServiceClient client = localMember.getHeartbeatClient(node);
+  void sendHeartbeatAsync(Peer node) {
+    AsyncRaftServiceClient client = localMember.getHeartbeatClient(node.getEndpoint());
     if (client != null) {
       // connecting to the local node results in a null
       try {
-        logger.trace("{}: Sending heartbeat to {}", memberName, node);
+        logger.debug("{}: Sending heartbeat to {}", memberName, node);
         client.sendHeartbeat(request, new HeartbeatRespHandler(localMember, node));
       } catch (Exception e) {
         logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
@@ -306,9 +303,11 @@ public class HeartbeatThread implements Runnable {
     AtomicInteger failingVoteCounter = new AtomicInteger(quorumNum + 1);
 
     electionRequest.setTerm(nextTerm);
-    electionRequest.setElector(localMember.getThisNode());
+    electionRequest.setElector(localMember.getThisNode().getEndpoint());
+    electionRequest.setElectorId(localMember.getThisNode().getNodeId());
     electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
     electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
+    electionRequest.setGroupId(localMember.getRaftGroupId().convertToTConsensusGroupId());
 
     requestVote(
         localMember.getAllNodes(),
@@ -330,8 +329,6 @@ public class HeartbeatThread implements Runnable {
     } catch (InterruptedException e) {
       logger.info("{}: Unexpected interruption when waiting the result of election", memberName);
       Thread.currentThread().interrupt();
-    } finally {
-      localMember.getLogManager().getLock().writeLock().lock();
     }
 
     // if the election times out, the remaining votes do not matter
@@ -357,7 +354,7 @@ public class HeartbeatThread implements Runnable {
    */
   @SuppressWarnings("java:S2445")
   private void requestVote(
-      Collection<TEndPoint> nodes,
+      Collection<Peer> nodes,
       ElectionRequest request,
       long nextTerm,
       AtomicInteger quorum,
@@ -366,7 +363,7 @@ public class HeartbeatThread implements Runnable {
       AtomicInteger failingVoteCounter) {
     synchronized (nodes) {
       // avoid concurrent modification
-      for (TEndPoint node : nodes) {
+      for (Peer node : nodes) {
         if (node.equals(localMember.getThisNode())) {
           continue;
         }
@@ -385,9 +382,8 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-  private void requestVoteAsync(
-      TEndPoint node, ElectionRespHandler handler, ElectionRequest request) {
-    AsyncRaftServiceClient client = localMember.getHeartbeatClient(node);
+  private void requestVoteAsync(Peer node, ElectionRespHandler handler, ElectionRequest request) {
+    AsyncRaftServiceClient client = localMember.getHeartbeatClient(node.getEndpoint());
     if (client != null) {
       logger.info("{}: Requesting a vote from {}", memberName, node);
       try {

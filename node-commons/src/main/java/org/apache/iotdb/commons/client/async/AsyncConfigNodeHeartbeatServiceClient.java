@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -33,7 +34,8 @@ import org.apache.thrift.protocol.TProtocolFactory;
 
 import java.io.IOException;
 
-public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService.AsyncClient {
+public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService.AsyncClient
+    implements ThriftClient {
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager;
@@ -53,39 +55,42 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
     this.clientManager = clientManager;
   }
 
-  public void close() {
-    ___transport.close();
-    ___currentMethod = null;
-  }
-
-  /**
-   * return self if clientManager is not null, the method doesn't need to call by user, it will
-   * trigger once client transport complete.
-   */
-  private void returnSelf() {
-    if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
-    }
-  }
-
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onComplete() {
     super.onComplete();
     returnSelf();
   }
 
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onError(Exception e) {
     super.onError(e);
+    ThriftClient.resolveException(e, this);
     returnSelf();
+  }
+
+  @Override
+  public void invalidate() {
+    if (!hasError()) {
+      super.onError(new Exception("This client has been invalidated"));
+    }
+  }
+
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endpoint);
+  }
+
+  /**
+   * return self, the method doesn't need to be called by the user and will be triggered after the
+   * RPC is finished.
+   */
+  private void returnSelf() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  private void close() {
+    ___transport.close();
+    ___currentMethod = null;
   }
 
   public boolean isReady() {
@@ -103,13 +108,13 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
   }
 
   public static class Factory
-      extends AsyncBaseClientFactory<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty,
+        ThriftClientProperty thriftClientProperty,
         String threadName) {
-      super(clientManager, clientFactoryProperty, threadName);
+      super(clientManager, thriftClientProperty, threadName);
     }
 
     @Override
@@ -121,21 +126,19 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
     @Override
     public PooledObject<AsyncConfigNodeHeartbeatServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      TAsyncClientManager tManager = tManagers[clientCnt.incrementAndGet() % tManagers.length];
-      tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
           new AsyncConfigNodeHeartbeatServiceClient(
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               endPoint,
-              tManager,
+              tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endPoint, PooledObject<AsyncConfigNodeHeartbeatServiceClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().isReady();
+      return pooledObject.getObject().isReady();
     }
   }
 }

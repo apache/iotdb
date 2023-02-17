@@ -21,9 +21,6 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class TimIntTVList extends IntTVList implements TimSort {
@@ -130,18 +127,5 @@ public class TimIntTVList extends IntTVList implements TimSort {
     super.clear();
     clearSortedTime();
     clearSortedValue();
-  }
-
-  public static TimIntTVList deserialize(DataInputStream stream) throws IOException {
-    TimIntTVList tvList = new TimIntTVList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    int[] values = new int[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readInt();
-    }
-    tvList.putInts(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

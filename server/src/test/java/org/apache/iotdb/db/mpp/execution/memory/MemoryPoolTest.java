@@ -28,6 +28,11 @@ public class MemoryPoolTest {
 
   MemoryPool pool;
 
+  private final String QUERY_ID = "q0";
+
+  private final String FRAGMENT_INSTANCE_ID = "f0";
+  private final String PLAN_NODE_ID = "p0";
+
   @Before
   public void before() {
     pool = new MemoryPool("test", 1024L, 512L);
@@ -35,17 +40,18 @@ public class MemoryPoolTest {
 
   @Test
   public void testTryReserve() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 256L));
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
   public void testTryReserveZero() {
-    String queryId = "q0";
+
     try {
-      pool.tryReserve(queryId, 0L);
+      pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 0L, Long.MAX_VALUE);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -53,9 +59,9 @@ public class MemoryPoolTest {
 
   @Test
   public void testTryReserveNegative() {
-    String queryId = "q0";
+
     try {
-      pool.tryReserve(queryId, -1L);
+      pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, -1L, Long.MAX_VALUE);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -63,37 +69,39 @@ public class MemoryPoolTest {
 
   @Test
   public void testTryReserveAll() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
   }
 
   @Test
   public void testOverTryReserve() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 256L));
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, 512L));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
-    Assert.assertFalse(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertFalse(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 511L));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
   public void testReserve() {
-    String queryId = "q0";
-    ListenableFuture<Void> future = pool.reserve(queryId, 256L).left;
+
+    ListenableFuture<Void> future =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
     Assert.assertTrue(future.isDone());
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
   public void tesReserveZero() {
-    String queryId = "q0";
+
     try {
-      pool.reserve(queryId, 0L);
+      pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 0L, Long.MAX_VALUE);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -101,9 +109,9 @@ public class MemoryPoolTest {
 
   @Test
   public void testReserveNegative() {
-    String queryId = "q0";
+
     try {
-      pool.reserve(queryId, -1L);
+      pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, -1L, Long.MAX_VALUE);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -111,110 +119,125 @@ public class MemoryPoolTest {
 
   @Test
   public void testReserveAll() {
-    String queryId = "q0";
-    ListenableFuture<Void> future = pool.reserve(queryId, 512L).left;
+
+    ListenableFuture<Void> future =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE).left;
     Assert.assertTrue(future.isDone());
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
   }
 
   @Test
   public void testOverReserve() {
-    String queryId = "q0";
-    ListenableFuture<Void> future = pool.reserve(queryId, 256L).left;
+
+    ListenableFuture<Void> future =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
     Assert.assertTrue(future.isDone());
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
-    future = pool.reserve(queryId, 512L).left;
+    future = pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
     Assert.assertFalse(future.isDone());
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
   public void testReserveAndFree() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.reserve(queryId, 512L).left.isDone());
-    ListenableFuture<Void> future = pool.reserve(queryId, 512L).left;
+
+    Assert.assertTrue(
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE)
+            .left
+            .isDone());
+    ListenableFuture<Void> future =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
     Assert.assertFalse(future.isDone());
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
-    pool.free(queryId, 512);
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512);
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
     Assert.assertTrue(future.isDone());
   }
 
   @Test
   public void testMultiReserveAndFree() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.reserve(queryId, 256L).left.isDone());
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE)
+            .left
+            .isDone());
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
 
-    ListenableFuture<Void> future1 = pool.reserve(queryId, 512L).left;
-    ListenableFuture<Void> future2 = pool.reserve(queryId, 512L).left;
-    ListenableFuture<Void> future3 = pool.reserve(queryId, 512L).left;
+    ListenableFuture<Void> future1 =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+    ListenableFuture<Void> future2 =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+    ListenableFuture<Void> future3 =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
     Assert.assertFalse(future1.isDone());
     Assert.assertFalse(future2.isDone());
     Assert.assertFalse(future3.isDone());
 
-    pool.free(queryId, 256L);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L);
     Assert.assertTrue(future1.isDone());
     Assert.assertFalse(future2.isDone());
     Assert.assertFalse(future3.isDone());
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
-    pool.free(queryId, 512L);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L);
     Assert.assertTrue(future2.isDone());
     Assert.assertFalse(future3.isDone());
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
-    pool.free(queryId, 512L);
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L);
     Assert.assertTrue(future3.isDone());
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
-    pool.free(queryId, 512L);
-    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(queryId));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L);
+    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(0L, pool.getReservedBytes());
   }
 
   @Test
   public void testFree() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
-    pool.free(queryId, 256L);
-    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(queryId));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L);
+    Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
   }
 
   @Test
   public void testFreeAll() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
-    pool.free(queryId, 512L);
-    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(queryId));
+    pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L);
+    Assert.assertEquals(0L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(0L, pool.getReservedBytes());
   }
 
   @Test
   public void testFreeZero() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
     try {
-      pool.free(queryId, 0L);
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 0L);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -222,13 +245,14 @@ public class MemoryPoolTest {
 
   @Test
   public void testFreeNegative() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
     try {
-      pool.free(queryId, -1L);
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, -1L);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -236,13 +260,14 @@ public class MemoryPoolTest {
 
   @Test
   public void testOverFree() {
-    String queryId = "q0";
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
-    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(queryId));
+
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+    Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
 
     try {
-      pool.free(queryId, 513L);
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 513L);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -250,11 +275,13 @@ public class MemoryPoolTest {
 
   @Test
   public void testTryCancelBlockedReservation() {
-    String queryId = "q0";
-    // Run out of memory.
-    Assert.assertTrue(pool.tryReserve(queryId, 512L));
 
-    ListenableFuture<Void> f = pool.reserve(queryId, 256L).left;
+    // Run out of memory.
+    Assert.assertTrue(
+        pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
+
+    ListenableFuture<Void> f =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, 512L).left;
     Assert.assertFalse(f.isDone());
     // Cancel the reservation.
     Assert.assertEquals(256L, pool.tryCancel(f));
@@ -264,8 +291,9 @@ public class MemoryPoolTest {
 
   @Test
   public void testTryCancelCompletedReservation() {
-    String queryId = "q0";
-    ListenableFuture<Void> f = pool.reserve(queryId, 256L).left;
+
+    ListenableFuture<Void> f =
+        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
     Assert.assertTrue(f.isDone());
     // Cancel the reservation.
     Assert.assertEquals(0L, pool.tryCancel(f));

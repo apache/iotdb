@@ -30,8 +30,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class AuthorizerTask implements IConfigTask {
 
-  private AuthorStatement authorStatement;
-  private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private final AuthorStatement authorStatement;
+  private final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   public AuthorizerTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;

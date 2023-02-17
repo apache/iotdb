@@ -20,17 +20,20 @@
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.PeerInfo;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatResponse;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
 
 /**
  * HeartbeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
@@ -42,9 +45,9 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
 
   private RaftMember localMember;
   private String memberName;
-  private TEndPoint receiver;
+  private Peer receiver;
 
-  public HeartbeatRespHandler(RaftMember localMember, TEndPoint receiver) {
+  public HeartbeatRespHandler(RaftMember localMember, Peer receiver) {
     this.localMember = localMember;
     this.receiver = receiver;
     this.memberName = localMember.getName();
@@ -53,13 +56,12 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
   @Override
   public void onComplete(HeartBeatResponse resp) {
     long followerTerm = resp.getTerm();
-    if (logger.isTraceEnabled()) {
-      logger.trace(
-          "{}: Received a heartbeat response {} for last log index {}",
-          memberName,
-          followerTerm,
-          resp.getLastLogIndex());
-    }
+    logger.debug(
+        "{}: Received a heartbeat response {} for last log index {} from {}",
+        memberName,
+        followerTerm,
+        resp.getLastLogIndex(),
+        resp.follower);
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
       handleNormalHeartbeatResponse(resp);
@@ -80,7 +82,8 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
   private void handleNormalHeartbeatResponse(HeartBeatResponse resp) {
 
     // check the necessity of performing a catch-up
-    TEndPoint follower = resp.getFollower();
+    Peer peer = new Peer(ConsensusGroupId.Factory.createFromTConsensusGroupId(resp.groupId),
+        resp.followerId, resp.follower);
     long lastLogIdx = resp.getLastLogIndex();
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
@@ -89,14 +92,14 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
       logger.trace(
           "{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
           memberName,
-          follower,
+          peer,
           lastLogIdx,
           localLastLogIdx,
           lastLogTerm,
           localLastLogTerm);
     }
 
-    PeerInfo peerInfo = localMember.getStatus().getPeerMap().get(follower);
+    PeerInfo peerInfo = localMember.getStatus().getPeerMap().get(peer);
     if (!localMember.getLogManager().isLogUpToDate(lastLogTerm, lastLogIdx)
         || !localMember.getLogManager().matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
@@ -111,17 +114,17 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
       if (lastLogIdx == peerInfo.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peerInfo.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 1000) {
+        if (inconsistentNum >= 5) {
           logger.info(
               "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
               memberName,
-              follower,
+              peer,
               lastLogIdx,
               lastLogTerm,
               localLastLogIdx,
               localLastLogTerm,
               peerInfo.getMatchIndex());
-          localMember.catchUp(follower, lastLogIdx);
+          localMember.catchUp(peer, lastLogIdx);
         }
       } else {
         // the follower's lastLogIndex is changed, which means the follower is not down yet, we
@@ -139,7 +142,10 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
   @Override
   public void onError(Exception exception) {
     if (exception instanceof ConnectException) {
-      logger.warn("{}: Cannot connect to {}: {}", memberName, receiver, exception.getMessage());
+      logger.debug("{}: Cannot connect to {}: {}", memberName, receiver, exception.getMessage());
+    } else if (exception instanceof TApplicationException && exception.getMessage()
+        .contains("No such member")) {
+      logger.debug("{}: node {} not ready: {}", memberName, receiver, exception.getMessage());
     } else {
       logger.error(
           "{}: Heart beat error, receiver {}, {}", memberName, receiver, exception.getMessage());

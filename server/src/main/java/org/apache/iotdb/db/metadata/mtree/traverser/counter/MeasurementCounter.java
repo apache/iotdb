@@ -22,52 +22,33 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 
-import java.util.ArrayList;
-import java.util.List;
-
-// This method implements the measurement count function.
-// One MultiMeasurement will only be count once.
-public class MeasurementCounter extends CounterTraverser {
-
-  private List<String> timeseries = new ArrayList<>();
-  private boolean hasTag = false;
-
-  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
-    shouldTraverseTemplate = true;
-  }
+// This class implement measurement counter.
+public class MeasurementCounter extends MeasurementTraverser<Void> implements Counter {
+  private int count;
 
   public MeasurementCounter(
-      IMNode startNode,
-      PartialPath path,
-      IMTreeStore store,
-      List<String> timeseries,
-      boolean hasTag)
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
-    shouldTraverseTemplate = true;
-    this.timeseries = timeseries;
-    this.hasTag = hasTag;
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (!node.isMeasurement()) {
-      return false;
-    }
-    if (hasTag) {
-      if (!timeseries.contains(node.getFullPath())) {
-        return true;
-      }
-    }
+  protected Void generateResult(IMNode nextMatchedNode) {
     count++;
-    return true;
+    return null;
+  }
+
+  @Override
+  public long count() throws MetadataException {
+    while (hasNext()) {
+      next();
+    }
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
+    }
+    return count;
   }
 }

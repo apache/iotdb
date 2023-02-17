@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -27,7 +26,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,36 +38,41 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteStorageGroupIT {
+public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
+
+  public IoTDBDeleteStorageGroupIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
   public void testDeleteStorageGroup() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt02");
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt03");
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
-      statement.execute("DELETE STORAGE GROUP root.ln.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt02");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt03");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt04");
+      statement.execute("DELETE DATABASE root.ln.wf01.wt01");
       ;
       String[] expected =
           new String[] {"root.ln.wf01.wt02", "root.ln.wf01.wt03", "root.ln.wf01.wt04"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -83,16 +86,16 @@ public class IoTDBDeleteStorageGroupIT {
   public void testDeleteMultipleStorageGroupWithQuote() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt01");
-      statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt02");
-      statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt03");
-      statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.ln1.wf01.wt01, root.ln1.wf02.wt03");
+      statement.execute("CREATE DATABASE root.ln1.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln1.wf01.wt02");
+      statement.execute("CREATE DATABASE root.ln1.wf02.wt03");
+      statement.execute("CREATE DATABASE root.ln1.wf02.wt04");
+      statement.execute("DELETE DATABASE root.ln1.wf01.wt01, root.ln1.wf02.wt03");
       String[] expected = new String[] {"root.ln1.wf01.wt02", "root.ln1.wf02.wt04"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -106,8 +109,8 @@ public class IoTDBDeleteStorageGroupIT {
   public void deleteNonExistStorageGroup() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln2.wf01.wt01");
-      statement.execute("DELETE STORAGE GROUP root.ln2.wf01.wt02");
+      statement.execute("CREATE DATABASE root.ln2.wf01.wt01");
+      statement.execute("DELETE DATABASE root.ln2.wf01.wt02");
     }
   }
 
@@ -115,16 +118,16 @@ public class IoTDBDeleteStorageGroupIT {
   public void testDeleteStorageGroupWithStar() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt02");
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf02.wt03");
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.ln3.wf02.*");
+      statement.execute("CREATE DATABASE root.ln3.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln3.wf01.wt02");
+      statement.execute("CREATE DATABASE root.ln3.wf02.wt03");
+      statement.execute("CREATE DATABASE root.ln3.wf02.wt04");
+      statement.execute("DELETE DATABASE root.ln3.wf02.*");
       String[] expected = new String[] {"root.ln3.wf01.wt01", "root.ln3.wf01.wt02"};
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -138,13 +141,13 @@ public class IoTDBDeleteStorageGroupIT {
   public void testDeleteAllStorageGroups() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt01");
-      statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt02");
-      statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt03");
-      statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt04");
-      statement.execute("DELETE STORAGE GROUP root.**");
+      statement.execute("CREATE DATABASE root.ln4.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln4.wf01.wt02");
+      statement.execute("CREATE DATABASE root.ln4.wf02.wt03");
+      statement.execute("CREATE DATABASE root.ln4.wf02.wt04");
+      statement.execute("DELETE DATABASE root.**");
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
@@ -160,7 +163,7 @@ public class IoTDBDeleteStorageGroupIT {
       statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
       statement.execute("flush");
       statement.execute("select count(*) from root.**;");
-      statement.execute("delete storage group root.sg1");
+      statement.execute("delete database root.sg1");
       statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
       statement.execute("flush");
       int count = 0;

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
 public abstract class ProcessNode extends PlanNode {
 
-  public ProcessNode(PlanNodeId id) {
+  protected ProcessNode(PlanNodeId id) {
     super(id);
   }
 }

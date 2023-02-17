@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -34,7 +33,7 @@ import java.nio.ByteBuffer;
 public class HardState {
 
   private long currentTerm;
-  private TEndPoint voteFor;
+  private Peer voteFor;
 
   public HardState() {
     this.voteFor = null;
@@ -45,7 +44,7 @@ public class HardState {
     res.setCurrentTerm(ReadWriteIOUtils.readLong(buffer));
     int isNull = buffer.get();
     if (isNull == 1) {
-      TEndPoint endPoint = ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer);
+      Peer endPoint = Peer.deserialize(buffer);
       res.setVoteFor(endPoint);
     } else {
       res.setVoteFor(null);
@@ -62,7 +61,7 @@ public class HardState {
         dataOutputStream.writeByte(0);
       } else {
         dataOutputStream.writeByte(1);
-        ThriftCommonsSerDeUtils.serializeTEndPoint(voteFor, dataOutputStream);
+        voteFor.serialize(dataOutputStream);
       }
     } catch (IOException e) {
       // unreachable
@@ -78,11 +77,11 @@ public class HardState {
     this.currentTerm = currentTerm;
   }
 
-  public TEndPoint getVoteFor() {
+  public Peer getVoteFor() {
     return voteFor;
   }
 
-  public void setVoteFor(TEndPoint voteFor) {
+  public void setVoteFor(Peer voteFor) {
     this.voteFor = voteFor;
   }
 

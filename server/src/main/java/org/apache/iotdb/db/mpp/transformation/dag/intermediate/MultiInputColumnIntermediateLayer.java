@@ -570,13 +570,18 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             break;
           }
         }
+        if ((nextIndexEnd == nextIndexBegin)
+            && nextWindowTimeEnd < rowRecordList.getTime(rowRecordList.size() - 1)) {
+          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
+          return YieldableState.YIELDABLE;
+        }
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = nextIndexBegin != nextIndexEnd;
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == rowRecordList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
 
@@ -626,13 +631,20 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             break;
           }
         }
+
+        if ((nextIndexEnd == nextIndexBegin)
+            && nextWindowTimeEnd < rowRecordList.getTime(rowRecordList.size() - 1)) {
+          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
+          return true;
+        }
+
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = nextIndexBegin != nextIndexEnd;
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == rowRecordList.size());
         return hasCached;
       }
 
@@ -707,7 +719,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             if (rowRecordList.getTime(rowRecordList.size() - 2) >= displayWindowBegin
                 && rowRecordList.getTime(rowRecordList.size() - 1)
                         - rowRecordList.getTime(rowRecordList.size() - 2)
-                    >= sessionTimeGap) {
+                    > sessionTimeGap) {
               nextIndexEnd = rowRecordList.size() - 1;
               break;
             } else {
@@ -777,6 +789,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   @Override
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(
+        "StateWindowAccessStrategy only support one input series for now.");
   }
 }

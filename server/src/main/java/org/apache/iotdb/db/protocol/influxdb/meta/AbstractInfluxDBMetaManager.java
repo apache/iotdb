@@ -22,8 +22,10 @@ import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-public abstract class AbstractInfluxDBMetaManager {
+/** InfluxDBMetaManager used in schema region is memory or schema file */
+public abstract class AbstractInfluxDBMetaManager implements IInfluxDBMetaManager {
 
   protected static final String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
@@ -32,7 +34,16 @@ public abstract class AbstractInfluxDBMetaManager {
   protected static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  public static Map<String, Integer> getTagOrders(String database, String measurement) {
+  /**
+   * get tag orders
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param sessionID session id
+   * @return a map of tag orders
+   */
+  @Override
+  public Map<String, Integer> getTagOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> tagOrders = new HashMap<>();
     Map<String, Map<String, Integer>> measurement2TagOrders =
         database2Measurement2TagOrders.get(database);
@@ -45,10 +56,20 @@ public abstract class AbstractInfluxDBMetaManager {
     return tagOrders;
   }
 
-  abstract void recover();
-
+  /**
+   * create database
+   *
+   * @param database database of influxdb
+   * @param sessionID session id
+   */
   abstract void setStorageGroup(String database, long sessionID);
 
+  /**
+   * update tag info
+   *
+   * @param tagInfoRecords tagInfoRecords
+   * @param sessionID session id
+   */
   abstract void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID);
 
   public final synchronized Map<String, Map<String, Integer>> createDatabase(
@@ -69,8 +90,23 @@ public abstract class AbstractInfluxDBMetaManager {
     return createDatabase(database, sessionID).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
+  /**
+   * generate time series path for insertion
+   *
+   * @param database database of influxdb
+   * @param measurement measurement of influxdb
+   * @param tags influxdb tags
+   * @param fields influxdb fields
+   * @param sessionID session id
+   * @return series path
+   */
+  @Override
   public final synchronized String generatePath(
-      String database, String measurement, Map<String, String> tags, long sessionID) {
+      String database,
+      String measurement,
+      Map<String, String> tags,
+      Set<String> fields,
+      long sessionID) {
     Map<String, Integer> tagKeyToLayerOrders =
         getTagOrdersWithAutoCreatingSchema(database, measurement, sessionID);
     // to support rollback if fails to persisting new tag info

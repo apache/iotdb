@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,17 +37,19 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RecordUtilTests {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -64,15 +67,35 @@ public class RecordUtilTests {
 
   @Test
   public void measurementTest() throws MetadataException {
+    Map<String, String> props = new HashMap<>();
+    props.put("ka", "va");
+    props.put("kb", "vb");
+
     IMeasurementSchema schema =
-        new MeasurementSchema("amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP);
+        new MeasurementSchema(
+            "amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP, props);
     IMNode amn = MeasurementMNode.getMeasurementMNode(null, "amn", schema, "anothername");
+
+    ByteBuffer tBuf = RecordUtils.node2Buffer(amn);
+    tBuf.clear();
+    Assert.assertFalse(
+        RecordUtils.buffer2Node("name", tBuf).getAsMeasurementMNode().isPreDeleted());
+
+    amn.getAsMeasurementMNode().setPreDeleted(true);
+
+    tBuf = RecordUtils.node2Buffer(amn);
+    tBuf.clear();
+    Assert.assertTrue(RecordUtils.buffer2Node("name", tBuf).getAsMeasurementMNode().isPreDeleted());
+
     ByteBuffer buffer = RecordUtils.node2Buffer(amn);
     buffer.clear();
     IMNode node2 = RecordUtils.buffer2Node("amn", buffer);
 
-    Assert.assertEquals(TSDataType.FLOAT, node2.getAsMeasurementMNode().getDataType("amn"));
+    Assert.assertTrue(
+        amn.getAsMeasurementMNode().getSchema().equals(node2.getAsMeasurementMNode().getSchema()));
     Assert.assertEquals(
         node2.getAsMeasurementMNode().getAlias(), amn.getAsMeasurementMNode().getAlias());
+    Assert.assertEquals(true, node2.getAsMeasurementMNode().isPreDeleted());
+    Assert.assertEquals(props, node2.getAsMeasurementMNode().getSchema().getProps());
   }
 }

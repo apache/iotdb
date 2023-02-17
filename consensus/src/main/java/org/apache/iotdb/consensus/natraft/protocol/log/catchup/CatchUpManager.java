@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
@@ -45,7 +46,7 @@ public class CatchUpManager {
    * if we find a catch-up task that does not respond for long, we will start a new one instead of
    * waiting for the previous one to finish.
    */
-  private Map<TEndPoint, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
+  private Map<Peer, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
 
   private RaftMember member;
   private RaftConfig config;
@@ -73,11 +74,11 @@ public class CatchUpManager {
     catchUpService = null;
   }
 
-  public void registerTask(TEndPoint node) {
+  public void registerTask(Peer node) {
     lastCatchUpResponseTime.put(node, System.currentTimeMillis());
   }
 
-  public void unregisterTask(TEndPoint node) {
+  public void unregisterTask(Peer node) {
     lastCatchUpResponseTime.remove(node);
   }
 
@@ -86,7 +87,7 @@ public class CatchUpManager {
    * follower. If some required logs are removed, also send the snapshot. <br>
    * notice that if a part of data is in the snapshot, then it is not in the logs.
    */
-  public void catchUp(TEndPoint follower, long lastLogIdx) {
+  public void catchUp(Peer follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
     // twice to the node
     synchronized (this) {

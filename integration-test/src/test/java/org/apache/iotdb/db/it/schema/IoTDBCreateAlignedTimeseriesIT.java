@@ -18,18 +18,16 @@
  */
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,101 +38,98 @@ import java.sql.Statement;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBCreateAlignedTimeseriesIT {
+public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
 
-  private Statement statement;
-  private Connection connection;
+  public IoTDBCreateAlignedTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
           "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED",
           "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      try {
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+      } catch (SQLException ignored) {
+      }
 
-    statement.execute("SET STORAGE GROUP TO root.sg1");
-    try {
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-    } catch (SQLException ignored) {
+      // ensure that current database in cache is right.
+      assertTimeseriesEquals(timeSeriesArray);
     }
-
-    // ensure that current storage group in cache is right.
-    assertTimeseriesEquals(timeSeriesArray);
-
-    statement.close();
-    connection.close();
     // todo test restart
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
-    //    // ensure storage group in cache is right after recovering.
+    //    // ensure database in cache is right after recovering.
     //    assertTimeseriesEquals(timeSeriesArray);
   }
 
-  @Ignore
   @Test
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
           "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
-
-    statement.execute("SET STORAGE GROUP TO root.sg1");
-    try {
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
-      statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
-      statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
-    } catch (SQLException e) {
-      e.printStackTrace();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      try {
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+        statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
+        statement.execute(
+            "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+      }
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     assertTimeseriesEquals(timeSeriesArray);
 
-    statement.close();
-    connection.close();
     // todo
     //    EnvironmentUtils.stopDaemon();
-    setUp();
+    //    setUp();
 
-    // ensure storage group in cache is right after recovering.
+    // ensure database in cache is right after recovering.
     assertTimeseriesEquals(timeSeriesArray);
   }
 
   private void assertTimeseriesEquals(String[] timeSeriesArray) throws SQLException {
 
     int count = 0;
-    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
       while (resultSet.next()) {
         String ActualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertEquals(timeSeriesArray[count], ActualResult);
         count++;
       }

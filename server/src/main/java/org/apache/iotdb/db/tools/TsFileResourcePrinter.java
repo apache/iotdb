@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -78,9 +78,9 @@ public class TsFileResourcePrinter {
           "device %s, start time %d (%s), end time %d (%s)%n",
           device,
           resource.getStartTime(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+          DateTimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
           resource.getEndTime(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));
+          DateTimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));
     }
     System.out.println();
   }

@@ -19,38 +19,15 @@
 
 package org.apache.iotdb.commons.trigger.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 
-public class TriggerExecutableManager extends ExecutableManager implements IService {
+import java.io.File;
+import java.io.IOException;
+
+public class TriggerExecutableManager extends ExecutableManager {
   private TriggerExecutableManager(String temporaryLibRoot, String triggerLibRoot) {
     super(temporaryLibRoot, triggerLibRoot);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // IService
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  @Override
-  public void start() throws StartupException {
-    try {
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-    } catch (Exception e) {
-      throw new StartupException(e);
-    }
-  }
-
-  @Override
-  public void stop() {
-    // nothing to do
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_EXECUTABLE_MANAGER_SERVICE;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +37,11 @@ public class TriggerExecutableManager extends ExecutableManager implements IServ
   private static TriggerExecutableManager INSTANCE = null;
 
   public static synchronized TriggerExecutableManager setupAndGetInstance(
-      String temporaryLibRoot, String triggerLibRoot) {
+      String temporaryLibRoot, String triggerLibRoot) throws IOException {
     if (INSTANCE == null) {
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(triggerLibRoot);
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(triggerLibRoot + File.separator + INSTALL_DIR);
       INSTANCE = new TriggerExecutableManager(temporaryLibRoot, triggerLibRoot);
     }
     return INSTANCE;

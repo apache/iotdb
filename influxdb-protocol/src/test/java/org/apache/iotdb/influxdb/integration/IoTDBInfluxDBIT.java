@@ -33,11 +33,15 @@ import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBInfluxDBIT {
 
@@ -164,8 +168,9 @@ public class IoTDBInfluxDBIT {
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     String[] retArray = new String[] {"time", "name", "sex", "province", "country", "score", "tel"};
+    Set<String> columnNames = new HashSet<>(Arrays.asList(retArray));
     for (int i = 0; i < series.getColumns().size(); i++) {
-      assertEquals(retArray[i], series.getColumns().get(i));
+      assertTrue(columnNames.contains(series.getColumns().get(i)));
     }
   }
 

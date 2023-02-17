@@ -37,6 +37,7 @@ def print_message(message):
     print("*********")
     print(message)
     print("*********")
+    assert False
 
 
 def test_one_device():
@@ -44,7 +45,7 @@ def test_one_device():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("set storage group to root.str_test_01")
+        session.execute_non_query_statement("CREATE DATABASE root.str_test_01")
 
         if not session.is_open():
             print("can't open session")

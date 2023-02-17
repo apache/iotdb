@@ -20,10 +20,10 @@
 package org.apache.iotdb.consensus.natraft.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -38,7 +38,7 @@ public class RaftConsensusClientPool {
 
     private final RaftConfig config;
     private static final String RAFT_CONSENSUS_CLIENT_POOL_THREAD_NAME =
-        "MultiLeaderConsensusClientPool";
+        "RaftConsensusClientPool";
 
     public AsyncRaftServiceClientPoolFactory(RaftConfig config) {
       this.config = config;
@@ -50,7 +50,7 @@ public class RaftConsensusClientPool {
       return new GenericKeyedObjectPool<>(
           new AsyncRaftServiceClient.Factory(
               manager,
-              new ClientFactoryProperty.Builder()
+              new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(config.getRpcConfig().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(
                       config.getRpcConfig().isRpcThriftCompressionEnabled())

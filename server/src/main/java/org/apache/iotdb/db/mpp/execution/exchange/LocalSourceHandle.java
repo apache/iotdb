@@ -19,26 +19,33 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HANDLE_GET_TSBLOCK_LOCAL;
 
 public class LocalSourceHandle implements ISourceHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSourceHandle.class);
 
-  private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final TFragmentInstanceId localFragmentInstanceId;
-  private final String localPlanNodeId;
+  private TFragmentInstanceId localFragmentInstanceId;
+  private String localPlanNodeId;
   private final SourceHandleListener sourceHandleListener;
   private final SharedTsBlockQueue queue;
   private boolean aborted = false;
@@ -49,13 +56,24 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private final String threadName;
 
+  private static final TsBlockSerde serde = new TsBlockSerde();
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
+  // For pipeline
   public LocalSourceHandle(
-      TFragmentInstanceId remoteFragmentInstanceId,
+      SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
+    this.queue = Validate.notNull(queue);
+    this.queue.setSourceHandle(this);
+    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.threadName = threadName;
+  }
+
+  // For fragment
+  public LocalSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.queue = Validate.notNull(queue);
@@ -81,6 +99,7 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() {
+    long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       checkState();
 
@@ -92,14 +111,35 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        currSequenceId++;
-        logger.info(
+        logger.debug(
             "[GetTsBlockFromQueue] TsBlock:{} size:{}",
             currSequenceId,
             tsBlock.getRetainedSizeInBytes());
+        currSequenceId++;
       }
       checkAndInvokeOnFinished();
       return tsBlock;
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SOURCE_HANDLE_GET_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+    }
+  }
+
+  @Override
+  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    TsBlock tsBlock = receive();
+    if (tsBlock != null) {
+      long startTime = System.nanoTime();
+      try {
+        return serde.serialize(tsBlock);
+      } catch (Exception e) {
+        throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+      }
+    } else {
+      return null;
     }
   }
 
@@ -140,7 +180,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("[StartAbortLocalSourceHandle]");
+      logger.debug("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -151,7 +191,28 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.info("[EndAbortLocalSourceHandle]");
+      logger.debug("[EndAbortLocalSourceHandle]");
+    }
+  }
+
+  @Override
+  public void abort(Throwable t) {
+    if (aborted || closed) {
+      return;
+    }
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      logger.debug("[StartAbortLocalSourceHandle]");
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          queue.abort(t);
+          aborted = true;
+          sourceHandleListener.onAborted(this);
+        }
+      }
+      logger.debug("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -161,7 +222,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.info("[StartCloseLocalSourceHandle]");
+      logger.debug("[StartCloseLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -172,7 +233,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      logger.info("[EndCloseLocalSourceHandle]");
+      logger.debug("[EndCloseLocalSourceHandle]");
     }
   }
 
@@ -184,11 +245,14 @@ public class LocalSourceHandle implements ISourceHandle {
     }
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
+  public SharedTsBlockQueue getSharedTsBlockQueue() {
+    return queue;
   }
 
-  SharedTsBlockQueue getSharedTsBlockQueue() {
-    return queue;
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
+      queue.setMaxBytesCanReserve(maxBytesCanReserve);
+    }
   }
 }

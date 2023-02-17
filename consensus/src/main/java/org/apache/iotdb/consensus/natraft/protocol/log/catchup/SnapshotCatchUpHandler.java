@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -34,10 +35,10 @@ public class SnapshotCatchUpHandler implements AsyncMethodCallback<Void> {
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpHandler.class);
 
   private AtomicBoolean succeed;
-  private TEndPoint receiver;
+  private Peer receiver;
   private Snapshot snapshot;
 
-  public SnapshotCatchUpHandler(AtomicBoolean succeed, TEndPoint receiver, Snapshot snapshot) {
+  public SnapshotCatchUpHandler(AtomicBoolean succeed, Peer receiver, Snapshot snapshot) {
     this.succeed = succeed;
     this.receiver = receiver;
     this.snapshot = snapshot;

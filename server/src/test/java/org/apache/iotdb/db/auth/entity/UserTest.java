@@ -35,12 +35,12 @@ public class UserTest {
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
     user.setPrivileges("root.ln", Collections.singleton(1));
     Assert.assertEquals(
-        "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], useWaterMark=false, lastActiveTime=0}",
+        "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], isOpenIdUser=false, useWaterMark=false, lastActiveTime=0}",
         user.toString());
     User user1 = new User("user1", "password1");
     user1.deserialize(user.serialize());
     Assert.assertEquals(
-        "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], useWaterMark=false, lastActiveTime=0}",
+        "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], isOpenIdUser=false, useWaterMark=false, lastActiveTime=0}",
         user1.toString());
   }
 }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -36,6 +34,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -51,7 +50,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,7 +62,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** A skeleton class for expression */
 public abstract class Expression extends StatementNode {
@@ -85,14 +82,6 @@ public abstract class Expression extends StatementNode {
   public abstract ExpressionType getExpressionType();
 
   public boolean isBuiltInAggregationFunctionExpression() {
-    return false;
-  }
-
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return false;
-  }
-
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
 
@@ -120,25 +109,6 @@ public abstract class Expression extends StatementNode {
   protected abstract boolean isConstantOperandInternal();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Operations for time series paths
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException;
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void collectPaths(Set<PartialPath> pathSet);
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
   // For UDF instances initialization
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -150,10 +120,6 @@ public abstract class Expression extends StatementNode {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected Integer inputColumnIndex = null;
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
 
   public abstract void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations);
@@ -218,11 +184,6 @@ public abstract class Expression extends StatementNode {
 
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
-
-  /**
-   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
-   */
-  public abstract List<Expression> getExpressions();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // serialize & deserialize
@@ -339,6 +300,10 @@ public abstract class Expression extends StatementNode {
         expression = new LogicOrExpression(byteBuffer);
         break;
 
+      case 20:
+        expression = new NullOperand();
+        break;
+
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }
@@ -358,6 +323,11 @@ public abstract class Expression extends StatementNode {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // iterator: level-order traversal iterator
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
 
   /** returns an iterator to traverse all the successor expressions in a level-order */
   public final Iterator<Expression> iterator() {

@@ -37,9 +37,9 @@ import com.google.common.base.Preconditions;
  */
 public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
-  private final int MAX_CAPACITY;
-  private final E queryHolder;
-  private int size;
+  protected final int MAX_CAPACITY;
+  protected final E queryHolder;
+  protected int size;
 
   /**
    * Init the queue with a max capacity. The queryHolder is just a simple reused object in query to
@@ -85,9 +85,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    Preconditions.checkState(
-        !contains(element), "The queue has already contained the element: " + element.getId());
-    Preconditions.checkState(size < MAX_CAPACITY, "The queue is full");
+    Preconditions.checkState(size < MAX_CAPACITY, "The system can't allow more queries.");
     pushToQueue(element);
     size++;
     this.notifyAll();

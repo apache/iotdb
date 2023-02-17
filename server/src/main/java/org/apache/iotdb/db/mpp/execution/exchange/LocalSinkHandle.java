@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -29,36 +30,42 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
 public class LocalSinkHandle implements ISinkHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
-  private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final String remotePlanNodeId;
-  private final TFragmentInstanceId localFragmentInstanceId;
+  private TFragmentInstanceId localFragmentInstanceId;
   private final SinkHandleListener sinkHandleListener;
 
   private final SharedTsBlockQueue queue;
-  private volatile ListenableFuture<Void> blocked = immediateFuture(null);
+  private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
 
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
+  public LocalSinkHandle(SharedTsBlockQueue queue, SinkHandleListener sinkHandleListener) {
+    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.queue = Validate.notNull(queue);
+    this.queue.setSinkHandle(this);
+    blocked = queue.getCanAddTsBlock();
+  }
+
   public LocalSinkHandle(
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
       SinkHandleListener sinkHandleListener) {
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkHandle(this);
+    // SinkHandle can send data after SourceHandle asks it to
+    blocked = queue.getCanAddTsBlock();
   }
 
   @Override
@@ -101,22 +108,28 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public void send(TsBlock tsBlock) {
-    Validate.notNull(tsBlock, "tsBlocks is null");
-    synchronized (this) {
-      checkState();
-      if (!blocked.isDone()) {
-        throw new IllegalStateException("Sink handle is blocked.");
-      }
-    }
-
-    synchronized (queue) {
-      if (queue.hasNoMoreTsBlocks()) {
-        return;
-      }
-      logger.info("[StartSendTsBlockOnLocal]");
+    long startTime = System.nanoTime();
+    try {
+      Validate.notNull(tsBlock, "tsBlocks is null");
       synchronized (this) {
-        blocked = queue.add(tsBlock);
+        checkState();
+        if (!blocked.isDone()) {
+          throw new IllegalStateException("Sink handle is blocked.");
+        }
       }
+
+      synchronized (queue) {
+        if (queue.hasNoMoreTsBlocks()) {
+          return;
+        }
+        logger.debug("[StartSendTsBlockOnLocal]");
+        synchronized (this) {
+          blocked = queue.add(tsBlock);
+        }
+      }
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SINK_HANDLE_SEND_TSBLOCK_LOCAL, System.nanoTime() - startTime);
     }
   }
 
@@ -129,7 +142,7 @@ public class LocalSinkHandle implements ISinkHandle {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        logger.info("[StartSetNoMoreTsBlocksOnLocal]");
+        logger.debug("[StartSetNoMoreTsBlocksOnLocal]");
         if (aborted || closed) {
           return;
         }
@@ -138,28 +151,32 @@ public class LocalSinkHandle implements ISinkHandle {
       }
     }
     checkAndInvokeOnFinished();
-    logger.info("[EndSetNoMoreTsBlocksOnLocal]");
+    logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }
 
   @Override
   public void abort() {
-    logger.info("[StartAbortLocalSinkHandle]");
+    logger.debug("[StartAbortLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
           return;
         }
         aborted = true;
-        queue.abort();
-        sinkHandleListener.onAborted(this);
+        Optional<Throwable> t = sinkHandleListener.onAborted(this);
+        if (t.isPresent()) {
+          queue.abort(t.get());
+        } else {
+          queue.abort();
+        }
       }
     }
-    logger.info("[EndAbortLocalSinkHandle]");
+    logger.debug("[EndAbortLocalSinkHandle]");
   }
 
   @Override
   public void close() {
-    logger.info("[StartCloseLocalSinkHandle]");
+    logger.debug("[StartCloseLocalSinkHandle]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -170,18 +187,10 @@ public class LocalSinkHandle implements ISinkHandle {
         sinkHandleListener.onFinish(this);
       }
     }
-    logger.info("[EndCloseLocalSinkHandle]");
+    logger.debug("[EndCloseLocalSinkHandle]");
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
-  }
-
-  public String getRemotePlanNodeId() {
-    return remotePlanNodeId;
-  }
-
-  SharedTsBlockQueue getSharedTsBlockQueue() {
+  public SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
 
@@ -191,5 +200,11 @@ public class LocalSinkHandle implements ISinkHandle {
     } else if (closed) {
       throw new IllegalStateException("Sink Handle is closed.");
     }
+  }
+
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
+    // LocalSourceHandle
   }
 }

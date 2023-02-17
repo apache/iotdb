@@ -22,8 +22,6 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.Test;
 
@@ -47,22 +45,6 @@ public class SchemaEntryTest {
       assertEquals(
           schemaEntry.getCompressionType(),
           TSFileDescriptor.getInstance().getConfig().getCompressor());
-
-      // last cache
-      schemaEntry.updateCachedLast(
-          new TimeValuePair(100L, new TsPrimitiveType.TsLong(1L)), false, 0L);
-      assertEquals(new TsPrimitiveType.TsLong(1L), schemaEntry.getLastValue());
-      assertEquals(100L, schemaEntry.getLastTime());
-
-      schemaEntry.updateCachedLast(
-          new TimeValuePair(90L, new TsPrimitiveType.TsLong(2L)), false, 0L);
-      assertEquals(new TsPrimitiveType.TsLong(1L), schemaEntry.getLastValue());
-      assertEquals(100L, schemaEntry.getLastTime());
-
-      schemaEntry.updateCachedLast(
-          new TimeValuePair(110L, new TsPrimitiveType.TsLong(2L)), false, 0L);
-      assertEquals(new TsPrimitiveType.TsLong(2L), schemaEntry.getLastValue());
-      assertEquals(110L, schemaEntry.getLastTime());
     }
   }
 }

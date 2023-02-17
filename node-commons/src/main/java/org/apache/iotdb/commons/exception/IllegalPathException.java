@@ -26,13 +26,13 @@ public class IllegalPathException extends MetadataException {
 
   public IllegalPathException(String path) {
     super(String.format("%s is not a legal path", path));
-    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
+    errorCode = TSStatusCode.ILLEGAL_PATH.getStatusCode();
     this.isUserException = true;
   }
 
   public IllegalPathException(String path, String reason) {
     super(String.format("%s is not a legal path, because %s", path, reason));
-    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
+    errorCode = TSStatusCode.ILLEGAL_PATH.getStatusCode();
     this.isUserException = true;
   }
 }

@@ -85,21 +85,21 @@ public class TsFileManager {
     }
   }
 
-  public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    readLock();
+  public TsFileResourceList getOrCreateSequenceListByTimePartition(long timePartition) {
+    writeLock("getOrCreateSequenceListByTimePartition");
     try {
       return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
-  public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    readLock();
+  public TsFileResourceList getOrCreateUnsequenceListByTimePartition(long timePartition) {
+    writeLock("getOrCreateUnsequenceListByTimePartition");
     try {
       return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
     } finally {
-      readUnlock();
+      writeUnlock();
     }
   }
 
@@ -145,13 +145,12 @@ public class TsFileManager {
    * first, if insert Pos = 1, then to the second.
    */
   public void insertToPartitionFileList(
-      TsFileResource tsFileResource, boolean sequence, int insertPos) {
+      TsFileResource tsFileResource, long timePartition, boolean sequence, int insertPos) {
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       TsFileResourceList tsFileResources =
-          selectedMap.computeIfAbsent(
-              tsFileResource.getTimePartition(), o -> new TsFileResourceList());
+          selectedMap.computeIfAbsent(timePartition, o -> new TsFileResourceList());
       tsFileResources.set(insertPos, tsFileResource);
     } finally {
       writeUnlock();
@@ -224,14 +223,18 @@ public class TsFileManager {
       if (isTargetSequence) {
         // seq inner space compaction or cross space compaction
         for (TsFileResource resource : targetFileResources) {
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-          sequenceFiles.get(timePartition).keepOrderInsert(resource);
+          if (!resource.isDeleted()) {
+            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+            sequenceFiles.get(timePartition).keepOrderInsert(resource);
+          }
         }
       } else {
         // unseq inner space compaction
         for (TsFileResource resource : targetFileResources) {
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-          unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+          if (!resource.isDeleted()) {
+            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+            unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+          }
         }
       }
 
@@ -442,5 +445,11 @@ public class TsFileManager {
     } catch (NullPointerException e) {
       return false;
     }
+  }
+
+  // determine whether time partition is the latest(largest) or not
+  public boolean isLatestTimePartition(long timePartitionId) {
+    return (sequenceFiles.higherKey(timePartitionId) == null
+        && unsequenceFiles.higherKey(timePartitionId) == null);
   }
 }

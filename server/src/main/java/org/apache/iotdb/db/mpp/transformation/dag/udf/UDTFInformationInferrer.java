@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -84,7 +84,7 @@ public class UDTFInformationInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes)
       throws Exception {
-    UDTF udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
+    UDTF udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
 
     UDFParameters parameters =
         new UDFParameters(

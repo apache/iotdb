@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.exception.LeaderUnknownException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
@@ -51,7 +52,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   SnapshotCatchUpTask(
       List<Entry> logs,
       Snapshot snapshot,
-      TEndPoint node,
+      Peer node,
       CatchUpManager catchUpManager,
       RaftConfig config) {
     super(logs, node, catchUpManager, config);
@@ -84,7 +85,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       throws TException, InterruptedException {
     AtomicBoolean succeed = new AtomicBoolean(false);
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
-    AsyncRaftServiceClient client = raftMember.getClient(node);
+    AsyncRaftServiceClient client = raftMember.getClient(node.getEndpoint());
     if (client == null) {
       logger.info("{}: client null for node {}", raftMember.getThisNode(), node);
       abort = true;

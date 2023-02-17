@@ -80,8 +80,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     // create dirs
     if (dir.mkdirs()) {
       logger.info(
-          "ID table create storage group system dir {} doesn't exist, create it",
-          dir.getParentFile());
+          "ID table create database system dir {} doesn't exist, create it", dir.getParentFile());
     }
 
     dataFile = new File(dir, FILE_NAME);
@@ -91,7 +90,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         throw new IOException("File corruption");
       }
     } else {
-      logger.debug("create new file for id table: " + dir.getName());
+      logger.debug("create new file for id table: {}", dir.getName());
       boolean createRes = dataFile.createNewFile();
       if (!createRes) {
         throw new IOException(
@@ -121,7 +120,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         return false;
       }
     } catch (Exception e) {
-      logger.error("File check failed" + e);
+      logger.error("File check failed", e);
       return false;
     }
 
@@ -134,7 +133,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
     try {
       loc += schemaEntry.serialize(outputStream);
     } catch (IOException e) {
-      logger.error("failed to serialize schema entry: " + schemaEntry);
+      logger.error("failed to serialize schema entry: {}", schemaEntry);
       throw new IllegalArgumentException("can't serialize disk entry of " + schemaEntry);
     }
 

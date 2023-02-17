@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -80,56 +78,21 @@ public class TsFilePlanRedoerTest {
   private CompressionType compressionType;
   boolean prevIsAutoCreateSchemaEnabled;
   boolean prevIsEnablePartialInsert;
+  boolean prevIsCluster;
 
   @Before
   public void setUp() throws Exception {
+    prevIsCluster = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
 
     // set recover config, avoid creating deleted time series when recovering wal
     prevIsAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    //    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     prevIsEnablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s1")),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s2")),
-        TSDataType.INT64,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s1")),
-        TSDataType.FLOAT,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s2")),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createAlignedTimeSeries(
-        new PartialPath(DEVICE3_NAME),
-        Arrays.asList("s1", "s2", "s3", "s4", "s5"),
-        Arrays.asList(
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.BOOLEAN,
-            TSDataType.FLOAT,
-            TSDataType.TEXT),
-        Arrays.asList(
-            TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE, TSEncoding.PLAIN),
-        Arrays.asList(
-            compressionType, compressionType, compressionType, compressionType, compressionType));
   }
 
   @After
@@ -141,11 +104,12 @@ public class TsFilePlanRedoerTest {
     if (modsFile.exists()) {
       modsFile.delete();
     }
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
     EnvironmentUtils.cleanEnv();
     // reset config
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    //    IoTDBDescriptor.getInstance()
+    //        .getConfig()
+    //        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(prevIsEnablePartialInsert);
   }
 
@@ -163,14 +127,26 @@ public class TsFilePlanRedoerTest {
     // generate InsertRowPlan
     long time = 5;
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
+    Object[] columns = new Object[] {1f, 1.0d};
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            dataTypes,
+            time,
+            columns,
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertRowPlan);
+    planRedoer.redoInsert(insertRowNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -219,19 +195,30 @@ public class TsFilePlanRedoerTest {
         new TSDataType[] {
           TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
         };
-    String[] columns = new String[] {1 + "", 1 + "", true + "", 1.0 + "", "1"};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
+    Object[] columns = new Object[] {1, 1L, true, 1.0f, new Binary("1")};
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("0"),
             new PartialPath(DEVICE3_NAME),
-            time,
+            true,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,
+            time,
             columns,
-            true);
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          new MeasurementSchema("s5", TSDataType.TEXT),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertRowPlan);
+    planRedoer.redoInsert(insertRowNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -297,16 +284,26 @@ public class TsFilePlanRedoerTest {
       bitMaps[i].mark(3);
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(DEVICE1_NAME), new String[] {"s1", "s2"}, dataTypes);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setBitMaps(bitMaps);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE1_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT64},
+            times,
+            bitMaps,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertTabletPlan);
+    planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -382,20 +379,35 @@ public class TsFilePlanRedoerTest {
       bitMaps[i].mark(3);
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
             new PartialPath(DEVICE3_NAME),
+            true,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
-            dataTypes,
-            true);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setBitMaps(bitMaps);
+            new TSDataType[] {
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.BOOLEAN,
+              TSDataType.FLOAT,
+              TSDataType.TEXT
+            },
+            times,
+            bitMaps,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          new MeasurementSchema("s5", TSDataType.TEXT),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertTabletPlan);
+    planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -454,15 +466,21 @@ public class TsFilePlanRedoerTest {
       ((long[]) columns[1])[r] = 10000;
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(DEVICE1_NAME), new String[] {"s1", "s2"}, dataTypes);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE1_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT64},
+            times,
+            null,
+            columns,
+            times.length);
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertTabletPlan);
+    planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -495,15 +513,26 @@ public class TsFilePlanRedoerTest {
       ((long[]) columns[1])[r] = 10000;
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(DEVICE1_NAME), new String[] {"s1", "s2"}, dataTypes);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE1_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT64},
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+        });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
-    planRedoer.redoInsert(insertTabletPlan);
+    planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -538,29 +567,6 @@ public class TsFilePlanRedoerTest {
   }
 
   @Test
-  public void testRedoDeletePlan() throws Exception {
-    // generate .tsfile and update resource in memory
-    File file = new File(FILE_NAME);
-    generateCompleteFile(file);
-    tsFileResource = new TsFileResource(file);
-    tsFileResource.updateStartTime(DEVICE1_NAME, 1);
-    tsFileResource.updateEndTime(DEVICE1_NAME, 2);
-    tsFileResource.updateStartTime(DEVICE2_NAME, 3);
-    tsFileResource.updateEndTime(DEVICE2_NAME, 4);
-
-    // generate DeletePlan
-    DeletePlan deletePlan =
-        new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE1_NAME));
-
-    // redo DeletePlan, vsg processor is used to test IdTable, don't test IdTable here
-    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
-    assertFalse(modsFile.exists());
-    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
-    planRedoer.redoDelete(deletePlan);
-    assertTrue(modsFile.exists());
-  }
-
-  @Test
   public void testRedoDeleteDataNode() throws Exception {
     // generate .tsfile and update resource in memory
     File file = new File(FILE_NAME);
@@ -571,7 +577,7 @@ public class TsFilePlanRedoerTest {
     tsFileResource.updateStartTime(DEVICE2_NAME, 3);
     tsFileResource.updateEndTime(DEVICE2_NAME, 4);
 
-    // generate DeletePlan
+    // generate DeleteDataNode
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
@@ -579,7 +585,7 @@ public class TsFilePlanRedoerTest {
             Long.MIN_VALUE,
             Long.MAX_VALUE);
 
-    // redo DeletePlan, vsg processor is used to test IdTable, don't test IdTable here
+    // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
     File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
     assertFalse(modsFile.exists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
@@ -589,9 +595,6 @@ public class TsFilePlanRedoerTest {
 
   @Test
   public void testRedoAlignedInsertAfterDeleteTimeseries() throws Exception {
-    // some timeseries have been deleted
-    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s1")));
-    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s5")));
     // generate .tsfile and update resource in memory
     File file = new File(FILE_NAME);
     generateCompleteFile(file);
@@ -631,19 +634,35 @@ public class TsFilePlanRedoerTest {
       // mark value of time=9 as null
       bitMaps[i].mark(3);
     }
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
             new PartialPath(DEVICE3_NAME),
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
-            dataTypes,
-            true);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setBitMaps(bitMaps);
-    // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
+            true,
+            new String[] {null, "s2", "s3", "s4", null},
+            new TSDataType[] {
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.BOOLEAN,
+              TSDataType.FLOAT,
+              TSDataType.TEXT
+            },
+            times,
+            bitMaps,
+            columns,
+            times.length);
+    // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
-    planRedoer.redoInsert(insertTabletPlan);
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          null,
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          null
+        };
+    insertTabletNode.setMeasurementSchemas(schemas);
+    planRedoer.redoInsert(insertTabletNode);
 
     // generate InsertRowPlan
     int time = 9;
@@ -651,17 +670,20 @@ public class TsFilePlanRedoerTest {
         new TSDataType[] {
           TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
         };
-    String[] columns2 = new String[] {400 + "", 400 + "", true + "", 400.0 + "", "400"};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
+    Object[] columns2 = new Object[] {400, 400L, true, 400.0f, new Binary("400")};
+    // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
             new PartialPath(DEVICE3_NAME),
-            time,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            true,
+            new String[] {null, "s2", "s3", "s4", null},
             dataTypes2,
+            time,
             columns2,
-            true);
-    // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    planRedoer.redoInsert(insertRowPlan);
+            false);
+    insertRowNode.setMeasurementSchemas(schemas);
+    planRedoer.redoInsert(insertRowNode);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();

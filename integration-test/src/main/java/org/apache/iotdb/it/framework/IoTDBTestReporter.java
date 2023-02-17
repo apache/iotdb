@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.it.framework;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,12 +32,17 @@ public class IoTDBTestReporter {
 
   public static void main(String[] args) throws IOException {
     List<IoTDBTestStat> stats = new ArrayList<>();
-    try (Stream<Path> s =
-        Files.walk(
-            Paths.get(
-                System.getProperty("user.dir"),
-                "integration-test",
-                IoTDBTestListener.statOutputDir))) {
+    Path outputDirPath =
+        Paths.get(
+            System.getProperty("user.dir"), "integration-test", IoTDBTestListener.statOutputDir);
+    File outputDir = outputDirPath.toFile();
+    if (!outputDir.exists() || !outputDir.isDirectory()) {
+      IoTDBTestLogger.logger.error(
+          "the output dir {} is not a valid directory, the reporter will be aborted",
+          outputDirPath);
+      return;
+    }
+    try (Stream<Path> s = Files.walk(outputDirPath)) {
       s.forEach(
           source -> {
             if (source.toString().endsWith(IoTDBTestListener.statExt)) {

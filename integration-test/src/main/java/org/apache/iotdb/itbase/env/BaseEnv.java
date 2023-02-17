@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.it.env.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.DataNodeWrapper;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -30,13 +35,22 @@ import java.util.List;
 
 public interface BaseEnv {
 
-  void initBeforeClass() throws InterruptedException;
+  /** Init a cluster with default number of ConfigNodes and DataNodes. */
+  void initClusterEnvironment();
 
-  void cleanAfterClass();
+  /**
+   * Init a cluster with the specified number of ConfigNodes and DataNodes.
+   *
+   * @param configNodesNum the number of ConfigNodes.
+   * @param dataNodesNum the number of DataNodes.
+   */
+  void initClusterEnvironment(int configNodesNum, int dataNodesNum);
 
-  void initBeforeTest() throws InterruptedException;
+  /** Destroy the cluster and all the configurations. */
+  void cleanClusterEnvironment();
 
-  void cleanAfterTest();
+  /** Return the {@link ClusterConfig} for developers to set values before test. */
+  ClusterConfig getConfig();
 
   default Connection getConnection() throws SQLException {
     return getConnection("root", "root");
@@ -57,11 +71,97 @@ public interface BaseEnv {
 
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
-  void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList);
-
   List<DataNodeWrapper> getDataNodeWrapperList();
 
-  void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
+  IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
+      throws ClientManagerException, IOException, InterruptedException;
 
-  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
+  ISessionPool getSessionPool(int maxSize);
+
+  ISession getSessionConnection() throws IoTDBConnectionException;
+
+  ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
+
+  /**
+   * Get the index of the ConfigNode leader.
+   *
+   * @return The index of ConfigNode-Leader in configNodeWrapperList
+   */
+  int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
+
+  /** Start an existed ConfigNode */
+  void startConfigNode(int index);
+
+  /** Shutdown an existed ConfigNode */
+  void shutdownConfigNode(int index);
+
+  /**
+   * Ensure all the nodes being in the corresponding status.
+   *
+   * @param nodes the nodes list to query.
+   * @param targetStatus the target {@link NodeStatus} of each node. It should have the same length
+   *     with nodes.
+   * @throws IllegalStateException if there are some nodes not in the targetStatus after a period
+   *     times of check.
+   */
+  void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus)
+      throws IllegalStateException;
+
+  /**
+   * Get the {@link ConfigNodeWrapper} of the specified index.
+   *
+   * @return The ConfigNodeWrapper of the specified index
+   */
+  ConfigNodeWrapper getConfigNodeWrapper(int index);
+
+  /**
+   * Get the {@link DataNodeWrapper} of the specified index.
+   *
+   * @return The DataNodeWrapper of the specified indexx
+   */
+  DataNodeWrapper getDataNodeWrapper(int index);
+
+  /**
+   * Get a {@link ConfigNodeWrapper} randomly.
+   *
+   * @return A random available ConfigNodeWrapper
+   */
+  ConfigNodeWrapper generateRandomConfigNodeWrapper();
+
+  /**
+   * Get a {@link DataNodeWrapper} randomly.
+   *
+   * @return A random available ConfigNodeWrapper
+   */
+  DataNodeWrapper generateRandomDataNodeWrapper();
+
+  /** Register a new DataNode with random ports */
+  void registerNewDataNode(boolean isNeedVerify);
+
+  /** Register a new ConfigNode with random ports */
+  void registerNewConfigNode(boolean isNeedVerify);
+
+  /** Register a new DataNode with specified DataNodeWrapper */
+  void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify);
+
+  /** Register a new DataNode with specified ConfigNodeWrapper */
+  void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify);
+
+  /** Start an existed DataNode */
+  void startDataNode(int index);
+
+  /** Shutdown an existed DataNode */
+  void shutdownDataNode(int index);
+
+  int getMqttPort();
+
+  String getIP();
+
+  String getPort();
+
+  String getSbinPath();
+
+  String getToolsPath();
+
+  String getLibPath();
 }

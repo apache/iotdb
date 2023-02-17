@@ -25,7 +25,7 @@ import java.util.ArrayDeque;
 
 /** Lock Queue for procedure of the same type */
 public class LockQueue {
-  private final ArrayDeque<Procedure> deque = new ArrayDeque<>();
+  private final ArrayDeque<Procedure<?>> deque = new ArrayDeque<>();
 
   private Procedure<?> lockOwnerProcedure = null;
 
@@ -34,10 +34,7 @@ public class LockQueue {
       lockOwnerProcedure = procedure;
       return true;
     }
-    if (procedure.getProcId() == lockOwnerProcedure.getProcId()) {
-      return true;
-    }
-    return false;
+    return procedure.getProcId() == lockOwnerProcedure.getProcId();
   }
 
   public boolean releaseLock(Procedure<?> procedure) {
@@ -48,7 +45,7 @@ public class LockQueue {
     return true;
   }
 
-  public void waitProcedure(Procedure procedure) {
+  public void waitProcedure(Procedure<?> procedure) {
     deque.addLast(procedure);
   }
 
@@ -57,7 +54,6 @@ public class LockQueue {
     while (!deque.isEmpty()) {
       procedureScheduler.addFront(deque.pollFirst());
     }
-    deque.clear();
     return count;
   }
 }

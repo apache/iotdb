@@ -46,30 +46,33 @@ import (
 var (
 	_ backend.QueryDataHandler      = (*IoTDBDataSource)(nil)
 	_ backend.CheckHealthHandler    = (*IoTDBDataSource)(nil)
-	_ backend.StreamHandler         = (*IoTDBDataSource)(nil)
-	_ instancemgmt.InstanceDisposer = (*IoTDBDataSource)(nil)
+	_ backend.CallResourceHandler   = (*IoTDBDataSource)(nil)
 )
 
-// NewSampleDatasource creates a new datasource instance.
-func NewSampleDatasource(d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+// ApacheIoTDBDatasource creates a new datasource instance.
+func ApacheIoTDBDatasource(d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var dm dataSourceModel
 	if err := json.Unmarshal(d.JSONData, &dm); err != nil {
 		return nil, err
 	}
-	return &IoTDBDataSource{Username: dm.Username, Password: dm.Password, Ulr: dm.Url}, nil
+	var authorization=""
+	if password, exists := d.DecryptedSecureJSONData["password"]; exists {
+		authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(dm.Username+":"+password))
+	}
+	return &IoTDBDataSource{CallResourceHandler: iotdbResourceHandler(authorization),Username: dm.Username, Ulr: dm.Url}, nil
 }
 
 // SampleDatasource is an example datasource which can respond to data queries, reports
 // its health and has streaming skills.
 type IoTDBDataSource struct {
-	Password string
+	backend.CallResourceHandler
 	Username string
 	Ulr      string
 }
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
 // created. As soon as datasource settings change detected by SDK old datasource instance will
-// be disposed and a new one will be created using NewSampleDatasource factory function.
+// be disposed and a new one will be created using ApacheIoTDBDatasource factory function.
 func (d *IoTDBDataSource) Dispose() {
 	// Clean up datasource instance resources.
 }
@@ -97,7 +100,6 @@ func (d *IoTDBDataSource) QueryData(ctx context.Context, req *backend.QueryDataR
 
 type dataSourceModel struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
 	Url      string `json:"url"`
 }
 
@@ -123,9 +125,9 @@ type queryParam struct {
 
 type QueryDataReq struct {
 	Expression []string `json:"expression"`
-	PrefixPath []string `json:"prefixPath"`
-	StartTime  int64    `json:"startTime"`
-	EndTime    int64    `json:"endTime"`
+	PrefixPath []string `json:"prefix_path"`
+	StartTime  int64    `json:"start_time"`
+	EndTime    int64    `json:"end_time"`
 	Condition  string   `json:"condition"`
 	Control    string   `json:"control"`
 }
@@ -134,7 +136,7 @@ type QueryDataResponse struct {
 	Expressions []string    `json:"expressions"`
 	Timestamps  []int64     `json:"timestamps"`
 	Values      [][]interface{} `json:"values"`
-	ColumnNames interface{} `json:"columnNames"`
+	ColumnNames interface{} `json:"column_names"`
 	Code        int32       `json:"code"`
 	Message     string      `json:"message"`
 }
@@ -150,7 +152,13 @@ func NewQueryDataReq(expression []string, prefixPath []string, startTime int64, 
 
 func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	response := backend.DataResponse{}
-	var authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(d.Username+":"+d.Password))
+
+	instanceSettings := pCtx.DataSourceInstanceSettings
+	var authorization=""
+	if password, exists := instanceSettings.DecryptedSecureJSONData["password"]; exists {
+		// Use the decrypted API key.
+		authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(d.Username+":"+password))
+	}
 
 	// Unmarshal the JSON into our queryModel.
 	var qp queryParam
@@ -220,12 +228,20 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	// create data frame response.
 	frame := data.NewFrame("response")
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
+		if queryDataResp.Timestamps==nil||len(queryDataResp.Timestamps)==0{
+			times := make([]time.Time, 1)
+			tmp := make([]float64, 1)
+			frame.Fields = append(frame.Fields,
+				data.NewField("time", nil, times),
+				data.NewField(queryDataResp.Expressions[i], nil, tmp),
+			)
+			continue
+		}
 		times := make([]time.Time, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
 			times[c] = time.Unix(queryDataResp.Timestamps[c]/1000, 0)
 		}
 		values :=  recoverType(queryDataResp.Values[i])
-
 		frame.Fields = append(frame.Fields,
 			data.NewField("time", nil, times),
 			data.NewField(queryDataResp.Expressions[i], nil, values),
@@ -242,7 +258,11 @@ func recoverType(m []interface{}) interface{} {
         case float64:
             tmp := make([]float64, len(m))
             for i := range m {
-                tmp[i] = m[i].(float64)
+				if m[i] == nil {
+					tmp[i] = 0
+				}else{
+					tmp[i] = m[i].(float64)
+				}
             }
             return tmp
         case string:
@@ -264,7 +284,11 @@ func recoverType(m []interface{}) interface{} {
         default:
             tmp := make([]float64, len(m))
             for i := range m {
-                tmp[i] = 0
+				if m[i] == nil {
+					tmp[i] = 0
+				}else{
+					tmp[i] = m[i].(float64)
+				}
             }
             return tmp
         }
@@ -288,7 +312,12 @@ func DataSourceUrlHandler(url string) string {
 // a datasource is working as expected.
 func (d *IoTDBDataSource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	log.DefaultLogger.Info("CheckHealth called", "request", req)
-	var authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(d.Username+":"+d.Password))
+	instanceSettings := req.PluginContext.DataSourceInstanceSettings
+	var authorization=""
+	if password, exists := instanceSettings.DecryptedSecureJSONData["password"]; exists {
+		authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(d.Username+":"+password))
+	}
+
 	var status = backend.HealthStatusError
 	var message = "Data source is not working properly"
 
@@ -321,69 +350,5 @@ func (d *IoTDBDataSource) CheckHealth(_ context.Context, req *backend.CheckHealt
 	return &backend.CheckHealthResult{
 		Status:  status,
 		Message: message,
-	}, nil
-}
-
-// SubscribeStream is called when a client wants to connect to a stream. This callback
-// allows sending the first message.
-func (d *IoTDBDataSource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	log.DefaultLogger.Info("SubscribeStream called", "request", req)
-
-	status := backend.SubscribeStreamStatusPermissionDenied
-	if req.Path == "stream" {
-		// Allow subscribing only on expected path.
-		status = backend.SubscribeStreamStatusOK
-	}
-
-	return &backend.SubscribeStreamResponse{
-		Status: status,
-	}, nil
-}
-
-// RunStream is called once for any open channel.  Results are shared with everyone
-// subscribed to the same channel.
-func (d *IoTDBDataSource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
-	log.DefaultLogger.Info("RunStream called", "request", req)
-
-	// Create the same data frame as for query data.
-	frame := data.NewFrame("response")
-
-	// Add fields (matching the same schema used in QueryData).
-	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, make([]time.Time, 1)),
-		data.NewField("values", nil, make([]int64, 1)),
-	)
-
-	counter := 0
-
-	// Stream data frames periodically till stream closed by Grafana.
-	for {
-		select {
-		case <-ctx.Done():
-			log.DefaultLogger.Info("Context done, finish streaming", "path", req.Path)
-			return nil
-		case <-time.After(time.Second):
-			// Send new data periodically.
-			frame.Fields[0].Set(0, time.Now())
-			frame.Fields[1].Set(0, int64(10*(counter%2+1)))
-
-			counter++
-
-			err := sender.SendFrame(frame, data.IncludeAll)
-			if err != nil {
-				log.DefaultLogger.Error("Error sending frame", "error", err)
-				continue
-			}
-		}
-	}
-}
-
-// PublishStream is called when a client sends a message to the stream.
-func (d *IoTDBDataSource) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
-	log.DefaultLogger.Info("PublishStream called", "request", req)
-
-	// Do not allow publishing at all.
-	return &backend.PublishStreamResponse{
-		Status: backend.PublishStreamStatusPermissionDenied,
 	}, nil
 }

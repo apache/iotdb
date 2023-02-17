@@ -96,6 +96,9 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (deviceIndex >= deviceOperators.size()) {
+      return NOT_BLOCKED;
+    }
     ListenableFuture<?> blocked = getCurDeviceOperator().isBlocked();
     if (!blocked.isDone()) {
       return blocked;
@@ -105,7 +108,11 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock tsBlock = getCurDeviceOperator().next();
+    if (!getCurDeviceOperator().hasNextWithTimer()) {
+      deviceIndex++;
+      return null;
+    }
+    TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
     }
@@ -132,14 +139,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    while (!getCurDeviceOperator().hasNext()) {
-      if (deviceIndex + 1 < devices.size()) {
-        deviceIndex++;
-      } else {
-        return false;
-      }
-    }
-    return true;
+    return deviceIndex < devices.size();
   }
 
   @Override
@@ -151,7 +151,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override
@@ -174,10 +174,10 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long sum = 0;
+    long max = 0;
     for (Operator operator : deviceOperators) {
-      sum += operator.calculateRetainedSizeAfterCallingNext();
+      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
-    return sum;
+    return max;
   }
 }

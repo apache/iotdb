@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.sync.externalpipe.operation;
 
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 

@@ -18,26 +18,25 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -56,61 +55,46 @@ public class LocalExecutionPlanner {
     return InstanceHolder.INSTANCE;
   }
 
-  public DataDriver plan(
-      PlanNode plan,
-      TypeProvider types,
-      FragmentInstanceContext instanceContext,
-      Filter timeFilter,
-      DataRegion dataRegion)
-      throws MemoryNotEnoughException {
+  public List<PipelineDriverFactory> plan(
+      PlanNode plan, TypeProvider types, FragmentInstanceContext instanceContext)
+      throws MemoryNotEnoughException, QueryProcessException {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
+    // Generate pipelines, return the last pipeline data structure
+    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    context.addPipelineDriverFactory(root, context.getDriverContext());
 
-    DataDriverContext dataDriverContext =
-        new DataDriverContext(
-            instanceContext,
-            context.getPaths(),
-            timeFilter,
-            dataRegion,
-            context.getSourceOperators());
-    instanceContext.setDriverContext(dataDriverContext);
-    return new DataDriver(root, context.getSinkHandle(), dataDriverContext);
+    List<PartialPath> sourcePaths = collectSourcePaths(context);
+    instanceContext.initQueryDataSource(sourcePaths);
+
+    // set maxBytes one SourceHandle can reserve after visiting the whole tree
+    context.setMaxBytesOneHandleCanReserve();
+
+    return context.getPipelineDriverFactories();
   }
 
-  public SchemaDriver plan(
+  public List<PipelineDriverFactory> plan(
       PlanNode plan, FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
-
-    SchemaDriverContext schemaDriverContext =
-        new SchemaDriverContext(instanceContext, schemaRegion);
-    instanceContext.setDriverContext(schemaDriverContext);
-
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(instanceContext, schemaRegion);
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
-    instanceContext
-        .getOperatorContexts()
-        .forEach(
-            operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+    context.addPipelineDriverFactory(root, context.getDriverContext());
 
-    return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
+    // set maxBytes one SourceHandle can reserve after visiting the whole tree
+    context.setMaxBytesOneHandleCanReserve();
+
+    return context.getPipelineDriverFactories();
   }
 
   private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
@@ -129,13 +113,15 @@ public class LocalExecutionPlanner {
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
+            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.info(
-            String.format(
-                "[ConsumeMemory] consume: %d, current remaining memory: %d",
-                estimatedMemorySize, freeMemoryForOperators));
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "[ConsumeMemory] consume: {}, current remaining memory: {}",
+              estimatedMemorySize,
+              freeMemoryForOperators);
+        }
       }
     }
 
@@ -146,14 +132,26 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.info(
-                    String.format(
-                        "[ReleaseMemory] release: %d, current remaining memory: %d",
-                        estimatedMemorySize, freeMemoryForOperators));
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(
+                      "[ReleaseMemory] release: {}, current remaining memory: {}",
+                      estimatedMemorySize,
+                      freeMemoryForOperators);
+                }
               }
             }
           }
         });
+  }
+
+  private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
+    List<PartialPath> sourcePaths = new ArrayList<>();
+    context
+        .getPipelineDriverFactories()
+        .forEach(
+            pipeline ->
+                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+    return sourcePaths;
   }
 
   private static class InstanceHolder {

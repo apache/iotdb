@@ -53,7 +53,7 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
-    if (!(childColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BINARY))) {
+    if (!childColumnTransformer.typeEquals(TypeEnum.BINARY)) {
       throw new UnsupportedOperationException(
           "Unsupported Type: " + childColumnTransformer.getType().getTypeEnum());
     }

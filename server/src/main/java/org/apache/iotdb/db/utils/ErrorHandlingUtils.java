@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -80,9 +79,15 @@ public class ErrorHandlingUtils {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
       // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
-        LOGGER.error(
-            "Status code: " + status.getCode() + ", Query Statement: " + operation + " failed", e);
+      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
+        String message =
+            String.format(
+                "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
+        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
+          LOGGER.warn(message);
+        } else {
+          LOGGER.warn(message, e);
+        }
       }
       return status;
     } else {
@@ -102,18 +107,15 @@ public class ErrorHandlingUtils {
     Throwable rootCause = getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
-      return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
     }
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
     if (t instanceof QueryTimeoutRuntimeException) {
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, rootCause.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, rootCause.getMessage());
     } else if (t instanceof ParseCancellationException) {
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
-    } else if (t instanceof SQLParserException) {
-      return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
     } else if (t instanceof QueryProcessException) {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());
@@ -153,7 +155,7 @@ public class ErrorHandlingUtils {
       BatchProcessException batchException = (BatchProcessException) e;
       // ignore logging sg not ready exception
       for (TSStatus status : batchException.getFailingStatus()) {
-        if (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
           return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
         }
       }

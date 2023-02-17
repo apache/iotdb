@@ -21,13 +21,14 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
@@ -103,25 +104,25 @@ public class LastQueryOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
 
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, SeriesAggregationScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, UpdateLastCacheOperator.class.getSimpleName());
 
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, LastQueryOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, LastQueryOperator.class.getSimpleName());
 
-      fragmentInstanceContext
+      driverContext
           .getOperatorContexts()
           .forEach(
               operatorContext -> {
@@ -133,7 +134,7 @@ public class LastQueryOperatorTest {
               planNodeId1,
               measurementPath1,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               aggregators1,
               initTimeRangeIterator(null, false, true),
               null,
@@ -145,7 +146,7 @@ public class LastQueryOperatorTest {
 
       UpdateLastCacheOperator updateLastCacheOperator1 =
           new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               seriesAggregationScanOperator1,
               measurementPath1,
               measurementPath1.getSeriesType(),
@@ -157,7 +158,7 @@ public class LastQueryOperatorTest {
               planNodeId3,
               measurementPath2,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               aggregators2,
               initTimeRangeIterator(null, false, true),
               null,
@@ -169,7 +170,7 @@ public class LastQueryOperatorTest {
 
       UpdateLastCacheOperator updateLastCacheOperator2 =
           new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               seriesAggregationScanOperator2,
               measurementPath2,
               measurementPath2.getSeriesType(),
@@ -178,7 +179,7 @@ public class LastQueryOperatorTest {
 
       LastQueryOperator lastQueryOperator =
           new LastQueryOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
               LastQueryUtil.createTsBlockBuilder());
 
@@ -226,25 +227,25 @@ public class LastQueryOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
 
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, SeriesAggregationScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, UpdateLastCacheOperator.class.getSimpleName());
 
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId4, LastQueryOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId4, LastQueryOperator.class.getSimpleName());
 
-      fragmentInstanceContext
+      driverContext
           .getOperatorContexts()
           .forEach(
               operatorContext -> {
@@ -256,7 +257,7 @@ public class LastQueryOperatorTest {
               planNodeId1,
               measurementPath1,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               aggregators1,
               initTimeRangeIterator(null, false, true),
               null,
@@ -268,7 +269,7 @@ public class LastQueryOperatorTest {
 
       UpdateLastCacheOperator updateLastCacheOperator1 =
           new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               seriesAggregationScanOperator1,
               measurementPath1,
               measurementPath1.getSeriesType(),
@@ -280,7 +281,7 @@ public class LastQueryOperatorTest {
               planNodeId3,
               measurementPath2,
               allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               aggregators2,
               initTimeRangeIterator(null, false, true),
               null,
@@ -292,7 +293,7 @@ public class LastQueryOperatorTest {
 
       UpdateLastCacheOperator updateLastCacheOperator2 =
           new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               seriesAggregationScanOperator2,
               measurementPath2,
               measurementPath2.getSeriesType(),
@@ -310,7 +311,7 @@ public class LastQueryOperatorTest {
 
       LastQueryOperator lastQueryOperator =
           new LastQueryOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
               builder);
 

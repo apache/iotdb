@@ -332,13 +332,20 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             break;
           }
         }
+
+        if ((nextIndexEnd == nextIndexBegin)
+            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
+          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
+          return YieldableState.YIELDABLE;
+        }
+
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = nextIndexBegin != nextIndexEnd;
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
 
@@ -388,13 +395,20 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             break;
           }
         }
+
+        if ((nextIndexEnd == nextIndexBegin)
+            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
+          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
+          return true;
+        }
+
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = nextIndexBegin != nextIndexEnd;
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached;
       }
 
@@ -467,7 +481,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           if (yieldableState == YieldableState.YIELDABLE) {
             if (tvList.getTime(tvList.size() - 2) >= displayWindowBegin
                 && tvList.getTime(tvList.size() - 1) - tvList.getTime(tvList.size() - 2)
-                    >= sessionTimeGap) {
+                    > sessionTimeGap) {
               nextIndexEnd = tvList.size() - 1;
               break;
             } else {

@@ -25,13 +25,15 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 > \$IOTDB\_HOME 表示 IoTDB 的安装目录所在路径。
 
 ## 安装
-在 iotdb 的根目录下执行
+如果使用源码版，可以在 iotdb 的根目录下执行
 
 ```shell
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-在生成完毕之后，IoTDB 的 cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
+在生成完毕之后，IoTDB 的 Cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
+
+如果你下载的是二进制版，那么 Cli 可以在 sbin 文件夹下直接找到。
 
 ## 运行
 
@@ -42,7 +44,7 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+Shell > bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows 系统启动命令如下：
 
@@ -59,7 +61,7 @@ Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
 |_____|'.__.' |_____|  |______.'|_______/  version <version>
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 ```
 输入`quit`或`exit`可退出 cli 结束本次会话，cli 输出`quit normally`表示退出成功。
 
@@ -74,7 +76,7 @@ IoTDB> login successfully
 |-pw <`password`>|string 类型，不需要引号|否|IoTDB 连接服务器所使用的密码。如果没有输入密码 IoTDB 会在 Cli 端提示输入密码。|-pw root|
 |-u <`username`>|string 类型，不需要引号|是|IoTDB 连接服务器锁使用的用户名。|-u root|
 |-maxPRC <`maxPrintRowCount`>|int 类型|否|设置 IoTDB 返回客户端命令行中所显示的最大行数。|-maxPRC 10|
-|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show storage group"|
+|-e <`execute`> |string 类型|否|在不进入客户端输入模式的情况下，批量操作 IoTDB|-e "show databases"|
 |-c | 空 | 否 | 如果服务器设置了 `rpc_thrift_compression_enable=true`, 则 CLI 必须使用 `-c` | -c |
 
 下面展示一条客户端命令，功能是连接 IP 为 10.129.187.21 的主机，端口为 6667 ，用户名为 root，密码为 root，以数字的形式打印时间戳，IoTDB 命令行显示的最大行数为 10。
@@ -82,7 +84,7 @@ IoTDB> login successfully
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 Windows 系统启动命令如下：
 
@@ -90,15 +92,30 @@ Windows 系统启动命令如下：
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
+### CLI 特殊命令
+下面列举了一些CLI的特殊命令。
+
+| 命令 | 描述 / 例子 |
+|:---|:---|
+| `set time_display_type=xxx` | 例如： long, default, ISO8601, yyyy-MM-dd HH:mm:ss |
+| `show time_display_type` | 显示时间显示方式 |
+| `set time_zone=xxx` | 例如： +08:00, Asia/Shanghai |
+| `show time_zone` | 显示CLI的时区 |
+| `set fetch_size=xxx` | 设置从服务器查询数据时的读取条数 |
+| `show fetch_size` |  显示读取条数的大小 |
+| `set max_display_num=xxx` | 设置 CLI 一次展示的最大数据条数， 设置为-1表示无限制 |
+| `help` | 获取CLI特殊命令的提示 |
+| `exit/quit` | 退出CLI |
+
 ### 使用 OpenID 作为用户名认证登录
 
 OpenID Connect (OIDC) 使用 keycloack 作为 OIDC 服务权限认证服务。
 
 #### 配置
-配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
+配置位于 iotdb-datanode.properties(iotdb-confignode.properties)，设定 authorizer_provider_class 为 org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer 则开启了 openID 服务，默认情况下值为 org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer 表示没有开启 openID 服务。
 
 ```
-authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
+authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 ```
 如果开启了 openID 服务则 openID_url 为必填项，openID_url 值为 http://ip:port/auth/realms/{realmsName}
 
@@ -110,8 +127,8 @@ openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
 1、下载 keycloack 程序，在 keycloack/bin 中启动 keycloack
 
 ```shell
-Shell >cd bin
-Shell >./standalone.sh
+Shell > cd bin
+Shell > bash ./standalone.sh
 ```
 2、使用 https://ip:port/auth 登陆 keycloack, 首次登陆需要创建用户
 
@@ -143,7 +160,7 @@ Shell >./standalone.sh
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role1.png?raw=true)
 
-9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建存储组、添加用户、角色等功能
+9、在Role Name 中输入`iotdb_admin`，点击save 按钮。提示：这里的`iotdb_admin`不能为其他名称否则即使登陆成功后也将无权限使用iotdb的查询、插入、创建 database、添加用户、角色等功能
 
 ![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add_role2.png?raw=true)
 
@@ -168,7 +185,7 @@ Shell >./standalone.sh
 此时，登录命令如下：
 
 ```shell
-Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
+Shell > bash sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
 其中，需要将{my-access-token} （注意，包括{}）替换成你的 token，即 access_token 对应的值。
@@ -200,7 +217,7 @@ curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/o
 Linux 系统与 MacOS 指令：
 
 ```shell
-Shell > sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
+Shell > bash sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 Windows 系统指令
@@ -214,7 +231,7 @@ Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {s
 
 假设用户希望对一个新启动的 IoTDB 进行如下操作：
 
-1. 创建名为 root.demo 的存储组
+1. 创建名为 root.demo 的 database
 
 2. 创建名为 root.demo.s1 的时间序列
 
@@ -232,18 +249,18 @@ rpcPort=6667
 user=root
 pass=root
 
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "set storage group to root.demo"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
-./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "CREATE DATABASE root.demo"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+bash ./sbin/start-cli.sh -h ${host} -p ${rpcPort} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
 打印出来的结果显示如下，通过这种方式进行的操作与客户端的输入模式以及通过 JDBC 进行操作结果是一致的。
 
 ```shell
- Shell > ./shell.sh 
+ Shell > bash ./shell.sh 
 +-----------------------------+------------+
 |                         Time|root.demo.s1|
 +-----------------------------+------------+

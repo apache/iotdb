@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -48,39 +49,41 @@ public abstract class TVList implements WALEntryValue {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  protected static final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
   protected int rowCount;
 
   protected boolean sorted = true;
-  protected long minTime;
+  protected long maxTime;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
   private long version;
 
-  public TVList() {
+  protected TVList() {
     timestamps = new ArrayList<>();
     rowCount = 0;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     referenceCount = new AtomicInteger();
   }
 
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
-        return new TimBinaryTVList();
+        return BinaryTVList.newList();
       case FLOAT:
-        return new TimFloatTVList();
+        return FloatTVList.newList();
       case INT32:
-        return new TimIntTVList();
+        return IntTVList.newList();
       case INT64:
-        return new TimLongTVList();
+        return LongTVList.newList();
       case DOUBLE:
-        return new TimDoubleTVList();
+        return DoubleTVList.newList();
       case BOOLEAN:
-        return new TimBooleanTVList();
+        return BooleanTVList.newList();
       default:
         break;
     }
@@ -145,6 +148,10 @@ public abstract class TVList implements WALEntryValue {
 
   public void putBinary(long time, Binary value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public boolean reachMaxChunkSizeThreshold() {
+    return false;
   }
 
   public void putBoolean(long time, boolean value) {
@@ -221,8 +228,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public long getMinTime() {
-    return minTime;
+  public long getMaxTime() {
+    return maxTime;
   }
 
   public long getVersion() {
@@ -249,12 +256,12 @@ public abstract class TVList implements WALEntryValue {
 
   public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
-        minTime = Math.min(time, minTime);
+        maxTime = Math.max(time, maxTime);
       }
     }
     int deletedNumber = rowCount - newSize;
@@ -278,13 +285,13 @@ public abstract class TVList implements WALEntryValue {
     }
     cloneList.rowCount = rowCount;
     cloneList.sorted = sorted;
-    cloneList.minTime = minTime;
+    cloneList.maxTime = maxTime;
   }
 
   public void clear() {
     rowCount = 0;
     sorted = true;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     clearTime();
     clearValue();
   }
@@ -317,17 +324,17 @@ public abstract class TVList implements WALEntryValue {
     return cloneArray;
   }
 
-  void updateMinTimeAndSorted(long[] time, int start, int end) {
+  void updateMaxTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
+      maxTime = Math.max(maxTime, time[i]);
       if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
-    minTime = Math.min(inPutMinTime, minTime);
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
 
@@ -391,19 +398,19 @@ public abstract class TVList implements WALEntryValue {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     switch (dataType) {
       case TEXT:
-        return TimBinaryTVList.deserialize(stream);
+        return BinaryTVList.deserialize(stream);
       case FLOAT:
-        return TimFloatTVList.deserialize(stream);
+        return FloatTVList.deserialize(stream);
       case INT32:
-        return TimIntTVList.deserialize(stream);
+        return IntTVList.deserialize(stream);
       case INT64:
-        return TimLongTVList.deserialize(stream);
+        return LongTVList.deserialize(stream);
       case DOUBLE:
-        return TimDoubleTVList.deserialize(stream);
+        return DoubleTVList.deserialize(stream);
       case BOOLEAN:
-        return TimBooleanTVList.deserialize(stream);
+        return BooleanTVList.deserialize(stream);
       case VECTOR:
-        return TimAlignedTVList.deserialize(stream);
+        return AlignedTVList.deserialize(stream);
       default:
         break;
     }

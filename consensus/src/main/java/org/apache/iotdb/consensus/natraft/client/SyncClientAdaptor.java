@@ -8,6 +8,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.ExecuteReq;
 
 import org.apache.thrift.TException;
@@ -26,12 +27,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SyncClientAdaptor {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncClientAdaptor.class);
+  private static RaftConfig config;
 
   private SyncClientAdaptor() {
     // static class
   }
 
-  public static Boolean matchTerm(
+  public static boolean matchTerm(
       AsyncRaftServiceClient client,
       TEndPoint target,
       long prevLogIndex,
@@ -42,7 +44,8 @@ public class SyncClientAdaptor {
       GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target);
       client.matchTerm(
           prevLogIndex, prevLogTerm, groupId.convertToTConsensusGroupId(), matchTermHandler);
-      return matchTermHandler.getResult(client.getTimeout());
+      Boolean result = matchTermHandler.getResult(config.getConnectionTimeoutInMS());
+      return result != null && result;
     } catch (NullPointerException e) {
       logger.error("match term null exception", e);
       return false;
@@ -63,9 +66,13 @@ public class SyncClientAdaptor {
     client.executeRequest(req, new ForwardRequestHandler(status, request, receiver));
     synchronized (status) {
       if (status.get() == null) {
-        status.wait(client.getTimeout());
+        status.wait(config.getConnectionTimeoutInMS());
       }
     }
     return status.get();
+  }
+
+  public static void setConfig(RaftConfig config) {
+    SyncClientAdaptor.config = config;
   }
 }

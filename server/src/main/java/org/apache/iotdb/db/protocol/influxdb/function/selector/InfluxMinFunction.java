@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 
 import java.util.List;
@@ -67,7 +67,7 @@ public class InfluxMinFunction extends InfluxSelector {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.MIN;
+    return InfluxSqlConstant.MIN;
   }
 
   @Override

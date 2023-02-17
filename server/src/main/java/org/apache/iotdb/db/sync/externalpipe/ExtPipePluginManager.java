@@ -123,7 +123,7 @@ public class ExtPipePluginManager {
     // == Start monitor Pipe data thread
     alive = true;
     ThreadPoolExecutor tpe = ((ThreadPoolExecutor) monitorService);
-    if ((tpe.getActiveCount() <= 0) && (tpe.getQueue().size() <= 0)) {
+    if ((tpe.getActiveCount() <= 0) && (tpe.getQueue().isEmpty())) {
       monitorService.submit(this::monitorPipeData);
     }
 
@@ -213,7 +213,7 @@ public class ExtPipePluginManager {
             if (pipeData instanceof TsFilePipeData) {
               TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
 
-              String sgName = tsFilePipeData.getStorageGroupName();
+              String sgName = tsFilePipeData.getDatabase();
               String tsFileFullName = tsFilePipeData.getTsFilePath();
               String modsFileFullName = tsFilePipeData.getModsFilePath();
               try {
@@ -221,7 +221,7 @@ public class ExtPipePluginManager {
                     sgName, tsFileFullName, modsFileFullName, pipeDataSerialNumber);
                 lastPipeDataSerialNumber = pipeDataSerialNumber;
               } catch (IOException e) {
-                logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
+                logger.error("monitorPipeData(), Can not append TsFile: {}", tsFileFullName);
               }
               continue;
             } else if (pipeData instanceof DeletionPipeData) {
@@ -229,7 +229,7 @@ public class ExtPipePluginManager {
               if (pipeOpManager.isEmpty()) {
                 DeletionPipeData deletionPipeData = (DeletionPipeData) pipeData;
                 pipeOpManager.appendDeletionOpBlock(
-                    deletionPipeData.getStorageGroup(),
+                    deletionPipeData.getDatabase(),
                     deletionPipeData.getDeletion(),
                     pipeDataSerialNumber);
                 lastPipeDataSerialNumber = pipeData.getSerialNumber();

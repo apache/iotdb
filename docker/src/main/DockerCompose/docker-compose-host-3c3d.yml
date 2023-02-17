@@ -1,0 +1,58 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+version: "3"
+services:
+  iotdb-confignode:
+    image: apache/iotdb:1.0.0-confignode
+    container_name: iotdb-confignode
+    ports:
+      - "22277:22277"
+      - "22278:22278"
+    environment:
+      - cn_internal_address=iotdb-1
+      - cn_target_config_node_list=iotdb-1:22277
+      - schema_replication_factor=3
+      - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+      - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/confignode:/iotdb/data
+      - ./logs/confignode:/iotdb/logs
+    network_mode: "host"
+
+  iotdb-datanode:
+    image: apache/iotdb:1.0.0-datanode
+    container_name: iotdb-datanode
+    ports:
+      - "6667:6667"
+      - "8777:8777"
+      - "9003:9003"
+      - "50010:50010"
+      - "40010:40010"
+    environment:
+      - dn_rpc_address=iotdb-1
+      - dn_internal_address=iotdb-1
+      - dn_target_config_node_list=iotdb-1:22277
+      - data_replication_factor=3
+      - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/datanode1:/iotdb/data/
+      - ./logs/datanode1:/iotdb/logs/
+    network_mode: "host"

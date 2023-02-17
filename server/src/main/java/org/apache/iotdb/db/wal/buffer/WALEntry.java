@@ -26,10 +26,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SerializedSize;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
@@ -60,16 +56,10 @@ public abstract class WALEntry implements SerializedSize {
    */
   protected final WALFlushListener walFlushListener;
 
-  public WALEntry(long memTableId, WALEntryValue value, boolean wait) {
+  protected WALEntry(long memTableId, WALEntryValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
-    if (value instanceof InsertRowPlan) {
-      this.type = WALEntryType.INSERT_ROW_PLAN;
-    } else if (value instanceof InsertTabletPlan) {
-      this.type = WALEntryType.INSERT_TABLET_PLAN;
-    } else if (value instanceof DeletePlan) {
-      this.type = WALEntryType.DELETE_PLAN;
-    } else if (value instanceof IMemTable) {
+    if (value instanceof IMemTable) {
       this.type = WALEntryType.MEMORY_TABLE_SNAPSHOT;
     } else if (value instanceof InsertRowNode) {
       this.type = WALEntryType.INSERT_ROW_NODE;
@@ -103,21 +93,14 @@ public abstract class WALEntry implements SerializedSize {
       case ROLL_WAL_LOG_WRITER_SIGNAL:
       case WAL_FILE_INFO_END_MARKER:
         return new WALSignalEntry(type);
+      default:
+        break;
     }
 
     // handle info
     long memTableId = stream.readLong();
     WALEntryValue value = null;
     switch (type) {
-      case INSERT_ROW_PLAN:
-        value = (InsertRowPlan) PhysicalPlan.Factory.create(stream);
-        break;
-      case INSERT_TABLET_PLAN:
-        value = (InsertTabletPlan) PhysicalPlan.Factory.create(stream);
-        break;
-      case DELETE_PLAN:
-        value = (DeletePlan) PhysicalPlan.Factory.create(stream);
-        break;
       case MEMORY_TABLE_SNAPSHOT:
         value = AbstractMemTable.Factory.create(stream);
         break;
@@ -130,13 +113,15 @@ public abstract class WALEntry implements SerializedSize {
       case DELETE_DATA_NODE:
         value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);
         break;
+      default:
+        throw new RuntimeException("Unknown WALEntry type " + type);
     }
     return new WALInfoEntry(type, memTableId, value);
   }
 
   /**
-   * This deserialization method is only for multi-leader consensus and just deserializes
-   * InsertRowNode and InsertTabletNode
+   * This deserialization method is only for iot consensus and just deserializes InsertRowNode and
+   * InsertTabletNode
    */
   public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(

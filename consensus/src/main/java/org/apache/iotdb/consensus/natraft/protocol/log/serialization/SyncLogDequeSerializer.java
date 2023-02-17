@@ -296,9 +296,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logDataBuffer.mark();
       logIndexBuffer.mark();
       ByteBuffer logData = log.serialize();
-      int size = logData.capacity() + Integer.BYTES;
+      int size = logData.remaining() + Integer.BYTES;
       try {
-        logDataBuffer.putInt(logData.capacity());
+        logDataBuffer.putInt(logData.remaining());
         logDataBuffer.put(logData);
         logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
         logIndexOffsetList.add(offsetOfTheCurrentLogDataOutputStream);
@@ -1101,10 +1101,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           "startIndex={} should be less than or equal to endIndex={}", startIndex, endIndex);
       return Collections.emptyList();
     }
-    if (startIndex < 0 || endIndex < 0) {
-      logger.error(
-          "startIndex={} and endIndex={} should be larger than zero", startIndex, endIndex);
-      return Collections.emptyList();
+    if (startIndex < 0) {
+      startIndex = 0;
     }
 
     long newEndIndex = endIndex;

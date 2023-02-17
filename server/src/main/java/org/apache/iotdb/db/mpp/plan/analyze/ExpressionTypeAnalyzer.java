@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -46,8 +47,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class ExpressionTypeAnalyzer {
 
@@ -195,7 +194,9 @@ public class ExpressionTypeAnalyzer {
       final TSDataType rightExpressionDataType =
           process(compareBinaryExpression.getRightExpression(), null);
 
-      if (!leftExpressionDataType.equals(rightExpressionDataType)) {
+      if (leftExpressionDataType != null
+          && rightExpressionDataType != null
+          && !leftExpressionDataType.equals(rightExpressionDataType)) {
         final String leftExpressionString = compareBinaryExpression.getLeftExpression().toString();
         final String rightExpressionString =
             compareBinaryExpression.getRightExpression().toString();
@@ -249,14 +250,16 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-        checkArgument(
-            inputExpressions.size() == 1,
-            String.format(
-                "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
-                inputExpressions.size()));
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getAggrDataType(
+                functionExpression.getFunctionName(),
+                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+      }
+      if (functionExpression.isBuiltInFunction()) {
+        return setExpressionType(
+            functionExpression,
+            TypeInferenceUtils.getBuiltInFunctionDataType(
                 functionExpression.getFunctionName(),
                 expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
       } else {
@@ -289,6 +292,11 @@ public class ExpressionTypeAnalyzer {
       return setExpressionType(constantOperand, constantOperand.getDataType());
     }
 
+    @Override
+    public TSDataType visitNullOperand(NullOperand nullOperand, Void context) {
+      return null;
+    }
+
     private TSDataType setExpressionType(Expression expression, TSDataType type) {
       expressionTypes.put(NodeRef.of(expression), type);
       return type;
@@ -297,7 +305,7 @@ public class ExpressionTypeAnalyzer {
     private void checkInputExpressionDataType(
         String expressionString, TSDataType actual, TSDataType... expected) {
       for (TSDataType type : expected) {
-        if (actual.equals(type)) {
+        if (actual == null || actual.equals(type)) {
           return;
         }
       }

@@ -21,20 +21,23 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceFailureInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 
 import org.apache.thrift.TException;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -49,7 +52,7 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
-  public AbstractFragInsStateTracker(
+  protected AbstractFragInsStateTracker(
       QueryStateMachine stateMachine,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
@@ -66,23 +69,37 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
 
   public abstract void abort();
 
-  protected FragmentInstanceState fetchState(FragmentInstance instance)
-      throws TException, IOException {
+  protected FragmentInstanceInfo fetchInstanceInfo(FragmentInstance instance)
+      throws ClientManagerException, TException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
     if (isInstanceRunningLocally(endPoint)) {
       FragmentInstanceInfo info =
           FragmentInstanceManager.getInstance().getInstanceInfo(instance.getId());
       if (info != null) {
-        return info.getState();
+        return info;
       } else {
-        return FragmentInstanceState.NO_SUCH_INSTANCE;
+        return new FragmentInstanceInfo(FragmentInstanceState.NO_SUCH_INSTANCE);
       }
     } else {
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
-        TFragmentInstanceStateResp resp =
-            client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
-        return FragmentInstanceState.valueOf(resp.state);
+        TFragmentInstanceInfoResp resp =
+            client.fetchFragmentInstanceInfo(new TFetchFragmentInstanceInfoReq(getTId(instance)));
+        String failedMessage = "";
+        if (resp.getFailedMessages() != null) {
+          failedMessage = String.join(";", resp.getFailedMessages());
+        }
+        List<FragmentInstanceFailureInfo> failureInfoList = new ArrayList<>();
+        if (resp.getFailureInfoList() != null) {
+          for (ByteBuffer buffer : resp.getFailureInfoList()) {
+            failureInfoList.add(FragmentInstanceFailureInfo.deserialize(buffer));
+          }
+        }
+        return new FragmentInstanceInfo(
+            FragmentInstanceState.valueOf(resp.getState()),
+            resp.getEndTime(),
+            failedMessage,
+            failureInfoList);
       }
     }
   }

@@ -382,7 +382,7 @@ public class ProcedureExecutor<Env> {
       rootProcStack.release();
 
       if (proc.isSuccess()) {
-        LOG.info("{} finished in {} successfully.", proc, proc.elapsedTime());
+        LOG.info("{} finished in {}ms successfully.", proc, proc.elapsedTime());
         if (proc.getProcId() == rootProcId) {
           rootProcedureCleanup(proc);
         } else {
@@ -700,7 +700,7 @@ public class ProcedureExecutor<Env> {
    */
   private long pushProcedure(Procedure<Env> procedure) {
     final long currentProcId = procedure.getProcId();
-    RootProcedureStack stack = new RootProcedureStack();
+    RootProcedureStack<Env> stack = new RootProcedureStack<>();
     rollbackStack.put(currentProcId, stack);
     procedures.put(currentProcId, procedure);
     scheduler.addBack(procedure);
@@ -858,16 +858,16 @@ public class ProcedureExecutor<Env> {
 
   public void join() {
     timeoutExecutor.awaitTermination();
+    workerMonitorExecutor.awaitTermination();
     for (WorkerThread workerThread : workerThreads) {
       workerThread.awaitTermination();
     }
     try {
       threadGroup.destroy();
     } catch (IllegalThreadStateException e) {
-      LOG.error(
-          "ThreadGroup {} contains running threads; {}: See STDOUT",
-          this.threadGroup,
-          e.getMessage());
+      LOG.warn(
+          "ProcedureExecutor threadGroup {} contains running threads which are used by non-procedure module.",
+          this.threadGroup);
       this.threadGroup.list();
     }
   }

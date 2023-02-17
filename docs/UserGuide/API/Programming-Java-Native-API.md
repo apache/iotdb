@@ -40,14 +40,14 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
 
 ## Syntax Convention
 
-- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Syntax-Conventions/Literal-Values.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
   - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
@@ -86,12 +86,12 @@ session =
         .password(String password)
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
-        .enableCacheLeader(boolean enableCacheLeader)
+        .enableRedirection(boolean enableRedirection)
         .version(Version version)
         .build();
 ```
 
-Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
+Version represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`, `V_1_0`.
 
 * Open a Session
 
@@ -115,15 +115,15 @@ void close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Storage Group Management
+#### Database Management
 
-* Set storage group
+* CREATE DATABASE
 
 ```java
 void setStorageGroup(String storageGroupId)    
 ```
 
-* Delete one or several storage groups
+* Delete one or several databases
 
 ```java
 void deleteStorageGroup(String storageGroup)
@@ -149,7 +149,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 ```
 void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
+      List <CompressionType> compressors, List<String> measurementAliasList);
 ```
 
 Attention: Alias of measurements are **not supported** currently.
@@ -221,50 +221,6 @@ template.addToTemplate(nodeSpeed);
 createSchemaTemplate(flatTemplate);
 ```
 
-After measurement template created, you can edit the template with belowed APIs.
-
-**Attention: **
-
-**1. templates had been set could not be pruned**
-
-**2. templates will be activated until data points insert into correspoding measurements**
-
-**3. templates will not be shown by showtimeseries before activating**
-
-```java
-// Add aligned measurements to a template
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// Add one aligned measurement to a template
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// Add unaligned measurements to a template
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// Add one unaligned measurement to a template
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// Delete a node in template
-public void deleteNodeInTemplate(String templateName, String path);
-```
-
 You can query measurement inside templates with these APIS:
 
 ```java
@@ -286,7 +242,7 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 
 To implement schema template, you can set the measurement template named 'templateName' at path 'prefixPath'.
 
-**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+**Please notice that, we strongly recommend not setting templates on the nodes above the database to accommodate future updates and collaboration between modules.**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -442,16 +398,44 @@ void deleteData(List<String> paths, long time)
 
 #### Query
 
-* Raw data query. Time interval include startTime and exclude endTime
+* Time-series raw data query with time range:
+  - The specified query time range is a left-closed right-open interval, including the start time but excluding the end time.
 
 ```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
-* Query the last data, whose timestamp is greater than or equal LastTime
+* Last query: 
+  - Query the last data, whose timestamp is greater than or equal LastTime.
 
 ```java
-SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime);
+```
+
+* Aggregation query:
+  - Support specified query time range: The specified query time range is a left-closed right-open interval, including the start time but not the end time.
+  - Support GROUP BY TIME.
+
+```java
+SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval);
+
+SessionDataSet executeAggregationQuery(
+    List<String> paths,
+    List<Aggregation> aggregations,
+    long startTime,
+    long endTime,
+    long interval,
+    long slidingStep);
 ```
 
 ### IoTDB-SQL Interface
@@ -541,7 +525,7 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 ## Cluster information related APIs (only works in the cluster mode)
 
-Cluster information related APIs allow users get the cluster info like where a storage group will be 
+Cluster information related APIs allow users get the cluster info like where a database will be 
 partitioned to, the status of each node in the cluster.
 
 To use the APIs, add dependency in your pom file:
@@ -551,7 +535,7 @@ To use the APIs, add dependency in your pom file:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -603,7 +587,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -613,7 +597,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * Get metadata partition information of input path:
 ```java  
 /**
- * @param path input path (should contains a Storage group name as its prefix)
+ * @param path input path (should contains a database name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

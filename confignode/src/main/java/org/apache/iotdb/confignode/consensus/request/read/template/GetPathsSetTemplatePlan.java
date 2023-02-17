@@ -46,7 +46,7 @@ public class GetPathsSetTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetPathsSetTemplate.ordinal());
+    stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(name, stream);
   }
 

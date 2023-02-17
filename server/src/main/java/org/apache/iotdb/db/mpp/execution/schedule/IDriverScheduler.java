@@ -50,13 +50,4 @@ public interface IDriverScheduler {
    * @param instanceId the id of the fragment instance to be aborted.
    */
   void abortFragmentInstance(FragmentInstanceId instanceId);
-
-  /**
-   * Return the schedule priority of a fragment.
-   *
-   * @param instanceId the fragment instance id.
-   * @return the schedule priority.
-   * @throws IllegalStateException if the instance has already been cleared.
-   */
-  double getSchedulePriority(FragmentInstanceId instanceId);
 }

@@ -36,7 +36,7 @@ public class RaftConfig {
   private int minNumOfLogsInMem = 1000;
   private long maxMemorySizeForRaftLog = 512 * 1024 * 1024L;
   private int logDeleteCheckIntervalSecond = 1;
-  private boolean enableRaftLogPersistence;
+  private boolean enableRaftLogPersistence = true;
   private int catchUpTimeoutMS = 60_000;
   private boolean useFollowerSlidingWindow = false;
   private int uncommittedRaftLogNumForRejectThreshold = 10000;
@@ -70,7 +70,7 @@ public class RaftConfig {
   // TODO-raft: apply to thrift
   private int thriftMaxFrameSize = 512 * 1024 * 1024;
   private int logNumInBatch = 100;
-  private int dispatcherBindingThreadNum = 64;
+  private int dispatcherBindingThreadNum = 1;
   private int followerLoadBalanceWindowsToUse = 1;
   private double followerLoadBalanceOverestimateFactor = 1.1;
   private int flowMonitorMaxWindowSize = 1000;
@@ -81,9 +81,9 @@ public class RaftConfig {
   private long checkPeriodWhenInsertBlocked = 100;
   private long maxWaitingTimeWhenInsertBlocked = 10000;
   private boolean useFollowerLoadBalance;
-  private int raftLogBufferSize = 512 * 1024 * 1024;
+  private int raftLogBufferSize = 64 * 1024 * 1024;
   private int maxNumberOfLogsPerFetchOnDisk = 1000;
-  private int maxRaftLogIndexSizeInMemory = 64 * 1024 * 1024;
+  private int maxRaftLogIndexSizeInMemory = 64 * 1024;
   private int maxNumberOfPersistRaftLogFiles = 128;
   private int maxPersistRaftLogNumberOnDisk = 10_000_000;
   private int flushRaftLogThreshold = 100_000;

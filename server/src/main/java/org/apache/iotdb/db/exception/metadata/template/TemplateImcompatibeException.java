@@ -28,14 +28,14 @@ public class TemplateImcompatibeException extends MetadataException {
   public TemplateImcompatibeException(String path, String templateName) {
     super(
         String.format("Path [%s] already exists in [%s]", path, templateName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
 
   public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
     super(
         String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
-        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }
 }

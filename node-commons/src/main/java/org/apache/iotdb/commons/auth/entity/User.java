@@ -38,6 +38,7 @@ public class User {
   private String password;
   private List<PathPrivilege> privilegeList;
   private List<String> roleList;
+  private boolean isOpenIdUser = false; // default NO openIdUser
 
   private boolean useWaterMark = false; // default NO watermark
 
@@ -164,7 +165,7 @@ public class User {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, password, privilegeList, roleList, lastActiveTime);
+    return Objects.hash(name, password, privilegeList, roleList, lastActiveTime, isOpenIdUser);
   }
 
   public boolean isUseWaterMark() {
@@ -173,6 +174,14 @@ public class User {
 
   public void setUseWaterMark(boolean useWaterMark) {
     this.useWaterMark = useWaterMark;
+  }
+
+  public boolean isOpenIdUser() {
+    return isOpenIdUser;
+  }
+
+  public void setOpenIdUser(boolean openIdUser) {
+    isOpenIdUser = openIdUser;
   }
 
   public ByteBuffer serialize() {
@@ -223,6 +232,8 @@ public class User {
         + privilegeList
         + ", roleList="
         + roleList
+        + ", isOpenIdUser="
+        + isOpenIdUser
         + ", useWaterMark="
         + useWaterMark
         + ", lastActiveTime="

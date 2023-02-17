@@ -70,7 +70,7 @@ public class IoTDBDatabaseMetadataTest {
     when(connection.createStatement())
         .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
     databaseMetaData = new IoTDBDatabaseMetadata(connection, client, sessionId);
-    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.getProperties()).thenReturn(properties);
     when(execStatementResp.getStatus()).thenReturn(successStatus);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
@@ -115,7 +115,7 @@ public class IoTDBDatabaseMetadataTest {
     resp.setSubStatus(resExpected);
 
     statement.clearBatch();
-    statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
+    statement.addBatch("CREATE DATABASE root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     int[] result = statement.executeBatch();
@@ -126,10 +126,10 @@ public class IoTDBDatabaseMetadataTest {
     List<String> dataTypeList = new ArrayList<String>();
     dataTypeList.add("TEXT");
     List<String> columnsList = new ArrayList<String>();
-    columnsList.add("storage group");
+    columnsList.add("database");
     Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
-    columnNameIndexMap.put("storage group", 0);
-    when(client.executeQueryStatement(any(TSExecuteStatementReq.class)))
+    columnNameIndexMap.put("database", 0);
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
         .thenReturn(execStatementResp);
     when(execStatementResp.getStatus()).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     when(execStatementResp.getQueryId()).thenReturn(queryId);

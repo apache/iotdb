@@ -111,7 +111,8 @@ public class AggregationUtil {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+        lastReadRowIndex =
+            Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock, true));
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
         inputTsBlock = null;
@@ -132,12 +133,10 @@ public class AggregationUtil {
 
   /** Append a row of aggregation results to the result tsBlock. */
   public static void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder,
-      List<? extends Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator) {
+      TsBlockBuilder tsBlockBuilder, List<? extends Aggregator> aggregators, long outputTime) {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
+    timeColumnBuilder.writeLong(outputTime);
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
     for (Aggregator aggregator : aggregators) {

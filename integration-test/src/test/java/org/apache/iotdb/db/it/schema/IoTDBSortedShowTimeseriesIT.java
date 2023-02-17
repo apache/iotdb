@@ -20,15 +20,13 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,14 +40,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSortedShowTimeseriesIT {
+public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
 
   private static String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.turbine",
-        "SET STORAGE GROUP TO root.ln",
+        "CREATE DATABASE root.turbine",
+        "CREATE DATABASE root.ln",
         "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
             + "tags('unit'='f', 'description'='turbine this is a test1') "
             + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
@@ -95,19 +92,28 @@ public class IoTDBSortedShowTimeseriesIT {
         "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+  public IoTDBSortedShowTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
+      allocateMemoryForSchemaRegion(5500);
+    }
+    EnvFactory.getEnv().initClusterEnvironment();
     createSchema();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @After
+  public void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
-  public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
+  public void showTimeseriesOrderByHeatTest1() {
 
     List<String> retArray1 =
         Arrays.asList(
@@ -170,21 +176,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
 
         assertTrue(retArray1.contains(ans));
         count++;
@@ -196,21 +202,21 @@ public class IoTDBSortedShowTimeseriesIT {
       count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
         System.out.println("\"" + ans + "\",");
         assertTrue(retArray2.contains(ans));
         count++;
@@ -248,21 +254,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
 
         System.out.println(ans);
         assertTrue(retSet.contains(ans));
@@ -297,21 +303,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES)
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ALIAS)
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP)
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_DATATYPE)
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_ENCODING)
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES_COMPRESSION)
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_TAGS)
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COLUMN_ATTRIBUTES);
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
 
         assertEquals(retArray[count], ans);
         count++;

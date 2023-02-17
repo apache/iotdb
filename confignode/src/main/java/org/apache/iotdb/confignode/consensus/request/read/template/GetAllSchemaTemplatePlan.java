@@ -34,7 +34,7 @@ public class GetAllSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetAllSchemaTemplate.ordinal());
+    stream.writeShort(getType().getPlanType());
   }
 
   @Override

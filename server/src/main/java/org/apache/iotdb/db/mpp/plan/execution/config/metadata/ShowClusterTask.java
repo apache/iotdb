@@ -39,17 +39,21 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 
 public class ShowClusterTask implements IConfigTask {
 
-  public ShowClusterTask(ShowClusterStatement showClusterStatement) {}
+  private final ShowClusterStatement showClusterStatement;
+
+  public ShowClusterTask(ShowClusterStatement showClusterStatement) {
+    this.showClusterStatement = showClusterStatement;
+  }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showCluster();
+    return configTaskExecutor.showCluster(showClusterStatement);
   }
 
   private static void buildTsBlock(

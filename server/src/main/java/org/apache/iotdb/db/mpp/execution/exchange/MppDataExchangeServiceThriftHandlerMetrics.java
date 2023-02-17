@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -40,9 +40,9 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .getOrCreateAutoGauge(
+        .createAutoGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             thriftConnectionNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
@@ -53,7 +53,7 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.GAUGE,
+            MetricType.AUTO_GAUGE,
             Metric.THRIFT_CONNECTIONS.toString(),
             Tag.NAME.toString(),
             "MPPDataExchange");

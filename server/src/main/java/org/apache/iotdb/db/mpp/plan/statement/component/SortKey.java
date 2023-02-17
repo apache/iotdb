@@ -22,5 +22,9 @@ package org.apache.iotdb.db.mpp.plan.statement.component;
 public enum SortKey {
   TIME,
   TIMESERIES,
-  DEVICE
+  DEVICE,
+  QUERYID,
+  DATANODEID,
+  ELAPSEDTIME,
+  STATEMENT
 }

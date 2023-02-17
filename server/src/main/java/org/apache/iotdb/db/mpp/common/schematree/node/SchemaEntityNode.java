@@ -78,6 +78,7 @@ public class SchemaEntityNode extends SchemaInternalNode {
       return;
     }
     SchemaEntityNode entityNode = schemaNode.getAsEntityNode();
+    entityNode.setAligned(isAligned);
     if (aliasChildren != null) {
       for (SchemaMeasurementNode child : aliasChildren.values()) {
         entityNode.addAliasChild(child.getAlias(), child);

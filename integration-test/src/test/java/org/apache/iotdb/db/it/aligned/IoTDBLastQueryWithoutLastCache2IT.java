@@ -18,46 +18,37 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-// TODO add them back while deleting old standalone
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLastQueryWithoutLastCache2IT extends IoTDBLastQueryWithoutLastCacheIT {
-
-  private static int numOfPointsPerPage;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
-    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableLastCache(false);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setEnableLastCache(false)
+        .setMaxNumberOfPointsInPage(3);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

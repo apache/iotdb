@@ -18,14 +18,12 @@
  */
 package org.apache.iotdb.db.it.groupby;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,7 +39,7 @@ public class IoTDBGroupByUnseqIT {
 
   private static final String[] dataSet1 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.sg1.d1(time,s1) values(1, 1)",
         "INSERT INTO root.sg1.d1(time,s1) values(2, 2)",
@@ -59,7 +57,7 @@ public class IoTDBGroupByUnseqIT {
 
   private static final String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg2",
+        "CREATE DATABASE root.sg2",
         "CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "INSERT INTO root.sg2.d1(time,s1) values(1, 1)",
         "INSERT INTO root.sg2.d1(time,s1) values(10, 10)",
@@ -74,19 +72,9 @@ public class IoTDBGroupByUnseqIT {
         "flush"
       };
 
-  private int maxNumberOfPointsInPage;
-
-  @Before
-  public void setUp() throws Exception {
-    maxNumberOfPointsInPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(4);
-    EnvFactory.getEnv().initBeforeTest();
-  }
-
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**
@@ -96,6 +84,8 @@ public class IoTDBGroupByUnseqIT {
    */
   @Test
   public void test1() {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxNumberOfPointsInPage(4);
+    EnvFactory.getEnv().initClusterEnvironment();
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg1.d1.s1")};
     String[] retArray =
         new String[] {
@@ -116,17 +106,17 @@ public class IoTDBGroupByUnseqIT {
    */
   @Test
   public void test2() {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setMaxNumberOfPointsInPage(4)
+        .setAvgSeriesPointNumberThreshold(2);
+    EnvFactory.getEnv().initClusterEnvironment();
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg2.d1.s1")};
     String[] retArray = new String[] {"5,1,", "10,1,", "15,2,", "20,0,", "25,1,"};
-
-    int preAvgSeriesPointNumberThreshold =
-        ConfigFactory.getConfig().getAvgSeriesPointNumberThreshold();
-    ConfigFactory.getConfig().setAvgSeriesPointNumberThreshold(2);
 
     prepareData(dataSet2);
     resultSetEqualTest(
         "select count(s1) from root.sg2.d1 group by ([5, 30), 5ms)", expectedHeader, retArray);
-
-    ConfigFactory.getConfig().setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
   }
 }

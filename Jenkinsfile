@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
@@ -58,36 +58,36 @@ pipeline {
             }
         }
 
-        stage('Deploy site') {
-            when {
-                branch 'master'
-            }
-            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
-            agent {
-                node {
-                    label 'git-websites'
-                }
-            }
-            steps {
-                // Publish the site with the scm-publish plugin.
-                sh 'mvn -P site -P compile-site -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+//         stage('Deploy site') {
+//             when {
+//                 branch 'master'
+//             }
+//             // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+//             agent {
+//                 node {
+//                     label 'git-websites'
+//                 }
+//             }
+//             steps {
+//                 // Publish the site with the scm-publish plugin.
+//                 sh 'mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+//
+//                 // Clean up the snapshots directory (freeing up more space after deploying).
+//                 dir("target") {
+//                     deleteDir()
+//                 }
+//             }
+//         }
 
-                // Clean up the snapshots directory (freeing up more space after deploying).
-                dir("target") {
-                    deleteDir()
-                }
-            }
-        }
-
-        stage('Build (not master)') {
+        stage('Build and UT') {
             when {
                 expression {
-                    env.BRANCH_NAME != 'master'
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
                 }
             }
             steps {
-                echo 'Building'
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
+                echo 'Building and Unit Test...'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test' -DskipITs"
             }
             post {
                 always {
@@ -97,16 +97,38 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Integration Test') {
             when {
-                branch 'master'
+                expression {
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
+                }
             }
             steps {
-                echo 'Building'
-                sh 'mvn clean'
+                echo 'Integration Test...'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
+            }
+            post {
+                always {
+                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+                }
+            }
+        }
+
+        stage('Deploy Prepare') {
+        //             when {
+        //                 branch 'master'
+        //             }
+            when {
+                expression {
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
+                }
+            }
+            steps {
+                echo 'Deploy Prepare'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir -P client-cpp clean deploy -P get-jar-with-dependencies -P !testcontainer'
+                sh "mvn -T 1C -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -DskipTests"
             }
             post {
                 always {
@@ -141,7 +163,7 @@ pipeline {
             steps {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
-                sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload -P get-jar-with-dependencies'
+                sh 'mvn -f jenkins.pom -X -P deploy-snapshots wagon:upload -P get-jar-with-dependencies'
             }
         }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.utils;
 
 public enum MetricType {
   COUNTER,
+  AUTO_GAUGE,
   GAUGE,
   RATE,
   HISTOGRAM,

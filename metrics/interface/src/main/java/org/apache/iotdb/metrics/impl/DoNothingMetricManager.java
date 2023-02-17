@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -35,6 +36,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
 
   public static final DoNothingCounter doNothingCounter = new DoNothingCounter();
   public static final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
+  public static final DoNothingAutoGauge doNothingAutoGauge = new DoNothingAutoGauge();
   public static final DoNothingGauge doNothingGauge = new DoNothingGauge();
   public static final DoNothingRate doNothingRate = new DoNothingRate();
   public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
@@ -45,8 +47,8 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
-    return doNothingGauge;
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+    return doNothingAutoGauge;
   }
 
   @Override
@@ -70,17 +72,12 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public boolean isEnableMetric() {
-    return false;
-  }
-
-  @Override
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
     return false;
   }
 
   @Override
-  protected void remove(MetricType type, MetricInfo metricInfo) {
+  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
     // do nothing
   }
 

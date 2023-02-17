@@ -19,28 +19,30 @@
 
 package org.apache.iotdb.commons.client;
 
-import javax.annotation.concurrent.ThreadSafe;
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 
-import java.io.IOException;
+import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
 public interface IClientManager<K, V> {
 
-  // get a V client of the K node from the Manager
-  V borrowClient(K node) throws IOException;
+  /**
+   * get a client V for node K from the IClientManager.
+   *
+   * @throws BorrowNullClientManagerException if node is null
+   * @throws ClientManagerException for other exceptions
+   */
+  V borrowClient(K node) throws ClientManagerException;
 
-  // Get a V client of the K node from the Manager while
-  // no exceptions will be thrown and no logs will be printed.
-  // This interface is mainly used to process the cluster heartbeat.
-  V purelyBorrowClient(K node);
-
-  // clear all clients for K node
+  /** clear all clients for node K. */
   void clear(K node);
 
-  // close clientManager
+  /** close IClientManager, which means closing all clients for all nodes. */
   void close();
 
   class Factory<K, V> {
+
     public IClientManager<K, V> createClientManager(IClientPoolFactory<K, V> clientPoolFactory) {
       return new ClientManager<>(clientPoolFactory);
     }

@@ -77,15 +77,15 @@ session.close()
 
 ### 数据定义接口 DDL
 
-#### 存储组管理
+#### Database 管理
 
-* 设置存储组
+* 设置 database
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* 删除单个或多个存储组
+* 删除单个或多个 database
 
 ```python
 session.delete_storage_group(group_name)
@@ -153,6 +153,18 @@ tablet_ = Tablet(
     device_id, measurements_, data_types_, values_, timestamps_
 )
 session.insert_tablet(tablet_)
+
+values_ = [
+    [None, 10, 11, 1.1, 10011.1, "test01"],
+    [True, None, 11111, 1.25, 101.0, "test02"],
+    [False, 100, None, 188.1, 688.25, "test03"],
+    [True, 0, 0, 0, None, None],
+]
+timestamps_ = [16, 17, 18, 19]
+tablet_ = Tablet(
+    device_id, measurements_, data_types_, values_, timestamps_
+)
+session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
@@ -179,13 +191,36 @@ np_values_ = [
     np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
     np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
     np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
-    np.array(["test01", "test02", "test03", "test04"]),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+  device_id, measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
+
+# insert one numpy tablet with None into the database.
+np_values_ = [
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
+]
+np_timestamps_ = np.array([98, 99, 100, 101], TSDataType.INT64.np_dtype())
+np_bitmaps_ = []
+for i in range(len(measurements_)):
+    np_bitmaps_.append(BitMap(len(np_timestamps_)))
+np_bitmaps_[0].mark(0)
+np_bitmaps_[1].mark(1)
+np_bitmaps_[2].mark(2)
+np_bitmaps_[4].mark(3)
+np_bitmaps_[5].mark(3)
+np_tablet_with_none = NumpyTablet(
+    device_id, measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+)
+session.insert_tablet(np_tablet_with_none)
 ```
 
 * 插入多个 Tablet
@@ -451,7 +486,7 @@ SQLAlchemy 所使用的数据模型为关系数据模型，这种数据模型通
 
 IoTDB 中的元数据有：
 
-1. Storage Group：存储组
+1. Database：数据库
 2. Path：存储路径
 3. Entity：实体
 4. Measurement：物理量
@@ -463,10 +498,10 @@ SQLAlchemy 中的元数据有：
 
 它们之间的映射关系为：
 
-| SQLAlchemy中的元数据 | IoTDB中对应的元数据                            |
+| SQLAlchemy中的元数据   | IoTDB中对应的元数据                               |
 | -------------------- | ---------------------------------------------- |
-| Schema               | Storage Group                                  |
-| Table                | Path ( from storage group to entity ) + Entity |
+| Schema               | Database                                       |
+| Table                | Path ( from database to entity ) + Entity |
 | Column               | Measurement                                    |
 
 下图更加清晰的展示了二者的映射关系：

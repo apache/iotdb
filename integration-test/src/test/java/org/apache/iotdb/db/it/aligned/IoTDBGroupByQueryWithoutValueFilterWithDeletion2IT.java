@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -37,30 +37,23 @@ import java.sql.Statement;
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
     extends IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
-  private static int numOfPointsPerPage;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
-
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setMaxTsBlockLineNumber(3)
+        .setMaxNumberOfPointsInPage(3);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      // TODO replace it while delete timeseries is supported in cluster mode
-      //      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
+      statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s3 where time > 25");
     } catch (Exception e) {
       e.printStackTrace();
@@ -69,11 +62,6 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

@@ -1,8 +1,10 @@
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.Response;
+import org.apache.iotdb.consensus.natraft.Utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatResponse;
 
@@ -25,10 +27,14 @@ public class HeartbeatReqHandler {
    * update the leadership, heartbeat timer and term of the local node.
    */
   public HeartBeatResponse processHeartbeatRequest(HeartBeatRequest request) {
-    logger.trace("{} received a heartbeat", member.getName());
+    logger.debug("{} received a heartbeat", member.getName());
     long thisTerm = member.getStatus().getTerm().get();
     long leaderTerm = request.getTerm();
     HeartBeatResponse response = new HeartBeatResponse();
+    // tell the leader who I am in case of catch-up
+    response.setFollower(member.getThisNode().getEndpoint());
+    response.setFollowerId(member.getThisNode().getNodeId());
+    response.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
 
     if (leaderTerm < thisTerm) {
       // a leader with a term lower than this node is invalid, send it the local term to inform
@@ -40,28 +46,32 @@ public class HeartbeatReqHandler {
             member.getName(),
             request.getLeader());
       }
-    } else if (!(leaderTerm == thisTerm && member.getStatus().getLeader().get() != null)) {
-      // try updating local term or leader
-      try {
-        member.getLogManager().getLock().writeLock().lock();
-        member.stepDown(leaderTerm, request.leader);
-        member.getStatus().getLeader().set(request.getLeader());
-        if (member.getStatus().getRole() != RaftRole.FOLLOWER) {
-          // interrupt current election
-          Object electionWaitObject = member.getHeartbeatThread().getElectionWaitObject();
-          if (electionWaitObject != null) {
-            synchronized (electionWaitObject) {
-              electionWaitObject.notifyAll();
+    } else  {
+      if (leaderTerm > thisTerm || member.getStatus().getLeader().get() == null) {
+        // try updating local term or leader
+        try {
+          member.getLogManager().getLock().writeLock().lock();
+          Peer peer =
+              new Peer(
+                  Factory.createFromTConsensusGroupId(request.groupId),
+                  request.leaderId,
+                  request.leader);
+          member.stepDown(leaderTerm, peer);
+          if (member.getStatus().getRole() != RaftRole.FOLLOWER) {
+            // interrupt current election
+            Object electionWaitObject = member.getHeartbeatThread().getElectionWaitObject();
+            if (electionWaitObject != null) {
+              synchronized (electionWaitObject) {
+                electionWaitObject.notifyAll();
+              }
             }
           }
+        } finally {
+          member.getLogManager().getLock().writeLock().unlock();
         }
-      } finally {
-        member.getLogManager().getLock().writeLock().unlock();
       }
 
       response.setTerm(Response.RESPONSE_AGREE);
-      // tell the leader who I am in case of catch-up
-      response.setFollower(member.getThisNode());
       // tell the leader the local log progress, so it may decide whether to perform a catch-up
       response.setLastLogIndex(member.getLogManager().getLastLogIndex());
       response.setLastLogTerm(member.getLogManager().getLastLogTerm());
@@ -81,13 +91,12 @@ public class HeartbeatReqHandler {
             member.getLogManager().getAppliedIndex());
       }
 
+      member.getHeartbeatThread().setLastHeartbeatReceivedTime(System.currentTimeMillis());
       member.tryUpdateCommitIndex(
           leaderTerm, request.getCommitLogIndex(), request.getCommitLogTerm());
 
-      if (logger.isTraceEnabled()) {
-        logger.trace(
-            "{} received heartbeat from a valid leader {}", member.getName(), request.getLeader());
-      }
+      logger.debug(
+          "{} received heartbeat from a valid leader {}", member.getName(), request.getLeader());
     }
     return response;
   }

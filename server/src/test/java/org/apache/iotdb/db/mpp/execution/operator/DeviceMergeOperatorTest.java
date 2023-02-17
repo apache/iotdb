@@ -22,12 +22,13 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
@@ -100,21 +103,19 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
       dataTypes.add(TSDataType.TEXT);
@@ -124,18 +125,22 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator1),
               Collections.singletonList(Collections.singletonList(1)),
@@ -145,18 +150,22 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1"),
               Collections.singletonList(seriesScanOperator2),
               Collections.singletonList(Collections.singletonList(2)),
@@ -170,7 +179,7 @@ public class DeviceMergeOperatorTest {
       deviceOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               devices,
               deviceOperators,
               dataTypes,
@@ -180,13 +189,15 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count % 500;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
-              count < 25
+              count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
@@ -215,9 +226,8 @@ public class DeviceMergeOperatorTest {
             }
           }
         }
-        count++;
       }
-      assertEquals(50, count);
+      assertEquals(1000, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -247,21 +257,19 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
       dataTypes.add(TSDataType.TEXT);
@@ -270,11 +278,11 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -288,9 +296,13 @@ public class DeviceMergeOperatorTest {
       unSeqResources1.add(unSeqResources.get(3));
       unSeqResources1.add(unSeqResources.get(5));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources1, unSeqResources1));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator1),
               Collections.singletonList(Collections.singletonList(1)),
@@ -298,14 +310,18 @@ public class DeviceMergeOperatorTest {
 
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<TsFileResource> seqResources2 = new ArrayList<>();
       List<TsFileResource> unSeqResources2 = new ArrayList<>();
       seqResources2.add(seqResources.get(2));
@@ -315,7 +331,7 @@ public class DeviceMergeOperatorTest {
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources2, unSeqResources2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator2),
               Collections.singletonList(Collections.singletonList(1)),
@@ -328,7 +344,7 @@ public class DeviceMergeOperatorTest {
       deviceOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               devices,
               deviceOperators,
               dataTypes,
@@ -338,27 +354,27 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          assertEquals(count, tsBlock.getTimeByIndex(i));
           assertEquals(
               DEVICE_MERGE_OPERATOR_TEST_SG + ".device0",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(i));
+          if ((long) count < 200) {
+            assertEquals(20000 + (long) count, tsBlock.getColumn(1).getInt(i));
+          } else if ((long) count < 260
+              || ((long) count >= 300 && (long) count < 380)
+              || (long) count >= 400) {
+            assertEquals(10000 + (long) count, tsBlock.getColumn(1).getInt(i));
           } else {
-            assertEquals(expectedTime, tsBlock.getColumn(1).getInt(i));
+            assertEquals(count, tsBlock.getColumn(1).getInt(i));
           }
         }
-        count++;
       }
-      assertEquals(25, count);
+      assertEquals(500, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -389,20 +405,18 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           4, new PlanNodeId("4"), DeviceViewOperatorTest.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           5, new PlanNodeId("5"), DeviceViewOperatorTest.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           6, new PlanNodeId("6"), DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
@@ -413,11 +427,11 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -431,19 +445,27 @@ public class DeviceMergeOperatorTest {
       unSeqResources1.add(unSeqResources.get(3));
       unSeqResources1.add(unSeqResources.get(5));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources1, unSeqResources1));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       MeasurementPath measurementPath2 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<String> devices = new ArrayList<>();
       devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
       devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1");
@@ -455,7 +477,7 @@ public class DeviceMergeOperatorTest {
       deviceColumnIndex.add(Collections.singletonList(2));
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               devices,
               deviceOperators,
               deviceColumnIndex,
@@ -463,14 +485,18 @@ public class DeviceMergeOperatorTest {
 
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
+      seriesScanOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       List<TsFileResource> seqResources2 = new ArrayList<>();
       List<TsFileResource> unSeqResources2 = new ArrayList<>();
       seqResources2.add(seqResources.get(2));
@@ -480,7 +506,7 @@ public class DeviceMergeOperatorTest {
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources2, unSeqResources2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator3),
               Collections.singletonList(Collections.singletonList(1)),
@@ -491,7 +517,7 @@ public class DeviceMergeOperatorTest {
       deviceViewOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
+              driverContext.getOperatorContexts().get(5),
               devices,
               deviceViewOperators,
               dataTypes,
@@ -501,13 +527,15 @@ public class DeviceMergeOperatorTest {
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(3, tsBlock.getValueColumnCount());
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * (count % 25);
+        for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
+          long expectedTime = count % 500;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           assertEquals(
-              count < 25
+              count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
               tsBlock.getColumn(0).getBinary(i).getStringValue());
@@ -536,9 +564,8 @@ public class DeviceMergeOperatorTest {
             }
           }
         }
-        count++;
       }
-      assertEquals(50, count);
+      assertEquals(1000, count);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

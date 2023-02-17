@@ -17,11 +17,11 @@
 import React, { ChangeEvent, PureComponent } from 'react';
 import { LegacyForms } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { IoTDBOptions } from './types';
+import { IoTDBOptions, IoTDBSecureJsonData } from './types';
 
-const { FormField } = LegacyForms;
+const { SecretFormField, FormField } = LegacyForms;
 
-interface Props extends DataSourcePluginOptionsEditorProps<IoTDBOptions> {}
+interface Props extends DataSourcePluginOptionsEditorProps<IoTDBOptions, IoTDBSecureJsonData> {}
 
 interface State {}
 
@@ -35,7 +35,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, jsonData });
   };
 
-  onUserChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onUserNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
       ...options.jsonData,
@@ -44,18 +44,36 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, jsonData });
   };
 
-  onPassWordChange = (event: ChangeEvent<HTMLInputElement>) => {
+  // Secure field (only sent to the backend)
+  onPasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      password: event.target.value,
-    };
-    onOptionsChange({ ...options, jsonData });
+    onOptionsChange({
+      ...options,
+      secureJsonData: {
+        password: event.target.value,
+      },
+    });
+  };
+
+  onResetPassword = () => {
+    const { onOptionsChange, options } = this.props;
+    onOptionsChange({
+      ...options,
+      secureJsonFields: {
+        ...options.secureJsonFields,
+        password: false,
+      },
+      secureJsonData: {
+        ...options.secureJsonData,
+        password: '',
+      },
+    });
   };
 
   render() {
     const { options } = this.props;
-    const { jsonData } = options;
+    const { secureJsonFields, jsonData } = options;
+    const secureJsonData = (options.secureJsonData || {}) as IoTDBSecureJsonData;
 
     return (
       <div className="gf-form-group">
@@ -69,30 +87,28 @@ export class ConfigEditor extends PureComponent<Props, State> {
             placeholder="please input URL"
           />
         </div>
-
-        <div className="gf-form-inline">
-          <div className="gf-form">
-            <FormField
-              value={jsonData.username || ''}
-              label="username"
-              placeholder="please input username"
-              labelWidth={6}
-              inputWidth={20}
-              onChange={this.onUserChange}
-            />
-          </div>
+        <div className="gf-form">
+          <FormField
+            label="username"
+            labelWidth={6}
+            inputWidth={20}
+            onChange={this.onUserNameChange}
+            value={jsonData.username || ''}
+            placeholder="please input username"
+          />
         </div>
 
         <div className="gf-form-inline">
           <div className="gf-form">
-            <FormField
-              value={jsonData.password || ''}
+            <SecretFormField
+              isConfigured={(secureJsonFields && secureJsonFields.password) as boolean}
+              value={secureJsonData.password || ''}
               label="password"
-              type="password"
               placeholder="please input password"
               labelWidth={6}
               inputWidth={20}
-              onChange={this.onPassWordChange}
+              onReset={this.onResetPassword}
+              onChange={this.onPasswordChange}
             />
           </div>
         </div>

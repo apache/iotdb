@@ -24,7 +24,9 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +46,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   /** this writer will be open when .resource file doesn't exist */
   protected RestorableTsFileIOWriter writer;
 
-  public AbstractTsFileRecoverPerformer(TsFileResource tsFileResource) {
+  protected AbstractTsFileRecoverPerformer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
   }
 
@@ -55,6 +57,12 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
    */
   protected void recoverWithWriter() throws DataRegionException, IOException {
     File tsFile = tsFileResource.getTsFile();
+    File chunkMetadataTempFile =
+        new File(tsFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    if (chunkMetadataTempFile.exists()) {
+      // delete chunk metadata temp file
+      FileUtils.delete(chunkMetadataTempFile);
+    }
     if (!tsFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
       return;
@@ -92,7 +100,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   private void loadResourceFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (IOException e) {
+    } catch (Throwable e) {
       logger.warn(
           "Cannot deserialize .resource file of {}, try to reconstruct it.",
           tsFileResource.getTsFile(),

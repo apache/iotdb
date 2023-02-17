@@ -19,22 +19,21 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
-import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,27 +44,27 @@ public class SchemaPageTest {
 
   @Before
   public void setUp() {
-    // EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    // EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void flatTreeInsert()
-      throws SchemaPageOverflowException, IOException, SegmentNotFoundException,
-          RecordDuplicatedException {
-    ISchemaPage page = SchemaPage.initPage(ByteBuffer.allocate(SchemaFile.PAGE_LENGTH), 0);
+  public void flatTreeInsert() throws IOException, MetadataException {
+    ISchemaPage page =
+        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
     IMNode root = virtualFlatMTree(15);
     for (int i = 0; i < 7; i++) {
-      page.allocNewSegment(SchemaFile.SEG_SIZE_LST[0]);
+      page.getAsSegmentedPage().allocNewSegment(SchemaFileConfig.SEG_SIZE_LST[0]);
       int cnt = 0;
       for (IMNode child : root.getChildren().values()) {
         cnt++;
         try {
-          page.write((short) i, child.getName(), RecordUtils.node2Buffer(child));
+          page.getAsSegmentedPage()
+              .write((short) i, child.getName(), RecordUtils.node2Buffer(child));
         } catch (MetadataException e) {
           e.printStackTrace();
         }
@@ -75,11 +74,34 @@ public class SchemaPageTest {
       }
     }
 
-    ByteBuffer newBuf = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+    ByteBuffer newBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
     page.syncPageBuffer();
     page.getPageBuffer(newBuf);
-    ISchemaPage newPage = SchemaPage.loadPage(newBuf, 0);
+    SchemaPage newPage = ISchemaPage.loadSchemaPage(newBuf);
+    Assert.assertEquals(newPage.inspect(), page.inspect());
     System.out.println(newPage.inspect());
+  }
+
+  @Test
+  public void essentialPageTest() throws MetadataException, IOException {
+    ByteBuffer buf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
+    ISchemaPage page = ISchemaPage.initSegmentedPage(buf, 0);
+    page.getAsSegmentedPage().allocNewSegment((short) 500);
+    Assert.assertFalse(page.getAsInternalPage() != null);
+
+    page.getAsSegmentedPage().deleteSegment((short) 0);
+    page = ISchemaPage.initInternalPage(buf, 0, 0);
+    Assert.assertTrue(page.getAsInternalPage() != null);
+
+    page.getAsInternalPage().insertRecord("aaa", 256);
+    page.getAsInternalPage().setNextSegAddress(999L);
+    page.syncPageBuffer();
+
+    SchemaPage nPage = ISchemaPage.loadSchemaPage(buf);
+
+    Assert.assertTrue(nPage.getAsInternalPage() != null);
+    Assert.assertEquals(999L, nPage.getAsInternalPage().getNextSegAddress());
+    Assert.assertEquals(256, (int) nPage.getAsInternalPage().getRecordByKey("aab"));
   }
 
   private IMNode virtualFlatMTree(int childSize) {
@@ -96,25 +118,8 @@ public class SchemaPageTest {
     return internalNode;
   }
 
-  @Test
-  public void bufferTest() {
-    ByteBuffer buffer1 = ByteBuffer.allocate(100);
-    ByteBuffer buffer2 = buffer1.slice();
-    buffer1.put("12346".getBytes());
-    buffer1.clear();
-
-    buffer2.position(10);
-    buffer2.put("091234".getBytes());
-    buffer2.clear();
-    printBuffer(buffer1);
-    printBuffer(buffer2);
-
-    byte[] a = new byte[10];
-    byte[] b = a;
-
-    a[0] = (byte) 7;
-    System.out.println(a[0]);
-    System.out.println(b[0]);
+  public void print(Object o) {
+    System.out.println(o);
   }
 
   private void printBuffer(ByteBuffer buf) {

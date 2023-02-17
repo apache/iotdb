@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -28,10 +29,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
@@ -57,7 +57,7 @@ public class GroupByLevelNodeSerdeTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME.name().toLowerCase(),
+                    TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
@@ -71,7 +71,7 @@ public class GroupByLevelNodeSerdeTest {
             new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
             Collections.singletonList(
                 new AggregationDescriptor(
-                    AggregationType.MAX_TIME.name().toLowerCase(),
+                    TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
@@ -85,12 +85,14 @@ public class GroupByLevelNodeSerdeTest {
             new PlanNodeId("TestGroupByLevelNode"),
             Arrays.asList(seriesAggregationScanNode1, seriesAggregationScanNode2),
             Collections.singletonList(
-                new GroupByLevelDescriptor(
-                    AggregationType.MAX_TIME.name().toLowerCase(),
+                new CrossSeriesAggregationDescriptor(
+                    TAggregationType.MAX_TIME.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))),
+                    2,
+                    Collections.emptyMap(),
                     new TimeSeriesOperand(new PartialPath("root.sg.*.s1")))),
             groupByTimeParameter,
             Ordering.ASC);

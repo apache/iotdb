@@ -20,12 +20,42 @@
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
   public LogicAndColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        returnType.writeBoolean(
+            builder,
+            transform(
+                leftTransformer.getType().getBoolean(leftColumn, i),
+                rightTransformer.getType().getBoolean(rightColumn, i)));
+      } else if (!leftColumn.isNull(i)) {
+        if (leftTransformer.getType().getBoolean(leftColumn, i)) {
+          builder.appendNull();
+        } else {
+          returnType.writeBoolean(builder, false);
+        }
+      } else if (!rightColumn.isNull(i)) {
+        if (rightTransformer.getType().getBoolean(rightColumn, i)) {
+          builder.appendNull();
+        } else {
+          returnType.writeBoolean(builder, false);
+        }
+      } else {
+        builder.appendNull();
+      }
+    }
   }
 
   @Override

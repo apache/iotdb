@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -104,5 +104,12 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), prefixPath, level);
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "NodePathsSchemaScanNode-%s:[DataRegion: %s]",
+        this.getPlanNodeId(), this.getRegionReplicaSet());
   }
 }

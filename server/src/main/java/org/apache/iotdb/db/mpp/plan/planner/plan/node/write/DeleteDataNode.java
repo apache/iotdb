@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -286,9 +286,12 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
       for (TRegionReplicaSet regionReplicaSet :
           dataPartition.getDataRegionReplicaSet(
               devicePath.getFullPath(), Collections.emptyList())) {
-        regionToPatternMap
-            .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-            .addAll(pathPattern.alterPrefixPath(devicePath));
+        // regionId is null when data region of devicePath not existed
+        if (regionReplicaSet.getRegionId() != null) {
+          regionToPatternMap
+              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+              .addAll(pathPattern.alterPrefixPath(devicePath));
+        }
       }
     }
   }

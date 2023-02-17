@@ -31,7 +31,9 @@ import java.util.Set;
 public class SnapshotFileSet {
   public static final String[] DATA_FILE_SUFFIX =
       new String[] {
-        TsFileConstant.TSFILE_SUFFIX, TsFileResource.RESOURCE_SUFFIX, ModificationFile.FILE_SUFFIX,
+        TsFileConstant.TSFILE_SUFFIX.replace(".", ""),
+        TsFileResource.RESOURCE_SUFFIX.replace(".", ""),
+        ModificationFile.FILE_SUFFIX.replace(".", ""),
       };
 
   private static final Set<String> DATA_FILE_SUFFIX_SET =

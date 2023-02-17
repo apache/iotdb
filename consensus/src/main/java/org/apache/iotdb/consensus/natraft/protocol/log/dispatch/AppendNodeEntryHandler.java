@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_OUT_OF_WINDOW;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_STRONG_ACCEPT;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_WEAK_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_OUT_OF_WINDOW;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_WEAK_ACCEPT;
 
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
@@ -47,7 +49,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
   protected RaftMember member;
   protected VotingLog log;
-  protected TEndPoint directReceiver;
+  protected Peer directReceiver;
   protected int quorumSize;
 
   public AppendNodeEntryHandler() {}
@@ -58,7 +60,13 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       return;
     }
 
-    TEndPoint trueReceiver = response.isSetReceiver() ? response.receiver : directReceiver;
+    Peer trueReceiver =
+        response.isSetReceiver()
+            ? new Peer(
+                ConsensusGroupId.Factory.createFromTConsensusGroupId(response.groupId),
+                response.receiverId,
+                response.receiver)
+            : directReceiver;
 
     logger.debug(
         "{}: Append response {} from {} for log {}", member.getName(), response, trueReceiver, log);
@@ -115,8 +123,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
   @Override
   public void onError(Exception exception) {
+    if (exception instanceof TApplicationException) {
+      if (exception.getMessage().contains("No such member")) {
+        logger.debug(exception.getMessage());
+      }
+      return;
+    }
     if (exception instanceof ConnectException) {
-      logger.warn(
+      logger.debug(
           "{}: Cannot append log {}: cannot connect to {}: {}",
           member.getName(),
           log,
@@ -129,7 +143,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     onFail(directReceiver);
   }
 
-  private void onFail(TEndPoint trueReceiver) {
+  private void onFail(Peer trueReceiver) {
     synchronized (log) {
       log.getFailedNodes().add(trueReceiver);
       if (log.getFailedNodes().size() > quorumSize) {
@@ -148,7 +162,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     this.member = member;
   }
 
-  public void setDirectReceiver(TEndPoint follower) {
+  public void setDirectReceiver(Peer follower) {
     this.directReceiver = follower;
   }
 

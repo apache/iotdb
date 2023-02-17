@@ -20,19 +20,32 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.consensus.common.DataSet;
 
+import java.util.List;
+
 public class FragmentInstanceInfo implements DataSet {
   private final FragmentInstanceState state;
   private String message;
-  private final long endTime;
+  private long endTime;
+
+  private List<FragmentInstanceFailureInfo> failureInfoList;
+
+  public FragmentInstanceInfo(FragmentInstanceState state) {
+    this.state = state;
+  }
 
   public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
     this.state = state;
     this.endTime = endTime;
   }
 
-  public FragmentInstanceInfo(FragmentInstanceState state, long endTime, String message) {
+  public FragmentInstanceInfo(
+      FragmentInstanceState state,
+      long endTime,
+      String message,
+      List<FragmentInstanceFailureInfo> failureInfoList) {
     this(state, endTime);
     this.message = message;
+    this.failureInfoList = failureInfoList;
   }
 
   public FragmentInstanceState getState() {
@@ -45,5 +58,9 @@ public class FragmentInstanceInfo implements DataSet {
 
   public String getMessage() {
     return message;
+  }
+
+  public List<FragmentInstanceFailureInfo> getFailureInfoList() {
+    return failureInfoList;
   }
 }

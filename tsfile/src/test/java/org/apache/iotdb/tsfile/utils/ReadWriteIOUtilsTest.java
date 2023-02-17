@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.utils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -162,5 +164,28 @@ public class ReadWriteIOUtilsTest {
     }
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNull(result);
+  }
+
+  @Test
+  public void skipInputStreamTest() {
+    int expectedSkipNum = 9000;
+    int totalNum = 10000;
+    try (BufferedInputStream inputStream =
+        new BufferedInputStream(new ByteArrayInputStream(new byte[totalNum]))) {
+      ReadWriteIOUtils.readByte(inputStream);
+      long skipN = inputStream.skip(expectedSkipNum);
+      Assert.assertNotEquals(expectedSkipNum, skipN);
+      Assert.assertNotEquals(totalNum - expectedSkipNum - 1, inputStream.available());
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+    try (BufferedInputStream inputStream =
+        new BufferedInputStream(new ByteArrayInputStream(new byte[totalNum]))) {
+      ReadWriteIOUtils.readByte(inputStream);
+      ReadWriteIOUtils.skip(inputStream, expectedSkipNum);
+      Assert.assertEquals(totalNum - expectedSkipNum - 1, inputStream.available());
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 }

@@ -21,16 +21,14 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,28 +43,33 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBCreateTimeseriesIT {
+public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+  public IoTDBCreateTimeseriesIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  /** Test if creating a time series will cause the storage group with same name to disappear */
+  @After
+  public void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
+  }
+
+  /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("SET storage group TO %s", storageGroup));
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
@@ -75,7 +78,7 @@ public class IoTDBCreateTimeseriesIT {
     } catch (Exception ignored) {
     }
 
-    // ensure that current storage group in cache is right.
+    // ensure that current database in cache is right.
     createTimeSeriesTool(storageGroup);
   }
 
@@ -85,7 +88,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
+        String str = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
         resultList.add(str);
       }
     }
@@ -93,9 +96,9 @@ public class IoTDBCreateTimeseriesIT {
     resultList.clear();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("show storage group")) {
+        ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       while (resultSet.next()) {
-        String res = resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP);
+        String res = resultSet.getString(ColumnHeaderConstant.DATABASE);
         resultList.add(res);
       }
     }
@@ -158,7 +161,7 @@ public class IoTDBCreateTimeseriesIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("count timeseries root.sg.**")) {
       while (resultSet.next()) {
-        int count = resultSet.getInt(1);
+        long count = resultSet.getLong(1);
         Assert.assertEquals(timeSeriesArray.length, count);
       }
     }

@@ -56,7 +56,7 @@ public class LogManagerMeta {
 
   public ByteBuffer serialize() {
     // 5 is the number of attributes in class LogManagerMeta
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 5);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 6);
     byteBuffer.putLong(commitLogTerm);
     byteBuffer.putLong(commitLogIndex);
     byteBuffer.putLong(lastLogIndex);

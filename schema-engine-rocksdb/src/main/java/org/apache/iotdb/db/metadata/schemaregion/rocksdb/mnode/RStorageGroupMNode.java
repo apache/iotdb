@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -30,8 +29,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
-
-import java.io.IOException;
 
 public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupMNode {
 
@@ -53,7 +50,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
     super(fullPath, readWriteHandler);
     Object ttl = RSchemaUtils.parseNodeValue(value, RMNodeValueType.TTL);
     if (ttl == null) {
-      ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTL();
+      ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
     }
     this.dataTTL = (long) ttl;
   }
@@ -93,11 +90,6 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   }
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long getDataTTL() {
     return dataTTL;
   }
@@ -117,10 +109,10 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   public void setTimePartitionInterval(long timePartitionInterval) {}
 
   @Override
-  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+  public void setStorageGroupSchema(TDatabaseSchema schema) {}
 
   @Override
-  public TStorageGroupSchema getStorageGroupSchema() {
+  public TDatabaseSchema getStorageGroupSchema() {
     return null;
   }
 }

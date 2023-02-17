@@ -21,7 +21,10 @@ package org.apache.iotdb.db.mpp.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.QueryExecutor;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -100,20 +104,38 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             timeFilter,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
+            queryContext.getSession(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
-    // Set DataRegion and target host for the instance
+    // Set ExecutorType and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
-    fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
+    if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
+      TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
+      if (dataNodeLocation != null) {
+        // now only the case ShowQueries will enter here
+        fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
+      } else {
+        // no data region && no dataNodeLocation, we need to execute this FI on local
+        // now only the case AggregationQuery has schema but no data region will enter here
+        fragmentInstance.setExecutorAndHost(
+            new QueryExecutor(
+                new TDataNodeLocation()
+                    .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
+                    .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+      }
+    } else {
+      fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
+      fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
+    }
 
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ShowQueriesStatement) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
@@ -123,7 +145,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {
     if (regionReplicaSet == null
         || regionReplicaSet.getDataNodeLocations() == null
-        || regionReplicaSet.getDataNodeLocations().size() == 0) {
+        || regionReplicaSet.getDataNodeLocations().isEmpty()) {
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
@@ -137,7 +159,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // black list won't be considered because it may have connection issue now.
     List<TDataNodeLocation> availableDataNodes =
         filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
-    if (availableDataNodes.size() == 0) {
+    if (availableDataNodes.isEmpty()) {
       String errorMsg =
           String.format(
               "all replicas for region[%s] are not available in these DataNodes[%s]",
@@ -169,7 +191,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private boolean isAvailableDataNode(TDataNodeLocation dataNodeLocation) {
     for (TEndPoint endPoint : queryContext.getEndPointBlackList()) {
-      if (endPoint.getIp().equals(dataNodeLocation.internalEndPoint.getIp())) {
+      if (endPoint.equals(dataNodeLocation.internalEndPoint)) {
         return false;
       }
     }

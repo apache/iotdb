@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroup {
 
+  private long createTime;
   private final TRegionReplicaSet replicaSet;
 
   // Map<TSeriesPartitionSlot, TTimePartitionSlot Count>
@@ -48,15 +49,21 @@ public class RegionGroup {
   private final AtomicLong totalTimeSlotCount;
 
   public RegionGroup() {
+    this.createTime = 0;
     this.replicaSet = new TRegionReplicaSet();
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong();
   }
 
-  public RegionGroup(TRegionReplicaSet replicaSet) {
+  public RegionGroup(long createTime, TRegionReplicaSet replicaSet) {
+    this.createTime = createTime;
     this.replicaSet = replicaSet;
     this.slotCountMap = new ConcurrentHashMap<>();
     this.totalTimeSlotCount = new AtomicLong(0);
+  }
+
+  public long getCreateTime() {
+    return createTime;
   }
 
   public TConsensusGroupId getId() {
@@ -78,7 +85,7 @@ public class RegionGroup {
         }));
   }
 
-  public long getSeriesSlotCount() {
+  public int getSeriesSlotCount() {
     return slotCountMap.size();
   }
 
@@ -88,6 +95,7 @@ public class RegionGroup {
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
+    ReadWriteIOUtils.write(createTime, outputStream);
     replicaSet.write(protocol);
 
     ReadWriteIOUtils.write(slotCountMap.size(), outputStream);
@@ -101,6 +109,7 @@ public class RegionGroup {
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
+    this.createTime = ReadWriteIOUtils.readLong(inputStream);
     replicaSet.read(protocol);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
@@ -127,12 +136,13 @@ public class RegionGroup {
         return false;
       }
     }
-    return replicaSet.equals(that.replicaSet)
+    return createTime == that.createTime
+        && replicaSet.equals(that.replicaSet)
         && totalTimeSlotCount.get() == that.totalTimeSlotCount.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(replicaSet, slotCountMap, totalTimeSlotCount);
+    return Objects.hash(createTime, replicaSet, slotCountMap, totalTimeSlotCount);
   }
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
@@ -79,7 +79,7 @@ public class FlowBalancer {
       return;
     }
 
-    List<TEndPoint> followers = new ArrayList<>(member.getAllNodes());
+    List<Peer> followers = new ArrayList<>(member.getAllNodes());
     followers.remove(member.getThisNode());
 
     int nodeNum = member.getAllNodes().size();
@@ -88,9 +88,8 @@ public class FlowBalancer {
     double thisNodeFlow = flowMonitorManager.averageFlow(member.getThisNode(), windowsToUse);
     double assumedFlow = thisNodeFlow * overestimateFactor;
     logger.info("Flow of this node: {}", thisNodeFlow);
-    Map<TEndPoint, BlockingQueue<VotingLog>> nodesLogQueuesMap =
-        logDispatcher.getNodesLogQueuesMap();
-    Map<TEndPoint, Double> nodesRate = logDispatcher.getNodesRate();
+    Map<Peer, BlockingQueue<VotingLog>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
+    Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
     followers.sort(Comparator.comparing(node -> nodesLogQueuesMap.get(node).size()));
@@ -103,10 +102,7 @@ public class FlowBalancer {
   }
 
   private void enterBurst(
-      Map<TEndPoint, Double> nodesRate,
-      int nodeNum,
-      double assumedFlow,
-      List<TEndPoint> followers) {
+      Map<Peer, Double> nodesRate, int nodeNum, double assumedFlow, List<Peer> followers) {
     int followerNum = nodeNum - 1;
     int quorumFollowerNum = nodeNum / 2;
     double remainingFlow = maxFlow;
@@ -115,7 +111,7 @@ public class FlowBalancer {
     double flowToQuorum = Math.min(assumedFlow, quorumMaxFlow);
     int i = 0;
     for (; i < quorumFollowerNum; i++) {
-      TEndPoint node = followers.get(i);
+      Peer node = followers.get(i);
       nodesRate.put(node, maxFlow);
       remainingFlow -= flowToQuorum;
     }
@@ -124,16 +120,15 @@ public class FlowBalancer {
       flowToRemaining = minFlow;
     }
     for (; i < followerNum; i++) {
-      TEndPoint node = followers.get(i);
+      Peer node = followers.get(i);
       nodesRate.put(node, flowToRemaining);
     }
   }
 
-  private void exitBurst(
-      int followerNum, Map<TEndPoint, Double> nodesRate, List<TEndPoint> followers) {
+  private void exitBurst(int followerNum, Map<Peer, Double> nodesRate, List<Peer> followers) {
     // lift flow limits
     for (int i = 0; i < followerNum; i++) {
-      TEndPoint node = followers.get(i);
+      Peer node = followers.get(i);
       nodesRate.put(node, maxFlow);
     }
   }

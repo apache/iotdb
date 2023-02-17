@@ -65,29 +65,14 @@ public class NodePathsCountOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeInt(nodePaths.size());
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
-  }
-
-  @Override
-  public boolean hasNext() {
-    return !isFinished;
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
     while (!child.isFinished()) {
+      // read as much child result as possible
       ListenableFuture<?> blocked = child.isBlocked();
       if (!blocked.isDone()) {
-        return blocked;
+        return null;
       }
-      if (child.hasNext()) {
-        TsBlock tsBlock = child.next();
+      if (child.hasNextWithTimer()) {
+        TsBlock tsBlock = child.nextWithTimer();
         if (null != tsBlock && !tsBlock.isEmpty()) {
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             String path = tsBlock.getColumn(0).getBinary(i).toString();
@@ -96,7 +81,23 @@ public class NodePathsCountOperator implements ProcessOperator {
         }
       }
     }
-    return NOT_BLOCKED;
+    isFinished = true;
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(nodePaths.size());
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
+  }
+
+  @Override
+  public boolean hasNext() {
+    return !child.isFinished() || !isFinished;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    return child.isBlocked();
   }
 
   @Override

@@ -45,7 +45,10 @@ public class SharedTsBlockQueueTest {
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(new TFragmentInstanceId(queryId, 0, "0"), mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            new TFragmentInstanceId(queryId, 0, "0"), "test", mockLocalMemoryManager);
+    queue.getCanAddTsBlock().set(null);
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     ExecutorService executor = Executors.newFixedThreadPool(2);
     AtomicReference<Integer> numOfTimesSenderBlocked = new AtomicReference<>(0);

@@ -61,9 +61,8 @@ public class FlinkIoTDBSource {
   }
 
   private static void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session(LOCAL_HOST, 6667, "root", "root");
-    session.open(false);
-    try {
+    try (Session session = new Session(LOCAL_HOST, 6667, "root", "root")) {
+      session.open(false);
       session.setStorageGroup("root.sg1");
       if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
         session.createTimeseries(
@@ -86,7 +85,7 @@ public class FlinkIoTDBSource {
         }
       }
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
       }
     }

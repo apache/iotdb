@@ -18,18 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-
-import java.io.IOException;
 
 public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
-  private TStorageGroupSchema schema;
+  private TDatabaseSchema schema;
 
   public StorageGroupMNode(IMNode parent, String name) {
     super(parent, name);
@@ -38,7 +34,7 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   // TODO: @yukun, remove this constructor
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
-    this.schema = new TStorageGroupSchema(name).setTTL(dataTTL);
+    this.schema = new TDatabaseSchema(name).setTTL(dataTTL);
   }
 
   @Override
@@ -75,12 +71,12 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
-  public void setStorageGroupSchema(TStorageGroupSchema schema) {
+  public void setStorageGroupSchema(TDatabaseSchema schema) {
     this.schema = schema;
   }
 
   @Override
-  public TStorageGroupSchema getStorageGroupSchema() {
+  public TDatabaseSchema getStorageGroupSchema() {
     return schema;
   }
 
@@ -97,21 +93,6 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return MNodeType.STORAGE_GROUP;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeStorageGroupMNode(this);
-  }
-
-  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
-    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
-  }
-
-  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 
   @Override

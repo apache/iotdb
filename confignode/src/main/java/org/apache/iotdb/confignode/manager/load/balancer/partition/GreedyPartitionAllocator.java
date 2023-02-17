@@ -25,9 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;
@@ -39,8 +42,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Allocating new Partitions by greedy algorithm */
 public class GreedyPartitionAllocator implements IPartitionAllocator {
 
-  private static final long TIME_PARTITION_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final boolean ENABLE_DATA_PARTITION_INHERIT_POLICY =
+      CONF.isEnableDataPartitionInheritPolicy();
+  private static final long TIME_PARTITION_INTERVAL = CONF.getTimePartitionInterval();
 
   private final IManager configManager;
 
@@ -50,102 +55,111 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
 
   @Override
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NoAvailableRegionGroupException {
     Map<String, SchemaPartitionTable> result = new ConcurrentHashMap<>();
 
-    unassignedSchemaPartitionSlotsMap.forEach(
-        (storageGroup, unassignedPartitionSlots) -> {
-          // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
-          List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
-              getPartitionManager()
-                  .getSortedRegionSlotsCounter(storageGroup, TConsensusGroupType.SchemaRegion);
+    for (Map.Entry<String, List<TSeriesPartitionSlot>> slotsMapEntry :
+        unassignedSchemaPartitionSlotsMap.entrySet()) {
+      final String storageGroup = slotsMapEntry.getKey();
+      final List<TSeriesPartitionSlot> unassignedPartitionSlots = slotsMapEntry.getValue();
 
-          // Enumerate SeriesPartitionSlot
-          Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap =
-              new ConcurrentHashMap<>();
-          for (TSeriesPartitionSlot seriesPartitionSlot : unassignedPartitionSlots) {
-            // Greedy allocation
-            schemaPartitionMap.put(seriesPartitionSlot, regionSlotsCounter.get(0).getRight());
-            // Bubble sort
-            bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
-          }
-          result.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
-        });
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          getPartitionManager()
+              .getSortedRegionGroupSlotsCounter(storageGroup, TConsensusGroupType.SchemaRegion);
+
+      // Enumerate SeriesPartitionSlot
+      Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new ConcurrentHashMap<>();
+      for (TSeriesPartitionSlot seriesPartitionSlot : unassignedPartitionSlots) {
+        // Greedy allocation
+        schemaPartitionMap.put(seriesPartitionSlot, regionSlotsCounter.get(0).getRight());
+        // Bubble sort
+        bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
+      }
+      result.put(storageGroup, new SchemaPartitionTable(schemaPartitionMap));
+    }
 
     return result;
   }
 
   @Override
   public Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap) {
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
+      throws NoAvailableRegionGroupException {
     Map<String, DataPartitionTable> result = new ConcurrentHashMap<>();
 
-    unassignedDataPartitionSlotsMap.forEach(
-        (storageGroup, unassignedPartitionSlotsMap) -> {
-          // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
-          List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
-              getPartitionManager()
-                  .getSortedRegionSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
+    for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> slotsMapEntry :
+        unassignedDataPartitionSlotsMap.entrySet()) {
+      final String storageGroup = slotsMapEntry.getKey();
+      final Map<TSeriesPartitionSlot, TTimeSlotList> unassignedPartitionSlotsMap =
+          slotsMapEntry.getValue();
 
-          DataPartitionTable dataPartitionTable = new DataPartitionTable();
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          getPartitionManager()
+              .getSortedRegionGroupSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
 
-          // Enumerate SeriesPartitionSlot
-          for (Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionEntry :
-              unassignedPartitionSlotsMap.entrySet()) {
-            SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
+      DataPartitionTable dataPartitionTable = new DataPartitionTable();
 
-            // Enumerate TimePartitionSlot in ascending order
-            List<TTimePartitionSlot> timePartitionSlots = seriesPartitionEntry.getValue();
-            timePartitionSlots.sort(Comparator.comparingLong(TTimePartitionSlot::getStartTime));
-            for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
+      // Enumerate SeriesPartitionSlot
+      for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> seriesPartitionEntry :
+          unassignedPartitionSlotsMap.entrySet()) {
+        SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
 
-              /* Check if the current DataPartition has predecessor firstly, and inherit it if exists */
+        // Enumerate TimePartitionSlot in ascending order
+        List<TTimePartitionSlot> timePartitionSlots =
+            seriesPartitionEntry.getValue().getTimePartitionSlots();
+        timePartitionSlots.sort(Comparator.comparingLong(TTimePartitionSlot::getStartTime));
+        for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
 
-              // Check if the current Partition's predecessor is allocated
-              // in the same batch of Partition creation
-              TConsensusGroupId predecessor =
-                  seriesPartitionTable.getPrecededDataPartition(
-                      timePartitionSlot, TIME_PARTITION_INTERVAL);
-              if (predecessor != null) {
-                seriesPartitionTable
-                    .getSeriesPartitionMap()
-                    .put(timePartitionSlot, Collections.singletonList(predecessor));
-                bubbleSort(predecessor, regionSlotsCounter);
-                continue;
-              }
-
-              // Check if the current Partition's predecessor was allocated
-              // in the former Partition creation
-              predecessor =
-                  getPartitionManager()
-                      .getPrecededDataPartition(
-                          storageGroup,
-                          seriesPartitionEntry.getKey(),
-                          timePartitionSlot,
-                          TIME_PARTITION_INTERVAL);
-              if (predecessor != null) {
-                seriesPartitionTable
-                    .getSeriesPartitionMap()
-                    .put(timePartitionSlot, Collections.singletonList(predecessor));
-                bubbleSort(predecessor, regionSlotsCounter);
-                continue;
-              }
-
-              /* Greedy allocation */
+          /* 1. Inherit policy */
+          if (ENABLE_DATA_PARTITION_INHERIT_POLICY) {
+            // Check if the current Partition's predecessor is allocated
+            // in the same batch of Partition creation
+            TConsensusGroupId predecessor =
+                seriesPartitionTable.getPrecededDataPartition(
+                    timePartitionSlot, TIME_PARTITION_INTERVAL);
+            if (predecessor != null) {
               seriesPartitionTable
                   .getSeriesPartitionMap()
-                  .put(
-                      timePartitionSlot,
-                      Collections.singletonList(regionSlotsCounter.get(0).getRight()));
-              bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
+                  .put(timePartitionSlot, Collections.singletonList(predecessor));
+              bubbleSort(predecessor, regionSlotsCounter);
+              continue;
             }
-            dataPartitionTable
-                .getDataPartitionMap()
-                .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
+
+            // Check if the current Partition's predecessor was allocated
+            // in the former Partition creation
+            predecessor =
+                getPartitionManager()
+                    .getPrecededDataPartition(
+                        storageGroup,
+                        seriesPartitionEntry.getKey(),
+                        timePartitionSlot,
+                        TIME_PARTITION_INTERVAL);
+            if (predecessor != null) {
+              seriesPartitionTable
+                  .getSeriesPartitionMap()
+                  .put(timePartitionSlot, Collections.singletonList(predecessor));
+              bubbleSort(predecessor, regionSlotsCounter);
+              continue;
+            }
           }
-          result.put(storageGroup, dataPartitionTable);
-        });
+
+          /* 2. Greedy policy */
+          seriesPartitionTable
+              .getSeriesPartitionMap()
+              .put(
+                  timePartitionSlot,
+                  Collections.singletonList(regionSlotsCounter.get(0).getRight()));
+          bubbleSort(regionSlotsCounter.get(0).getRight(), regionSlotsCounter);
+        }
+        dataPartitionTable
+            .getDataPartitionMap()
+            .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
+      }
+      result.put(storageGroup, dataPartitionTable);
+    }
 
     return result;
   }

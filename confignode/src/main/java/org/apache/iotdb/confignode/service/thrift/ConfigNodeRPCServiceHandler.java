@@ -17,7 +17,7 @@
 
 package org.apache.iotdb.confignode.service.thrift;
 
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;

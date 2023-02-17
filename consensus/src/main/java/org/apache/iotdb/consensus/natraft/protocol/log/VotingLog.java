@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
 
@@ -33,8 +33,8 @@ public class VotingLog {
 
   protected Entry entry;
   // for NB-Raft
-  protected Set<TEndPoint> weaklyAcceptedNodes;
-  protected Set<TEndPoint> failedNodes;
+  protected Set<Peer> weaklyAcceptedNodes;
+  protected Set<Peer> failedNodes;
   private boolean hasFailed;
   private AppendEntryRequest appendEntryRequest;
   private Future<ByteBuffer> serializedLogFuture;
@@ -72,7 +72,7 @@ public class VotingLog {
     this.entry = entry;
   }
 
-  public Set<TEndPoint> getWeaklyAcceptedNodes() {
+  public Set<Peer> getWeaklyAcceptedNodes() {
     return weaklyAcceptedNodes != null ? weaklyAcceptedNodes : Collections.emptySet();
   }
 
@@ -81,7 +81,7 @@ public class VotingLog {
     return entry.toString();
   }
 
-  public Set<TEndPoint> getFailedNodes() {
+  public Set<Peer> getFailedNodes() {
     return failedNodes;
   }
 

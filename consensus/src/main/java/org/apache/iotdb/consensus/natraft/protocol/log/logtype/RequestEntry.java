@@ -56,8 +56,10 @@ public class RequestEntry extends Entry {
       dataOutputStream.writeLong(getCurrLogTerm());
 
       ByteBuffer byteBuffer = request.serializeToByteBuffer();
+      byteBuffer.rewind();
+      dataOutputStream.writeInt(byteBuffer.remaining());
       dataOutputStream.write(
-          byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.limit() - byteBuffer.position());
+          byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.remaining());
     } catch (IOException e) {
       // unreachable
     }
@@ -70,15 +72,20 @@ public class RequestEntry extends Entry {
     buffer.put((byte) CLIENT_REQUEST.ordinal());
     buffer.putLong(getCurrLogIndex());
     buffer.putLong(getCurrLogTerm());
-    buffer.put(request.serializeToByteBuffer());
+    ByteBuffer byteBuffer = request.serializeToByteBuffer();
+    buffer.putInt(byteBuffer.remaining());
+    buffer.put(byteBuffer);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    int len = buffer.getInt();
+    byte[] bytes = new byte[len];
+    buffer.get(bytes);
 
-    request = new ByteBufferConsensusRequest(buffer);
+    request = new ByteBufferConsensusRequest(ByteBuffer.wrap(bytes));
   }
 
   public IConsensusRequest getRequest() {

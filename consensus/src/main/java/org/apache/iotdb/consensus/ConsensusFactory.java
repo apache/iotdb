@@ -32,13 +32,10 @@ public class ConsensusFactory {
   public static final String CONSTRUCT_FAILED_MSG =
       "Construct consensusImpl failed, Please check your consensus className %s";
 
-  public static final String StandAloneConsensus =
-      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
-  public static final String RatisConsensus = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-  public static final String MultiLeaderConsensus =
-      "org.apache.iotdb.consensus.multileader.MultiLeaderConsensus";
-  public static final String RaftConsensus =
-      "org.apache.iotdb.consensus.natraft.RaftConsensus";
+  public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
+  public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String RAFT_CONSENSUS = "org.apache.iotdb.consensus.natraft.RaftConsensus";
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 

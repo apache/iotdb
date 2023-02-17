@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -36,6 +36,7 @@ import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Arrays;
 import java.util.List;
 
 @SuppressWarnings("java:S106") // for console outputs
@@ -90,8 +91,8 @@ public class CommonUtils {
           }
           return d;
         case TEXT:
-          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
             if (value.length() == 1) {
               return new Binary(value);
             } else {
@@ -106,6 +107,84 @@ public class CommonUtils {
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
     }
+  }
+
+  public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
+    switch (src) {
+      case INT32:
+        if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
+          return true;
+        }
+      case INT64:
+        if (dest == TSDataType.DOUBLE) {
+          return true;
+        }
+      case FLOAT:
+        if (dest == TSDataType.DOUBLE) {
+          return true;
+        }
+    }
+    return false;
+  }
+
+  public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
+    switch (srcDataType) {
+      case INT32:
+        if (destDataType == TSDataType.INT64) {
+          value = (long) ((int) value);
+        } else if (destDataType == TSDataType.FLOAT) {
+          value = (float) ((int) value);
+        } else if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((int) value);
+        }
+        break;
+      case INT64:
+        if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((long) value);
+        }
+        break;
+      case FLOAT:
+        if (destDataType == TSDataType.DOUBLE) {
+          value = (double) ((float) value);
+        }
+        break;
+    }
+    return value;
+  }
+
+  public static Object castArray(TSDataType srcDataType, TSDataType destDataType, Object value) {
+    switch (srcDataType) {
+      case INT32:
+        if (destDataType == TSDataType.INT64) {
+          value = Arrays.stream((int[]) value).mapToLong(Long::valueOf).toArray();
+        } else if (destDataType == TSDataType.FLOAT) {
+          int[] tmp = (int[]) value;
+          float[] result = new float[tmp.length];
+          for (int i = 0; i < tmp.length; i++) {
+            result[i] = (float) tmp[i];
+          }
+          value = result;
+        } else if (destDataType == TSDataType.DOUBLE) {
+          value = Arrays.stream((int[]) value).mapToDouble(Double::valueOf).toArray();
+        }
+        break;
+      case INT64:
+        if (destDataType == TSDataType.DOUBLE) {
+          value = Arrays.stream((long[]) value).mapToDouble(Double::valueOf).toArray();
+        }
+        break;
+      case FLOAT:
+        if (destDataType == TSDataType.DOUBLE) {
+          float[] tmp = (float[]) value;
+          double[] result = new double[tmp.length];
+          for (int i = 0; i < tmp.length; i++) {
+            result[i] = tmp[i];
+          }
+          value = result;
+        }
+        break;
+    }
+    return value;
   }
 
   @TestOnly
@@ -135,10 +214,10 @@ public class CommonUtils {
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
     value = value.toLowerCase();
-    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE.equals(value)) {
+    if (SqlConstant.BOOLEAN_FALSE_NUM.equals(value) || SqlConstant.BOOLEAN_FALSE.equals(value)) {
       return false;
     }
-    if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
+    if (SqlConstant.BOOLEAN_TRUE_NUM.equals(value) || SqlConstant.BOOLEAN_TRUE.equals(value)) {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");

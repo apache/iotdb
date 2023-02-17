@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -51,10 +53,12 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.binary.LogicOrColumnTra
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.unary.DiffFunctionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -69,6 +73,8 @@ import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.mpp.plan.expression.ExpressionType.BETWEEN;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -214,6 +220,9 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
+        } else if (functionExpression.isBuiltInFunction()) {
+          context.cache.put(
+              functionExpression, getBuiltInFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -248,6 +257,24 @@ public class ColumnTransformerVisitor
     ColumnTransformer res = context.cache.get(functionExpression);
     res.addReferenceCount();
     return res;
+  }
+
+  private ColumnTransformer getBuiltInFunctionTransformer(
+      FunctionExpression expression, ColumnTransformerVisitorContext context) {
+    ColumnTransformer childColumnTransformer =
+        this.process(expression.getExpressions().get(0), context);
+
+    switch (expression.getFunctionName()) {
+      case SqlConstant.DIFF:
+        return new DiffFunctionColumnTransformer(
+            TypeFactory.getType(TSDataType.DOUBLE),
+            childColumnTransformer,
+            Boolean.parseBoolean(
+                expression.getFunctionAttributes().getOrDefault("ignoreNull", "true")));
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Scalar function: " + expression.getExpressionString());
+    }
   }
 
   @Override
@@ -299,6 +326,21 @@ public class ColumnTransformerVisitor
                   new ConstantColumnTransformer(
                       TypeFactory.getType(context.getType(constantOperand)),
                       TransformUtils.transformConstantOperandToColumn(constantOperand));
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
+  }
+
+  @Override
+  public ColumnTransformer visitNullOperand(
+      NullOperand nullOperand, ColumnTransformerVisitorContext context) {
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            nullOperand,
+            e -> {
+              NullColumnTransformer columnTransformer = new NullColumnTransformer();
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });
@@ -392,18 +434,17 @@ public class ColumnTransformerVisitor
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer,
       Type returnType) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        BetweenExpression betweenExpression = (BetweenExpression) expression;
-        return new BetweenColumnTransformer(
-            returnType,
-            firstColumnTransformer,
-            secondColumnTransformer,
-            thirdColumnTransformer,
-            betweenExpression.isNotBetween());
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+    if (expression.getExpressionType() == BETWEEN) {
+      BetweenExpression betweenExpression = (BetweenExpression) expression;
+      return new BetweenColumnTransformer(
+          returnType,
+          firstColumnTransformer,
+          secondColumnTransformer,
+          thirdColumnTransformer,
+          betweenExpression.isNotBetween());
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported Expression Type: " + expression.getExpressionType());
     }
   }
 

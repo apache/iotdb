@@ -31,13 +31,13 @@ public class StorageGroupAlreadySetException extends MetadataException {
   private final String storageGroupPath;
 
   public StorageGroupAlreadySetException(String path) {
-    super(getMessage(path, false), TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     storageGroupPath = path;
     hasChild = false;
   }
 
   public StorageGroupAlreadySetException(String path, boolean hasChild) {
-    super(getMessage(path, hasChild), TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     this.hasChild = hasChild;
     storageGroupPath = path;
   }
@@ -52,9 +52,9 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   private static String getMessage(String path, boolean hasChild) {
     if (hasChild) {
-      return String.format("some children of %s have already been set to storage group", path);
+      return String.format("some children of %s have already been created as database", path);
     } else {
-      return String.format("%s has already been set to storage group", path);
+      return String.format("%s has already been created as database", path);
     }
   }
 }

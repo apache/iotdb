@@ -151,7 +151,8 @@ public class SynchronousSequencer implements LogSequencer {
     } catch (Exception e) {
       logger.error("getTerm failed for newly append entries", e);
     }
-    request.setLeader(member.getThisNode());
+    request.setLeader(member.getThisNode().getEndpoint());
+    request.setLeaderId(member.getThisNode().getNodeId());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
     // logManager, the follower can handle the larger commitIndex with no effect
     request.setLeaderCommit(logManager.getCommitLogIndex());

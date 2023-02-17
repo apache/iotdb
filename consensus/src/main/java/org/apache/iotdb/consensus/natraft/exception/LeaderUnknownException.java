@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.consensus.natraft.exception;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 
 import java.util.Collection;
 
 /** Raised when a request should be forwarded to the leader but the leader cannot be found. */
 public class LeaderUnknownException extends Exception {
 
-  public LeaderUnknownException(Collection<TEndPoint> nodes) {
+  public LeaderUnknownException(Collection<Peer> nodes) {
     super(String.format("The leader is unknown in this group %s", nodes));
   }
 }

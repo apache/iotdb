@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
@@ -31,16 +32,16 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_STRONG_ACCEPT;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_WEAK_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_WEAK_ACCEPT;
 
 public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntryResult> {
 
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpInBatchHandler.class);
 
-  private TEndPoint follower;
+  private Peer follower;
   private List<ByteBuffer> logs;
   private AtomicBoolean appendSucceed;
   private String memberName;
@@ -107,7 +108,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntry
     this.memberName = raftMember.getName();
   }
 
-  public void setFollower(TEndPoint follower) {
+  public void setFollower(Peer follower) {
     this.follower = follower;
   }
 

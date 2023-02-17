@@ -130,7 +130,7 @@ nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
 ./sbin/start-cli.sh
 
-SET STORAGE GROUP TO root.turbine;
+CREATE DATABASE root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
@@ -168,7 +168,7 @@ LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]
 
-SET STORAGE GROUP TO root.turbine;
+CREATE DATABASE root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);

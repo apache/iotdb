@@ -77,6 +77,7 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(
+        "StateWindowAccessStrategy does not support pure constant input.");
   }
 }

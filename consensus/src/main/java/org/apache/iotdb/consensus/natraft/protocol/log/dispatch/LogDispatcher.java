@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -61,15 +61,14 @@ public class LogDispatcher {
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   protected RaftMember member;
   private RaftConfig config;
-  protected Map<TEndPoint, BlockingQueue<VotingLog>> nodesLogQueuesMap = new HashMap<>();
-  protected Map<TEndPoint, Boolean> nodesEnabled;
-  protected Map<TEndPoint, RateLimiter> nodesRateLimiter = new HashMap<>();
-  protected Map<TEndPoint, Double> nodesRate = new HashMap<>();
-  protected Map<TEndPoint, ExecutorService> executorServices = new HashMap<>();
+  protected Map<Peer, BlockingQueue<VotingLog>> nodesLogQueuesMap = new HashMap<>();
+  protected Map<Peer, Boolean> nodesEnabled;
+  protected Map<Peer, RateLimiter> nodesRateLimiter = new HashMap<>();
+  protected Map<Peer, Double> nodesRate = new HashMap<>();
+  protected Map<Peer, ExecutorService> executorServices = new HashMap<>();
   protected ExecutorService resultHandlerThread =
       IoTDBThreadPoolFactory.newFixedThreadPool(2, "AppendResultHandler");
-  protected boolean queueOrdered =
-      !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
+  protected boolean queueOrdered;
 
   public int bindingThreadNum;
   public static int maxBatchSize = 10;
@@ -77,19 +76,21 @@ public class LogDispatcher {
   public LogDispatcher(RaftMember member, RaftConfig config) {
     this.member = member;
     this.config = config;
-    bindingThreadNum = config.getDispatcherBindingThreadNum();
+    this.queueOrdered =
+        !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
+    this.bindingThreadNum = config.getDispatcherBindingThreadNum();
     createQueueAndBindingThreads();
   }
 
   public void updateRateLimiter() {
     logger.info("TEndPoint rates: {}", nodesRate);
-    for (Entry<TEndPoint, Double> nodeDoubleEntry : nodesRate.entrySet()) {
+    for (Entry<Peer, Double> nodeDoubleEntry : nodesRate.entrySet()) {
       nodesRateLimiter.get(nodeDoubleEntry.getKey()).setRate(nodeDoubleEntry.getValue());
     }
   }
 
   void createQueueAndBindingThreads() {
-    for (TEndPoint node : member.getAllNodes()) {
+    for (Peer node : member.getAllNodes()) {
       if (!node.equals(member.getThisNode())) {
         BlockingQueue<VotingLog> logBlockingQueue;
         logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
@@ -101,13 +102,14 @@ public class LogDispatcher {
     updateRateLimiter();
 
     for (int i = 0; i < bindingThreadNum; i++) {
-      for (Entry<TEndPoint, BlockingQueue<VotingLog>> pair : nodesLogQueuesMap.entrySet()) {
+      for (Entry<Peer, BlockingQueue<VotingLog>> pair : nodesLogQueuesMap.entrySet()) {
         executorServices
             .computeIfAbsent(
                 pair.getKey(),
                 n ->
                     IoTDBThreadPoolFactory.newCachedThreadPool(
-                        "LogDispatcher-" + member.getName() + "-" + pair.getKey()))
+                        "LogDispatcher-" + member.getName() + "-" + pair.getKey().getEndpoint()
+                            .getIp() + "-" + pair.getKey().getEndpoint().getPort()))
             .submit(newDispatcherThread(pair.getKey(), pair.getValue()));
       }
     }
@@ -115,7 +117,7 @@ public class LogDispatcher {
 
   @TestOnly
   public void close() throws InterruptedException {
-    for (Entry<TEndPoint, ExecutorService> entry : executorServices.entrySet()) {
+    for (Entry<Peer, ExecutorService> entry : executorServices.entrySet()) {
       ExecutorService pool = entry.getValue();
       pool.shutdownNow();
       boolean closeSucceeded = pool.awaitTermination(10, TimeUnit.SECONDS);
@@ -132,7 +134,7 @@ public class LogDispatcher {
 
   public void offer(VotingLog request) {
 
-    for (Entry<TEndPoint, BlockingQueue<VotingLog>> entry : nodesLogQueuesMap.entrySet()) {
+    for (Entry<Peer, BlockingQueue<VotingLog>> entry : nodesLogQueuesMap.entrySet()) {
       if (nodesEnabled != null && !this.nodesEnabled.getOrDefault(entry.getKey(), false)) {
         continue;
       }
@@ -156,18 +158,18 @@ public class LogDispatcher {
     }
   }
 
-  DispatcherThread newDispatcherThread(TEndPoint node, BlockingQueue<VotingLog> logBlockingQueue) {
+  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingLog> logBlockingQueue) {
     return new DispatcherThread(node, logBlockingQueue);
   }
 
   protected class DispatcherThread implements Runnable {
 
-    TEndPoint receiver;
+    Peer receiver;
     private final BlockingQueue<VotingLog> logBlockingDeque;
     protected List<VotingLog> currBatch = new ArrayList<>();
     private final String baseName;
 
-    protected DispatcherThread(TEndPoint receiver, BlockingQueue<VotingLog> logBlockingDeque) {
+    protected DispatcherThread(Peer receiver, BlockingQueue<VotingLog> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
       baseName = "LogDispatcher-" + member.getName() + "-" + receiver;
@@ -219,7 +221,7 @@ public class LogDispatcher {
         List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingLog> currBatch)
         throws TException {
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
-      AsyncRaftServiceClient client = member.getClient(receiver);
+      AsyncRaftServiceClient client = member.getClient(receiver.getEndpoint());
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
@@ -234,7 +236,8 @@ public class LogDispatcher {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
-      request.setLeader(member.getThisNode());
+      request.setLeader(member.getThisNode().getEndpoint());
+      request.setLeaderId(member.getThisNode().getNodeId());
       request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
 
       request.setTerm(member.getStatus().getTerm().get());
@@ -280,7 +283,7 @@ public class LogDispatcher {
     }
 
     public AppendNodeEntryHandler getAppendNodeEntryHandler(
-        VotingLog log, TEndPoint node, int quorumSize) {
+        VotingLog log, Peer node, int quorumSize) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setDirectReceiver(node);
       handler.setLog(log);
@@ -318,11 +321,11 @@ public class LogDispatcher {
     }
   }
 
-  public Map<TEndPoint, Double> getNodesRate() {
+  public Map<Peer, Double> getNodesRate() {
     return nodesRate;
   }
 
-  public Map<TEndPoint, BlockingQueue<VotingLog>> getNodesLogQueuesMap() {
+  public Map<Peer, BlockingQueue<VotingLog>> getNodesLogQueuesMap() {
     return nodesLogQueuesMap;
   }
 }

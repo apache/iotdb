@@ -22,10 +22,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 
 import org.slf4j.Logger;
@@ -55,7 +53,7 @@ public class UpgradeSevice implements IService {
 
   @Override
   public void start() {
-    int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadNum();
+    int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadCount();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }
@@ -95,15 +93,15 @@ public class UpgradeSevice implements IService {
   }
 
   private static void countUpgradeFiles() {
-    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles());
-    logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
+    //    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles());
+    //    logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
   }
 
   private static void upgradeAll() {
-    try {
-      StorageEngine.getInstance().upgradeAll();
-    } catch (StorageEngineException e) {
-      logger.error("Cannot perform a global upgrade because", e);
-    }
+    //    try {
+    //      StorageEngine.getInstance().upgradeAll();
+    //    } catch (StorageEngineException e) {
+    //      logger.error("Cannot perform a global upgrade because", e);
+    //    }
   }
 }

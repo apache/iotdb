@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -32,13 +31,22 @@ import java.util.Queue;
 
 public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   private final TsFileSequenceReader reader;
-  private final Queue<Pair<String, Pair<Long, Long>>> queue;
+
+  // device -> firstMeasurmentNode offset
+  private final Queue<Pair<String, long[]>> queue;
   private Pair<String, Boolean> currentDevice = null;
+  private MetadataIndexNode measurementNode;
+
+  // <startOffset, endOffset>, device leaf node offset in this file
+  private final List<long[]> leafDeviceNodeOffsetList;
 
   public TsFileDeviceIterator(
-      TsFileSequenceReader reader, Queue<Pair<String, Pair<Long, Long>>> queue) {
+      TsFileSequenceReader reader,
+      List<long[]> leafDeviceNodeOffsetList,
+      Queue<Pair<String, long[]>> queue) {
     this.reader = reader;
     this.queue = queue;
+    this.leafDeviceNodeOffsetList = leafDeviceNodeOffsetList;
   }
 
   public Pair<String, Boolean> current() {
@@ -47,7 +55,22 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
 
   @Override
   public boolean hasNext() {
-    return !queue.isEmpty();
+    if (!queue.isEmpty()) {
+      return true;
+    } else if (leafDeviceNodeOffsetList.size() == 0) {
+      // device queue is empty and all device leaf node has been read
+      return false;
+    } else {
+      // queue is empty but there are still some devices on leaf node not being read yet
+      long[] nextDeviceLeafNodeOffset = leafDeviceNodeOffsetList.remove(0);
+      try {
+        reader.getDevicesAndEntriesOfOneLeafNode(
+            nextDeviceLeafNodeOffset[0], nextDeviceLeafNodeOffset[1], queue);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return true;
+    }
   }
 
   @Override
@@ -55,19 +78,22 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
-    List<Pair<String, Boolean>> devices = new ArrayList<>();
+    Pair<String, long[]> startEndPair = queue.remove();
     try {
-      MetadataIndexNode measurementNode =
+      // get the first measurement node of this device, to know if the device is aligned
+      this.measurementNode =
           MetadataIndexNode.deserializeFrom(
-              reader.readData(startEndPair.right.left, startEndPair.right.right));
-      // if tryToGetFirstTimeseriesMetadata(node) returns null, the device is not aligned
-      boolean isAligned = reader.tryToGetFirstTimeseriesMetadata(measurementNode) != null;
+              reader.readData(startEndPair.right[0], startEndPair.right[1]));
+      boolean isAligned = reader.isAlignedDevice(measurementNode);
       currentDevice = new Pair<>(startEndPair.left, isAligned);
       return currentDevice;
     } catch (IOException e) {
       throw new TsFileRuntimeException(
           "Error occurred while reading a time series metadata block.");
     }
+  }
+
+  public MetadataIndexNode getFirstMeasurementNodeOfCurrentDevice() {
+    return measurementNode;
   }
 }

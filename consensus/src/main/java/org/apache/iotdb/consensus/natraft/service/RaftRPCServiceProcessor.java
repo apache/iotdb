@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
 import org.apache.iotdb.consensus.raft.thrift.ExecuteReq;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatResponse;
+import org.apache.iotdb.consensus.raft.thrift.NoMemberException;
 import org.apache.iotdb.consensus.raft.thrift.RaftService;
 import org.apache.iotdb.consensus.raft.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.consensus.raft.thrift.SendSnapshotRequest;
@@ -53,16 +54,26 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
 
   public void handleClientExit() {}
 
+  private RaftMember getMember(TConsensusGroupId groupId) throws TException {
+    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(groupId));
+    if (member == null) {
+      throw new NoMemberException("No such member of: " + groupId);
+    }
+    return member;
+  }
+
   @Override
   public void sendHeartbeat(
-      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(request.groupId));
+      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler)
+      throws TException {
+    RaftMember member = getMember(request.groupId);
     resultHandler.onComplete(member.processHeartbeatRequest(request));
   }
 
   @Override
-  public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(request.groupId));
+  public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler)
+      throws TException {
+    RaftMember member = getMember(request.groupId);
     resultHandler.onComplete(member.processElectionRequest(request));
   }
 
@@ -70,7 +81,7 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   public void appendEntries(
       AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
       throws TException {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(request.groupId));
+    RaftMember member = getMember(request.groupId);
     try {
       resultHandler.onComplete(member.appendEntries(request));
     } catch (UnknownLogTypeException e) {
@@ -79,8 +90,9 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   }
 
   @Override
-  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(request.groupId));
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler)
+      throws TException {
+    RaftMember member = getMember(request.groupId);
     member.installSnapshot(request.snapshotBytes);
     resultHandler.onComplete(null);
   }
@@ -90,14 +102,15 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       long index,
       long term,
       TConsensusGroupId groupId,
-      AsyncMethodCallback<Boolean> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(groupId));
+      AsyncMethodCallback<Boolean> resultHandler) throws TException {
+    RaftMember member = getMember(groupId);
     resultHandler.onComplete(member.matchLog(index, term));
   }
 
   @Override
-  public void executeRequest(ExecuteReq request, AsyncMethodCallback<TSStatus> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(request.groupId));
+  public void executeRequest(ExecuteReq request, AsyncMethodCallback<TSStatus> resultHandler)
+      throws TException {
+    RaftMember member = getMember(request.groupId);
     resultHandler.onComplete(
         member
             .executeForwardedRequest(new ByteBufferConsensusRequest(request.requestBytes))
@@ -111,8 +124,9 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
 
   @Override
   public void requestCommitIndex(
-      TConsensusGroupId groupId, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
-    RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(groupId));
+      TConsensusGroupId groupId, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler)
+      throws TException {
+    RaftMember member = getMember(groupId);
     resultHandler.onComplete(member.requestCommitIndex());
   }
 }

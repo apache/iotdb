@@ -23,15 +23,17 @@
 
 0.12.x 版本之后，IoTDB 将元数据文件编码成二进制。
 
-如果想要解析元数据成人可读的方式，可以使用本工具来解析指定元数据文件。
+如果想要将二进制元数据解析为人可读的字符串格式，可以使用本工具。
 
-该工具可以同时解析 snapshot 文件和 mlog 文件。
+该工具目前仅支持解析 mlog.bin 文件。
+
+在分布式场景下，若 SchemaRegion 的共识协议采用的是 RatisConsensus，IoTDB 不会使用 mlog.bin 文件来存储元数据，也将不会生成 mlog.bin 文件。
 
 ### 使用方式
 
 Linux/MacOS
-> ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
+> ./print-schema-log.sh -f /your path/mlog.bin -o /your path/mlog.txt
 
 Windows
 
-> .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt
+> .\print-schema-log.bat -f \your path\mlog.bin -o \your path\mlog.txt

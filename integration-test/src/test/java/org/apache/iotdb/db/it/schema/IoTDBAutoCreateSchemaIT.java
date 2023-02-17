@@ -21,7 +21,6 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
@@ -31,7 +30,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -46,28 +44,26 @@ import java.util.Set;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAutoCreateSchemaIT {
-  private Statement statement;
-  private Connection connection;
+public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
+
+  public IoTDBAutoCreateSchemaIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
-
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
-  /** create timeseries without setting storage group */
+  /** create timeseries without setting database */
   @Test
   public void createTimeseriesTest() throws ClassNotFoundException {
     String[] sqls = {
@@ -77,18 +73,18 @@ public class IoTDBAutoCreateSchemaIT {
     executeSQL(sqls);
   }
 
-  /** insert data when storage group has been set but timeseries hasn't been created */
+  /** insert data when database has been set but timeseries hasn't been created */
   @Test
   public void insertTest1() throws ClassNotFoundException {
     String[] sqls = {
-      "SET STORAGE GROUP TO root.sg0",
+      "CREATE DATABASE root.sg0",
       "INSERT INTO root.sg0.d1(timestamp,s2) values(1,123.123)",
       "INSERT INTO root.sg0.d1(timestamp,s3) values(1,\"abc\")",
     };
     executeSQL(sqls);
   }
 
-  /** insert data when storage group hasn't been set and timeseries hasn't been created */
+  /** insert data when database hasn't been set and timeseries hasn't been created */
   @Test
   public void insertTest2() throws ClassNotFoundException {
     String[] sqls = {
@@ -154,7 +150,7 @@ public class IoTDBAutoCreateSchemaIT {
   }
 
   /**
-   * test if automatically creating a time series will cause the storage group with same name to
+   * test if automatically creating a time series will cause the database with same name to
    * disappear
    */
   @Test
@@ -162,43 +158,64 @@ public class IoTDBAutoCreateSchemaIT {
     String storageGroup = "root.sg2.a.b.c";
     String timeSeriesPrefix = "root.sg2.a.b";
 
-    statement.execute(String.format("SET storage group TO %s", storageGroup));
-    try {
-      statement.execute(
-          String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
-    } catch (SQLException ignored) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
+      try {
+        statement.execute(
+            String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
+      } catch (SQLException ignored) {
+      }
+
+      // ensure that current database in cache is right.
+      InsertAutoCreate2Tool(statement, storageGroup, timeSeriesPrefix);
     }
-
-    // ensure that current storage group in cache is right.
-    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
-
-    statement.close();
-    connection.close();
     // todo restart test
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
-    //    // ensure that storage group in cache is right after recovering.
+    //    // ensure that database in cache is right after recovering.
     //    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
   }
 
-  private void InsertAutoCreate2Tool(String storageGroup, String timeSeriesPrefix)
-      throws SQLException {
+  private void InsertAutoCreate2Tool(
+      Statement statement, String storageGroup, String timeSeriesPrefix) throws SQLException {
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
-        String str = resultSet.getString(ColumnHeaderConstant.COLUMN_TIMESERIES);
+        String str = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
         resultList.add(str);
       }
     }
     Assert.assertFalse(resultList.contains(timeSeriesPrefix + "c"));
 
     resultList.clear();
-    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+    try (ResultSet resultSet = statement.executeQuery("show databases")) {
       while (resultSet.next()) {
-        resultList.add(resultSet.getString(ColumnHeaderConstant.COLUMN_STORAGE_GROUP));
+        resultList.add(resultSet.getString(ColumnHeaderConstant.DATABASE));
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));
+  }
+
+  /**
+   * insert data when database hasn't been set, timeseries hasn't been created and have null values
+   */
+  @Test
+  public void testInsertAutoCreate3() throws SQLException {
+    String[] sqls = {
+      "INSERT INTO root.sg0.d3(timestamp,s1) values(1,null)",
+      "INSERT INTO root.sg0.d3(timestamp,s1,s2) values(1,null,2)",
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        try {
+          statement.execute(sql);
+        } catch (SQLException e) {
+          Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+        }
+      }
+    }
   }
 }

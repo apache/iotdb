@@ -25,7 +25,7 @@
     <dependency>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>influxdb-protocol</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </dependency>
 ```
 
@@ -70,7 +70,7 @@ The metadata of InfluxDB is tag field model, and the metadata of IoTDB is tree m
 
 #### 2.2.2 IoTDB Metadata
 
-1. storage group: storage group name.
+1. database: database name.
 2. path(time series ID): storage path.
 3. measurement: physical quantity.
 
@@ -79,9 +79,9 @@ The metadata of InfluxDB is tag field model, and the metadata of IoTDB is tree m
 #### 2.2.3 Mapping relationship between the two
 
 The mapping relationship between InfluxDB metadata and IoTDB metadata is as follows:
-1. The database and measurement in InfluxDB are combined as the storage group in IoTDB.
+1. The database and measurement in InfluxDB are combined as the database in IoTDB.
 2. The field key in InfluxDB is used as the measurement path in IoTDB, and the field value in InfluxDB is the measured point value recorded under the path.
-3. Tag in InfluxDB is expressed by the path between storage group and measurement in IoTDB. The tag key of InfluxDB is implicitly expressed by the order of the path between storage group and measurement, and the tag value is recorded as the name of the path in the corresponding order.
+3. Tag in InfluxDB is expressed by the path between database and measurement in IoTDB. The tag key of InfluxDB is implicitly expressed by the order of the path between database and measurement, and the tag value is recorded as the name of the path in the corresponding order.
 
 The transformation relationship from InfluxDB metadata to IoTDB metadata can be represented by the following publicity:
 
@@ -91,9 +91,9 @@ The transformation relationship from InfluxDB metadata to IoTDB metadata can be 
 
 As shown in the figure above, it can be seen that:
 
-In IoTDB, we use the path between storage group and measurement to express the concept of InfluxDB tag, which is the part of the green box on the right in the figure.
+In IoTDB, we use the path between database and measurement to express the concept of InfluxDB tag, which is the part of the green box on the right in the figure.
 
-Each layer between storage group and measurement represents a tag. If the number of tag keys is n, the number of layers of the path between storage group and measurement is n. We sequentially number each layer between storage group and measurement, and each sequence number corresponds to a tag key one by one. At the same time, we use the **path name** of each layer between storage group and measurement to remember tag value. Tag key can find the tag value under the corresponding path level through its own serial number.
+Each layer between database and measurement represents a tag. If the number of tag keys is n, the number of layers of the path between database and measurement is n. We sequentially number each layer between database and measurement, and each sequence number corresponds to a tag key one by one. At the same time, we use the **path name** of each layer between database and measurement to remember tag value. Tag key can find the tag value under the corresponding path level through its own serial number.
 
 #### 2.2.4 Key Problem
 
@@ -129,7 +129,7 @@ When in use, you can first locate the tag through the InfluxDB measurement, then
 
 **Persistence scheme of tag key correspondence order**
 
-Storage group is `root.TAG_ Info`, using `database_name`,`measurement_ name`, `tag_ Name ` and ` tag_ Order ` under the storage group to store tag key and its corresponding order relationship by measuring points.
+Database is `root.TAG_ Info`, using `database_name`,`measurement_ name`, `tag_ Name ` and ` tag_ Order ` under the database to store tag key and its corresponding order relationship by measuring points.
 
 ```
 +-----------------------------+---------------------------+------------------------------+----------------------+-----------------------+

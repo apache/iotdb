@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.appender;
 
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.Response;
+import org.apache.iotdb.consensus.natraft.Utils.Response;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;

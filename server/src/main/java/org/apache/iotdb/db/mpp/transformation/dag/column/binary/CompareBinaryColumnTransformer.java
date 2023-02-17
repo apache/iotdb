@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
-  public CompareBinaryColumnTransformer(
+  protected CompareBinaryColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }
@@ -71,10 +71,11 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   @Override
   protected void checkType() {
     // Boolean type can only be compared by == or !=
-    if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
-        || rightTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
-      throw new UnsupportedOperationException("Unsupported Type");
+    if (leftTransformer.typeNotEquals(TypeEnum.BOOLEAN)
+        && rightTransformer.typeNotEquals(TypeEnum.BOOLEAN)) {
+      return;
     }
+    throw new UnsupportedOperationException("Unsupported Type");
   }
 
   protected int compare(double d1, double d2) {

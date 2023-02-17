@@ -103,20 +103,22 @@ public interface IExternalPipeSinkWriter extends AutoCloseable {
    */
   void insertText(String sgName, String[] path, long time, String value) throws IOException;
 
-  /**
-   * Insert a vector data point to the sink.
-   *
-   * <p>The framework will retry if this method throws an {@link IOException}.
-   *
-   * @param sgName Storage-Group's name.
-   * @param path The parts of a path separated by '.'. For example, for a path root.a.b.c, the input
-   *     argument would be ["root", "a", "b", "c"].
-   * @param dataTypes Datatype of each element in the vector.
-   * @param time Timestamp of the data point. Unit ms.
-   * @param values Value of each element in the vector.
-   */
-  void insertVector(String sgName, String[] path, DataType[] dataTypes, long time, Object[] values)
-      throws IOException;
+  //  /**
+  //   * Insert a vector data point to the sink.
+  //   *
+  //   * <p>The framework will retry if this method throws an {@link IOException}.
+  //   *
+  //   * @param sgName Storage-Group's name.
+  //   * @param path The parts of a path separated by '.'. For example, for a path root.a.b.c, the
+  // input
+  //   *     argument would be ["root", "a", "b", "c"].
+  //   * @param dataTypes Datatype of each element in the vector.
+  //   * @param time Timestamp of the data point. Unit ms.
+  //   * @param values Value of each element in the vector.
+  //   */
+  //  void insertVector(String sgName, String[] path, DataType[] dataTypes, long time, Object[]
+  // values)
+  //      throws IOException;
 
   /**
    * Delete the data points whose timestamp is >= startTime and <= endTime from the sink. The

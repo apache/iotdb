@@ -51,7 +51,7 @@ public abstract class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
-  private RaftConfig config;
+  protected RaftConfig config;
 
   /** manage uncommitted entries */
   private List<Entry> entries;
@@ -109,11 +109,13 @@ public abstract class RaftLogManager {
       StableEntryManager stableEntryManager,
       LogApplier applier,
       String name,
-      IStateMachine stateMachine) {
+      IStateMachine stateMachine,
+      RaftConfig config) {
     this.logApplier = applier;
     this.name = name;
     this.stateMachine = stateMachine;
     this.setStableEntryManager(stableEntryManager);
+    this.config = config;
 
     initConf();
     initEntries();
@@ -154,6 +156,7 @@ public abstract class RaftLogManager {
   private void initEntries() {
     LogManagerMeta meta = stableEntryManager.getMeta();
     List<Entry> allEntriesAfterAppliedIndex = stableEntryManager.getAllEntriesAfterAppliedIndex();
+    entries = new ArrayList<>();
     if (!allEntriesAfterAppliedIndex.isEmpty()) {
       entries.addAll(allEntriesAfterAppliedIndex);
     } else {
@@ -506,7 +509,7 @@ public abstract class RaftLogManager {
       long localFirst = getFirstIndex();
       long localLast = getLastLogIndex();
       low = Math.max(low, localFirst);
-      high = Math.min(high, localLast);
+      high = Math.min(high, localLast + 1);
       return new ArrayList<>(entries.subList((int) (low - localFirst), (int) (high - localFirst)));
     } finally {
       lock.readLock().unlock();

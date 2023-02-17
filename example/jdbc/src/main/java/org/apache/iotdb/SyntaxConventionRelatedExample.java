@@ -65,7 +65,7 @@ public class SyntaxConventionRelatedExample {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize
@@ -73,7 +73,7 @@ public class SyntaxConventionRelatedExample {
 
       // create time series
       try {
-        statement.execute(String.format("SET STORAGE GROUP TO %s", DEVICE));
+        statement.execute(String.format("CREATE DATABASE %s", DEVICE));
         statement.execute(
             String.format(
                 "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
@@ -98,7 +98,7 @@ public class SyntaxConventionRelatedExample {
       ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
       List<String> timeseriesList = new ArrayList<>();
       while (resultSet.next()) {
-        timeseriesList.add(resultSet.getString("timeseries"));
+        timeseriesList.add(resultSet.getString("Timeseries"));
       }
       for (String path : timeseriesList) {
         for (int i = 0; i <= 10; i++) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
@@ -71,11 +72,11 @@ public class LastQueryMergeOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
-        1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
 
-    fragmentInstanceContext
+    driverContext
         .getOperatorContexts()
         .forEach(operatorContext -> operatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
@@ -99,7 +100,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return driverContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -163,7 +164,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return driverContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -209,7 +210,7 @@ public class LastQueryMergeOperatorTest {
 
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             ImmutableList.of(operator1, operator2),
             Comparator.reverseOrder());
 
@@ -267,11 +268,11 @@ public class LastQueryMergeOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
-        1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
 
-    fragmentInstanceContext
+    driverContext
         .getOperatorContexts()
         .forEach(operatorContext -> operatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
@@ -295,7 +296,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return driverContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -359,7 +360,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return driverContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -405,7 +406,7 @@ public class LastQueryMergeOperatorTest {
 
     LastQueryMergeOperator lastQueryMergeOperator =
         new LastQueryMergeOperator(
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             ImmutableList.of(operator1, operator2),
             Comparator.naturalOrder());
 

@@ -30,10 +30,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
 public abstract class FloatTVList extends TVList {
   // list of primitive array, add 1 when expanded -> float primitive array
@@ -45,12 +48,39 @@ public abstract class FloatTVList extends TVList {
     values = new ArrayList<>();
   }
 
+  public static FloatTVList newList() {
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickFloatTVList();
+      case BACKWARD:
+        return new BackFloatTVList();
+      default:
+        return new TimFloatTVList();
+    }
+  }
+
+  @Override
+  public FloatTVList clone() {
+    FloatTVList cloneList = FloatTVList.newList();
+    cloneAs(cloneList);
+    for (float[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private float[] cloneValue(float[] array) {
+    float[] cloneArray = new float[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
+  }
+
   @Override
   public void putFloat(long timestamp, float value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
-    minTime = Math.min(minTime, timestamp);
+    maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     rowCount++;
@@ -149,10 +179,10 @@ public abstract class FloatTVList extends TVList {
       timeIdxOffset = start;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMinTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMinTimeAndSorted(time, start, end);
+      updateMaxTimeAndSorted(time, start, end);
     }
 
     while (idx < end) {
@@ -181,7 +211,7 @@ public abstract class FloatTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMinTimeAndSorted(
+  int dropNullValThenUpdateMaxTimeAndSorted(
       long[] time, float[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
@@ -198,14 +228,15 @@ public abstract class FloatTVList extends TVList {
         time[tIdx - nullCnt] = time[tIdx];
         values[vIdx - nullCnt] = values[vIdx];
       }
-      // update minTime and sorted
+      // update maxTime and sorted
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
+      maxTime = Math.max(maxTime, time[tIdx]);
       if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
         inputSorted = false;
       }
     }
-    minTime = Math.min(inPutMinTime, minTime);
+
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }
@@ -228,5 +259,18 @@ public abstract class FloatTVList extends TVList {
       buffer.putLong(getTime(rowIdx));
       buffer.putFloat(getFloat(rowIdx));
     }
+  }
+
+  public static FloatTVList deserialize(DataInputStream stream) throws IOException {
+    FloatTVList tvList = FloatTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    float[] values = new float[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readFloat();
+    }
+    tvList.putFloats(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

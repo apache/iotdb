@@ -41,10 +41,14 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.RaftConsensusClientPool.AsyncRaftServiceClientPoolFactory;
+import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.exception.CheckConsistencyException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol.FlowMonitor;
+import org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
+import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -61,12 +65,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class RaftConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftConsensus.class);
   private final TEndPoint thisNode;
+  private final int thisNodeId;
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, RaftMember> stateMachineMap = new ConcurrentHashMap<>();
@@ -76,7 +80,8 @@ public class RaftConsensus implements IConsensus {
   private final IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager;
 
   public RaftConsensus(ConsensusConfig config, Registry registry) {
-    this.thisNode = config.getThisNode();
+    this.thisNode = config.getThisNodeEndPoint();
+    this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
     this.config = new RaftConfig(config);
     this.registry = registry;
@@ -84,12 +89,14 @@ public class RaftConsensus implements IConsensus {
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncRaftServiceClient>()
             .createClientManager(new AsyncRaftServiceClientPoolFactory(this.config));
+    FlowMonitorManager.INSTANCE.setConfig(this.config);
+    SyncClientAdaptor.setConfig(this.config);
   }
 
   @Override
   public void start() throws IOException {
     initAndRecover();
-    service.initAsyncedServiceImpl(new RaftRPCService(thisNode, config));
+    service.initAsyncedServiceImpl(new RaftRPCServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {
@@ -107,13 +114,16 @@ public class RaftConsensus implements IConsensus {
         for (Path path : stream) {
           Path fileName = path.getFileName();
           String[] items = fileName.toString().split("_");
+          if (items.length != 2) {
+            continue;
+          }
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
           RaftMember raftMember =
               new RaftMember(
                   config,
-                  thisNode,
+                  new Peer(consensusGroupId, thisNodeId, thisNode),
                   new ArrayList<>(),
                   consensusGroupId,
                   registry.apply(consensusGroupId),
@@ -143,7 +153,7 @@ public class RaftConsensus implements IConsensus {
 
     TSStatus status;
     if (impl.isReadOnly()) {
-      status = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+      status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
       status = impl.processRequest(request);
@@ -174,7 +184,8 @@ public class RaftConsensus implements IConsensus {
           .setException(new IllegalPeerNumException(consensusGroupSize))
           .build();
     }
-    if (!peers.contains(new Peer(groupId, thisNode))) {
+    Peer thisPeer = new Peer(groupId, thisNodeId, thisNode);
+    if (!peers.contains(thisPeer)) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
@@ -191,12 +202,7 @@ public class RaftConsensus implements IConsensus {
           }
           RaftMember impl =
               new RaftMember(
-                  config,
-                  thisNode,
-                  peers.stream().map(Peer::getEndpoint).collect(Collectors.toList()),
-                  groupId,
-                  registry.apply(groupId),
-                  clientManager);
+                  config, thisPeer, peers, groupId, registry.apply(groupId), clientManager);
           impl.start();
           return impl;
         });
@@ -243,6 +249,11 @@ public class RaftConsensus implements IConsensus {
   }
 
   @Override
+  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+  }
+
+  @Override
   public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
     return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
@@ -272,7 +283,7 @@ public class RaftConsensus implements IConsensus {
     if (impl == null) {
       return null;
     }
-    return new Peer(groupId, impl.getStatus().getLeader().get());
+    return impl.getStatus().getLeader().get();
   }
 
   @Override

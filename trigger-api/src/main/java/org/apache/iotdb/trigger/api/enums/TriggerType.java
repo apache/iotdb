@@ -21,7 +21,7 @@ package org.apache.iotdb.trigger.api.enums;
 
 public enum TriggerType {
   STATEFUL((byte) 0, "STATEFUL"),
-  STATELESS((byte) 0, "STATELESS");
+  STATELESS((byte) 1, "STATELESS");
 
   private final byte id;
   private final String type;

@@ -62,14 +62,13 @@ public class RaftRPCService extends ThriftService implements RaftRPCServiceMBean
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =
           new ThriftServiceThread(
               (TBaseAsyncProcessor) processor,
               getID().getName(),
-              ThreadName.MULTI_LEADER_CONSENSUS_RPC_PROCESSOR.getName(),
+              ThreadName.RAFT_CONSENSUS_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcConfig().getRpcSelectorThreadNum(),
@@ -84,7 +83,7 @@ public class RaftRPCService extends ThriftService implements RaftRPCServiceMBean
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.MULTI_LEADER_CONSENSUS_RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.RAFT_CONSENSUS_RPC_SERVICE.getName());
   }
 
   @Override

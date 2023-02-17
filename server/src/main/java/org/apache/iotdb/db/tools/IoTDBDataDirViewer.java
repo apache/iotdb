@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -88,7 +88,7 @@ public class IoTDBDataDirViewer {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be storage group directories under "
+          "Irregular data dir structure.There should be database directories under "
               + "the sequence/unsequence directory "
               + seqOrUnseqDir.getName());
     }
@@ -106,7 +106,7 @@ public class IoTDBDataDirViewer {
     if (files == null) {
       throw new IOException(
           "Irregular data dir structure.There should be timeInterval directories under "
-              + "the storage group directory "
+              + "the database directory "
               + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
@@ -151,9 +151,9 @@ public class IoTDBDataDirViewer {
               "|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
               resource.getStartTime(device),
-              DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
               resource.getEndTime(device),
-              DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
+              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
   }
 

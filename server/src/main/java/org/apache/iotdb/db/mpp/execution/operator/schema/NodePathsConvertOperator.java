@@ -53,7 +53,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.child = requireNonNull(child, "child operator is null");
     this.outputDataTypes =
-        ColumnHeaderConstant.showChildPathsColumnHeaders.stream()
+        ColumnHeaderConstant.showChildNodesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
   }
@@ -70,7 +70,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock block = child.next();
+    TsBlock block = child.nextWithTimer();
     if (block == null || block.isEmpty()) {
       return null;
     }
@@ -95,7 +95,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return child.hasNextWithTimer();
   }
 
   @Override

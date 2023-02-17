@@ -24,7 +24,7 @@
 自动创建元数据指的是根据写入数据的特征自动创建出用户未定义的时间序列，
 这既能解决海量序列场景下设备及测点难以提前预测与建模的难题，又能为用户提供开箱即用的写入体验。
 
-## 自动创建存储组的元数据
+## 自动创建 database
 
 * enable\_auto\_create\_schema
 
@@ -39,18 +39,18 @@
 
 | 名字 | default\_storage\_group\_level |
 |:---:|:---|
-| 描述 | 指定存储组在时间序列所处的层级，默认为第 1 层（root为第 0 层） |
+| 描述 | 指定 database 在时间序列所处的层级，默认为第 1 层（root为第 0 层） |
 | 类型 | int |
 | 默认值 | 1 |
 | 改后生效方式 | 仅允许在第一次启动服务前修改 |
 
 以下图为例：
 
-* 当 default_storage_group_level=1 时，将使用 root.turbine1 和 root.turbine2 作为存储组。
+* 当 default_storage_group_level=1 时，将使用 root.turbine1 和 root.turbine2 作为 database。
 
-* 当 default_storage_group_level=2 时，将使用 root.turbine1.d1、root.turbine1.d2、root.turbine2.d1 和 root.turbine2.d2 作为存储组。
+* 当 default_storage_group_level=2 时，将使用 root.turbine1.d1、root.turbine1.d2、root.turbine2.d1 和 root.turbine2.d2 作为 database。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create storage group example">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create database example">
 
 ## 自动创建序列的元数据（前端指定数据类型）
 

@@ -6,11 +6,13 @@ on:
 #      - master
 #    paths-ignore:
 #      - 'docs/**'
+#      - 'site/**'
 #  pull_request:
 #    branches:
 #      - master
 #    paths-ignore:
 #      - 'docs/**'
+#      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -28,14 +30,15 @@ jobs:
       fail-fast: true
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
+          distribution: liberica
           java-version: 11
 
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}

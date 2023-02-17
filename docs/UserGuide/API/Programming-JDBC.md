@@ -82,16 +82,16 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
-      statement.execute("SET STORAGE GROUP TO root.demo");
+      statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
 
 
-    //Show storage group
-    statement.execute("SHOW STORAGE GROUP");
+    //SHOW DATABASES
+    statement.execute("SHOW DATABASES");
     outputResult(statement.getResultSet());
 
     //Create time series
@@ -213,6 +213,6 @@ public class JDBCExample {
 
 The parameter `version` can be used in the url:
 ````java
-String url = "jdbc:iotdb://127.0.0.1:6667?version=V_0_12";
+String url = "jdbc:iotdb://127.0.0.1:6667?version=V_1_0";
 ````
-The parameter `version` represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`.
+The parameter `version` represents the SQL semantic version used by the client, which is used to be compatible with the SQL semantics of 0.12 when upgrading 0.13. The possible values are: `V_0_12`, `V_0_13`, `V_1_0`.

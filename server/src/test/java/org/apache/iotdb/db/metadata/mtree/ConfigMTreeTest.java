@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -36,9 +35,6 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -72,20 +68,20 @@ public class ConfigMTreeTest {
       fail("Expected exception");
     } catch (MetadataException e) {
       assertEquals(
-          "some children of root.edge1 have already been set to storage group", e.getMessage());
+          "some children of root.edge1 have already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge2"));
       root.setStorageGroup(new PartialPath("root.edge2.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+      assertEquals("root.edge2 has already been created as database", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+      assertEquals("root.edge1.access has already been created as database", e.getMessage());
     }
   }
 
@@ -99,41 +95,11 @@ public class ConfigMTreeTest {
   }
 
   @Test
-  public void testGetAllChildNodeNamesByPath() {
-    try {
-      root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.setStorageGroup(new PartialPath("root.a.d5"));
-
-      // getChildNodeByPath
-      Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0")).left;
-      Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a")).left;
-      Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root")).left;
-      assertEquals(new HashSet<>(), result1);
-      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
-      assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
-
-      // if child node is nll   will return  null HashSet
-      Set<String> result4 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5")).left;
-      assertEquals(result4, new HashSet<>(Collections.emptyList()));
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
-  }
-
-  @Test
   public void testSetStorageGroup() throws IllegalPathException {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -147,7 +113,7 @@ public class ConfigMTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
       Assert.assertEquals(
-          "some children of root.laptop have already been set to storage group", e.getMessage());
+          "some children of root.laptop have already been created as database", e.getMessage());
     }
 
     try {
@@ -159,31 +125,6 @@ public class ConfigMTreeTest {
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
-  }
-
-  @Test
-  public void testCheckStorageGroup() {
-    try {
-      assertFalse(root.isStorageGroup(new PartialPath("root")));
-      assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d2"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d3")));
-
-      root.setStorageGroup(new PartialPath("root.`1`"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.`1`")));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -270,33 +211,37 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));
-    LocalSchemaProcessor.StorageGroupFilter filter =
-        storageGroup -> storageGroup.equals("root.sg1");
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false);
     Assert.assertEquals(2, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter);
-    Assert.assertEquals(0, result.left.size());
-    Assert.assertEquals(1, result.right.size());
+    root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
+    root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
+    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.ln"));
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true);
     Assert.assertEquals(0, result.left.size());
-    Assert.assertEquals(1, result.right.size());
+    Assert.assertEquals(5, result.right.size());
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg2")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.ln")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.test.`001.002.003`")));
   }
 
   @Test
@@ -326,8 +271,7 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      newTree.isStorageGroup(pathList[i]);
-      TStorageGroupSchema storageGroupSchema =
+      TDatabaseSchema storageGroupSchema =
           newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
@@ -373,7 +317,7 @@ public class ConfigMTreeTest {
     }
 
     try {
-      List<String> pathList = root.getPathsSetOnTemplate(0);
+      List<String> pathList = root.getPathsSetOnTemplate(0, false);
       Assert.assertTrue(pathList.contains("root.a.template0"));
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {

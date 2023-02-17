@@ -34,7 +34,7 @@ public abstract class Operation {
   private long startIndex;
   private long endIndex;
 
-  public Operation(
+  protected Operation(
       OperationType operationType, String storageGroup, long startIndex, long endIndex) {
     this.operationType = operationType;
     this.storageGroup = storageGroup;

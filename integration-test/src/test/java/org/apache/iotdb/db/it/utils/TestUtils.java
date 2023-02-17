@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
 
@@ -31,11 +35,13 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -45,10 +51,23 @@ public class TestUtils {
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO replace with prepareBatchData
       for (String sql : sqls) {
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void prepareData(List<String> sqls) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.addBatch(sql);
+      }
+      statement.executeBatch();
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -257,5 +276,41 @@ public class TestUtils {
       cnt++;
     }
     assertEquals(expectedRetArray.length, cnt);
+  }
+
+  public static void executeNonQuery(String sql) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void assertResultSetEqual(
+      SessionDataSet actualResultSet,
+      List<String> expectedColumnNames,
+      String[] expectedRetArray,
+      boolean ignoreTimeStamp) {
+    try {
+      List<String> actualColumnNames = actualResultSet.getColumnNames();
+      if (ignoreTimeStamp) {
+        assertEquals(expectedColumnNames, actualColumnNames);
+      } else {
+        assertEquals(TIMESTAMP_STR, actualColumnNames.get(0));
+        assertEquals(expectedColumnNames, actualColumnNames.subList(1, actualColumnNames.size()));
+      }
+
+      int count = 0;
+      while (actualResultSet.hasNext()) {
+        RowRecord rowRecord = actualResultSet.next();
+        assertEquals(expectedRetArray[count++], rowRecord.toString().replace('\t', ','));
+      }
+      assertEquals(expectedRetArray.length, count);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

@@ -325,8 +325,8 @@ public class TsFileWriterTest {
       QueryDataSet dataSet =
           tsFileReader.query(
               QueryExpression.create()
-                  .addSelectedPath(new Path("d1", "s1"))
-                  .addSelectedPath(new Path("d1", "s2")));
+                  .addSelectedPath(new Path("d1", "s1", true))
+                  .addSelectedPath(new Path("d1", "s2", true)));
       assertFalse(dataSet.hasNext());
       tsFileReader.close();
     } catch (IOException e) {
@@ -345,9 +345,9 @@ public class TsFileWriterTest {
       QueryDataSet dataSet =
           tsFileReader.query(
               QueryExpression.create()
-                  .addSelectedPath(new Path("d1", "s1"))
-                  .addSelectedPath(new Path("d1", "s2"))
-                  .addSelectedPath(new Path("d1", "s3")));
+                  .addSelectedPath(new Path("d1", "s1", true))
+                  .addSelectedPath(new Path("d1", "s2", true))
+                  .addSelectedPath(new Path("d1", "s3", true)));
       while (dataSet.hasNext()) {
         RowRecord result = dataSet.next();
         assertEquals(2, result.getFields().size());

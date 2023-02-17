@@ -23,16 +23,16 @@
 
 Since version 0.14.0, IoTDB could store schema into a persistent slotted file.
 
-If you want to parse schema file into a human readable way, you can use this tool to parse the specified schema file file.
+If you want to parse schema file into a human-readable way, you can use this tool to parse the specified schema file.
 
 The tool can sketch .pst file.
 
 ### How to use
 
 Linux/MacOS
-> ./SchemaFileSketcher.sh -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-schema-file.sh -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./SchemaFileSketcher.bat -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-schema-file.bat -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
 

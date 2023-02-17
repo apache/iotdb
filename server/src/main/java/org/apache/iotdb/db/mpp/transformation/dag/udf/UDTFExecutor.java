@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
-import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,7 +80,7 @@ public class UDTFExecutor {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
 
-    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
+    udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
         new UDFParameters(
@@ -149,10 +149,13 @@ public class UDTFExecutor {
   }
 
   private void onError(String methodName, Exception e) {
-    LOGGER.warn("Error occurred during executing UDTF", e);
+    LOGGER.warn(
+        "Error occurred during executing UDTF, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+        e);
     throw new RuntimeException(
         String.format(
-                "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
+                "Error occurred during executing UDTF#%s: %s, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+                methodName, System.lineSeparator())
             + e);
   }
 

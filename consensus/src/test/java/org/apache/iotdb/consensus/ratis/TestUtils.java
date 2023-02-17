@@ -76,6 +76,7 @@ public class TestUtils {
     private AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private TEndPoint leaderEndpoint;
+    private int leaderId;
     private List<Peer> configuration;
 
     @Override
@@ -88,16 +89,21 @@ public class TestUtils {
 
     @Override
     public TSStatus write(IConsensusRequest request) {
+      if (((TestRequest) request).isIncr()) {
+        integer.incrementAndGet();
+      }
+      return new TSStatus(200);
+    }
+
+    @Override
+    public IConsensusRequest deserializeRequest(IConsensusRequest request) {
       TestRequest testRequest;
       if (request instanceof ByteBufferConsensusRequest) {
         testRequest = new TestRequest(request.serializeToByteBuffer());
       } else {
         testRequest = (TestRequest) request;
       }
-      if (testRequest.isIncr()) {
-        integer.incrementAndGet();
-      }
-      return new TSStatus(200);
+      return testRequest;
     }
 
     @Override
@@ -131,11 +137,11 @@ public class TestUtils {
     }
 
     @Override
-    public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
-      this.leaderEndpoint = newLeader;
+    public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
-      System.out.println(newLeader);
+      System.out.println(newLeaderId);
       System.out.println("----------------------");
     }
 

@@ -20,7 +20,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -66,7 +67,7 @@ public class ThriftConfigNodeSerDeUtils {
   }
 
   public static void serializeTStorageGroupSchema(
-      TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
+      TDatabaseSchema storageGroupSchema, ByteBuffer buffer) {
     try {
       storageGroupSchema.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -74,8 +75,8 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TStorageGroupSchema deserializeTStorageGroupSchema(ByteBuffer buffer) {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+  public static TDatabaseSchema deserializeTStorageGroupSchema(ByteBuffer buffer) {
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(buffer));
     } catch (TException e) {
@@ -85,7 +86,7 @@ public class ThriftConfigNodeSerDeUtils {
   }
 
   public static void serializeTStorageGroupSchema(
-      TStorageGroupSchema storageGroupSchema, OutputStream outputStream) {
+      TDatabaseSchema storageGroupSchema, OutputStream outputStream) {
     try {
       storageGroupSchema.write(generateWriteProtocol(outputStream));
     } catch (TException e) {
@@ -93,8 +94,8 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TStorageGroupSchema deserializeTStorageGroupSchema(InputStream inputStream) {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+  public static TDatabaseSchema deserializeTStorageGroupSchema(InputStream inputStream) {
+    TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(inputStream));
     } catch (TException e) {
@@ -129,5 +130,23 @@ public class ThriftConfigNodeSerDeUtils {
       throw new ThriftSerDeException("Read TConfigNodeLocation failed: ", e);
     }
     return configNodeLocation;
+  }
+
+  public static void serializeTPipeSinkInfo(TPipeSinkInfo pipeSinkInfo, DataOutputStream stream) {
+    try {
+      pipeSinkInfo.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TPipeSinkInfo failed: ", e);
+    }
+  }
+
+  public static TPipeSinkInfo deserializeTPipeSinkInfo(ByteBuffer buffer) {
+    TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
+    try {
+      pipeSinkInfo.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TPipeSinkInfo failed: ", e);
+    }
+    return pipeSinkInfo;
   }
 }

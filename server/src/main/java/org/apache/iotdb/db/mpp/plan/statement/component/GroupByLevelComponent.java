@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
@@ -39,11 +40,32 @@ public class GroupByLevelComponent extends StatementNode {
     this.levels = levels;
   }
 
-  public void updateIsCountStar(FunctionExpression rawExpression) {
-    isCountStar.add(rawExpression.isCountStar());
+  public void updateIsCountStar(Expression rawExpression) {
+    if (rawExpression instanceof FunctionExpression) {
+      isCountStar.add(((FunctionExpression) rawExpression).isCountStar());
+    } else {
+      isCountStar.add(false);
+    }
   }
 
   public boolean isCountStar(int i) {
     return isCountStar.get(i);
+  }
+
+  public String toSQLString(boolean hasGroupByTime) {
+    StringBuilder sqlBuilder = new StringBuilder();
+    if (hasGroupByTime) {
+      sqlBuilder.append(", ");
+    } else {
+      sqlBuilder.append("GROUP BY ");
+    }
+    sqlBuilder.append("LEVEL = ");
+    for (int i = 0; i < levels.length; i++) {
+      sqlBuilder.append(levels[i]);
+      if (i < levels.length - 1) {
+        sqlBuilder.append(',').append(' ');
+      }
+    }
+    return sqlBuilder.toString();
   }
 }

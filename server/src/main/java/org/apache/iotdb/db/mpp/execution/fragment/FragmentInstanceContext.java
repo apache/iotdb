@@ -18,22 +18,29 @@
  */
 package org.apache.iotdb.db.mpp.execution.fragment;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -41,13 +48,12 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
 
-  // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
-  // with CopyOnWriteArrayList or some other thread safe data structure
-  private final List<OperatorContext> operatorContexts = new ArrayList<>();
-
-  private DriverContext driverContext;
-
   private final FragmentInstanceStateMachine stateMachine;
+
+  private IDataRegionForQuery dataRegion;
+  private Filter timeFilter;
+  // Shared by all scan operators in this fragment instance to avoid memory problem
+  private QueryDataSource sharedQueryDataSource;
 
   private final long createNanos = System.nanoTime();
 
@@ -58,6 +64,9 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
+  // session info
+  private SessionInfo sessionInfo;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -67,8 +76,22 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
-    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, sessionInfo);
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      IDataRegionForQuery dataRegion,
+      Filter timeFilter) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -79,10 +102,41 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      IDataRegionForQuery dataRegion,
+      Filter timeFilter) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataRegion = dataRegion;
+    this.timeFilter = timeFilter;
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+  }
+
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  @TestOnly
+  public void setDataRegion(IDataRegionForQuery dataRegion) {
+    this.dataRegion = dataRegion;
   }
 
   // used for compaction
@@ -126,47 +180,27 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public OperatorContext addOperatorContext(
-      int operatorId, PlanNodeId planNodeId, String operatorType) {
-    checkArgument(operatorId >= 0, "operatorId is negative");
-
-    for (OperatorContext operatorContext : operatorContexts) {
-      checkArgument(
-          operatorId != operatorContext.getOperatorId(),
-          "A context already exists for operatorId %s",
-          operatorId);
-    }
-
-    OperatorContext operatorContext =
-        new OperatorContext(operatorId, planNodeId, operatorType, this);
-    operatorContexts.add(operatorContext);
-    return operatorContext;
-  }
-
-  public List<OperatorContext> getOperatorContexts() {
-    return operatorContexts;
-  }
-
   public FragmentInstanceId getId() {
     return id;
-  }
-
-  public DriverContext getDriverContext() {
-    return driverContext;
-  }
-
-  public void setDriverContext(DriverContext driverContext) {
-    this.driverContext = driverContext;
   }
 
   public void failed(Throwable cause) {
     stateMachine.failed(cause);
   }
 
+  /** @return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
+        .findFirst()
         .map(Throwable::getMessage)
-        .collect(Collectors.joining("; "));
+        .orElse("");
+  }
+
+  /** @return List of specific throwable and stack trace */
+  public List<FragmentInstanceFailureInfo> getFailureInfoList() {
+    return stateMachine.getFailureCauses().stream()
+        .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+        .collect(Collectors.toList());
   }
 
   public void finished() {
@@ -189,15 +223,61 @@ public class FragmentInstanceContext extends QueryContext {
     return executionEndTime.get();
   }
 
+  @Override
   public long getStartTime() {
     return executionStartTime.get();
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(stateMachine.getState(), getEndTime(), getFailedCause());
+    return new FragmentInstanceInfo(
+        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return sessionInfo;
+  }
+
+  public Optional<Throwable> getFailureCause() {
+    return Optional.ofNullable(stateMachine.getFailureCauses().peek());
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  public IDataRegionForQuery getDataRegion() {
+    return dataRegion;
+  }
+
+  public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
+    dataRegion.readLock();
+    try {
+      List<PartialPath> pathList = new ArrayList<>();
+      Set<String> selectedDeviceIdSet = new HashSet<>();
+      for (PartialPath path : sourcePaths) {
+        PartialPath translatedPath = IDTable.translateQueryPath(path);
+        pathList.add(translatedPath);
+        selectedDeviceIdSet.add(translatedPath.getDevice());
+      }
+
+      this.sharedQueryDataSource =
+          dataRegion.query(
+              pathList,
+              // when all the selected series are under the same device, the QueryDataSource will be
+              // filtered according to timeIndex
+              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              this,
+              timeFilter != null ? timeFilter.copy() : null);
+    } finally {
+      dataRegion.readUnlock();
+    }
+  }
+
+  public QueryDataSource getSharedQueryDataSource() {
+    return sharedQueryDataSource;
   }
 }

@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -32,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * When using session API, measurement, device, storage group and path are represented by String.
- * The content of the String should be the same as what you would write in a SQL statement. This
- * class is an example to help you understand better.
+ * When using session API, measurement, device, database and path are represented by String. The
+ * content of the String should be the same as what you would write in a SQL statement. This class
+ * is an example to help you understand better.
  */
 public class SyntaxConventionRelatedExample {
   private static Session session;
@@ -76,7 +76,7 @@ public class SyntaxConventionRelatedExample {
             .port(6667)
             .username("root")
             .password("root")
-            .version(Version.V_0_13)
+            .version(Version.V_1_0)
             .build();
     session.open(false);
 
@@ -86,7 +86,7 @@ public class SyntaxConventionRelatedExample {
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
       }
     }

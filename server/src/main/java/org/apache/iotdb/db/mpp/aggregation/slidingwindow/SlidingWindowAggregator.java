@@ -45,14 +45,16 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   // cached partial aggregation result of pre-aggregate windows
   protected Deque<PartialAggregationResult> deque;
 
-  public SlidingWindowAggregator(
+  protected TimeRange curTimeRange;
+
+  protected SlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
     super(accumulator, step, inputLocationList);
     this.deque = new LinkedList<>();
   }
 
   @Override
-  public int processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock, boolean ignoringNull) {
     checkArgument(
         step.isInputPartial(),
         "Step in SlidingWindowAggregationOperator can only process partial result");

@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +31,9 @@ import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_LEADER_STILL_ONLINE;
-import static org.apache.iotdb.consensus.natraft.protocol.Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_LEADER_STILL_ONLINE;
+import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
 
 /**
  * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
@@ -44,7 +45,7 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
 
   private RaftMember raftMember;
   private String memberName;
-  private TEndPoint voter;
+  private Peer voter;
   private long currTerm;
   private AtomicInteger requiredVoteNum;
   private AtomicBoolean terminated;
@@ -54,7 +55,7 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
 
   public ElectionRespHandler(
       RaftMember raftMember,
-      TEndPoint voter,
+      Peer voter,
       long currTerm,
       AtomicInteger requiredVoteNum,
       AtomicBoolean terminated,
@@ -129,7 +130,10 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onError(Exception exception) {
     if (exception instanceof ConnectException) {
-      logger.warn("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
+      logger.debug("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
+    } else if (exception instanceof TApplicationException && exception.getMessage()
+        .contains("No such member")) {
+      logger.debug("{}: voter {} not ready: {}", memberName, voter, exception.getMessage());
     } else {
       logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
     }

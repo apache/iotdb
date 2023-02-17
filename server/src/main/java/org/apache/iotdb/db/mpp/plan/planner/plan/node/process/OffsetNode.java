@@ -24,8 +24,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,11 +34,9 @@ import java.util.Objects;
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
  * upstream nodes
  */
-public class OffsetNode extends ProcessNode {
+public class OffsetNode extends SingleChildProcessNode {
 
   private final int offset;
-
-  private PlanNode child;
 
   public OffsetNode(PlanNodeId id, int offset) {
     super(id);
@@ -48,23 +44,8 @@ public class OffsetNode extends ProcessNode {
   }
 
   public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
-    this(id, offset);
-    this.child = child;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
+    super(id, child);
+    this.offset = offset;
   }
 
   @Override
@@ -100,10 +81,6 @@ public class OffsetNode extends ProcessNode {
     return new OffsetNode(planNodeId, offset);
   }
 
-  public PlanNode getChild() {
-    return child;
-  }
-
   public int getOffset() {
     return offset;
   }
@@ -116,12 +93,15 @@ public class OffsetNode extends ProcessNode {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
+    if (!super.equals(o)) {
+      return false;
+    }
     OffsetNode that = (OffsetNode) o;
-    return offset == that.offset && child.equals(that.child);
+    return offset == that.offset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(child, offset);
+    return Objects.hash(super.hashCode(), offset);
   }
 }

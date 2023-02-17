@@ -22,20 +22,11 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 // DataNode
-struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-  // Map<StorageGroupName, TStorageGroupSchema>
-  // DataNode can use statusMap to report its status to the ConfigNode when restart
-  2: optional map<string, TStorageGroupSchema> statusMap
-}
-
-struct TDataNodeRegisterResp {
+struct TSystemConfigurationResp {
   1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional i32 dataNodeId
-  4: optional TGlobalConfig globalConfig
-  5: optional binary templateInfo
-  6: optional TRatisConfig ratisConfig
+  2: optional TGlobalConfig globalConfig
+  3: optional TRatisConfig ratisConfig
+  4: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -45,10 +36,87 @@ struct TGlobalConfig {
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
+  7: required double diskSpaceWarningThreshold
 }
 
 struct TRatisConfig {
-  1: optional i64 appenderBufferSize
+  1: required i64 schemaAppenderBufferSize
+  2: required i64 dataAppenderBufferSize
+
+  3: required i64 schemaSnapshotTriggerThreshold
+  4: required i64 dataSnapshotTriggerThreshold
+
+  5: required bool schemaLogUnsafeFlushEnable
+  6: required bool dataLogUnsafeFlushEnable
+
+  7: required i64 schemaLogSegmentSizeMax
+  8: required i64 dataLogSegmentSizeMax
+
+  9: required i64 schemaGrpcFlowControlWindow
+  10: required i64 dataGrpcFlowControlWindow
+
+  11: required i64 schemaLeaderElectionTimeoutMin
+  12: required i64 dataLeaderElectionTimeoutMin
+
+  13: required i64 schemaLeaderElectionTimeoutMax
+  14: required i64 dataLeaderElectionTimeoutMax
+
+  15: required i64 schemaRequestTimeout
+  16: required i64 dataRequestTimeout
+
+  17: required i32 schemaMaxRetryAttempts
+  18: required i32 dataMaxRetryAttempts
+  19: required i64 schemaInitialSleepTime
+  20: required i64 dataInitialSleepTime
+  21: required i64 schemaMaxSleepTime
+  22: required i64 dataMaxSleepTime
+
+  23: required i64 schemaPreserveWhenPurge
+  24: required i64 dataPreserveWhenPurge
+
+  25: required i64 firstElectionTimeoutMin
+  26: required i64 firstElectionTimeoutMax
+
+  27: required i64 schemaRegionRatisLogMax
+  28: required i64 dataRegionRatisLogMax
+}
+
+struct TCQConfig {
+  1: required i64 cqMinEveryIntervalInMs
+}
+
+struct TRuntimeConfiguration {
+  1: required binary templateInfo
+  2: required list<binary> allTriggerInformation
+  3: required list<binary> allUDFInformation
+  4: required binary allTTLInformation
+}
+
+struct TDataNodeRegisterReq {
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
+  2: required string clusterName
+}
+
+struct TDataNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional i32 dataNodeId
+  4: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeRestartReq {
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRestartResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeUpdateReq {
+  1: required common.TDataNodeLocation dataNodeLocation
 }
 
 struct TDataNodeRemoveReq {
@@ -72,53 +140,56 @@ struct TDataNodeConfigurationResp {
   2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
-// StorageGroup
-struct TSetStorageGroupReq {
-  1: required TStorageGroupSchema storageGroup
+struct TSetDataNodeStatusReq {
+  1: required common.TDataNodeLocation targetDataNode
+  2: required string status
 }
 
-struct TDeleteStorageGroupReq {
+// Database
+struct TDeleteDatabaseReq {
   1: required string prefixPath
 }
 
-struct TDeleteStorageGroupsReq {
+struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
 }
 
 struct TSetSchemaReplicationFactorReq {
-  1: required string storageGroup
+  1: required string database
   2: required i32 schemaReplicationFactor
 }
 
 struct TSetDataReplicationFactorReq {
-  1: required string storageGroup
+  1: required string database
   2: required i32 dataReplicationFactor
 }
 
 struct TSetTimePartitionIntervalReq {
-  1: required string storageGroup
+  1: required string database
   2: required i64 timePartitionInterval
 }
 
-struct TCountStorageGroupResp {
+struct TCountDatabaseResp {
   1: required common.TSStatus status
   2: optional i32 count
 }
 
-struct TStorageGroupSchemaResp {
+struct TDatabaseSchemaResp {
   1: required common.TSStatus status
-  // map<string, TStorageGroupSchema>
-  2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
+  // map<string, TDatabaseSchema>
+  2: optional map<string, TDatabaseSchema> databaseSchemaMap
 }
 
-struct TStorageGroupSchema {
+struct TDatabaseSchema {
   1: required string name
   2: optional i64 TTL
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maxSchemaRegionGroupCount
-  7: optional i32 maxDataRegionGroupCount
+  6: optional i32 minSchemaRegionGroupNum
+  7: optional i32 maxSchemaRegionGroupNum
+  8: optional i32 minDataRegionGroupNum
+  9: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -128,7 +199,7 @@ struct TSchemaPartitionReq {
 
 struct TSchemaPartitionTableResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TConsensusGroupId>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, TConsensusGroupId>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TConsensusGroupId>> schemaPartitionTable
 }
 
@@ -140,21 +211,69 @@ struct TSchemaNodeManagementReq {
 
 struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
   3: optional set<common.TSchemaNode> matchedNode
 }
 
+struct TTimeSlotList {
+  1: required list<common.TTimePartitionSlot> timePartitionSlots
+  2: required bool needLeftAll
+  3: required bool needRightAll
+}
+
 // Data
 struct TDataPartitionReq {
-  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
-  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
+  // map<DatabaseName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
+  1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
 }
 
 struct TDataPartitionTableResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
+  // map<DatabaseName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
+}
+
+struct TGetRegionIdReq {
+    1: required string database
+    2: required common.TConsensusGroupType type
+    3: optional common.TSeriesPartitionSlot seriesSlotId
+    4: optional string deviceId
+    5: optional common.TTimePartitionSlot timeSlotId
+    6: optional i64 timeStamp
+}
+
+struct TGetRegionIdResp {
+    1: required common.TSStatus status
+    2: optional list<common.TConsensusGroupId> dataRegionIdList
+}
+
+struct TGetTimeSlotListReq {
+    1: required string database
+    2: required common.TSeriesPartitionSlot seriesSlotId
+    3: optional i64 startTime
+    4: optional i64 endTime
+}
+
+struct TGetTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TTimePartitionSlot> timeSlotList
+}
+
+struct TGetSeriesSlotListReq {
+    1: required string database
+    2: optional common.TConsensusGroupType type
+}
+
+struct TGetSeriesSlotListResp {
+    1: required common.TSStatus status
+    2: optional list<common.TSeriesPartitionSlot> seriesSlotList
+}
+
+struct TMigrateRegionReq {
+    1: required i32 regionId
+    2: required i32 fromId
+    3: required i32 toId
 }
 
 // Authorize
@@ -178,6 +297,7 @@ struct TUserResp {
   2: required string password
   3: required list<string> privilegeList
   4: required list<string> roleList
+  5: required bool isOpenIdUser
 }
 
 struct TRoleResp {
@@ -203,21 +323,40 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
+
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 seriesPartitionSlotNum
+  13: required string seriesPartitionExecutorClass
+  14: required double diskSpaceWarningThreshold
+}
+
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
-  12: required string readConsistencyLevel
+  2: required TClusterParameters clusterParameters
+}
+
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: optional i32 configNodeId
+}
+
+struct TConfigNodeRestartReq {
+  1: required string clusterName
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TAddConsensusGroupReq {
@@ -228,39 +367,76 @@ struct TAddConsensusGroupReq {
 struct TCreateFunctionReq {
   1: required string udfName
   2: required string className
-  3: required list<string> uris
+  3: required bool isUsingURI
+  4: optional string jarName
+  5: optional binary jarFile
+  6: optional string jarMD5
 }
 
 struct TDropFunctionReq {
   1: required string udfName
 }
 
+// Get UDF table from config node
+struct TGetUDFTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allUDFInformation
+}
+
 // Trigger
 enum TTriggerState {
   // The intermediate state of Create trigger, the trigger need to create has not yet activated on any DataNodes.
   INACTIVE
-  // The intermediate state of Create trigger, the trigger need to create has activated on some DataNodes.
-  PARTIAL_ACTIVE
-  // Triggers on all DataNodes are available.
+  // The successful state of Create trigger, the trigger need to create has activated on some DataNodes.
   ACTIVE
   // The intermediate state of Drop trigger, the cluster is in the process of removing the trigger.
   DROPPING
+  // The intermediate state of Transfer trigger, the cluster is in the process of transferring the trigger.
+  TRANSFERRING
 }
 
 struct TCreateTriggerReq {
   1: required string triggerName
   2: required string className,
-  3: required string jarPath,
-  4: required bool usingURI,
-  5: required byte triggerEvent,
-  6: required byte triggerType
-  7: required binary pathPattern,
-  8: required map<string, string> attributes,
-  9: optional binary jarFile
+  3: required byte triggerEvent,
+  4: required byte triggerType
+  5: required binary pathPattern,
+  6: required map<string, string> attributes,
+  7: required i32 failureStrategy
+  8: required bool isUsingURI,
+  9: optional string jarName,
+  10: optional binary jarFile,
+  11: optional string jarMD5,
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
+}
+
+struct TGetLocationForTriggerResp {
+  1: required common.TSStatus status
+  2: optional common.TDataNodeLocation dataNodeLocation
+}
+
+// Get trigger table from config node
+struct TGetTriggerTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allTriggerInformation
+}
+
+// Get jars of the corresponding jarName
+struct TGetJarInListReq {
+  1: required list<string> jarNameList
+}
+
+struct TGetJarInListResp {
+  1: required common.TSStatus status
+  2: required list<binary> jarList
+}
+
+struct TGetDataNodeLocationsResp {
+  1: required common.TSStatus status
+  2: required list<common.TDataNodeLocation> dataNodeLocationList
 }
 
 // Show cluster
@@ -271,6 +447,11 @@ struct TShowClusterResp {
   4: required map<i32, string> nodeStatus
 }
 
+struct TShowVariablesResp {
+  1: required common.TSStatus status
+  2: optional TClusterParameters clusterParameters
+}
+
 // Show datanodes
 struct TDataNodeInfo {
   1: required i32 dataNodeId
@@ -279,6 +460,7 @@ struct TDataNodeInfo {
   4: required i32 rpcPort
   5: required i32 dataRegionNum
   6: required i32 schemaRegionNum
+  7: optional i32 cpuCoreNum
 }
 
 struct TShowDataNodesResp {
@@ -300,39 +482,44 @@ struct TShowConfigNodesResp {
   2: optional list<TConfigNodeInfo> configNodesInfoList
 }
 
-// Show storageGroup
-struct TStorageGroupInfo {
+// Show Database
+struct TDatabaseInfo {
   1: required string name
   2: required i64 TTL
   3: required i32 schemaReplicationFactor
   4: required i32 dataReplicationFactor
   5: required i64 timePartitionInterval
   6: required i32 schemaRegionNum
-  7: required i32 dataRegionNum
+  7: required i32 minSchemaRegionNum
+  8: required i32 maxSchemaRegionNum
+  9: required i32 dataRegionNum
+  10: required i32 minDataRegionNum
+  11: required i32 maxDataRegionNum
 }
 
-struct TShowStorageGroupResp {
+struct TShowDatabaseResp {
   1: required common.TSStatus status
-  // map<StorageGroupName, TStorageGroupInfo>
-  2: optional map<string, TStorageGroupInfo> storageGroupInfoMap
+  // map<DatabaseName, TDatabaseInfo>
+  2: optional map<string, TDatabaseInfo> databaseInfoMap
 }
 
 // Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
-  2: optional list<string> storageGroups
+  2: optional list<string> databases
 }
 
 struct TRegionInfo {
   1: required common.TConsensusGroupId consensusGroupId
-  2: required string storageGroup
+  2: required string database
   3: required i32 dataNodeId
   4: required string clientRpcIp
   5: required i32 clientRpcPort
-  6: required i64 seriesSlots
+  6: required i32 seriesSlots
   7: required i64 timeSlots
   8: optional string status
   9: optional string roleType
+  10: optional i64 createTime
 }
 
 struct TShowRegionResp {
@@ -370,24 +557,163 @@ struct TSetSchemaTemplateReq {
   1: required string name
   2: required string path
 }
+
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
 }
 
-// Show pipe
-struct TPipeInfo {
+// SYNC
+struct TRecordPipeMessageReq{
+  1: required string pipeName
+  2: required binary message
+}
+
+struct TShowPipeInfo {
   1: required i64 createTime
   2: required string pipeName
   3: required string role
   4: required string remote
   5: required string status
-  6: required string message
+  6: required string attributes
+  7: required string message
+}
+
+struct TGetAllPipeInfoResp{
+  1: required common.TSStatus status
+  2: optional list<binary> allPipeInfo
+}
+
+struct TCreatePipeReq {
+    1: required string pipeName
+    2: required string pipeSinkName
+    3: required i64 startTime
+    4: optional map<string, string> attributes
+}
+
+struct TPipeSinkInfo {
+  1: required string pipeSinkName
+  2: required string pipeSinkType
+  3: optional map<string, string> attributes
+}
+
+struct TDropPipeSinkReq {
+  1: required string pipeSinkName
+}
+
+struct TGetPipeSinkReq {
+  1: optional string pipeSinkName
+}
+
+struct TGetPipeSinkResp {
+  1: required common.TSStatus status
+  2: required list<TPipeSinkInfo> pipeSinkInfoList
+}
+
+struct TShowPipeReq {
+  1: optional string pipeName
 }
 
 struct TShowPipeResp {
   1: required common.TSStatus status
-  2: optional list<TPipeInfo> pipeInfoList
+  2: optional list<TShowPipeInfo> pipeInfoList
+}
+
+struct TDeleteTimeSeriesReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+}
+
+// ====================================================
+// CQ
+// ====================================================
+struct TCreateCQReq {
+  1: required string cqId,
+  2: required i64 everyInterval
+  3: required i64 boundaryTime
+  4: required i64 startTimeOffset
+  5: required i64 endTimeOffset
+  6: required byte timeoutPolicy
+  7: required string queryBody
+  8: required string sql
+  9: required string zoneId
+  10: required string username
+}
+
+struct TDropCQReq {
+  1: required string cqId
+}
+
+struct TCQEntry {
+  1: required string cqId
+  2: required string sql
+  3: required byte state
+}
+
+struct TShowCQResp {
+  1: required common.TSStatus status
+  2: required list<TCQEntry> cqList
+}
+
+
+struct TDeactivateSchemaTemplateReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional string templateName
+}
+
+struct TUnsetSchemaTemplateReq{
+  1: required string queryId
+  2: required string templateName
+  3: required string path
+}
+
+struct TCreateModelReq {
+  1: required string modelId
+  2: required byte modelTask
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TModelInfo {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<TModelInfo> modelInfoList
+}
+
+struct TShowTrailReq {
+  1: required string modelId
+  2: optional string trailId
+}
+
+struct TTrailInfo {
+  1: required string modelId
+  2: required string trailId
+  3: required map<string, string> trailInfo
+}
+
+struct TShowTrailResp {
+  1: required common.TSStatus status
+  2: required list<TTrailInfo> trailInfoList
+}
+
+struct TUpdateModelInfoReq {
+  1: required string modelId
+  2: required map<string, string> modelInfo
 }
 
 service IConfigNodeRPCService {
@@ -400,9 +726,24 @@ service IConfigNodeRPCService {
    * Register a new DataNode into the cluster
    *
    * @return SUCCESS_STATUS if the new DataNode registered successfully
-   *         DATANODE_ALREADY_REGISTERED if the DataNode already registered
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
+
+  /**
+   * Restart an existed DataNode
+   *
+   * @return SUCCESS_STATUS if DataNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be restarted fails,
+   *                           and a detailed error message will be returned.
+   */
+  TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+  /**
+   * Get system configurations. i.e. configurations that is not associated with the DataNodeId
+   */
+  TSystemConfigurationResp getSystemConfiguration()
 
   /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster
@@ -414,6 +755,15 @@ service IConfigNodeRPCService {
    *         NODE_DELETE_FAILED_ERROR if failed to submit the DataNodeRemoveProcedure
    */
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
+
+  /**
+   * Update the specified DataNode‘s location in the cluster when restart
+   *
+   * @return SUCCESS_STATUS if the DataNode updated successfully
+   *         DATANODE_NOT_EXIST if one of the DataNodes in the TDataNodeUpdateReq doesn't exist in the cluster
+   *         UPDATE_DATANODE_FAILED if failed to update the DataNode
+   */
+  TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req)
 
   /**
    * Get one or more DataNodes' configuration
@@ -428,54 +778,66 @@ service IConfigNodeRPCService {
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
-  // StorageGroup
+  // Database
   // ======================================================
 
   /**
-   * Set a new StorageGroup, all fields in TStorageGroupSchema can be customized
+   * Set a new Databse, all fields in TDatabaseSchema can be customized
    * while the undefined fields will automatically use default values
    *
-   * @return SUCCESS_STATUS if the new StorageGroup set successfully
-   *         PATH_ILLEGAL if the new StorageGroup's name is illegal
-   *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup already exist
+   * @return SUCCESS_STATUS if the new Database set successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_ALREADY_EXISTS if the Database already exist
    */
-  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
+  common.TSStatus setDatabase(TDatabaseSchema databaseSchema)
 
   /**
-   * Generate a DeleteStorageGroupProcedure to delete a specific StorageGroup
+   * Alter a Database's schema, including
+   * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
    *
-   * @return SUCCESS_STATUS if the DeleteStorageGroupProcedure submitted successfully
-   *         TIMESERIES_NOT_EXIST if the specific StorageGroup doesn't exist
-   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteStorageGroupProcedure
+   * @return SUCCESS_STATUS if the specified DatabaseSchema is altered successfully
+   *         ILLEGAL_PATH if the new Database name is illegal
+   *         DATABASE_CONFIG_ERROR if some of the DatabaseSchema is illeagal
+   *         DATABASE_NOT_EXIST if the specified Database doesn't exist
    */
-  common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+  common.TSStatus alterDatabase(TDatabaseSchema databaseSchema)
 
   /**
-   * Generate a set of DeleteStorageGroupProcedure to delete some specific StorageGroups
+   * Generate a DeleteDatabaseProcedure to delete a specified Database
    *
-   * @return SUCCESS_STATUS if the DeleteStorageGroupProcedure submitted successfully
-   *         TIMESERIES_NOT_EXIST if the specific StorageGroup doesn't exist
-   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteStorageGroupProcedure
+   * @return SUCCESS_STATUS if the DeleteDatabaseProcedure submitted successfully
+   *         TIMESERIES_NOT_EXIST if the specific Database doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteDatabaseProcedure
    */
-  common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
+  common.TSStatus deleteDatabase(TDeleteDatabaseReq req)
 
-  /** Update the specific StorageGroup's TTL */
+  /**
+   * Generate a set of DeleteDatabaseProcedure to delete some specific Databases
+   *
+   * @return SUCCESS_STATUS if the DeleteDatabaseProcedure submitted successfully
+   *         TIMESERIES_NOT_EXIST if the specific Database doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit the DeleteDatabaseProcedure
+   */
+  common.TSStatus deleteDatabases(TDeleteDatabasesReq req)
+
+  /** Update the specific Database's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)
 
-  /** Update the specific StorageGroup's SchemaReplicationFactor */
+  /** Update the specific Database's SchemaReplicationFactor */
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
-  /** Update the specific StorageGroup's DataReplicationFactor */
+  /** Update the specific Database's DataReplicationFactor */
   common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
 
-  /** Update the specific StorageGroup's PartitionInterval */
+  /** Update the specific Database's PartitionInterval */
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  /** Count the matched StorageGroups */
-  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
+  /** Count the matched Databases */
+  TCountDatabaseResp countMatchedDatabases(list<string> DatabasePathPattern)
 
-  /** Get the matched StorageGroups' TStorageGroupSchema */
-  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
+  /** Get the matched Databases' TDatabaseSchema */
+  TDatabaseSchemaResp getMatchedDatabaseSchemas(list<string> DatabasePathPattern)
 
   // ======================================================
   // SchemaPartition
@@ -495,14 +857,17 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the SchemaPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new SchemaRegions
-   *         STORAGE_GROUP_NOT_EXIST if some StorageGroups don't exist
+   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-  // Node Management TODO: @MarcosZyk add interface annotation
+  // Node Management
   // ======================================================
 
+  /**
+   * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
+   */
   TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
   // ======================================================
@@ -522,7 +887,7 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the DataPartitionTable got or created successfully
    *         NOT_ENOUGH_DATA_NODE if the number of cluster DataNodes is not enough for creating new DataRegions
-   *         STORAGE_GROUP_NOT_EXIST if some StorageGroups don't exist
+   *         STORAGE_GROUP_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
@@ -575,17 +940,26 @@ service IConfigNodeRPCService {
   /**
    * The Non-Seed-ConfigNode submit a registration request to the ConfigNode-leader when first startup
    *
-   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully
-   *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
-   *                             are inconsist with the ConfigNode-leader
+   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully.
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
-  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   /** The ConfigNode-leader will guide the Non-Seed-ConfigNode to join the ConsensusGroup when first startup */
   common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
+
+  /**
+   * Restart an existed ConfigNode
+   *
+   * @return SUCCESS_STATUS if ConfigNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be restarted fails,
+   *                           and a detailed error message will be returned.
+   */
+  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster
@@ -598,13 +972,13 @@ service IConfigNodeRPCService {
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /**
-   * Let the specific ConfigNode remove the ConsensusGroup
+   * Let the specific ConfigNode delete the peer
    *
-   * @return SUCCESS_STATUS if remove ConsensusGroup successfully
+   * @return SUCCESS_STATUS if delete peer  successfully
    *         REMOVE_CONFIGNODE_FAILED if the specific ConfigNode doesn't exist in the current cluster
    *                                  or Ratis internal failure
    */
-  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -617,41 +991,69 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-     * Create a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was created successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Create a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
   /**
-     * Remove a function on all online ConfigNodes and DataNodes
-     *
-     * @return SUCCESS_STATUS if the function was removed successfully
-     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-     */
+   * Remove a function on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus dropFunction(TDropFunctionReq req)
+
+  /**
+   * Return the UDF table
+   */
+  TGetUDFTableResp getUDFTable()
+
+  /**
+   * Return the UDF jar list of the jar name list
+   */
+  TGetJarInListResp getUDFJar(TGetJarInListReq req)
 
   // ======================================================
   // Trigger
   // ======================================================
 
-   /**
-      * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
-      * and sync Information of it to all ConfigNodes
-      *
-      * @return SUCCESS_STATUS if the trigger was created successfully
-      *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-      */
+  /**
+   * Create a statless trigger on all online DataNodes or Create a stateful trigger on a specific DataNode
+   * and sync Information of it to all ConfigNodes
+   *
+   * @return SUCCESS_STATUS if the trigger was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
   common.TSStatus createTrigger(TCreateTriggerReq req)
 
   /**
-       * Remove a trigger on all online ConfigNodes and DataNodes
-       *
-       * @return SUCCESS_STATUS if the function was removed successfully
-       *         EXECUTE_STATEMENT_ERROR if operations on any node failed
-       */
-    common.TSStatus dropTrigger(TDropTriggerReq req)
+   * Remove a trigger on all online ConfigNodes and DataNodes
+   *
+   * @return SUCCESS_STATUS if the function was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus dropTrigger(TDropTriggerReq req)
+
+  /** Get TDataNodeLocation of a stateful trigger */
+  TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
+
+  /**
+     * Return the trigger table
+     */
+  TGetTriggerTableResp getTriggerTable()
+
+  /**
+     * Return the Stateful trigger table
+     */
+  TGetTriggerTableResp getStatefulTriggerTable()
+
+  /**
+     * Return the trigger jar list of the trigger name list
+     */
+  TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
   // Maintenance Tools
@@ -660,7 +1062,7 @@ service IConfigNodeRPCService {
   /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
   common.TSStatus merge()
 
-  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
+  /** Persist all the data points in the memory table of the database to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
@@ -672,6 +1074,18 @@ service IConfigNodeRPCService {
   /** Set system status on DataNodes */
   common.TSStatus setSystemStatus(string status)
 
+  /** TestOnly. Set the target DataNode to the specified status */
+  common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
+
+  /** Migrate a region replica from one dataNode to another */
+  common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  /** Kill query */
+  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+
+  /** Get all DataNodeLocations of Running DataNodes */
+  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+
   // ======================================================
   // Cluster Tools
   // ======================================================
@@ -679,14 +1093,17 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
 
+  /** Show variables who should be consist in the same cluster */
+  TShowVariablesResp showVariables()
+
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
   /** Show cluster ConfigNodes' information */
   TShowConfigNodesResp showConfigNodes()
 
-  /** Show cluster StorageGroups' information */
-  TShowStorageGroupResp showStorageGroup(list<string> storageGroupPathPattern)
+  /** Show cluster Databases' information */
+  TShowDatabaseResp showDatabase(list<string> databasePathPattern)
 
   /**
    * Show the matched cluster Regions' information
@@ -702,18 +1119,161 @@ service IConfigNodeRPCService {
   TRegionRouteMapResp getLatestRegionRouteMap()
 
   // ======================================================
-  // Template TODO: @MarcosZyk add interface annotation
+  // Template
   // ======================================================
 
+  /**
+   * Create schema template
+   */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
+  /**
+   * Get all schema template info and template set info for DataNode registeration
+   */
   TGetAllTemplatesResp getAllTemplates()
 
+  /**
+   * Get one schema template info
+   */
   TGetTemplateResp getTemplate(string req)
 
+  /**
+   * Set given schema template to given path
+   */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
+  /**
+   * Get paths setting given schema template
+   */
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
+  /**
+   * Deactivate schema template from paths matched by given pattern tree in cluster
+   */
+  common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
+
+  /**
+   * Unset schema template from given path
+   */
+  common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
+
+  /**
+   * Drop schema template
+   */
+  common.TSStatus dropSchemaTemplate(string req)
+
+  /**
+   * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
+   *
+   * @return SUCCESS_STATUS if the DeleteTimeSeriesProcedure submitted and executed successfully
+   *         TIMESERIES_NOT_EXIST if the specific TimeSeries doesn't exist
+   *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
+   */
+  common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  // ======================================================
+  // Sync
+  // ======================================================
+
+  /** Create PipeSink */
+  common.TSStatus createPipeSink(TPipeSinkInfo req)
+
+  /** Drop PipeSink */
+  common.TSStatus dropPipeSink(TDropPipeSinkReq req)
+
+  /** Get PipeSink by name, if name is empty, get all PipeSink */
+  TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req)
+
+  /** Create Pipe */
+  common.TSStatus createPipe(TCreatePipeReq req)
+
+  /** Start Pipe */
+  common.TSStatus startPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipe(string pipeName)
+
+  /** Drop Pipe */
+  common.TSStatus dropPipe(string pipeName)
+
+  /** Show Pipe by name, if name is empty, show all Pipe */
+  TShowPipeResp showPipe(TShowPipeReq req)
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  TGetAllPipeInfoResp getAllPipeInfo();
+
+  /* Get all pipe information. It is used for DataNode registration and restart*/
+  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
+
+  // ======================================================
+  // TestTools
+  // ======================================================
+
+  /** Get a particular DataPartition's corresponding Regions */
+  TGetRegionIdResp getRegionId(TGetRegionIdReq req)
+
+  /** Get a specific SeriesSlot's TimeSlots by start time and end time */
+  TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  /** Get the given database's assigned SeriesSlots */
+  TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
+  // ====================================================
+  // CQ
+  // ====================================================
+
+  /**
+   * Create a CQ
+   *
+   * @return SUCCESS_STATUS if the cq was created successfully
+   */
+  common.TSStatus createCQ(TCreateCQReq req)
+
+  /**
+   * Drop a CQ
+   *
+   * @return SUCCESS_STATUS if the CQ was removed successfully
+   */
+  common.TSStatus dropCQ(TDropCQReq req)
+
+  /**
+   * Return the cq table of config leader
+   */
+  TShowCQResp showCQ()
+
+  // ====================================================
+  // ML Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+  /**
+   * Return the trail table
+   */
+  TShowTrailResp showTrail(TShowTrailReq req)
+
+  /**
+   * Update the model info
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 }
 

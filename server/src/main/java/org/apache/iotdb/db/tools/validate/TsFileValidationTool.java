@@ -130,7 +130,7 @@ public class TsFileValidationTool {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
         }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
@@ -165,7 +165,7 @@ public class TsFileValidationTool {
             findUncorrectFiles(tsFiles);
           }
           // clear map
-          clearMap();
+          clearMap(false);
         }
       }
     }
@@ -556,7 +556,7 @@ public class TsFileValidationTool {
           }
         }
       }
-      if (seqDataDirList.size() == 0 && fileList.size() == 0) {
+      if (seqDataDirList.isEmpty() && fileList.isEmpty()) {
         System.out.println(
             "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
         return false;
@@ -565,7 +565,10 @@ public class TsFileValidationTool {
     }
   }
 
-  public static void clearMap() {
+  public static void clearMap(boolean resetBadFileNum) {
+    if (resetBadFileNum) {
+      badFileNum = 0;
+    }
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();

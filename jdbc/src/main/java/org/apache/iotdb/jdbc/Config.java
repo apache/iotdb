@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.Constant.Version;
+
 public class Config {
 
   private Config() {}
 
   /** The required prefix for the connection URL. */
   public static final String IOTDB_URL_PREFIX = "jdbc:iotdb://";
+
+  public static final String IOTDB_ERROR_PREFIX = "Error";
 
   static final String IOTDB_DEFAULT_HOST = "localhost";
   /** If host is provided, without a port. */
@@ -45,7 +49,7 @@ public class Config {
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   public static final String VERSION = "version";
-  static final Constant.Version DEFAULT_VERSION = Constant.Version.V_0_13;
+  static final Constant.Version DEFAULT_VERSION = Version.V_1_0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 

@@ -35,6 +35,7 @@ def print_message(message):
     print("*********")
     print(message)
     print("*********")
+    assert False
 
 
 def test_cursor():
@@ -44,9 +45,9 @@ def test_cursor():
         cursor: Cursor = conn.cursor()
 
         # execute test
-        cursor.execute("create storage group root.cursor")
-        cursor.execute("create storage group root.cursor_s1")
-        cursor.execute("delete storage group root.cursor_s1")
+        cursor.execute("create database root.cursor")
+        cursor.execute("create database root.cursor_s1")
+        cursor.execute("delete database root.cursor_s1")
         if cursor.rowcount < 0:
             test_fail()
             print_message("execute test failed!")
@@ -110,7 +111,7 @@ def test_cursor():
             test_fail()
             print_message("fetchone test failed")
 
-        cursor.execute("delete storage group root.cursor")
+        cursor.execute("delete database root.cursor")
         cursor.close()
         conn.close()
 

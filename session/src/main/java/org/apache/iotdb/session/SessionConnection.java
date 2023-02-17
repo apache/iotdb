@@ -19,16 +19,22 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -218,6 +224,10 @@ public class SessionConnection {
       }
     }
     RpcUtils.verifySuccess(resp);
+    setTimeZoneOfSession(zoneId);
+  }
+
+  protected void setTimeZoneOfSession(String zoneId) {
     this.zoneId = ZoneId.of(zoneId);
   }
 
@@ -344,14 +354,14 @@ public class SessionConnection {
     TSExecuteStatementResp execResp;
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
-      execResp = client.executeQueryStatement(execReq);
+      execResp = client.executeQueryStatementV2(execReq);
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          execResp = client.executeQueryStatement(execReq);
+          execResp = client.executeQueryStatementV2(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -370,9 +380,11 @@ public class SessionConnection {
         statementId,
         client,
         sessionId,
-        execResp.queryDataSet,
+        execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
-        timeout);
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -380,14 +392,14 @@ public class SessionConnection {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
-      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+      TSExecuteStatementResp execResp = client.executeUpdateStatementV2(execReq);
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          RpcUtils.verifySuccess(client.executeUpdateStatement(execReq).status);
+          RpcUtils.verifySuccess(client.executeUpdateStatementV2(execReq).status);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -407,14 +419,14 @@ public class SessionConnection {
     TSExecuteStatementResp execResp;
     try {
       execReq.setEnableRedirectQuery(enableRedirect);
-      execResp = client.executeRawDataQuery(execReq);
+      execResp = client.executeRawDataQueryV2(execReq);
       RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          execResp = client.executeRawDataQuery(execReq);
+          execResp = client.executeRawDataQueryV2(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -433,8 +445,9 @@ public class SessionConnection {
         statementId,
         client,
         sessionId,
-        execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        execResp.moreData);
   }
 
   protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)
@@ -446,14 +459,14 @@ public class SessionConnection {
     tsLastDataQueryReq.setTimeout(timeOut);
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
-      tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+      tsExecuteStatementResp = client.executeLastDataQueryV2(tsLastDataQueryReq);
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
           tsLastDataQueryReq.setSessionId(sessionId);
           tsLastDataQueryReq.setStatementId(statementId);
-          tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+          tsExecuteStatementResp = client.executeLastDataQueryV2(tsLastDataQueryReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -472,8 +485,99 @@ public class SessionConnection {
         statementId,
         client,
         sessionId,
-        tsExecuteStatementResp.queryDataSet,
-        tsExecuteStatementResp.isIgnoreTimeStamp());
+        tsExecuteStatementResp.queryResult,
+        tsExecuteStatementResp.isIgnoreTimeStamp(),
+        tsExecuteStatementResp.moreData);
+  }
+
+  protected SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
+    return executeAggregationQuery(req);
+  }
+
+  protected SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
+    req.setStartTime(startTime);
+    req.setEndTime(endTime);
+    return executeAggregationQuery(req);
+  }
+
+  protected SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
+    req.setStartTime(startTime);
+    req.setEndTime(endTime);
+    req.setInterval(interval);
+    return executeAggregationQuery(req);
+  }
+
+  protected SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<TAggregationType> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
+    req.setStartTime(startTime);
+    req.setEndTime(endTime);
+    req.setInterval(interval);
+    req.setSlidingStep(slidingStep);
+    return executeAggregationQuery(req);
+  }
+
+  private SessionDataSet executeAggregationQuery(TSAggregationQueryReq tsAggregationQueryReq)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSExecuteStatementResp tsExecuteStatementResp;
+    try {
+      tsExecuteStatementResp = client.executeAggregationQueryV2(tsAggregationQueryReq);
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          tsAggregationQueryReq.setSessionId(sessionId);
+          tsAggregationQueryReq.setStatementId(statementId);
+          tsExecuteStatementResp = client.executeAggregationQuery(tsAggregationQueryReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    return new SessionDataSet(
+        "",
+        tsExecuteStatementResp.getColumns(),
+        tsExecuteStatementResp.getDataTypeList(),
+        tsExecuteStatementResp.columnNameIndexMap,
+        tsExecuteStatementResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        tsExecuteStatementResp.queryResult,
+        tsExecuteStatementResp.isIgnoreTimeStamp(),
+        tsExecuteStatementResp.moreData);
+  }
+
+  private TSAggregationQueryReq createAggregationQueryReq(
+      List<String> paths, List<TAggregationType> aggregations) {
+    TSAggregationQueryReq req =
+        new TSAggregationQueryReq(sessionId, statementId, paths, aggregations);
+    req.setFetchSize(session.getFetchSize());
+    req.setTimeout(session.getQueryTimeout());
+    return req;
   }
 
   protected void insertRecord(TSInsertRecordReq request)
@@ -784,7 +888,7 @@ public class SessionConnection {
   private boolean reconnect() {
     boolean connectedSuccess = false;
     Random random = new Random();
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
         int currHostIndex = random.nextInt(endPointList.size());
@@ -944,6 +1048,43 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.dropSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+  }
+
+  protected TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSBackupConfigurationResp execResp;
+    try {
+      execResp = client.getBackupConfiguration();
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execResp = client.getBackupConfiguration();
+          RpcUtils.verifySuccess(execResp.getStatus());
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+    return execResp;
+  }
+
+  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
+    try {
+      return client.fetchAllConnectionsInfo();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          return client.fetchAllConnectionsInfo();
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

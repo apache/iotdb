@@ -23,6 +23,10 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.fail;
 
 public class L2PriorityQueueTest {
   @Test
@@ -46,18 +50,20 @@ public class L2PriorityQueueTest {
                 res.add(e);
               } catch (InterruptedException e) {
                 e.printStackTrace();
-                Assert.fail();
+                fail();
               }
             });
     t1.start();
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.WAITING, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(1), 1);
     queue.push(e2);
-    Thread.sleep(100);
-    Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
     Assert.assertEquals(1, res.size());
-    Assert.assertEquals(e2.getId().toString(), res.get(0).getId().toString());
+    Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
   }
 
   @Test
@@ -77,7 +83,7 @@ public class L2PriorityQueueTest {
     QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(2), 2);
     try {
       queue.push(e3);
-      Assert.fail();
+      fail();
     } catch (IllegalStateException e) {
       // ignore;
     }
@@ -97,7 +103,7 @@ public class L2PriorityQueueTest {
                 return res;
               }
               return String.CASE_INSENSITIVE_ORDER.compare(
-                  o1.getId().toString(), o2.getId().toString());
+                  o1.getDriverTaskId().toString(), o2.getDriverTaskId().toString());
             },
             new QueueElement(new QueueElement.QueueElementID(0), 0));
     QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 10);
@@ -106,39 +112,15 @@ public class L2PriorityQueueTest {
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(2), 5);
     queue.push(e2);
     Assert.assertEquals(2, queue.size());
-    Assert.assertEquals(e2.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e2.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
     Assert.assertEquals(1, queue.size());
     // L1: 5 -> 20 L2: 10
     QueueElement e3 = new QueueElement(new QueueElement.QueueElementID(3), 10);
     queue.push(e3);
-    Assert.assertEquals(e1.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e1.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
     Assert.assertEquals(1, queue.size());
-    Assert.assertEquals(e3.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e3.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
     Assert.assertEquals(0, queue.size());
-  }
-
-  @Test
-  public void testPushSameElement() {
-    IndexedBlockingQueue<QueueElement> queue =
-        new L2PriorityQueue<>(
-            10,
-            (o1, o2) -> {
-              if (o1.equals(o2)) {
-                return 0;
-              }
-              return Integer.compare(o1.getValue(), o2.getValue());
-            },
-            new QueueElement(new QueueElement.QueueElementID(0), 0));
-    QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 10);
-    queue.push(e1);
-    Assert.assertEquals(1, queue.size());
-    QueueElement e1e = new QueueElement(new QueueElement.QueueElementID(1), 5);
-    try {
-      queue.push(e1e);
-      Assert.fail();
-    } catch (IllegalStateException e) {
-      Assert.assertTrue(e.getMessage().contains("has already contained"));
-    }
   }
 
   @Test
@@ -155,7 +137,7 @@ public class L2PriorityQueueTest {
                 return res;
               }
               return String.CASE_INSENSITIVE_ORDER.compare(
-                  o1.getId().toString(), o2.getId().toString());
+                  o1.getDriverTaskId().toString(), o2.getDriverTaskId().toString());
             },
             new QueueElement(new QueueElement.QueueElementID(0), 0));
     QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 5);

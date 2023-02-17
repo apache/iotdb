@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.sync.sender.recovery;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.sync.SyncConstant;
-import org.apache.iotdb.commons.sync.SyncPathUtil;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
+import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -135,7 +135,7 @@ public class TsFilePipeLogger {
   public void finishCollect() {
     try {
       if (SyncPathUtil.createFile(new File(pipeDir, SyncConstant.FINISH_COLLECT_LOCK_NAME))) {
-        logger.info(String.format("Create finish collecting Lock file in %s.", pipeDir));
+        logger.info("Create finish collecting Lock file in {}.", pipeDir);
       }
     } catch (IOException e) {
       logger.warn(String.format("Can not make lock file in %s, because %s", pipeDir, e));

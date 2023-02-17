@@ -20,7 +20,8 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -35,9 +36,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class MemUtilsTest {
 
   @Test
@@ -50,7 +48,7 @@ public class MemUtilsTest {
   }
 
   @Test
-  public void getRecordSizeWithInsertPlanTest() throws IllegalPathException {
+  public void getRecordSizeWithInsertNodeTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
@@ -60,21 +58,30 @@ public class MemUtilsTest {
       new double[] {4},
       new Binary[] {new Binary("5")}
     };
-    List<Integer> dataTypes = new ArrayList<>();
+    TSDataType[] dataTypes = new TSDataType[6];
     int sizeSum = 0;
-    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes[0] = TSDataType.INT32;
     sizeSum += 8 + TSDataType.INT32.getDataTypeSize();
-    dataTypes.add(TSDataType.INT64.ordinal());
+    dataTypes[1] = TSDataType.INT64;
     sizeSum += 8 + TSDataType.INT64.getDataTypeSize();
-    dataTypes.add(TSDataType.FLOAT.ordinal());
+    dataTypes[2] = TSDataType.FLOAT;
     sizeSum += 8 + TSDataType.FLOAT.getDataTypeSize();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
+    dataTypes[3] = TSDataType.DOUBLE;
     sizeSum += 8 + TSDataType.DOUBLE.getDataTypeSize();
-    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes[4] = TSDataType.TEXT;
     sizeSum += 8 + TSDataType.TEXT.getDataTypeSize();
-    InsertTabletPlan insertPlan = new InsertTabletPlan(device, measurements, dataTypes);
-    insertPlan.setColumns(columns);
-    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertPlan, 0, 1, false));
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            device,
+            false,
+            measurements,
+            dataTypes,
+            new long[1],
+            null,
+            columns,
+            1);
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1, false));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */

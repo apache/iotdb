@@ -21,7 +21,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -38,11 +39,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ActivateTemplateNode extends WritePlanNode {
+public class ActivateTemplateNode extends WritePlanNode implements IActivateTemplateInClusterPlan {
 
   private PartialPath activatePath;
   private int templateSetLevel;
   private int templateId;
+
+  private boolean isAligned;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -76,6 +79,16 @@ public class ActivateTemplateNode extends WritePlanNode {
 
   public void setTemplateId(int templateId) {
     this.templateId = templateId;
+  }
+
+  @Override
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  @Override
+  public void setAligned(boolean aligned) {
+    this.isAligned = aligned;
   }
 
   @Override

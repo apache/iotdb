@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -34,27 +34,27 @@ public class DataRegionMetrics implements IMetricSet {
 
   public DataRegionMetrics(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
-    this.storageGroupName = dataRegion.getStorageGroupName();
+    this.storageGroupName = dataRegion.getDatabaseName();
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
         dataRegion,
         DataRegion::getMemCost,
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "storageGroup_" + storageGroupName);
+        "database_" + storageGroupName);
   }
 
   @Override

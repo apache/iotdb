@@ -19,17 +19,14 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -48,9 +45,12 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMetadataFetchIT {
+public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
+
+  public IoTDBMetadataFetchIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -58,10 +58,10 @@ public class IoTDBMetadataFetchIT {
 
       String[] insertSqls =
           new String[] {
-            "SET STORAGE GROUP TO root.ln.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln.wf01.wt02",
-            "SET STORAGE GROUP TO root.ln1.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln2.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt02",
+            "CREATE DATABASE root.ln1.wf01.wt01",
+            "CREATE DATABASE root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
                 + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3' ",
@@ -85,21 +85,22 @@ public class IoTDBMetadataFetchIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    super.setUp();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    super.tearDown();
   }
 
   @Test
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -112,27 +113,27 @@ public class IoTDBMetadataFetchIT {
           new Set[] {
             new HashSet<>(
                 Collections.singletonList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,",
-                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,",
+                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
             new HashSet<>()
           };
       for (int n = 0; n < sqls.length; n++) {
@@ -164,9 +165,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show storage group",
-            "show storage group root.ln.wf01.**",
-            "show storage group root.ln.wf01.wt01.status"
+            "show databases",
+            "show databases root.ln.wf01.**",
+            "show databases root.ln.wf01.wt01.status"
           };
       Set<String>[] standards =
           new Set[] {
@@ -203,8 +204,7 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show devices root.ln.** with storage group",
-            "show devices root.ln.wf01.wt01.temperature"
+            "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature"
           };
       Set<String>[] standards =
           new Set[] {
@@ -356,19 +356,14 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
             "COUNT TIMESERIES where tag1 = v1",
             "COUNT TIMESERIES where tag3 = v3"
           };
@@ -432,9 +427,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "count storage group root.ln.**",
-            "count storage group",
-            "count storage group root.ln.wf01.wt01.status"
+            "count databases root.ln.**",
+            "count databases",
+            "count databases root.ln.wf01.wt01.status"
           };
       String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
@@ -484,7 +479,7 @@ public class IoTDBMetadataFetchIT {
         Set<String> standard = standards[n];
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           while (resultSet.next()) {
-            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+            String string = resultSet.getString(1) + "," + resultSet.getLong(2) + ",";
             Assert.assertTrue(standard.contains(string));
             standard.remove(string);
           }
@@ -498,16 +493,11 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      statement.execute("ALTER timeseries root.ln1.wf01.wt01.status ADD TAGS tag1=v1, tag2=v2");
+      statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
             "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
@@ -517,31 +507,10 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,0,",
-                    "root.ln.wf01.wt02,0,",
-                    "root.ln1.wf01.wt01,0,",
-                    "root.ln2.wf01.wt01,0,",
-                    "root.sg.d.status,1,",
-                    "root.sg1.d.status,0,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,1,",
-                    "root.sg1.d,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,0,",
-                    "root.sg1.d,0,")),
+            new HashSet<>(Arrays.asList("root.ln1,1,", "root.ln2,1,")),
+            new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
+            new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+            Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -604,8 +573,8 @@ public class IoTDBMetadataFetchIT {
           "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
       String[] expected =
           new String[] {
-            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,",
-            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},"
+            "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,null,null,",
+            "root.sg.d.s2,null,root.sg,DOUBLE,GORILLA,SNAPPY,null,{\"attr3\":\"v3\"},null,null,"
           };
 
       int num = 0;
@@ -634,8 +603,8 @@ public class IoTDBMetadataFetchIT {
       Set<String> standard =
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,"));
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,"));
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
@@ -651,6 +620,44 @@ public class IoTDBMetadataFetchIT {
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void showDeadbandInfo() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      String[] sqls =
+          new String[] {
+            "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32",
+            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2",
+            "CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15"
+          };
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
+      Set<String> standard =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d0.s0,null,root.sg1,INT32,RLE,SNAPPY,null,null,null,null,\n",
+                  "root.sg1.d0.s1,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=2},\n",
+                  "root.sg1.d0.s2,null,root.sg1,INT32,PLAIN,SNAPPY,null,null,SDT,{compdev=0.01, compmintime=2, compmaxtime=15},\n"));
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d0.*")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          builder.append("\n");
+          Assert.assertTrue(standard.contains(builder.toString()));
+        }
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      } finally {
+        statement.execute("delete timeseries root.sg1.d0.*");
       }
     }
   }

@@ -18,20 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public interface Accumulator {
 
   /**
-   * Column should be like: | Time | Value |
+   * Column should be like: | ControlColumn | Time | Value |
+   *
+   * <p>IgnoringNull is required when considering the row where the value of controlColumn is null
    *
    * <p>Return the last read row index of current timeColumn
    */
-  int addInput(Column[] column, TimeRange timeRange);
+  default int addInput(Column[] column, IWindow window) {
+    return addInput(column, window, true);
+  }
+
+  int addInput(Column[] column, IWindow window, boolean ignoringNull);
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,

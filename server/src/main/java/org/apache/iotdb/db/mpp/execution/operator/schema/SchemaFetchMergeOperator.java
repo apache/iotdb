@@ -72,8 +72,8 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
       return generateStorageGroupInfo();
     }
 
-    if (children.get(currentIndex).hasNext()) {
-      return children.get(currentIndex).next();
+    if (children.get(currentIndex).hasNextWithTimer()) {
+      return children.get(currentIndex).nextWithTimer();
     } else {
       currentIndex++;
       return null;
@@ -94,7 +94,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override
@@ -107,7 +107,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   private TsBlock generateStorageGroupInfo() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      // to indicate this binary data is storage group info
+      // to indicate this binary data is database info
       ReadWriteIOUtils.write((byte) 0, outputStream);
 
       ReadWriteIOUtils.write(storageGroupList.size(), outputStream);

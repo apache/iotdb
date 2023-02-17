@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.ArrayList;
@@ -39,7 +39,6 @@ public class InsertStatement extends Statement {
   private long[] times;
   private String[] measurementList;
 
-  // TODO: unify SQL and RPC requests
   private List<String[]> valuesList;
 
   private boolean isAligned;

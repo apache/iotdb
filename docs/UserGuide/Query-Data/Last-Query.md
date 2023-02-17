@@ -33,15 +33,17 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 which means: Query and return the last data points of timeseries prefixPath.path.
 
-Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception. When the cached most recent data point does not satisfy the criterion specified by the filter, IoTDB will have to get the result from the external storage, which may cause a decrease in performance.
+- Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception. When the cached most recent data point does not satisfy the criterion specified by the filter, IoTDB will have to get the result from the external storage, which may cause a decrease in performance.
 
-The result will be returned in a four column table format.
+- The result will be returned in a four column table format.
 
-```
-| Time | timeseries | value | dataType |
-```
+    ```
+    | Time | timeseries | value | dataType |
+    ```
+    
+    **Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore, the column `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
-**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore, the column `dataType` is returned also which contains the _real_ type how the value should be interpreted.
+- We can use `ORDER BY TIMESERIES (DESC | ASC)` to specify that the result set is sorted in descending/ascending order by timeseries name.
 
 **Example 1:** get the last point of root.ln.wf01.wt01.status:
 
@@ -69,8 +71,6 @@ IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017
 Total line number = 2
 It costs 0.002s
 ```
-
-## Order By timeseries
 
 **Example 3:** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the timeseries column desc
 

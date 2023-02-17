@@ -30,7 +30,7 @@ import java.util.List;
 public class BooleanTVListTest {
   @Test
   public void testBooleanTVList() {
-    TimBooleanTVList tvList = new TimBooleanTVList();
+    BooleanTVList tvList = BooleanTVList.newList();
     for (int i = 0; i < 50; i++) {
       tvList.putBoolean(i, true);
     }
@@ -49,7 +49,7 @@ public class BooleanTVListTest {
 
   @Test
   public void testPutBooleansWithoutBitMap() {
-    TimBooleanTVList tvList = new TimBooleanTVList();
+    BooleanTVList tvList = BooleanTVList.newList();
     List<Boolean> booleanList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (long i = 1000; i >= 0; i--) {
@@ -69,7 +69,7 @@ public class BooleanTVListTest {
 
   @Test
   public void testPutBooleansWithBitMap() {
-    TimBooleanTVList tvList = new TimBooleanTVList();
+    BooleanTVList tvList = BooleanTVList.newList();
     List<Boolean> booleanList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -100,7 +100,7 @@ public class BooleanTVListTest {
 
   @Test
   public void testClone() {
-    TimBooleanTVList tvList = new TimBooleanTVList();
+    BooleanTVList tvList = BooleanTVList.newList();
     List<Boolean> booleanList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

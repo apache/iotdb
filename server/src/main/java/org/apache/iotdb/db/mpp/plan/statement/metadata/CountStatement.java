@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +30,7 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>COUNT {STORAGE GROUP | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
+ * <p>COUNT {DATABASES | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
  */
 public class CountStatement extends ShowStatement {
   protected PartialPath pathPattern;

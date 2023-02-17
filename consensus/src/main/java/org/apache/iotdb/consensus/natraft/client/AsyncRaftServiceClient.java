@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.consensus.natraft.client;
 
+import java.net.ConnectException;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.consensus.raft.thrift.NoMemberException;
 import org.apache.iotdb.consensus.raft.thrift.RaftService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
@@ -88,6 +91,13 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
    */
   @Override
   public void onError(Exception e) {
+    if (e.getCause() instanceof NoMemberException ||
+     e instanceof TApplicationException && e.getMessage().contains("No such member")) {
+      logger.debug(e.getMessage());
+      ___currentMethod = null;
+      returnSelf();
+      return;
+    }
     super.onError(e);
     returnSelf();
   }
@@ -97,7 +107,9 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info("Unexpected exception occurs in {} :", this, e);
+      if (!(e.getCause() instanceof ConnectException)) {
+        logger.info("Unexpected exception occurs in {} :", this, e);
+      }
       return false;
     }
   }
@@ -107,11 +119,11 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
     return String.format("AsyncConfigNodeIServiceClient{%s}", endpoint);
   }
 
-  public static class Factory extends AsyncBaseClientFactory<TEndPoint, AsyncRaftServiceClient> {
+  public static class Factory extends AsyncThriftClientFactory<TEndPoint, AsyncRaftServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, AsyncRaftServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty,
+        ThriftClientProperty clientFactoryProperty,
         String threadName) {
       super(clientManager, clientFactoryProperty, threadName);
     }
@@ -128,8 +140,8 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
       tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
           new AsyncRaftServiceClient(
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               endPoint,
               tManager,
               clientManager));

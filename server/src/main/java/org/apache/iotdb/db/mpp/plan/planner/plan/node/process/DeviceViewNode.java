@@ -42,7 +42,7 @@ import java.util.Objects;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceViewNode extends MultiChildNode {
+public class DeviceViewNode extends MultiChildProcessNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
@@ -93,21 +93,6 @@ public class DeviceViewNode extends MultiChildNode {
 
   public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
     return deviceToMeasurementIndexesMap;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -224,7 +209,6 @@ public class DeviceViewNode extends MultiChildNode {
     DeviceViewNode that = (DeviceViewNode) o;
     return mergeOrderParameter.equals(that.mergeOrderParameter)
         && devices.equals(that.devices)
-        && children.equals(that.children)
         && outputColumnNames.equals(that.outputColumnNames)
         && deviceToMeasurementIndexesMap.equals(that.deviceToMeasurementIndexesMap);
   }
@@ -235,7 +219,6 @@ public class DeviceViewNode extends MultiChildNode {
         super.hashCode(),
         mergeOrderParameter,
         devices,
-        children,
         outputColumnNames,
         deviceToMeasurementIndexesMap);
   }

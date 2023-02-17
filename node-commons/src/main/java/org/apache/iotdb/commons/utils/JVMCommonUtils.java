@@ -40,7 +40,7 @@ public class JVMCommonUtils {
    * @return JDK version (int type)
    */
   public static int getJdkVersion() {
-    String[] javaVersionElements = System.getProperty("java.version").split("\\.");
+    String[] javaVersionElements = System.getProperty("java.version").split("-")[0].split("\\.");
     if (Integer.parseInt(javaVersionElements[0]) == 1) {
       return Integer.parseInt(javaVersionElements[1]);
     } else {

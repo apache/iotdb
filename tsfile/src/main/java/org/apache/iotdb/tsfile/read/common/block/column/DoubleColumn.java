@@ -26,7 +26,8 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
+import static io.airlift.slice.SizeOf.sizeOfDoubleArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class DoubleColumn implements Column {
@@ -66,7 +67,8 @@ public class DoubleColumn implements Column {
     }
     this.valueIsNull = valueIsNull;
 
-    retainedSizeInBytes = (INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values));
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfBooleanArray(positionCount) + sizeOfDoubleArray(positionCount);
   }
 
   @Override
@@ -81,7 +83,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public double getDouble(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
@@ -97,7 +98,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return new TsPrimitiveType.TsDouble(getDouble(position));
   }
 
@@ -108,7 +108,6 @@ public class DoubleColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
   }
 
@@ -163,9 +162,8 @@ public class DoubleColumn implements Column {
     }
   }
 
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
-    }
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }

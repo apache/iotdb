@@ -20,6 +20,7 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -960,18 +961,18 @@ public class SessionCacheLeaderUT {
 
     private MockSessionConnection lastConstructedSessionConnection;
 
-    public MockSession(String host, int rpcPort, boolean enableCacheLeader) {
+    public MockSession(String host, int rpcPort, boolean enableRedirection) {
       super(
           host,
           rpcPort,
-          Config.DEFAULT_USER,
-          Config.DEFAULT_PASSWORD,
-          Config.DEFAULT_FETCH_SIZE,
+          SessionConfig.DEFAULT_USER,
+          SessionConfig.DEFAULT_PASSWORD,
+          SessionConfig.DEFAULT_FETCH_SIZE,
           null,
-          Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-          Config.DEFAULT_MAX_FRAME_SIZE,
-          enableCacheLeader,
-          Config.DEFAULT_VERSION);
+          SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+          SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+          enableRedirection,
+          SessionConfig.DEFAULT_VERSION);
     }
 
     @Override

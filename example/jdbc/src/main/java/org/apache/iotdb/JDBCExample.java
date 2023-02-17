@@ -33,14 +33,14 @@ public class JDBCExample {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
       try {
-        statement.execute("SET STORAGE GROUP TO root.sg1");
+        statement.execute("CREATE DATABASE root.sg1");
         statement.execute(
             "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
         statement.execute(

@@ -21,9 +21,12 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
 
 public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
@@ -45,6 +48,16 @@ public class CompactionConfigRestorer {
   private long compactionSubmissionIntervalInMs = 60000L;
   private int compactionWriteThroughputMbPerSec = 8;
 
+  private CrossCompactionPerformer oldCrossPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer();
+  private InnerSeqCompactionPerformer oldInnerSeqPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer();
+  private InnerUnseqCompactionPerformer oldInnerUnseqPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getInnerUnseqCompactionPerformer();
+
+  private int oldMinCrossCompactionUnseqLevel =
+      IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
   public CompactionConfigRestorer() {}
 
   public void restoreCompactionConfig() {
@@ -62,9 +75,13 @@ public class CompactionConfigRestorer {
     config.setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
     config.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     config.setMaxCrossCompactionCandidateFileNum(maxCrossCompactionCandidateFileNum);
-    config.setConcurrentCompactionThread(concurrentCompactionThread);
+    config.setCompactionThreadCount(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
     config.setCompactionWriteThroughputMbPerSec(compactionWriteThroughputMbPerSec);
+    config.setCrossCompactionPerformer(oldCrossPerformer);
+    config.setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
+    config.setInnerUnseqCompactionPerformer(oldInnerUnseqPerformer);
+    config.setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
   }
 }

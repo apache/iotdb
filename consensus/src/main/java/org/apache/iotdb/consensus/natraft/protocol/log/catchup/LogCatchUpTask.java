@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.exception.LeaderUnknownException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
@@ -46,7 +47,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
   // sending logs may take longer than normal communications
   private long sendLogsWaitMs;
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
-  TEndPoint node;
+  Peer node;
   RaftMember raftMember;
   CatchUpManager catchUpManager;
   private List<Entry> logs;
@@ -54,7 +55,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
   protected RaftConfig config;
 
   LogCatchUpTask(
-      List<Entry> logs, TEndPoint node, CatchUpManager catchUpManager, RaftConfig config) {
+      List<Entry> logs, Peer node, CatchUpManager catchUpManager, RaftConfig config) {
     this.logs = logs;
     this.node = node;
     this.raftMember = catchUpManager.getMember();
@@ -67,7 +68,8 @@ public class LogCatchUpTask implements Callable<Boolean> {
     AppendEntriesRequest request = new AppendEntriesRequest();
 
     request.setGroupId(raftMember.getRaftGroupId().convertToTConsensusGroupId());
-    request.setLeader(raftMember.getThisNode());
+    request.setLeader(raftMember.getThisNode().getEndpoint());
+    request.setLeaderId(raftMember.getThisNode().getNodeId());
     request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
     synchronized (raftMember.getStatus().getTerm()) {
@@ -177,7 +179,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     handler.setLogs(logList);
     synchronized (appendSucceed) {
       appendSucceed.set(false);
-      AsyncRaftServiceClient client = raftMember.getClient(node);
+      AsyncRaftServiceClient client = raftMember.getClient(node.getEndpoint());
       if (client == null) {
         return false;
       }

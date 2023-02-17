@@ -88,9 +88,13 @@ public class AggregationOperator implements ProcessOperator {
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
-    this.maxRetainedSize = children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
     this.childrenRetainedSize =
         children.stream().mapToLong(Operator::calculateRetainedSizeAfterCallingNext).sum();
+    this.maxRetainedSize =
+        childrenRetainedSize == 0
+            ? 0
+            : children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
+
     this.maxReturnSize = maxReturnSize;
   }
 
@@ -175,7 +179,7 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override
@@ -194,7 +198,7 @@ public class AggregationOperator implements ProcessOperator {
         return false;
       }
 
-      inputTsBlocks[i] = children.get(i).next();
+      inputTsBlocks[i] = children.get(i).nextWithTimer();
       canCallNext[i] = false;
       if (inputTsBlocks[i] == null) {
         return false;
@@ -222,7 +226,8 @@ public class AggregationOperator implements ProcessOperator {
 
   private void updateResultTsBlock() {
     curTimeRange = null;
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+    appendAggregationResult(
+        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
   }
 
   private boolean isEmpty(int index) {

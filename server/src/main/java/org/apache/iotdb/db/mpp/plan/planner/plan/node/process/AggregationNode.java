@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -33,6 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,18 +49,27 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends MultiChildNode {
+public class AggregationNode extends MultiChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
-  // of
-  // result TsBlock
+  // of result TsBlock
   protected List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
+  // The parameter of `group by`.
+  // Its value will be null if there is no `group by` clause.
+  @Nullable protected GroupByParameter groupByParameter;
+
+  // In some situation of `group by` clause, groupByExpression is required.
+  // It will be null if the clause doesn't refer to any expression.
+  protected Expression groupByExpression;
+
   protected Ordering scanOrder;
+
+  protected boolean outputEndTime = false;
 
   public AggregationNode(
       PlanNodeId id,
@@ -74,8 +88,45 @@ public class AggregationNode extends MultiChildNode {
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
-    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
-    this.children = children;
+    super(id, children);
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
+  }
+
+  public AggregationNode(
+      PlanNodeId id,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      @Nullable GroupByParameter groupByParameter,
+      Expression groupByExpression,
+      boolean outputEndTime,
+      Ordering scanOrder) {
+    super(id, new ArrayList<>());
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
+    this.groupByParameter = groupByParameter;
+    this.groupByExpression = groupByExpression;
+    this.outputEndTime = outputEndTime;
+  }
+
+  public AggregationNode(
+      PlanNodeId id,
+      List<PlanNode> children,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      @Nullable GroupByParameter groupByParameter,
+      Expression groupByExpression,
+      boolean outputEndTime,
+      Ordering scanOrder) {
+    super(id, children);
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.scanOrder = scanOrder;
+    this.groupByParameter = groupByParameter;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.groupByExpression = groupByExpression;
+    this.outputEndTime = outputEndTime;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -87,41 +138,68 @@ public class AggregationNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
+  @Nullable
+  public GroupByParameter getGroupByParameter() {
+    return groupByParameter;
+  }
+
   public Ordering getScanOrder() {
     return scanOrder;
   }
 
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
+  public boolean isOutputEndTime() {
+    return outputEndTime;
   }
 
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+  @Nullable
+  public Expression getGroupByExpression() {
+    return groupByExpression;
   }
 
   @Override
   public PlanNode clone() {
     return new AggregationNode(
-        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter(), getScanOrder());
+        getPlanNodeId(),
+        getAggregationDescriptorList(),
+        getGroupByTimeParameter(),
+        getGroupByParameter(),
+        getGroupByExpression(),
+        outputEndTime,
+        getScanOrder());
+  }
+
+  @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new HorizontallyConcatNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        new ArrayList<>(children.subList(startIndex, endIndex)));
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return aggregationDescriptorList.stream()
-        .map(AggregationDescriptor::getOutputColumnNames)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    List<String> outputColumnNames = new ArrayList<>();
+    if (outputEndTime) {
+      outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
+    }
+    outputColumnNames.addAll(
+        aggregationDescriptorList.stream()
+            .map(AggregationDescriptor::getOutputColumnNames)
+            .flatMap(List::stream)
+            .collect(Collectors.toList()));
+
+    return outputColumnNames;
   }
 
-  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
-    this.aggregationDescriptorList = aggregationDescriptorList;
+  public static List<SeriesAggregationSourceNode> findAggregationSourceNode(PlanNode node) {
+    if (node == null) {
+      return new ArrayList<>();
+    }
+    if (node instanceof SeriesAggregationSourceNode) {
+      return Collections.singletonList((SeriesAggregationSourceNode) node);
+    }
+    List<SeriesAggregationSourceNode> ret = new ArrayList<>();
+    node.getChildren().forEach(child -> ret.addAll(findAggregationSourceNode(child)));
+    return ret;
   }
 
   @Override
@@ -142,6 +220,19 @@ public class AggregationNode extends MultiChildNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
+    if (groupByParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      groupByParameter.serialize(byteBuffer);
+    }
+    if (groupByExpression == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      Expression.serialize(groupByExpression, byteBuffer);
+    }
+    ReadWriteIOUtils.write(outputEndTime, byteBuffer);
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
@@ -158,6 +249,19 @@ public class AggregationNode extends MultiChildNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       groupByTimeParameter.serialize(stream);
     }
+    if (groupByParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByParameter.serialize(stream);
+    }
+    if (groupByExpression == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Expression.serialize(groupByExpression, stream);
+    }
+    ReadWriteIOUtils.write(outputEndTime, stream);
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
@@ -173,10 +277,27 @@ public class AggregationNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByParameter groupByParameter = null;
+    if (isNull == 1) {
+      groupByParameter = GroupByParameter.deserialize(byteBuffer);
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Expression groupByExpression = null;
+    if (isNull == 1) {
+      groupByExpression = Expression.deserialize(byteBuffer);
+    }
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AggregationNode(
-        planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
+        planNodeId,
+        aggregationDescriptorList,
+        groupByTimeParameter,
+        groupByParameter,
+        groupByExpression,
+        outputEndTime,
+        scanOrder);
   }
 
   @Override
@@ -193,13 +314,22 @@ public class AggregationNode extends MultiChildNode {
     AggregationNode that = (AggregationNode) o;
     return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(groupByParameter, that.groupByParameter)
+        && Objects.equals(groupByExpression, that.groupByExpression)
+        && Objects.equals(outputEndTime, that.outputEndTime)
         && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, scanOrder);
+        super.hashCode(),
+        aggregationDescriptorList,
+        groupByTimeParameter,
+        groupByParameter,
+        groupByExpression,
+        outputEndTime,
+        scanOrder);
   }
 
   /**

@@ -41,7 +41,7 @@ English: http://iotdb.apache.org/SystemDesign/Architecture/Architecture.html
 Chinese: http://iotdb.apache.org/zh/SystemDesign/Architecture/Architecture.html
 
 
-The Release 0.9.3 is a minor/bugfix release in the 0.9 release series that mainly fixes one serious bug: if the wrong metadata operation is performed, such as deleting a non-existent storage group, the metadata is empty after server restart. This is caused by the metadata module beeing nulled when the metadata log was redone. The fix is to skip the wrong metadata log. In the preparation of version 0.10, we take an execution before logging approach and do not log errors again.
+The Release 0.9.3 is a minor/bugfix release in the 0.9 release series that mainly fixes one serious bug: if the wrong metadata operation is performed, such as deleting a non-existent database, the metadata is empty after server restart. This is caused by the metadata module beeing nulled when the metadata log was redone. The fix is to skip the wrong metadata log. In the preparation of version 0.10, we take an execution before logging approach and do not log errors again.
 
 The [issue module](https://github.com/apache/iotdb/issues) is open on Github, so you can ask questions about bugs or new requirements, and we will answer them promptly.
 

@@ -228,11 +228,11 @@ public class PipeOpManager {
    *     in list can be discrete
    */
   private void commitFilePipe(List<Long> filePipeSerialNumberList) {
-    if (filePipeSerialNumberList.size() <= 0) {
+    if (filePipeSerialNumberList.isEmpty()) {
       return;
     }
 
-    if (filePipeSerialNumberSet.size() <= 0) {
+    if (filePipeSerialNumberSet.isEmpty()) {
       logger.error("commitFilePipe(), filePipeSerialNumberSet should not be empty.");
       return;
     }
@@ -250,7 +250,7 @@ public class PipeOpManager {
       return;
     }
 
-    if (filePipeSerialNumberSet.size() > 0) {
+    if (!filePipeSerialNumberSet.isEmpty()) {
       if (filePipeSerialNumberSet.first() > minNum) {
         filePipe.commit(filePipeSerialNumberSet.first() - 1);
       }
@@ -276,7 +276,7 @@ public class PipeOpManager {
    * @return True - PipeOpManager has no Pipe data
    */
   public boolean isEmpty() {
-    return (filePipeSerialNumberSet.size() <= 0);
+    return filePipeSerialNumberSet.isEmpty();
   }
 
   /**
@@ -310,7 +310,7 @@ public class PipeOpManager {
   public long getNextIndex(String sgName) {
     PipeOpSgManager pipeOpSgManager = pipeSgManagerMap.get(sgName);
     if (pipeOpSgManager == null) {
-      logger.error("getNextIndex(), can not find Storage Group: {}.", sgName);
+      logger.error("getNextIndex(), can not find database: {}.", sgName);
       return Long.MIN_VALUE;
     }
 

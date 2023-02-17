@@ -21,25 +21,23 @@ package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -54,6 +52,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -91,10 +90,10 @@ public class ConfigMTree {
     }
   }
 
-  // region Storage Group Management
+  // region database Management
 
   /**
-   * Set storage group. Make sure check seriesPath before setting storage group
+   * CREATE DATABASE. Make sure check seriesPath before setting database
    *
    * @param path path
    */
@@ -112,7 +111,7 @@ public class ConfigMTree {
       if (temp == null) {
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
-        // before set storage group, check whether the storage group already exists
+        // before create database, check whether the database already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
@@ -132,7 +131,7 @@ public class ConfigMTree {
       } else {
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
-                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
 
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
@@ -143,12 +142,12 @@ public class ConfigMTree {
     }
   }
 
-  /** Delete a storage group */
+  /** Delete a database */
   public void deleteStorageGroup(PartialPath path) throws MetadataException {
     IStorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(path);
     IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
-    // delete the storage group node sg1
+    // delete the database node sg1
     cur.deleteChild(storageGroupMNode.getName());
 
     // delete node a while retain root.a.sg2
@@ -159,77 +158,14 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether path is storage group or not
-   *
-   * <p>e.g., path = root.a.b.sg. if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode
-   * path is a storage group
-   *
-   * @param path path
-   * @apiNote :for cluster
-   */
-  public boolean isStorageGroup(PartialPath path) {
-    String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      return false;
-    }
-    IMNode cur = root;
-    int i = 1;
-    while (i < nodeNames.length - 1) {
-      cur = cur.getChild(nodeNames[i]);
-      if (cur == null || cur.isStorageGroup()) {
-        return false;
-      }
-      i++;
-    }
-    cur = cur.getChild(nodeNames[i]);
-    return cur != null && cur.isStorageGroup();
-  }
-
-  /** Check whether the given path contains a storage group */
-  public boolean checkStorageGroupByPath(PartialPath path) {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        return false;
-      } else if (cur.isStorageGroup()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Get storage group path by path
-   *
-   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
-   *
-   * @return storage group in the given path
-   */
-  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      } else if (cur.isStorageGroup()) {
-        return cur.getPartialPath();
-      }
-    }
-    throw new StorageGroupNotSetException(path.getFullPath());
-  }
-
-  /**
-   * Get the storage group that given path pattern matches or belongs to.
+   * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
    * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
    * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
-   * @return a list contains all storage groups related to given path
+   * @return a list contains all databases related to given path
    */
   public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
       throws MetadataException {
@@ -237,13 +173,13 @@ public class ConfigMTree {
   }
 
   /**
-   * Get all storage group that the given path pattern matches. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * Get all database that the given path pattern matches. If using prefix match, the path pattern
+   * is used to match prefix path. All timeseries start with the matched prefix path will be
    * collected.
    *
    * @param pathPattern a path pattern or a full path
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return a list contains all storage group names under given path pattern
+   * @return a list contains all database names under given path pattern
    */
   public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
@@ -254,23 +190,23 @@ public class ConfigMTree {
       PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
+    try (DatabaseCollector<List<PartialPath>> collector =
+        new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
+          protected void collectDatabase(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
           }
-        };
-    collector.setCollectInternal(collectInternal);
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
+        }) {
+      collector.setCollectInternal(collectInternal);
+      collector.traverse();
+    }
     return result;
   }
 
   /**
-   * Get all storage group names
+   * Get all database names
    *
-   * @return a list contains all distinct storage groups
+   * @return a list contains all distinct databases
    */
   public List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> res = new ArrayList<>();
@@ -288,45 +224,21 @@ public class ConfigMTree {
   }
 
   /**
-   * Resolve the path or path pattern into StorageGroupName-FullPath pairs. Try determining the
-   * storage group using the children of a mNode. If one child is a storage group node, put a
-   * storageGroupName-fullPath pair into paths.
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    Map<String, List<PartialPath>> result = new HashMap<>();
-    StorageGroupCollector<Map<String, String>> collector =
-        new StorageGroupCollector<Map<String, String>>(root, path, store) {
-          @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
-            PartialPath sgPath = node.getPartialPath();
-            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath));
-          }
-        };
-    collector.setCollectInternal(true);
-    collector.traverse();
-    return result;
-  }
-
-  /**
-   * Get the count of storage group matching the given path. If using prefix match, the path pattern
-   * is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
+   * Get the count of database matching the given path. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
+    try (DatabaseCounter counter = new DatabaseCounter(root, pathPattern, store, isPrefixMatch)) {
+      return (int) counter.count();
+    }
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], if the give path is not a storage group, throw
-   * exception
+   * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
       throws MetadataException {
@@ -357,9 +269,9 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get storage group node, the give path don't need to be
-   * storage group path.
+   * E.g., root.sg is database given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get database node, the give path don't need to be database
+   * path.
    */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -379,41 +291,9 @@ public class ConfigMTree {
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
-  public List<PartialPath> getInvolvedStorageGroupNodes(
-      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
-          @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
-            result.add(node.getPartialPath());
-          }
-        };
-    collector.setCollectInternal(true);
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return result;
-  }
-
-  /** Get all storage group MNodes */
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    List<IStorageGroupMNode> ret = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        ret.add(current.getAsStorageGroupMNode());
-      } else {
-        nodeStack.addAll(current.getChildren().values());
-      }
-    }
-    return ret;
-  }
-
   /**
-   * Check whether the storage group of given path exists. The given path may be a prefix path of
-   * existing storage group.
+   * Check whether the database of given path exists. The given path may be a prefix path of
+   * existing database.
    *
    * @param path a full path or a prefix path
    */
@@ -436,8 +316,8 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether the storage group of given path exists. The given path may be a prefix path of
-   * existing storage group. if exists will throw MetaException.
+   * Check whether the database of given path exists. The given path may be a prefix path of
+   * existing database. if exists will throw MetaException.
    *
    * @param path a full path or a prefix path
    */
@@ -490,31 +370,27 @@ public class ConfigMTree {
    * path pattern is used to match prefix path.
    */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern,
-      int nodeLevel,
-      boolean isPrefixMatch,
-      LocalSchemaProcessor.StorageGroupFilter filter)
-      throws MetadataException {
-    MNodeAboveSGCollector<List<PartialPath>> collector =
-        new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store) {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    try (MNodeAboveSGCollector<?> collector =
+        new MNodeAboveSGCollector<Void>(root, pathPattern, store, isPrefixMatch) {
           @Override
-          protected void transferToResult(IMNode node) {
-            resultSet.add(getCurrentPartialPath(node));
+          protected Void collectMNode(IMNode node) {
+            result.add(getPartialPathFromRootToNode(node));
+            return null;
           }
-        };
-    collector.setResultSet(new LinkedList<>());
-    collector.setTargetLevel(nodeLevel);
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.setStorageGroupFilter(filter);
-    collector.traverse();
+        }) {
 
-    return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
+      collector.setTargetLevel(nodeLevel);
+      collector.traverse();
+      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+    }
   }
 
   /**
    * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain MTreeBelowSG.
+   * nodes above database. Nodes below database, including database node will be counted by certain
+   * MTreeBelowSG.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
    *
@@ -526,55 +402,21 @@ public class ConfigMTree {
    */
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
       PartialPath pathPattern) throws MetadataException {
-    try {
-      MNodeAboveSGCollector<Set<TSchemaNode>> collector =
-          new MNodeAboveSGCollector<Set<TSchemaNode>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(
-                  new TSchemaNode(
-                      getCurrentPartialPath(node).getFullPath(),
-                      node.getMNodeType(true).getNodeType()));
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
+    Set<TSchemaNode> result = new TreeSet<>();
+    try (MNodeAboveSGCollector<?> collector =
+        new MNodeAboveSGCollector<Void>(
+            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
+          @Override
+          protected Void collectMNode(IMNode node) {
+            result.add(
+                new TSchemaNode(
+                    getPartialPathFromRootToNode(node).getFullPath(),
+                    node.getMNodeType(true).getNodeType()));
+            return null;
+          }
+        }) {
       collector.traverse();
-
-      return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-  }
-
-  /**
-   * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above storage group. Nodes below storage group, including storage group node will be
-   * counted by certain MTreeBelowSG.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.a.sg1.d1.s1, root.b.sg1.d1.s2, root.c.sg1.d2.s1] given path = root
-   * return [a, b]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
-    try {
-      MNodeAboveSGCollector<Set<String>> collector =
-          new MNodeAboveSGCollector<Set<String>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(node.getName());
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.traverse();
-
-      return new Pair<>(collector.getResult(), collector.getInvolvedStorageGroupMNodes());
+      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
@@ -634,38 +476,123 @@ public class ConfigMTree {
     }
   }
 
-  public List<String> getPathsSetOnTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
+      throws MetadataException {
     List<String> resSet = new ArrayList<>();
-    CollectorTraverser<Set<String>> setTemplatePaths =
-        new CollectorTraverser<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store) {
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-            // will never get here, implement for placeholder
-            return false;
-          }
-
-          @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
-              return true;
-            }
-
-            // if node not set template, go on traversing
-            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-              // if set template, and equals to target or target for all, add to result
-              if (templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId()) {
-                resSet.add(node.getFullPath());
+          protected boolean acceptFullMatchedNode(IMNode node) {
+            if (super.acceptFullMatchedNode(node)) {
+              // if node not set template, go on traversing
+              if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+                if (filterPreUnset && node.isSchemaTemplatePreUnset()) {
+                  // filter the pre unset template
+                  return false;
+                }
+                // if set template, and equals to target or target for all, add to result
+                return templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId();
               }
-              // descendants of the node cannot set another template, exit from this branch
-              return true;
             }
             return false;
           }
-        };
-    setTemplatePaths.traverse();
+
+          @Override
+          protected Void collectMNode(IMNode node) {
+            resSet.add(node.getFullPath());
+            return null;
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+        }) {
+      collector.traverse();
+    }
     return resSet;
+  }
+
+  /** This method returns the templateId set on paths covered by input path pattern. */
+  public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
+      throws MetadataException {
+    Map<Integer, Set<PartialPath>> result = new HashMap<>();
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(root, pathPattern, store, false) {
+          @Override
+          protected boolean acceptFullMatchedNode(IMNode node) {
+            return (node.getSchemaTemplateId() != NON_TEMPLATE)
+                || super.acceptFullMatchedNode(node);
+          }
+
+          @Override
+          protected boolean acceptInternalMatchedNode(IMNode node) {
+            return (node.getSchemaTemplateId() != NON_TEMPLATE)
+                || super.acceptInternalMatchedNode(node);
+          }
+
+          @Override
+          protected Void collectMNode(IMNode node) {
+            result
+                .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                .add(getPartialPathFromRootToNode(node));
+            return null;
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+        }) {
+      collector.traverse();
+    }
+    return result;
+  }
+
+  public void preUnsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).preUnsetSchemaTemplate();
+  }
+
+  public void rollbackUnsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).rollbackUnsetSchemaTemplate();
+  }
+
+  public void unsetTemplate(int templateId, PartialPath path) throws MetadataException {
+    getNodeSetTemplate(templateId, path).unsetSchemaTemplate();
+  }
+
+  private IMNode getNodeSetTemplate(int templateId, PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    for (int i = 1; i < nodeNames.length; i++) {
+      cur = cur.getChild(nodeNames[i]);
+      if (cur == null) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+    }
+    if (cur.getSchemaTemplateId() != templateId) {
+      throw new MetadataException(
+          String.format("Template %s is not set on path %s", templateId, path));
+    }
+    return cur;
   }
 
   // endregion

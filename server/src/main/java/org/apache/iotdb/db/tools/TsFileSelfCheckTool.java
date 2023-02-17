@@ -78,7 +78,7 @@ public class TsFileSelfCheckTool {
    */
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
-    logger.info("file path: " + filename);
+    logger.info("file path: {}", filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     long res = -1;
@@ -129,7 +129,8 @@ public class TsFileSelfCheckTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(deviceId, timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
+                    timeseriesMetadata));
           }
         } else {
           // deviceId should be determined by LEAF_DEVICE node

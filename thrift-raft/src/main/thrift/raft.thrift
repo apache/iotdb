@@ -27,7 +27,8 @@ struct AppendEntriesRequest {
   4: required i64 prevLogIndex
   5: required i64 prevLogTerm
   6: required i64 leaderCommit
-  8: required common.TConsensusGroupId groupId
+  7: required common.TConsensusGroupId groupId
+  8: required i32 leaderId
 }
 
 struct AppendEntryResult {
@@ -36,6 +37,7 @@ struct AppendEntryResult {
   3: optional i64 lastLogIndex;
   4: optional common.TConsensusGroupId groupId;
   5: optional common.TEndPoint receiver;
+  6: optional i32 receiverId;
 }
 
 // leader -> follower
@@ -50,6 +52,7 @@ struct AppendEntryRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional common.TConsensusGroupId groupId
+  8: optional i32 leaderId
 }
 
 // leader -> follower
@@ -62,7 +65,8 @@ struct HeartBeatRequest {
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  8: required common.TConsensusGroupId groupId
+  5: required common.TConsensusGroupId groupId
+  6: required i32 leaderId
 }
 
 // node -> node
@@ -75,6 +79,7 @@ struct ElectionRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   5: optional common.TConsensusGroupId groupId
+  6: optional i32 electorId
 }
 // follower -> leader
 struct HeartBeatResponse {
@@ -88,6 +93,7 @@ struct HeartBeatResponse {
   5: required common.TConsensusGroupId groupId
   6: required bool installingSnapshot // whether the follower is installing snapshot now
   7: required i64 commitIndex
+  8: required i32 followerId
 }
 
 struct SendSnapshotRequest {
@@ -105,6 +111,10 @@ struct RequestCommitIndexResponse {
 struct ExecuteReq {
   1: required binary requestBytes
   2: optional common.TConsensusGroupId groupId
+}
+
+exception NoMemberException {
+  1: required string message
 }
 
 service RaftService {

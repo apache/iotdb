@@ -39,4 +39,16 @@ public class FromComponent extends StatementNode {
   public List<PartialPath> getPrefixPaths() {
     return prefixPaths;
   }
+
+  public String toSQLString() {
+    StringBuilder sqlBuilder = new StringBuilder();
+    sqlBuilder.append("FROM").append(' ');
+    for (int i = 0; i < prefixPaths.size(); i++) {
+      sqlBuilder.append(prefixPaths.get(i).toString());
+      if (i < prefixPaths.size() - 1) {
+        sqlBuilder.append(", ");
+      }
+    }
+    return sqlBuilder.toString();
+  }
 }

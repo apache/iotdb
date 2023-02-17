@@ -20,9 +20,11 @@
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.Response;
+import org.apache.iotdb.consensus.natraft.Utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
 
 import org.slf4j.Logger;
@@ -109,8 +111,13 @@ public class ElectionReqHandler {
    */
   long checkElectorLogProgress(ElectionRequest electionRequest) {
     TEndPoint candidate = electionRequest.getElector();
+    Peer peer =
+        new Peer(
+            Factory.createFromTConsensusGroupId(electionRequest.groupId),
+            electionRequest.electorId,
+            candidate);
     // check if the node is in the group
-    if (!member.containsNode(candidate)) {
+    if (!member.containsNode(peer)) {
       logger.info(
           "{}: the elector {} is not in the data group {}, so reject this election.",
           member.getName(),
@@ -137,7 +144,7 @@ public class ElectionReqHandler {
           member.getLogManager().getLastLogTerm());
       member.getStatus().setRole(RaftRole.FOLLOWER);
       member.getHeartbeatThread().setLastHeartbeatReceivedTime(System.currentTimeMillis());
-      member.getStatus().setVoteFor(candidate);
+      member.getStatus().setVoteFor(peer);
       member.updateHardState(thatTerm, member.getStatus().getVoteFor());
     } else {
       logger.info(

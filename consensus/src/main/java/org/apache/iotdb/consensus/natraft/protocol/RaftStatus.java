@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class RaftStatus {
   /** when the node is a leader, this map is used to track log progress of each follower. */
-  protected Map<TEndPoint, PeerInfo> peerMap;
+  protected Map<Peer, PeerInfo> peerMap;
   /**
    * the current term of the node, this object also works as lock of some transactions of the member
    * like elections.
@@ -35,14 +35,14 @@ public class RaftStatus {
   protected AtomicLong term = new AtomicLong(0);
 
   volatile RaftRole role = RaftRole.CANDIDATE;
-  AtomicReference<TEndPoint> leader = new AtomicReference<>(null);
-  volatile TEndPoint voteFor;
+  AtomicReference<Peer> leader = new AtomicReference<>(null);
+  volatile Peer voteFor;
 
-  public Map<TEndPoint, PeerInfo> getPeerMap() {
+  public Map<Peer, PeerInfo> getPeerMap() {
     return peerMap;
   }
 
-  public void setPeerMap(Map<TEndPoint, PeerInfo> peerMap) {
+  public void setPeerMap(Map<Peer, PeerInfo> peerMap) {
     this.peerMap = peerMap;
   }
 
@@ -62,19 +62,19 @@ public class RaftStatus {
     this.role = role;
   }
 
-  public AtomicReference<TEndPoint> getLeader() {
+  public AtomicReference<Peer> getLeader() {
     return leader;
   }
 
-  public void setLeader(AtomicReference<TEndPoint> leader) {
+  public void setLeader(AtomicReference<Peer> leader) {
     this.leader = leader;
   }
 
-  public TEndPoint getVoteFor() {
+  public Peer getVoteFor() {
     return voteFor;
   }
 
-  public void setVoteFor(TEndPoint voteFor) {
+  public void setVoteFor(Peer voteFor) {
     this.voteFor = voteFor;
   }
 }

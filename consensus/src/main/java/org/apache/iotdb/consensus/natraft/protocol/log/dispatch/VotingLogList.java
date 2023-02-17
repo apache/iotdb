@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
@@ -40,7 +40,7 @@ public class VotingLogList {
   private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
   private int quorumSize;
   private RaftMember member;
-  private Map<TEndPoint, Long> stronglyAcceptedIndices = new ConcurrentHashMap<>();
+  private Map<Peer, Long> stronglyAcceptedIndices = new ConcurrentHashMap<>();
   private AtomicLong newCommitIndex = new AtomicLong(-1);
 
   public VotingLogList(int quorumSize, RaftMember member) {
@@ -66,7 +66,7 @@ public class VotingLogList {
   }
 
   public boolean computeNewCommitIndex() {
-    List<Entry<TEndPoint, Long>> nodeIndices = new ArrayList<>(stronglyAcceptedIndices.entrySet());
+    List<Entry<Peer, Long>> nodeIndices = new ArrayList<>(stronglyAcceptedIndices.entrySet());
     if (nodeIndices.size() < quorumSize) {
       return false;
     }
@@ -86,7 +86,7 @@ public class VotingLogList {
    * @param acceptingNode
    * @return the lastly removed entry if any.
    */
-  public void onStronglyAccept(long index, long term, TEndPoint acceptingNode) {
+  public void onStronglyAccept(long index, long term, Peer acceptingNode) {
     logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNode);
 
     Long newIndex =
@@ -110,7 +110,7 @@ public class VotingLogList {
   public int totalAcceptedNodeNum(VotingLog log) {
     long index = log.getEntry().getCurrLogIndex();
     int num = log.getWeaklyAcceptedNodes().size();
-    for (Entry<TEndPoint, Long> entry : stronglyAcceptedIndices.entrySet()) {
+    for (Entry<Peer, Long> entry : stronglyAcceptedIndices.entrySet()) {
       if (entry.getValue() >= index) {
         num++;
       }

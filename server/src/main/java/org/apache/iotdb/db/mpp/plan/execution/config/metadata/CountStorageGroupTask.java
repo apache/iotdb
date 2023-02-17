@@ -37,7 +37,7 @@ import java.util.Collections;
 
 public class CountStorageGroupTask implements IConfigTask {
 
-  private CountStorageGroupStatement countStorageGroupStatement;
+  private final CountStorageGroupStatement countStorageGroupStatement;
 
   public CountStorageGroupTask(CountStorageGroupStatement countStorageGroupStatement) {
     this.countStorageGroupStatement = countStorageGroupStatement;
