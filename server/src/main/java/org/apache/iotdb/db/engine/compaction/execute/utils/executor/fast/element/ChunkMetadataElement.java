@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element;
 
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 
@@ -29,8 +28,6 @@ public class ChunkMetadataElement {
 
   public long priority;
 
-  public boolean isSelected = false;
-
   public long startTime;
 
   public boolean isLastChunk;
@@ -40,7 +37,6 @@ public class ChunkMetadataElement {
   public Chunk chunk;
 
   public List<Chunk> valueChunks;
-  public boolean isAligned;
 
   public ChunkMetadataElement(
       IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {
@@ -49,7 +45,6 @@ public class ChunkMetadataElement {
     this.startTime = chunkMetadata.getStartTime();
     this.isLastChunk = isLastChunk;
     this.fileElement = fileElement;
-    this.isAligned = chunkMetadata instanceof AlignedChunkMetadata;
   }
 
   public void clearChunks() {
