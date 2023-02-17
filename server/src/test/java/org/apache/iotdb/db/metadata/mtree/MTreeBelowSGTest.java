@@ -25,6 +25,9 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -66,6 +69,7 @@ public abstract class MTreeBelowSGTest {
 
   @After
   public void tearDown() throws Exception {
+    CacheMemoryManager.getInstance().clear();
     root.clear();
     root = null;
     for (IMTreeBelowSG mtree : usedMTree) {
@@ -83,9 +87,20 @@ public abstract class MTreeBelowSGTest {
       IMTreeBelowSG mtree;
       if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
           .equals(SchemaEngineMode.Schema_File)) {
-        mtree = new MTreeBelowSGCachedImpl(path, null, 0);
+        mtree =
+            new MTreeBelowSGCachedImpl(
+                path,
+                null,
+                () -> {
+                  // do nothing
+                },
+                node -> {
+                  // do nothing
+                },
+                0,
+                new CachedSchemaRegionStatistics(0));
       } else {
-        mtree = new MTreeBelowSGMemoryImpl(path, null, 0);
+        mtree = new MTreeBelowSGMemoryImpl(path, null, new MemSchemaRegionStatistics(0));
       }
       usedMTree.add(mtree);
       return mtree;

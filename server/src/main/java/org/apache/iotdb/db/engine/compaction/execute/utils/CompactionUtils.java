@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -119,6 +120,11 @@ public class CompactionUtils {
           new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
+      if (modifications.size() > 0) {
+        TsFileMetricManager.getInstance().increaseModFileNum(1);
+        TsFileMetricManager.getInstance()
+            .increaseModFileSize(targetResource.getModFile().getSize());
+      }
       modifications.removeAll(seqModifications);
     }
   }
@@ -137,6 +143,10 @@ public class CompactionUtils {
       }
     }
     updateOneTargetMods(targetTsFile, modifications);
+    if (modifications.size() > 0) {
+      TsFileMetricManager.getInstance().increaseModFileNum(1);
+      TsFileMetricManager.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
+    }
   }
 
   private static void updateOneTargetMods(
@@ -198,6 +208,9 @@ public class CompactionUtils {
 
       ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
       if (normalModification.exists()) {
+        TsFileMetricManager.getInstance().decreaseModFileNum(1);
+        TsFileMetricManager.getInstance()
+            .decreaseModFileSize(tsFileResource.getModFile().getSize());
         normalModification.remove();
       }
     }
@@ -232,14 +245,6 @@ public class CompactionUtils {
     // in the new file
     for (int i = 0; i < targetResources.size(); i++) {
       TsFileResource targetResource = targetResources.get(i);
-      // remove the target file been deleted from list
-      if (!targetResource.getTsFile().exists()) {
-        logger.info(
-            "[Compaction] target file {} has been deleted after compaction.",
-            targetResource.getTsFilePath());
-        targetResources.set(i, null);
-        continue;
-      }
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updatePlanIndexes(unseqResource);
       }
@@ -252,7 +257,7 @@ public class CompactionUtils {
   public static boolean validateTsFileResources(
       TsFileManager manager, String storageGroupName, long timePartition) {
     List<TsFileResource> resources =
-        manager.getSequenceListByTimePartition(timePartition).getArrayList();
+        manager.getOrCreateSequenceListByTimePartition(timePartition).getArrayList();
     resources.sort(
         (f1, f2) ->
             Long.compareUnsigned(

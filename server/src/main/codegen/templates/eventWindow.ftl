@@ -62,7 +62,12 @@ public abstract class ${className} extends EventWindow {
     if (!initializedEventValue) {
       startTime = currentTime;
       endTime = currentTime;
-      eventValue = controlTimeAndValueColumn[0].get${type.dataType?cap_first}(index);
+      if(controlTimeAndValueColumn[0].isNull(index)){
+        valueIsNull = true;
+      }else{
+        valueIsNull = false;
+        eventValue = controlTimeAndValueColumn[0].get${type.dataType?cap_first}(index);
+      }
       initializedEventValue = true;
     }
   }

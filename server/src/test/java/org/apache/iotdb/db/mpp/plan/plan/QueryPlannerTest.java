@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.plan;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -45,19 +46,26 @@ import java.time.ZoneId;
 public class QueryPlannerTest {
 
   private static IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      internalServiceClientManager;
+      syncInternalServiceClientManager;
+
+  private static IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+      asyncInternalServiceClientManager;
 
   @BeforeClass
   public static void setUp() {
-    internalServiceClientManager =
+    syncInternalServiceClientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    asyncInternalServiceClientManager =
+        new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
   }
 
   @AfterClass
   public static void destroy() {
-    internalServiceClientManager.close();
+    syncInternalServiceClientManager.close();
   }
 
   @Ignore
@@ -82,7 +90,8 @@ public class QueryPlannerTest {
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"),
             new FakePartitionFetcherImpl(),
             new FakeSchemaFetcherImpl(),
-            internalServiceClientManager);
+            syncInternalServiceClientManager,
+            asyncInternalServiceClientManager);
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");

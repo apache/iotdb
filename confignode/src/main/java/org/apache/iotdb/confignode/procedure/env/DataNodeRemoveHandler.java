@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -590,7 +590,7 @@ public class DataNodeRemoveHandler {
 
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
-            REMOVE_DATANODE_PROCESS,
+            REGION_MIGRATE_PROCESS,
             regionId,
             newLeaderNode);
       }
@@ -604,7 +604,7 @@ public class DataNodeRemoveHandler {
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           regionId,
           newLeaderNode);
     }

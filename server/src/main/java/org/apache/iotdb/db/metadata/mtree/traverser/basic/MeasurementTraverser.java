@@ -31,9 +31,9 @@ public abstract class MeasurementTraverser<R> extends Traverser<R> {
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @param store
-   * @param isPrefixMatch
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @throws MetadataException path does not meet the expected rules
    */
   public MeasurementTraverser(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)

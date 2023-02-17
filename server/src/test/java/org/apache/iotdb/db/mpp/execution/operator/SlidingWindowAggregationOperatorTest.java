@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregati
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
@@ -77,26 +77,26 @@ public class SlidingWindowAggregationOperatorTest {
   private ExecutorService instanceNotificationExecutor =
       IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
-  private final List<AggregationType> leafAggregationTypes =
+  private final List<TAggregationType> leafAggregationTypes =
       Arrays.asList(
-          AggregationType.COUNT,
-          AggregationType.SUM,
-          AggregationType.LAST_VALUE,
-          AggregationType.FIRST_VALUE,
-          AggregationType.MAX_VALUE,
-          AggregationType.MIN_VALUE);
+          TAggregationType.COUNT,
+          TAggregationType.SUM,
+          TAggregationType.LAST_VALUE,
+          TAggregationType.FIRST_VALUE,
+          TAggregationType.MAX_VALUE,
+          TAggregationType.MIN_VALUE);
 
-  private final List<AggregationType> rootAggregationTypes =
+  private final List<TAggregationType> rootAggregationTypes =
       Arrays.asList(
-          AggregationType.COUNT,
-          AggregationType.AVG,
-          AggregationType.SUM,
-          AggregationType.LAST_VALUE,
-          AggregationType.MIN_TIME,
-          AggregationType.MAX_TIME,
-          AggregationType.FIRST_VALUE,
-          AggregationType.MAX_VALUE,
-          AggregationType.MIN_VALUE);
+          TAggregationType.COUNT,
+          TAggregationType.AVG,
+          TAggregationType.SUM,
+          TAggregationType.LAST_VALUE,
+          TAggregationType.MIN_TIME,
+          TAggregationType.MAX_TIME,
+          TAggregationType.FIRST_VALUE,
+          TAggregationType.MAX_VALUE,
+          TAggregationType.MIN_VALUE);
 
   private final List<List<List<InputLocation>>> inputLocations =
       Arrays.asList(
@@ -225,7 +225,12 @@ public class SlidingWindowAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(leafAggregationTypes, TSDataType.INT32, ascending)
+    AccumulatorFactory.createAccumulators(
+            leafAggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            ascending)
         .forEach(
             accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
 
@@ -250,6 +255,8 @@ public class SlidingWindowAggregationOperatorTest {
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               rootAggregationTypes.get(i),
               TSDataType.INT32,
+              Collections.emptyList(),
+              Collections.emptyMap(),
               ascending,
               inputLocations.get(i).stream()
                   .map(tmpInputLocations -> tmpInputLocations.toArray(new InputLocation[0]))

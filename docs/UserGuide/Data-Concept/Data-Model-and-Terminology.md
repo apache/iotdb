@@ -85,7 +85,7 @@ The following are the constraints on the `nodeName`:
   * [ 0-9 a-z A-Z _ ] （letters, numbers, underscore)
   * ['\u2E80'..'\u9FFF'] （Chinese characters）
 * In particular, if the system is deployed on a Windows machine, the database layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
-* If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Reference/Syntax-Conventions.html).
+* If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found from charpter Syntax-Conventions,click here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Syntax-Conventions/Literal-Values.html).
 
 ### Path Pattern
 

@@ -100,6 +100,13 @@ public class GroupByTagNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new HorizontallyConcatNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        new ArrayList<>(children.subList(startIndex, endIndex)));
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     List<String> ret = new ArrayList<>(tagKeys);
     ret.addAll(outputColumnNames);

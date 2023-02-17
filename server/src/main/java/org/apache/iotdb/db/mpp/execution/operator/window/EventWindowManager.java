@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -48,13 +47,17 @@ public abstract class EventWindowManager implements IWindowManager {
     this.needSkip = false;
   }
 
+  public boolean isIgnoringNull() {
+    return eventWindowParameter.isIgnoringNull();
+  }
+
   @Override
   public boolean isCurWindowInit() {
     return this.initialized;
   }
 
   @Override
-  public void initCurWindow(TsBlock tsBlock) {
+  public void initCurWindow() {
     this.initialized = true;
     this.eventWindow.setInitializedEventValue(false);
   }
@@ -79,25 +82,11 @@ public abstract class EventWindowManager implements IWindowManager {
   }
 
   @Override
-  public boolean satisfiedCurWindow(TsBlock inputTsBlock) {
-    return true;
-  }
-
-  @Override
-  public boolean isTsBlockOutOfBound(TsBlock inputTsBlock) {
-    return false;
-  }
-
-  @Override
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
     if (eventWindowParameter.isNeedOutputEndTime()) {
       dataTypes.add(0, TSDataType.INT64);
-    }
-    // Judge whether we need output event column.
-    if (eventWindowParameter.isNeedOutputEvent()) {
-      dataTypes.add(eventWindowParameter.getDataType());
     }
     return new TsBlockBuilder(dataTypes);
   }
@@ -124,11 +113,6 @@ public abstract class EventWindowManager implements IWindowManager {
     }
     resultTsBlockBuilder.declarePosition();
     return columnBuilders;
-  }
-
-  @Override
-  public boolean notInitedLastTimeWindow() {
-    return false;
   }
 
   @Override

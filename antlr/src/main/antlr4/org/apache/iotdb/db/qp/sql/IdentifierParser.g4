@@ -154,6 +154,7 @@ keyWords
     | RUNNING
     | SCHEMA
     | SELECT
+    | SERIES
     | SERIESSLOTID
     | SET
     | SETTLE
@@ -191,6 +192,7 @@ keyWords
     | USER
     | USING
     | VALUES
+    | VARIATION
     | VERIFY
     | VERSION
     | WHERE
