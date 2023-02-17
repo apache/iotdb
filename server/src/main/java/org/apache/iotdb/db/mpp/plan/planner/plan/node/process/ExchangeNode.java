@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -35,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class ExchangeNode extends SingleChildProcessNode {
 
