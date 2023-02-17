@@ -448,8 +448,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Filter timeFilter = node.getTimeFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
-    scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
