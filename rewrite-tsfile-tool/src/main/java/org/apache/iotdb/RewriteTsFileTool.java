@@ -719,8 +719,8 @@ public class RewriteTsFileTool {
         session.executeNonQueryStatement(
             String.format(
                 "delete from %s.%s where time >= %d and time <= %d",
-                modification.getDevice(),
-                modification.getMeasurement(),
+                upgradeCache.getPath(modification.getDevice()),
+                upgradeCache.getMeasurement(modification.getMeasurement()),
                 ((Deletion) modification).getStartTime(),
                 ((Deletion) modification).getEndTime()));
       }
