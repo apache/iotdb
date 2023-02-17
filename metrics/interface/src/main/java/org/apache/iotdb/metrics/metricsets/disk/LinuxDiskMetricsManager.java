@@ -219,7 +219,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
       int sectorSize = diskSectorSizeMap.getOrDefault(readSectorSizeEntry.getKey(), 512);
       avgSizeOfReadMap.put(
           readSectorSizeEntry.getKey(),
-          ((double) readSectorSizeEntry.getValue()) * sectorSize / 1024.0 / readOpsCount);
+          ((double) readSectorSizeEntry.getValue()) * sectorSize / readOpsCount);
     }
     return avgSizeOfReadMap;
   }
@@ -234,7 +234,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
       int sectorSize = diskSectorSizeMap.getOrDefault(writeSectorSizeEntry.getKey(), 512);
       avgSizeOfWriteMap.put(
           writeSectorSizeEntry.getKey(),
-          ((double) writeSectorSizeEntry.getValue()) * sectorSize / 1024.0 / writeOpsCount);
+          ((double) writeSectorSizeEntry.getValue()) * sectorSize / writeOpsCount);
     }
     return avgSizeOfWriteMap;
   }
