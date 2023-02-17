@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** Disk Metrics Manager for macOS, not implemented yet. */
-public class MacDiskMetricsManager extends AbstractDiskMetricsManager {
+public class MacDiskMetricsManager implements IDiskMetricsManager {
 
   public MacDiskMetricsManager() {
     super();

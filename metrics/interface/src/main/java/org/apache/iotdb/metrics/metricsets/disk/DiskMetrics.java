@@ -27,8 +27,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Set;
 
 public class DiskMetrics implements IMetricSet {
-  private final AbstractDiskMetricsManager diskMetricsManager =
-      AbstractDiskMetricsManager.getDiskMetricsManager();
+  private final IDiskMetricsManager diskMetricsManager =
+      IDiskMetricsManager.getDiskMetricsManager();
 
   private final String processName;
   private static final String WRITE = "write";
@@ -192,7 +192,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_OPS,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getReadOpsCountForProcess,
+        IDiskMetricsManager::getReadOpsCountForProcess,
         FROM,
         processName,
         NAME,
@@ -201,7 +201,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_OPS,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getWriteOpsCountForProcess,
+        IDiskMetricsManager::getWriteOpsCountForProcess,
         FROM,
         processName,
         NAME,
@@ -210,7 +210,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getActualReadDataSizeForProcess,
+        IDiskMetricsManager::getActualReadDataSizeForProcess,
         FROM,
         processName,
         NAME,
@@ -219,7 +219,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getActualWriteDataSizeForProcess,
+        IDiskMetricsManager::getActualWriteDataSizeForProcess,
         FROM,
         processName,
         NAME,
@@ -228,7 +228,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getAttemptReadSizeForProcess,
+        IDiskMetricsManager::getAttemptReadSizeForProcess,
         FROM,
         processName,
         NAME,
@@ -237,7 +237,7 @@ public class DiskMetrics implements IMetricSet {
         PROCESS_IO_SIZE,
         MetricLevel.IMPORTANT,
         diskMetricsManager,
-        AbstractDiskMetricsManager::getAttemptWriteSizeForProcess,
+        IDiskMetricsManager::getAttemptWriteSizeForProcess,
         FROM,
         processName,
         NAME,

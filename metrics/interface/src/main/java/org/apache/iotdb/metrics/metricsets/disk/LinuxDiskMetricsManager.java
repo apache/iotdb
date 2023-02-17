@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  * system call count, write system call count, byte attempt to read, byte attempt to write,
  * cancelled write byte.
  */
-public class LinuxDiskMetricsManager extends AbstractDiskMetricsManager {
+public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
 
   @SuppressWarnings("squid:S1075")

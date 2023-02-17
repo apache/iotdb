@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** Disk Metrics Manager for Windows system, not implemented yet. */
-public class WindowsDiskMetricsManager extends AbstractDiskMetricsManager {
+public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   public WindowsDiskMetricsManager() {
     super();
