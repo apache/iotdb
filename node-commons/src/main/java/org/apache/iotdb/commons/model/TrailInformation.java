@@ -19,23 +19,83 @@
 
 package org.apache.iotdb.commons.model;
 
-import org.apache.iotdb.common.rpc.thrift.Activation;
-import org.apache.iotdb.common.rpc.thrift.TrainingState;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
-public abstract class TrailInformation {
+public class TrailInformation {
 
-  protected String trailId;
-  protected TrainingState trailState;
+  public static final String MODEL_PATH = "model_path";
 
-  protected long batchSize;
-  protected double learningRate;
-  protected long epochs;
+  private final String trailId;
+  private final ModelHyperparameter modelHyperparameter;
+  private String modelPath;
 
-  protected long dModel;
-  protected long dFF;
-  protected Activation activation;
+  public TrailInformation(
+      String trailId, ModelHyperparameter modelHyperparameter, String modelPath) {
+    this.trailId = trailId;
+    this.modelHyperparameter = modelHyperparameter;
+    this.modelPath = modelPath;
+  }
 
-  public abstract ByteBuffer serializeShowTrailResult();
+  public void update(Map<String, String> modelInfo) {
+    if (modelInfo.containsKey(MODEL_PATH)) {
+      modelPath = modelInfo.get(MODEL_PATH);
+      modelInfo.remove(MODEL_PATH);
+    }
+    modelHyperparameter.update(modelInfo);
+  }
+
+  public String getTrailId() {
+    return trailId;
+  }
+
+  public ModelHyperparameter getModelHyperparameter() {
+    return modelHyperparameter;
+  }
+
+  public String getModelPath() {
+    return modelPath;
+  }
+
+  public ByteBuffer serializeShowTrailResult() throws IOException {
+    PublicBAOS buffer = new PublicBAOS();
+    DataOutputStream stream = new DataOutputStream(buffer);
+    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(modelHyperparameter.toString(), stream);
+    ReadWriteIOUtils.write(modelPath, stream);
+    return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(trailId, stream);
+    modelHyperparameter.serialize(stream);
+    ReadWriteIOUtils.write(modelPath, stream);
+  }
+
+  public void serialize(FileOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(trailId, stream);
+    modelHyperparameter.serialize(stream);
+    ReadWriteIOUtils.write(modelPath, stream);
+  }
+
+  public static TrailInformation deserialize(ByteBuffer buffer) {
+    return new TrailInformation(
+        ReadWriteIOUtils.readString(buffer),
+        ModelHyperparameter.deserialize(buffer),
+        ReadWriteIOUtils.readString(buffer));
+  }
+
+  public static TrailInformation deserialize(InputStream stream) throws IOException {
+    return new TrailInformation(
+        ReadWriteIOUtils.readString(stream),
+        ModelHyperparameter.deserialize(stream),
+        ReadWriteIOUtils.readString(stream));
+  }
 }

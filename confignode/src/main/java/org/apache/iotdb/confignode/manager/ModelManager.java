@@ -61,8 +61,15 @@ public class ModelManager {
   }
 
   public TSStatus createModel(TCreateModelReq req) {
-    ModelInformation modelInformation = new ModelInformation();
-    return configManager.getProcedureManager().createModel(modelInformation);
+    ModelInformation modelInformation =
+        new ModelInformation(
+            req.getModelId(),
+            req.getModelTask(),
+            req.getModelType(),
+            req.isIsAuto(),
+            req.getQueryExpressions(),
+            req.getQueryFilter());
+    return configManager.getProcedureManager().createModel(modelInformation, req.getModelConfigs());
   }
 
   public TSStatus dropModel(TDropModelReq req) {

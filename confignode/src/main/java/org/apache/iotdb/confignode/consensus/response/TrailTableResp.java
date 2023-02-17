@@ -34,10 +34,17 @@ public class TrailTableResp implements DataSet {
   private final TSStatus status;
   private final List<ByteBuffer> serializedAllTrailInformation;
 
-  public TrailTableResp(TSStatus status, List<TrailInformation> allTrailInformation) {
+  public TrailTableResp(TSStatus status) {
     this.status = status;
     this.serializedAllTrailInformation = new ArrayList<>();
-    for (TrailInformation trailInformation : allTrailInformation) {
+  }
+
+  public void addTrailInformation(TrailInformation trailInformation) throws IOException {
+    this.serializedAllTrailInformation.add(trailInformation.serializeShowTrailResult());
+  }
+
+  public void addTrailInformation(List<TrailInformation> trailInformationList) throws IOException {
+    for (TrailInformation trailInformation : trailInformationList) {
       this.serializedAllTrailInformation.add(trailInformation.serializeShowTrailResult());
     }
   }

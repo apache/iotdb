@@ -60,8 +60,8 @@ public class ModelTable {
     return null;
   }
 
-  public void updateModel(String modelId, Map<String, String> modelInfo) {
-    modelInfoMap.get(modelId).update(modelInfo);
+  public void updateModel(String modelId, String trailId, Map<String, String> modelInfo) {
+    modelInfoMap.get(modelId).update(trailId, modelInfo);
   }
 
   public void clear() {

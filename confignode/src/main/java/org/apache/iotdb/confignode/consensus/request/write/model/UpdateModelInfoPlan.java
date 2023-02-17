@@ -33,6 +33,7 @@ import java.util.Objects;
 public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
 
   private String modelId;
+  private String trailId;
   private Map<String, String> modelInfo;
 
   public UpdateModelInfoPlan() {
@@ -42,11 +43,16 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
   public UpdateModelInfoPlan(TUpdateModelInfoReq updateModelInfoReq) {
     super(ConfigPhysicalPlanType.UpdateModelInfo);
     this.modelId = updateModelInfoReq.getModelId();
+    this.trailId = updateModelInfoReq.getTrailId();
     this.modelInfo = updateModelInfoReq.getModelInfo();
   }
 
   public String getModelId() {
     return modelId;
+  }
+
+  public String getTrailId() {
+    return trailId;
   }
 
   public Map<String, String> getModelInfo() {
@@ -57,12 +63,14 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(modelId, stream);
+    ReadWriteIOUtils.write(trailId, stream);
     ReadWriteIOUtils.write(modelInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.modelId = ReadWriteIOUtils.readString(buffer);
+    this.trailId = ReadWriteIOUtils.readString(buffer);
     this.modelInfo = ReadWriteIOUtils.readMap(buffer);
   }
 
@@ -78,11 +86,13 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateModelInfoPlan that = (UpdateModelInfoPlan) o;
-    return modelId.equals(that.modelId) && modelInfo.equals(that.modelInfo);
+    return modelId.equals(that.modelId)
+        && trailId.equals(that.trailId)
+        && modelInfo.equals(that.modelInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, modelInfo);
+    return Objects.hash(super.hashCode(), modelId, trailId, modelInfo);
   }
 }

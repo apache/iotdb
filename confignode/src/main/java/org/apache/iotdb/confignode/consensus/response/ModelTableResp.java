@@ -34,12 +34,19 @@ public class ModelTableResp implements DataSet {
   private final TSStatus status;
   private final List<ByteBuffer> serializedAllModelInformation;
 
-  public ModelTableResp(TSStatus status, List<ModelInformation> allModelInformation) {
+  public ModelTableResp(TSStatus status) {
     this.status = status;
     this.serializedAllModelInformation = new ArrayList<>();
-    for (ModelInformation modelInformation : allModelInformation) {
+  }
+
+  public void addModelInformation(List<ModelInformation> modelInformationList) throws IOException {
+    for (ModelInformation modelInformation : modelInformationList) {
       this.serializedAllModelInformation.add(modelInformation.serializeShowModelResult());
     }
+  }
+
+  public void addModelInformation(ModelInformation modelInformation) throws IOException {
+    this.serializedAllModelInformation.add(modelInformation.serializeShowModelResult());
   }
 
   public TShowModelResp convertToThriftResponse() throws IOException {

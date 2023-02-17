@@ -126,7 +126,10 @@ struct TFilesResp {
 
 // for MLNode
 enum TrainingState {
-
+  PENDING,
+  RUNNING,
+  FINISHED,
+  FAILED
 }
 
 enum ModelTask {
@@ -137,11 +140,4 @@ enum EvaluateMetric {
   MSE,
   MAE,
   RMSE
-}
-
-enum Activation {
-  RELU,
-  GELU,
-  SIGMOID,
-  TANH
 }

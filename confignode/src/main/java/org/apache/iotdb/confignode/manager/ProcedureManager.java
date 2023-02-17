@@ -535,8 +535,9 @@ public class ProcedureManager {
     return statusList.get(0);
   }
 
-  public TSStatus createModel(ModelInformation modelInformation) {
-    long procedureId = executor.submitProcedure(new CreateModelProcedure(modelInformation));
+  public TSStatus createModel(ModelInformation modelInformation, Map<String, String> modelConfigs) {
+    long procedureId =
+        executor.submitProcedure(new CreateModelProcedure(modelInformation, modelConfigs));
     List<TSStatus> statusList = new ArrayList<>();
     boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

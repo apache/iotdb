@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -32,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.CreateModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState> {
 
@@ -46,14 +47,16 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
   private static final int RETRY_THRESHOLD = 5;
 
   private ModelInformation modelInformation;
+  private Map<String, String> modelConfigs;
 
   public CreateModelProcedure() {
     super();
   }
 
-  public CreateModelProcedure(ModelInformation modelInformation) {
+  public CreateModelProcedure(ModelInformation modelInformation, Map<String, String> modelConfigs) {
     super();
     this.modelInformation = modelInformation;
+    this.modelConfigs = modelConfigs;
   }
 
   @Override
@@ -90,10 +93,10 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
             throw new ModelManagementException(response.getErrorMessage());
           }
 
-          setNextState(CreateModelState.CONFIG_NODE_INACTIVE);
+          setNextState(CreateModelState.CONFIG_NODE_ACTIVE);
           break;
 
-        case CONFIG_NODE_INACTIVE:
+        case CONFIG_NODE_ACTIVE:
           LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
 
           if (true) {
@@ -107,16 +110,6 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
           break;
 
         case ML_NODE_ACTIVE:
-          LOGGER.info("Start to active model [{}] on Config Nodes", modelInformation.getModelId());
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(
-                  // TODO
-                  new UpdateModelInfoPlan());
-          setNextState(CreateModelState.CONFIG_NODE_ACTIVE);
-          break;
-
-        case CONFIG_NODE_ACTIVE:
           env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
           return Flow.NO_MORE_STATE;
       }
@@ -160,7 +153,7 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
             .write(new DropModelPlan(modelInformation.getModelId()));
         break;
 
-      case CONFIG_NODE_INACTIVE:
+      case ML_NODE_ACTIVE:
         LOGGER.info(
             "Start to [CONFIG_NODE_INACTIVE] rollback of model [{}]",
             modelInformation.getModelId());
@@ -197,12 +190,14 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
     stream.writeShort(ProcedureType.CREATE_MODEL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     modelInformation.serialize(stream);
+    ReadWriteIOUtils.write(modelConfigs, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     modelInformation = ModelInformation.deserialize(byteBuffer);
+    modelConfigs = ReadWriteIOUtils.readMap(byteBuffer);
   }
 
   @Override
@@ -211,7 +206,8 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
       CreateModelProcedure thatProc = (CreateModelProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.modelInformation.equals(this.modelInformation);
+          && thatProc.modelInformation.equals(this.modelInformation)
+          && thatProc.modelConfigs.equals(this.modelConfigs);
     }
     return false;
   }

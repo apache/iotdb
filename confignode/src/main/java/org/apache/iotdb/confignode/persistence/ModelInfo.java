@@ -43,7 +43,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.concurrent.locks.ReentrantLock;
 
 @ThreadSafe
@@ -98,18 +97,22 @@ public class ModelInfo implements SnapshotProcessor {
   public ModelTableResp showModel(ShowModelPlan plan) {
     acquireModelTableLock();
     try {
+      ModelTableResp modelTableResp =
+          new ModelTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       if (plan.isSetModelId()) {
         ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
-        return new ModelTableResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            modelInformation != null
-                ? Collections.singletonList(modelInformation)
-                : Collections.emptyList());
+        if (modelInformation != null) {
+          modelTableResp.addModelInformation(modelInformation);
+        }
       } else {
-        return new ModelTableResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            modelTable.getAllModelInformation());
+        modelTableResp.addModelInformation(modelTable.getAllModelInformation());
       }
+      return modelTableResp;
+    } catch (IOException e) {
+      LOGGER.warn("Fail to get ModelTable", e);
+      return new ModelTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
     } finally {
       releaseModelTableLock();
     }
@@ -119,19 +122,23 @@ public class ModelInfo implements SnapshotProcessor {
     acquireModelTableLock();
     try {
       ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      TrailTableResp trailTableResp =
+          new TrailTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       if (plan.isSetTrailId()) {
         TrailInformation trailInformation =
             modelInformation.getTrailInformationById(plan.getTrailId());
-        return new TrailTableResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            trailInformation != null
-                ? Collections.singletonList(trailInformation)
-                : Collections.emptyList());
+        if (trailInformation != null) {
+          trailTableResp.addTrailInformation(trailInformation);
+        }
       } else {
-        return new TrailTableResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            modelInformation.getAllTrailInformation());
+        trailTableResp.addTrailInformation(modelInformation.getAllTrailInformation());
       }
+      return trailTableResp;
+    } catch (IOException e) {
+      LOGGER.warn("Fail to get TrailTable", e);
+      return new TrailTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
     } finally {
       releaseModelTableLock();
     }
@@ -142,7 +149,7 @@ public class ModelInfo implements SnapshotProcessor {
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateModel(modelId, plan.getModelInfo());
+        modelTable.updateModel(modelId, plan.getTrailId(), plan.getModelInfo());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
