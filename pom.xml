@@ -1200,18 +1200,18 @@
             </properties>
         </profile>
         <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
-        <profile>
-            <!-- Mac and Unix-->
-            <id>unixDockerCheck</id>
-            <activation>
-                <file>
-                    <exists>/var/run/docker.sock</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>testcontainer</module>
-            </modules>
-        </profile>
+<!--        <profile>-->
+<!--            &lt;!&ndash; Mac and Unix&ndash;&gt;-->
+<!--            <id>unixDockerCheck</id>-->
+<!--            <activation>-->
+<!--                <file>-->
+<!--                    <exists>/var/run/docker.sock</exists>-->
+<!--                </file>-->
+<!--            </activation>-->
+<!--            <modules>-->
+<!--                <module>testcontainer</module>-->
+<!--            </modules>-->
+<!--        </profile>-->
         <profile>
             <id>WinDockerCheck</id>
             <activation>
