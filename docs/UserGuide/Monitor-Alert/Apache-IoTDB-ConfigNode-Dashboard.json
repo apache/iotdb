@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1676560952970,
+  "iteration": 1676699682176,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -2903,7 +2903,7 @@
               }
             ]
           },
-          "unit": "kbytes"
+          "unit": "bytes"
         },
         "overrides": []
       },
@@ -2934,7 +2934,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "disk_io_sector_num{instance=~\"$instance\"}*512/1024",
+          "expr": "disk_io_avg_size{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
           "refId": "A"
@@ -3268,6 +3268,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7T",
-  "version": 6,
+  "version": 8,
   "weekStart": ""
 }
