@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.version;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class SimpleFileVersionController implements VersionController {
    * by saveInterval to avoid conflicts.
    */
   private static long saveInterval = 100;
-  /** time partition id to dividing time series into different storage group */
+  /** time partition id to dividing time series into different database */
   private long timePartitionId;
 
   private long prevVersion;

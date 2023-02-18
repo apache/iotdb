@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -67,7 +69,9 @@ public class AggregationPlan extends RawDataQueryPlan {
 
       for (Map.Entry<String, AggregateResult> groupPathResult :
           getGroupPathsResultMap().entrySet()) {
-        respColumns.add(groupPathResult.getKey());
+        String resultColumnName = groupPathResult.getKey();
+        String aliasName = groupByLevelController.getAlias(resultColumnName);
+        respColumns.add(aliasName != null ? aliasName : resultColumnName);
         columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
       }
       resp.setColumns(respColumns);
@@ -95,6 +99,10 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     seriesTypes.addAll(SchemaUtils.getSeriesTypesByPaths(paths, aggregations));
     return seriesTypes;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
   }
 
   @Override
@@ -147,7 +155,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
-        groupPathsResultMap.put(transformedPath, aggregateResults.get(i));
+        groupPathsResultMap.put(transformedPath, aggregateResults.get(i).clone());
       } else {
         result.merge(aggregateResults.get(i));
         groupPathsResultMap.put(transformedPath, result);
@@ -163,13 +171,19 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    return resultColumns.get(pathIndex).getResultColumnName();
+    return isGroupByLevel()
+        ? resultColumns.get(pathIndex).getExpressionString()
+        : resultColumns.get(pathIndex).getResultColumnName();
   }
 
   @Override
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
+      if (resultColumns.get(pathIndex).hasAlias()) {
+        return resultColumns.get(pathIndex).getAlias();
+      }
+
       PartialPath path = paths.get(pathIndex);
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =
@@ -178,5 +192,35 @@ public class AggregationPlan extends RawDataQueryPlan {
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
+  }
+
+  public void verifyAllAggregationDataTypesMatched() throws LogicalOperatorException {
+    List<String> aggregations = this.getDeduplicatedAggregations();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(this.getDeduplicatedPaths());
+
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
+        throw new LogicalOperatorException(
+            "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+      }
+    }
+  }
+
+  private boolean verifyIsAggregationDataTypeMatched(String aggregation, TSDataType dataType) {
+    switch (aggregation.toLowerCase()) {
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+      case SQLConstant.EXTREME:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType.isNumeric();
+      case SQLConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.LAST_VALUE:
+      default:
+        return true;
+    }
   }
 }

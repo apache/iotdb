@@ -67,11 +67,11 @@ public class TimePageWriter {
   }
 
   /** write time series into encoder */
-  public void write(long[] timestamps, int batchSize) {
-    for (int i = 0; i < batchSize; i++) {
+  public void write(long[] timestamps, int batchSize, int arrayOffset) {
+    for (int i = arrayOffset; i < batchSize + arrayOffset; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
     }
-    statistics.update(timestamps, batchSize);
+    statistics.update(timestamps, batchSize, arrayOffset);
   }
 
   /** flush all data remained in encoders. */

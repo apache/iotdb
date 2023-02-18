@@ -164,14 +164,14 @@ void close();
 
 ### Data Definition Interface (DDL)
 
-#### Storage Group Management
+#### Database Management
 
-- Set storage group
+- CREATE DATABASE
 ```cpp
 void setStorageGroup(const std::string &storageGroupId);
 ```
 
-- Delete one or several storage groups
+- Delete one or several databases
 ```cpp
 void deleteStorageGroup(const std::string &storageGroup);
 void deleteStorageGroups(const std::vector<std::string> &storageGroups);
@@ -305,7 +305,7 @@ void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 - Insert a Record, which contains multiple measurement value of a device at a timestamp
 ```cpp
 void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
-                  const std::vector<std::string> &values);
+                  const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
 ```
 
 - Insert multiple Records
@@ -313,7 +313,8 @@ void insertRecord(const std::string &deviceId, int64_t time, const std::vector<s
 void insertRecords(const std::vector<std::string> &deviceIds,
                    const std::vector<int64_t> &times,
                    const std::vector<std::vector<std::string>> &measurementsList,
-                   const std::vector<std::vector<std::string>> &valuesList);
+                   const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                   const std::vector<std::vector<char *>> &valuesList);
 ```
 
 - Insert multiple Records that belong to the same device. With type info the server has no need to do type inference, which leads a better performance
@@ -321,6 +322,7 @@ void insertRecords(const std::vector<std::string> &deviceIds,
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
+                              std::vector<std::vector<TSDataType::TSDataType>> &typesList,
                               std::vector<std::vector<char *>> &valuesList);
 ```
 
@@ -330,21 +332,19 @@ Without type information, server has to do type inference, which may cost some t
 
 ```cpp
 void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
-                  const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
+                  const std::vector<std::string> &values);
 
 
 void insertRecords(const std::vector<std::string> &deviceIds,
                    const std::vector<int64_t> &times,
                    const std::vector<std::vector<std::string>> &measurementsList,
-                   const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
-                   const std::vector<std::vector<char *>> &valuesList);
+                   const std::vector<std::vector<std::string>> &valuesList);
 
 
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
-                              std::vector<std::vector<TSDataType::TSDataType>> &typesList,
-                              std::vector<std::vector<char *>> &valuesList);
+                              const std::vector<std::vector<std::string>> &valuesList);
 ```
 
 #### Insert data into Aligned Timeseries

@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +35,7 @@ public class TsFileResourceManager {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** threshold total memory for all TimeIndex */
-  private double TIME_INDEX_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForRead() * CONFIG.getTimeIndexMemoryProportion();
+  private double TIME_INDEX_MEMORY_THRESHOLD = CONFIG.getAllocateMemoryForTimeIndex();
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
   private final TreeSet<TsFileResource> sealedTsFileResources =
@@ -60,19 +59,23 @@ public class TsFileResourceManager {
    * memory cost is larger than threshold, degradation is triggered.
    */
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
-    sealedTsFileResources.add(tsFileResource);
-    totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-    chooseTsFileResourceToDegrade();
+    if (!sealedTsFileResources.contains(tsFileResource)) {
+      sealedTsFileResources.add(tsFileResource);
+      totalTimeIndexMemCost += tsFileResource.calculateRamSize();
+      chooseTsFileResourceToDegrade();
+    }
   }
 
   /** delete the TsFileResource in PriorityQueue when the source file is deleted */
   public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
-    sealedTsFileResources.remove(tsFileResource);
-    if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
-        == TimeIndexLevel.FILE_TIME_INDEX) {
-      totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
-    } else {
-      totalTimeIndexMemCost -= tsFileResource.getRamSize();
+    if (sealedTsFileResources.contains(tsFileResource)) {
+      sealedTsFileResources.remove(tsFileResource);
+      if (TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType())
+          == TimeIndexLevel.FILE_TIME_INDEX) {
+        totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+      } else {
+        totalTimeIndexMemCost -= tsFileResource.getRamSize();
+      }
     }
   }
 

@@ -25,6 +25,8 @@ public class Config {
   /** The required prefix for the connection URL. */
   public static final String IOTDB_URL_PREFIX = "jdbc:iotdb://";
 
+  public static final String IOTDB_ERROR_PREFIX = "Error";
+
   static final String IOTDB_DEFAULT_HOST = "localhost";
   /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
@@ -56,4 +58,10 @@ public class Config {
 
   /** key of thrift max frame size */
   public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
+
+  /** key of underlying transport socketTimeout and connectionTimeout */
+  public static final String NETWORK_TIMEOUT = "network_timeout";
+
+  /** key of connection's time zone */
+  public static final String TIME_ZONE = "time_zone";
 }

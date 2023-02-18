@@ -18,15 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -43,10 +39,16 @@ public class InternalMNode extends MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile Map<String, IMNode> children = null;
+  protected transient volatile IMNodeContainer children = null;
 
-  // schema template
-  protected Template schemaTemplate = null;
+  /**
+   * This field is mainly used in cluster schema template features. In InternalMNode of ConfigMTree,
+   * this field represents the template set on this node. In EntityMNode of MTree in SchemaRegion,
+   * this field represents the template activated on this node. The normal usage value range is [0,
+   * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
+   * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
+   */
+  protected int schemaTemplateId = NON_TEMPLATE;
 
   private volatile boolean useTemplate = false;
 
@@ -76,9 +78,10 @@ public class InternalMNode extends MNode {
    *
    * @param name child's name
    * @param child child's node
+   * @return the child of this node after addChild
    */
   @Override
-  public void addChild(String name, IMNode child) {
+  public IMNode addChild(String name, IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -87,12 +90,13 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new ConcurrentHashMap<>();
+          children = MNodeContainers.getNewMNodeContainer();
         }
       }
     }
     child.setParent(this);
-    children.putIfAbsent(name, child);
+    IMNode existingChild = children.putIfAbsent(name, child);
+    return existingChild == null ? child : existingChild;
   }
 
   /**
@@ -116,7 +120,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new ConcurrentHashMap<>();
+          children = MNodeContainers.getNewMNodeContainer();
         }
       }
     }
@@ -128,10 +132,11 @@ public class InternalMNode extends MNode {
 
   /** delete a child */
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     if (children != null) {
-      children.remove(name);
+      return children.remove(name);
     }
+    return null;
   }
 
   /**
@@ -150,71 +155,81 @@ public class InternalMNode extends MNode {
       return;
     }
 
-    // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    if (!grandChildren.isEmpty()) {
-      newChildNode.setChildren(grandChildren);
-      grandChildren.forEach(
-          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
-    }
+    oldChildNode.moveDataToNewMNode(newChildNode);
 
-    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      Map<String, IMeasurementMNode> grandAliasChildren =
-          oldChildNode.getAsEntityMNode().getAliasChildren();
-      if (!grandAliasChildren.isEmpty()) {
-        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
-        grandAliasChildren.forEach(
-            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
-      }
-      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
-    }
-
-    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
-
-    newChildNode.setParent(this);
-
-    children.replace(oldChildName, newChildNode);
+    children.replace(newChildNode.getName(), newChildNode);
   }
 
   @Override
-  public Map<String, IMNode> getChildren() {
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+
+    newMNode.setUseTemplate(useTemplate);
+    newMNode.setSchemaTemplateId(schemaTemplateId);
+
+    if (children != null) {
+      newMNode.setChildren(children);
+      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
+    }
+  }
+
+  @Override
+  public IMNodeContainer getChildren() {
     if (children == null) {
-      return Collections.emptyMap();
+      return MNodeContainers.emptyMNodeContainer();
     }
     return children;
   }
 
   @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     this.children = children;
   }
 
+  @Override
+  public int getSchemaTemplateId() {
+    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    this.schemaTemplateId = schemaTemplateId;
+  }
+
   /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
+   * In InternalMNode, schemaTemplateId represents the template set on this node. The pre unset
+   * mechanism is implemented by making this value negative. Since value 0 and -1 are all occupied,
+   * the available negative value range is [Int.MIN_VALUE, -2]. The value of a pre unset case equals
+   * the negative normal value minus 2. For example, if the id of set template is 0, then - 0 - 2 =
+   * -2 represents the pre unset operation of this template on this node.
    */
   @Override
-  public Template getUpperTemplate() {
-    IMNode cur = this;
-    while (cur != null) {
-      if (cur.getSchemaTemplate() != null) {
-        return cur.getSchemaTemplate();
-      }
-      cur = cur.getParent();
+  public void preUnsetSchemaTemplate() {
+    if (this.schemaTemplateId > -1) {
+      this.schemaTemplateId = -schemaTemplateId - 2;
     }
-
-    return null;
   }
 
   @Override
-  public Template getSchemaTemplate() {
-    return schemaTemplate;
+  public void rollbackUnsetSchemaTemplate() {
+    if (schemaTemplateId < -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
   }
 
   @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    this.schemaTemplate = schemaTemplate;
+  public boolean isSchemaTemplatePreUnset() {
+    return schemaTemplateId < -1;
+  }
+
+  @Override
+  public void unsetSchemaTemplate() {
+    this.schemaTemplateId = -1;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }
 
   @Override
@@ -228,22 +243,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeMNode(this);
-  }
-
-  void serializeChildren(MLogWriter logWriter) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (Entry<String, IMNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo(logWriter);
-    }
-  }
-
-  public static InternalMNode deserializeFrom(MNodePlan plan) {
-    return new InternalMNode(null, plan.getName());
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitInternalMNode(this, context);
   }
 }

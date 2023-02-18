@@ -19,12 +19,19 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionTest;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,13 +39,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
   File tempSGDir;
   final long MAX_WAITING_TIME = 120_000;
+
+  private ICompactionPerformer performer;
 
   @Before
   public void setUp() throws Exception {
@@ -49,6 +60,14 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     CompactionTaskManager.getInstance().restart();
     Assert.assertTrue(tempSGDir.mkdirs());
     super.setUp();
+    performer = new FastCompactionPerformer(false);
+    performer.setSourceFiles(seqResources);
+  }
+
+  @After
+  public void tearDown() throws StorageEngineException, IOException {
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
+    super.tearDown();
   }
 
   @Test
@@ -57,37 +76,42 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
+    Future<CompactionTaskSummary> summaryFuture = null;
     try {
+      for (TsFileResource resource : seqResources) {
+        Assert.assertFalse(resource.isCompactionCandidate());
+      }
       Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
+      summaryFuture = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task1);
       Assert.assertEquals(manager.getTotalTaskCount(), 1);
+      for (TsFileResource resource : seqResources) {
+        Assert.assertTrue(resource.isCompacting());
+      }
       // a same task should not be submitted compaction task manager
       Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
       Assert.assertEquals(manager.getTotalTaskCount(), 1);
-      manager.submitTaskFromTaskQueue();
+      for (TsFileResource resource : seqResources) {
+        Assert.assertTrue(resource.isCompacting());
+      }
     } finally {
       seqResources.get(0).readUnlock();
     }
-    Thread.sleep(5000);
-    Assert.assertEquals(0, manager.getTotalTaskCount());
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
-      }
+    if (summaryFuture != null) {
+      summaryFuture.get();
     }
+    Assert.assertEquals(0, manager.getTotalTaskCount());
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
+    }
+    manager.waitAllCompactionFinish();
   }
 
   @Test
@@ -96,71 +120,67 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     seqResources.get(0).readLock();
+    Future<CompactionTaskSummary> summaryFuture = null;
     try {
       CompactionTaskManager manager = CompactionTaskManager.getInstance();
+      for (TsFileResource resource : seqResources) {
+        Assert.assertFalse(resource.isCompactionCandidate());
+      }
       manager.addTaskToWaitingQueue(task1);
-      manager.submitTaskFromTaskQueue();
-      Thread.sleep(2000);
+
+      summaryFuture = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task1);
+      for (TsFileResource resource : seqResources) {
+        Assert.assertFalse(resource.isCompactionCandidate());
+      }
       // When a same compaction task is executing, the compaction task should not be submitted!
       Assert.assertEquals(manager.getExecutingTaskCount(), 1);
       Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
+      for (TsFileResource resource : seqResources) {
+        Assert.assertFalse(resource.isCompactionCandidate());
+      }
     } finally {
       seqResources.get(0).readUnlock();
     }
-    long waitingTime = 0;
-    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", CompactionTaskManager.getInstance().getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
-      }
+    if (summaryFuture != null) {
+      summaryFuture.get();
+    }
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
     }
   }
 
-  @Test
+  @Test(expected = RuntimeException.class)
   public void testRepeatedSubmitAfterExecution() throws Exception {
     logger.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
-    SizeTieredCompactionTask task2 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+    InnerSpaceCompactionTask task2 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
-    manager.addTaskToWaitingQueue(task1);
-    manager.submitTaskFromTaskQueue();
-    while (manager.getTotalTaskCount() > 0) {
-      Thread.sleep(10);
-    }
     seqResources.get(0).readLock();
-    // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
-    Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
-    manager.submitTaskFromTaskQueue();
-    Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+    Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
+    Future future = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task1);
     seqResources.get(0).readUnlock();
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
-      }
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
+
+    // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
+    try {
+      Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
+      Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+    } finally {
+      CompactionTaskManager.getInstance().waitAllCompactionFinish();
     }
   }
 
@@ -170,16 +190,16 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
-    SizeTieredCompactionTask task1 =
-        new SizeTieredCompactionTask(
-            "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
+    InnerSpaceCompactionTask task1 =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
+    Future future = null;
     try {
       manager.addTaskToWaitingQueue(task1);
-      manager.submitTaskFromTaskQueue();
-      Thread.sleep(5000);
+      future = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task1);
       List<AbstractCompactionTask> runningList = manager.getRunningCompactionTaskList();
       // compaction task should add itself to running list
       Assert.assertEquals(1, runningList.size());
@@ -188,19 +208,78 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
       seqResources.get(0).readUnlock();
     }
     // after execution, task should remove itself from running list
-    Thread.sleep(5000);
+    future.get();
+    Thread.sleep(10);
     List<AbstractCompactionTask> runningList = manager.getRunningCompactionTaskList();
     Assert.assertEquals(0, runningList.size());
-    long waitingTime = 0;
-    while (manager.getRunningCompactionTaskList().size() > 0) {
-      Thread.sleep(100);
-      waitingTime += 100;
-      if (waitingTime % 10000 == 0) {
-        logger.warn("{}", manager.getRunningCompactionTaskList());
-      }
-      if (waitingTime > MAX_WAITING_TIME) {
-        Assert.fail();
-      }
+    manager.waitAllCompactionFinish();
+  }
+
+  @Test
+  public void testSizeTieredCompactionStatus() throws Exception {
+    TsFileManager tsFileManager =
+        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    tsFileManager.addAll(seqResources, true);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+    seqResources.get(0).readLock();
+    CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+
+    for (TsFileResource resource : seqResources) {
+      Assert.assertTrue(resource.isCompactionCandidate() || resource.isCompacting());
+    }
+    Future future = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task);
+    seqResources.get(0).readUnlock();
+    future.get();
+
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
+    }
+  }
+
+  @Test
+  public void testRewriteCrossCompactionFileStatus() throws Exception {
+    TsFileManager tsFileManager =
+        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+    seqResources = seqResources.subList(1, 5);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
+    }
+
+    CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+    seqResources.get(0).readLock();
+    for (TsFileResource resource : seqResources) {
+      Assert.assertTrue(resource.isCompactionCandidate() || resource.isCompacting());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertTrue(resource.isCompactionCandidate() || resource.isCompacting());
+    }
+
+    Future future = CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task);
+    seqResources.get(0).readUnlock();
+    future.get();
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertFalse(resource.isCompactionCandidate());
     }
   }
 }

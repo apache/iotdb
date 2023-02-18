@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -70,18 +69,24 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
-      case RAKE:
-        return new Rake();
+      case FREQ:
+        return new Freq();
+      case ZIGZAG:
+        return new Zigzag();
+      case HUFFMAN:
+        return new Huffman();
+      case MTF:
+        return new Mtf();
+      case BW:
+        return new Bw();
+      case AC:
+        return new Ac();
       case SPRINTZ:
         return new Sprintz();
+      case RAKE:
+        return new Rake();
       case RLBE:
         return new RLBE();
-      case TEXTRLE:
-        return new TEXTRLE();
-      case HUFFMAN:
-        return new HUFFMAN();
-      case BUCKET:
-        return new BucketEncoder();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -137,6 +142,68 @@ public abstract class TSEncodingBuilder {
     }
   }
 
+  /** for INT32, INT64, FLOAT, DOUBLE. */
+  public static class Freq extends TSEncodingBuilder {
+
+    private double snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+    private int blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+          return new FreqEncoder(blockSize, snr);
+        default:
+          throw new UnSupportedDataTypeException("FREQ doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // set SNR from initialized map or default value if not set
+      if (props == null || !props.containsKey(FreqEncoder.FREQ_ENCODING_SNR)) {
+        snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+      } else {
+        try {
+          snr = Double.parseDouble(props.get(FreqEncoder.FREQ_ENCODING_SNR));
+        } catch (NumberFormatException e) {
+          logger.warn(
+              "The format of FREQ encoding SNR {} is not correct."
+                  + " Using default FREQ encoding SNR.",
+              props.get(FreqEncoder.FREQ_ENCODING_SNR));
+        }
+        if (snr < 0) {
+          snr = TSFileDescriptor.getInstance().getConfig().getFreqEncodingSNR();
+          logger.warn(
+              "cannot set FREQ encoding SNR to negative value, replaced with default value:{}",
+              snr);
+        }
+      }
+      // set block size from initialized map or default value if not set
+      if (props == null || !props.containsKey(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE)) {
+        blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+      } else {
+        try {
+          blockSize = Integer.parseInt(props.get(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE));
+        } catch (NumberFormatException e) {
+          logger.warn(
+              "The format of FREQ encoding block size {} is not correct."
+                  + " Using default FREQ encoding block size.",
+              props.get(FreqEncoder.FREQ_ENCODING_BLOCK_SIZE));
+        }
+        if (blockSize < 0) {
+          blockSize = TSFileDescriptor.getInstance().getConfig().getFreqEncodingBlockSize();
+          logger.warn(
+              "cannot set FREQ encoding block size to negative value, replaced with default value:{}",
+              blockSize);
+        }
+      }
+    }
+  }
+
   /** for ENUMS, INT32, BOOLEAN, INT64, FLOAT, DOUBLE. */
   public static class Rle extends TSEncodingBuilder {
 
@@ -152,7 +219,7 @@ public abstract class TSEncodingBuilder {
           return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.RLE, type, 6);//maxPointNumber);
+          return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
         case TEXT:
           return new TextRleEncoder();
         default:
@@ -196,7 +263,7 @@ public abstract class TSEncodingBuilder {
   /** for INT32, INT64, FLOAT, DOUBLE. */
   public static class Ts2Diff extends TSEncodingBuilder {
 
-    private int maxPointNumber = 5;
+    private int maxPointNumber = 0;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -207,8 +274,6 @@ public abstract class TSEncodingBuilder {
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
-//          maxPointNumber
-//          System.out.println(maxPointNumber);
           return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);
@@ -223,10 +288,8 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        System.out.println(Encoder.MAX_POINT_NUMBER);
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        System.out.println(Encoder.MAX_POINT_NUMBER);
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
         } catch (NumberFormatException e) {
@@ -333,22 +396,82 @@ public abstract class TSEncodingBuilder {
     }
   }
 
-  public static class Rake extends TSEncodingBuilder {
+  public static class Zigzag extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
-        case FLOAT:
-          return new FloatRAKEEncoder();
-        case DOUBLE:
-          return new DoubleRAKEEncoder();
         case INT32:
-          return new IntRAKEEncoder();
+          return new IntZigzagEncoder();
         case INT64:
-          return new LongRAKEEncoder();
+          return new LongZigzagEncoder();
         default:
-          throw new UnSupportedDataTypeException("Rake doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
       }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Huffman extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new HuffmanEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Mtf extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new MTFEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Bw extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new BWEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Ac extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new ACEncoder();
+      }
+      throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
     }
 
     @Override
@@ -380,6 +503,30 @@ public abstract class TSEncodingBuilder {
     }
   }
 
+  public static class Rake extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return new FloatRAKEEncoder();
+        case DOUBLE:
+          return new DoubleRAKEEncoder();
+        case INT32:
+          return new IntRAKEEncoder();
+        case INT64:
+          return new LongRAKEEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Rake doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
   public static class RLBE extends TSEncodingBuilder {
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -394,69 +541,6 @@ public abstract class TSEncodingBuilder {
           return new DoubleRLBE();
         default:
           throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
-      }
-    }
-
-    @Override
-    public void initFromProps(Map<String, String> props) {
-      // do nothing
-    }
-  }
-
-  public static class HUFFMAN extends TSEncodingBuilder {
-    @Override
-    public Encoder getEncoder(TSDataType type) {
-      switch (type) {
-        case TEXT:
-          return new HuffmanEncoder();
-        case INT32:
-        case INT64:
-        case FLOAT:
-        case DOUBLE:
-        default:
-          throw new UnSupportedDataTypeException("HUFFMAN doesn't support data type: " + type);
-      }
-    }
-
-    @Override
-    public void initFromProps(Map<String, String> props) {
-      // do nothing
-    }
-  }
-
-  public static class TEXTRLE extends TSEncodingBuilder {
-    @Override
-    public Encoder getEncoder(TSDataType type) {
-      switch (type) {
-        case TEXT:
-          return new TextRleEncoder();
-        case INT32:
-        case INT64:
-        case FLOAT:
-        case DOUBLE:
-        default:
-          throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
-      }
-    }
-
-    @Override
-    public void initFromProps(Map<String, String> props) {
-      // do nothing
-    }
-  }
-  public static class BucketEncoder extends TSEncodingBuilder {
-    @Override
-    public Encoder getEncoder(TSDataType type) {
-      switch (type) {
-        case INT32:
-          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
-        case FLOAT:
-          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
-        case TEXT:
-        case INT64:
-        case DOUBLE:
-        default:
-          throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
       }
     }
 

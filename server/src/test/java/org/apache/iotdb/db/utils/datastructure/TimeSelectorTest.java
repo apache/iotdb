@@ -150,6 +150,7 @@ public class TimeSelectorTest {
         selector1.pollFirst();
         selector2.pollFirst();
       }
+      Assert.assertEquals((long) selector1.first(), selector2.first());
     }
     assertEquals();
   }
@@ -203,6 +204,27 @@ public class TimeSelectorTest {
       selector2.pollFirst();
     }
     assertEquals();
+  }
+
+  @Test
+  public void testAddAndPeek() {
+    long[] elements = {0L, 2L, 1L, -1L, 0L, 1L, -1L, 0L};
+    long[] results = {-1L, 0L, 1L, 2L};
+
+    for (long element : elements) {
+      selector1.add(element);
+      selector2.add(element);
+    }
+
+    for (long result : results) {
+      Assert.assertEquals(result, (long) selector1.first());
+      Assert.assertEquals(result, selector2.first());
+
+      selector1.pollFirst();
+      selector2.pollFirst();
+    }
+    Assert.assertTrue(selector1.isEmpty());
+    Assert.assertTrue(selector2.isEmpty());
   }
 
   private void assertEquals() {

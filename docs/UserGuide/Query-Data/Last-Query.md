@@ -21,27 +21,29 @@
 
 # Last Query
 
-The last query is a special query provided in the time series database Apache IoTDB. The last query returns the data point with the largest timestamp in the time series, that is, the latest state of a sequence. Users can specify the last query through `select last`. It is especially important in IoT data analysis scenarios as the latest point data characterizes the current state. In order to provide a millisecond-level return speed, Apache IoTDB optimizes the cache for the last query to meet users' performance requirements for real-time monitoring of devices.
+The last query is a special type of query in Apache IoTDB. It returns the data point with the largest timestamp of the specified time series. In other word, it returns the latest state of a time series. This feature is especially important in IoT data analysis scenarios. To meet the performance requirement of real-time device monitoring systems, Apache IoTDB caches the latest values of all time series to achieve microsecond read latency.
 
 The last query is to return the most recent data point of the given timeseries in a three column format.
 
-The SQL statement is defined as:
+The SQL syntax is defined as:
 
 ```sql
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause> [ORDER BY TIMESERIES (DESC | ASC)?]
 ```
 
 which means: Query and return the last data points of timeseries prefixPath.path.
 
-Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
+- Only time filter is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception. When the cached most recent data point does not satisfy the criterion specified by the filter, IoTDB will have to get the result from the external storage, which may cause a decrease in performance.
 
-The result will be returned in a four column table format.
+- The result will be returned in a four column table format.
 
-```
-| Time | timeseries | value | dataType |
-```
+    ```
+    | Time | timeseries | value | dataType |
+    ```
+    
+    **Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore, the column `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
-**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
+- We can use `ORDER BY TIMESERIES (DESC | ASC)` to specify that the result set is sorted in descending/ascending order by timeseries name.
 
 **Example 1:** get the last point of root.ln.wf01.wt01.status:
 
@@ -65,6 +67,20 @@ IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017
 +-----------------------------+-----------------------------+---------+--------+
 |2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 |2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+**Example 3:** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the timeseries column desc
+
+```
+IoTDB> select last * from root.ln.wf01.wt01 order by timeseries desc;
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
 +-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s

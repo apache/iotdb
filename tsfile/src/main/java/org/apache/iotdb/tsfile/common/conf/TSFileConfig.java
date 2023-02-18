@@ -24,8 +24,9 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.util.Properties;
 
-/** TSFileConfig is a configure class. Every variables is public and has default value. */
+/** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
 
   /** encoding configuration */
@@ -55,7 +56,7 @@ public class TSFileConfig implements Serializable {
 
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-common.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
@@ -73,8 +74,8 @@ public class TSFileConfig implements Serializable {
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
   private int pageSizeInByte = 64 * 1024;
-  /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  /** The maximum number of data points in a page, default value is 10000. */
+  private int maxNumberOfPointsInPage = 10_000;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -82,7 +83,7 @@ public class TSFileConfig implements Serializable {
   /** Max length limitation of input string. */
   private int maxStringLength = 128;
   /** Floating-point precision. */
-  private int floatPrecision = 5;
+  private int floatPrecision = 2;
   /**
    * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
@@ -99,8 +100,6 @@ public class TSFileConfig implements Serializable {
   private int rleBitWidth = 8;
   /** Default block size of two-diff. delta encoding is 128 */
   private int deltaBlockSize = 128;
-  /** Default predict method for Sprintz encoding scheme * */
-  private String sprintzPredictScheme = "delta";
   /** Default frequency type is SINGLE_FREQ. */
   private String freqType = "SINGLE_FREQ";
   /** Default PLA max error is 100. */
@@ -109,6 +108,10 @@ public class TSFileConfig implements Serializable {
   private double sdtMaxError = 100;
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
+  /** Default SNR for FREQ encoding is 40dB. */
+  private double freqEncodingSNR = 40;
+  /** Default block size for FREQ encoding is 1024. */
+  private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
@@ -147,6 +150,20 @@ public class TSFileConfig implements Serializable {
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;
+
+  /** Maximum capacity of a TsBlock */
+  private int maxTsBlockSizeInBytes = 1024 * 1024;
+
+  /** Maximum number of lines in a single TsBlock */
+  private int maxTsBlockLineNumber = 1000;
+
+  private int patternMatchingThreshold = 1000000;
+
+  /** Default predict method for Sprintz encoding scheme * */
+  private String sprintzPredictScheme = "delta";
+
+  /** customizedProperties, this should be empty by default. */
+  private Properties customizedProperties = new Properties();
 
   public TSFileConfig() {}
 
@@ -203,7 +220,6 @@ public class TSFileConfig implements Serializable {
   }
 
   public int getFloatPrecision() {
-    System.out.println(floatPrecision);
     return floatPrecision;
   }
 
@@ -245,14 +261,6 @@ public class TSFileConfig implements Serializable {
 
   public void setDeltaBlockSize(int deltaBlockSize) {
     this.deltaBlockSize = deltaBlockSize;
-  }
-
-  public String getSprintzPredictScheme() {
-    return sprintzPredictScheme;
-  }
-
-  public void setSprintzPredictScheme(String scheme) {
-    this.sprintzPredictScheme = scheme;
   }
 
   public String getFreqType() {
@@ -421,5 +429,61 @@ public class TSFileConfig implements Serializable {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public double getFreqEncodingSNR() {
+    return freqEncodingSNR;
+  }
+
+  public void setFreqEncodingSNR(double freqEncodingSNR) {
+    this.freqEncodingSNR = freqEncodingSNR;
+  }
+
+  public int getFreqEncodingBlockSize() {
+    return freqEncodingBlockSize;
+  }
+
+  public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
+    this.freqEncodingBlockSize = freqEncodingBlockSize;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+  }
+
+  public int getMaxTsBlockLineNumber() {
+    return maxTsBlockLineNumber;
+  }
+
+  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
+  }
+
+  public String getSprintzPredictScheme() {
+    return sprintzPredictScheme;
+  }
+
+  public void setSprintzPredictScheme(String scheme) {
+    this.sprintzPredictScheme = scheme;
   }
 }

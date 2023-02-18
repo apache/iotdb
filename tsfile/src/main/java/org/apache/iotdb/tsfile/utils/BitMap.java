@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public class BitMap {
   private static final byte[] BIT_UTIL = new byte[] {1, 2, 4, 8, 16, 32, 64, -128};
@@ -125,6 +126,28 @@ public class BitMap {
   }
 
   @Override
+  public int hashCode() {
+    int result = Objects.hash(size);
+    result = 31 * result + Arrays.hashCode(bits);
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == this) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (!(obj instanceof BitMap)) {
+      return false;
+    }
+    BitMap other = (BitMap) obj;
+    return this.size == other.size && Arrays.equals(this.bits, other.bits);
+  }
+
+  @Override
   public BitMap clone() {
     byte[] cloneBytes = new byte[this.bits.length];
     System.arraycopy(this.bits, 0, cloneBytes, 0, this.bits.length);
@@ -161,5 +184,11 @@ public class BitMap {
         dest.unmark(destPos + i);
       }
     }
+  }
+
+  public BitMap getRegion(int positionOffset, int length) {
+    BitMap newBitMap = new BitMap(length);
+    copyOfRange(this, positionOffset, newBitMap, 0, length);
+    return newBitMap;
   }
 }

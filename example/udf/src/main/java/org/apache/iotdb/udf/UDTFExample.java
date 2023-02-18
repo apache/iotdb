@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.udf;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 import java.util.Map;
@@ -34,7 +34,7 @@ import java.util.Map;
 /** This is an internal example of the UDTF implementation. */
 public class UDTFExample implements UDTF {
   /*
-   * SET STORAGE GROUP TO root.sg1;
+   * CREATE DATABASE root.sg1;
    * CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;
    * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1);
@@ -51,7 +51,7 @@ public class UDTFExample implements UDTF {
         // this udf only accepts 1 time series
         .validateInputSeriesNumber(1)
         // the data type of the first input time series should be INT32
-        .validateInputSeriesDataType(0, TSDataType.INT32)
+        .validateInputSeriesDataType(0, Type.INT32)
         // this udf doesn't accept any extra parameters
         // the validation rule is not required because extra parameters will be ignored
         .validate(
@@ -62,13 +62,13 @@ public class UDTFExample implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.INT32);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws IOException {
-    collector.putInt(row.getTime(), -row.getInt(0));
+    if (!row.isNull(0)) {
+      collector.putInt(row.getTime(), -row.getInt(0));
+    }
   }
 }

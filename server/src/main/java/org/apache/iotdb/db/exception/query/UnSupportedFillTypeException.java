@@ -28,6 +28,6 @@ public class UnSupportedFillTypeException extends QueryProcessException {
   public UnSupportedFillTypeException(TSDataType dataType) {
     super(
         String.format("Unsupported linear fill data type: [%s]", dataType),
-        TSStatusCode.UNSUPPORTED_FILL_TYPE_ERROR.getStatusCode());
+        TSStatusCode.UNSUPPORTED_FILL_TYPE.getStatusCode());
   }
 }

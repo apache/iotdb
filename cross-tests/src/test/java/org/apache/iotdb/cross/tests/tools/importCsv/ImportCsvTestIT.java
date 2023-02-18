@@ -47,9 +47,9 @@ public class ImportCsvTestIT extends AbstractScript {
 
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.fit.d1",
-        "SET STORAGE GROUP TO root.fit.d2",
-        "SET STORAGE GROUP TO root.fit.p",
+        "CREATE DATABASE root.fit.d1",
+        "CREATE DATABASE root.fit.d2",
+        "CREATE DATABASE root.fit.p",
         "CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE",
         "CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN",
         "CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE",
@@ -191,6 +191,37 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   /**
+   * test the situation that the schema has been created and CSV file has no problem
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testAligned() throws IOException, ClassNotFoundException {
+    assertTrue(generateTestCSV(false, false, false, false, false));
+    String[] params = {"-f", CSV_FILE, "-aligned "};
+    testMethod(params, null);
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("show devices")) {
+        ResultSet resultSet = statement.getResultSet();
+        while (resultSet.next()) {
+          assertTrue("true".equals(resultSet.getString(2)));
+        }
+        resultSet.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  /**
    * test the situation that the schema has not been created and CSV file has no problem
    *
    * @throws IOException
@@ -278,7 +309,7 @@ public class ImportCsvTestIT extends AbstractScript {
       file.delete();
     }
     // check the failed file
-    List<CSVRecord> records = readCsvFile(CSV_FILE + ".failed").getRecords();
+    List<CSVRecord> records = readCsvFile(CSV_FILE + ".failed_0").getRecords();
     String[] realRecords = {
       "Time,root.fit.d1.s1(INT32),root.fit.d1.s2(TEXT),root.fit.d2.s1(INT32),root.fit.d2.s3(INT32),root.fit.p.s1(INT32)",
       "1,100,\"hello\",200,\"300\",400"

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.trigger.api;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /** User Guide: docs/UserGuide/Operation Manual/Triggers.md */
@@ -37,79 +39,79 @@ public interface Trigger {
   default void onStop() throws Exception {}
 
   @SuppressWarnings("squid:S112")
-  default Integer fire(long timestamp, Integer value) throws Exception {
+  default Integer fire(long timestamp, Integer value, PartialPath path) throws Exception {
     return value;
   }
 
-  default int[] fire(long[] timestamps, int[] values) throws Exception {
+  default int[] fire(long[] timestamps, int[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Long fire(long timestamp, Long value) throws Exception {
+  default Long fire(long timestamp, Long value, PartialPath path) throws Exception {
     return value;
   }
 
-  default long[] fire(long[] timestamps, long[] values) throws Exception {
+  default long[] fire(long[] timestamps, long[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Float fire(long timestamp, Float value) throws Exception {
+  default Float fire(long timestamp, Float value, PartialPath path) throws Exception {
     return value;
   }
 
-  default float[] fire(long[] timestamps, float[] values) throws Exception {
+  default float[] fire(long[] timestamps, float[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Double fire(long timestamp, Double value) throws Exception {
+  default Double fire(long timestamp, Double value, PartialPath path) throws Exception {
     return value;
   }
 
-  default double[] fire(long[] timestamps, double[] values) throws Exception {
+  default double[] fire(long[] timestamps, double[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Boolean fire(long timestamp, Boolean value) throws Exception {
+  default Boolean fire(long timestamp, Boolean value, PartialPath path) throws Exception {
     return value;
   }
 
-  default boolean[] fire(long[] timestamps, boolean[] values) throws Exception {
+  default boolean[] fire(long[] timestamps, boolean[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Binary fire(long timestamp, Binary value) throws Exception {
+  default Binary fire(long timestamp, Binary value, PartialPath path) throws Exception {
     return value;
   }
 
-  default Binary[] fire(long[] timestamps, Binary[] values) throws Exception {
+  default Binary[] fire(long[] timestamps, Binary[] values, PartialPath path) throws Exception {
     int size = timestamps.length;
     for (int i = 0; i < size; ++i) {
-      fire(timestamps[i], values[i]);
+      fire(timestamps[i], values[i], path);
     }
     return values;
   }

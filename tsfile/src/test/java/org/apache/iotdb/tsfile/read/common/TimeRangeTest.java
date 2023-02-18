@@ -429,4 +429,23 @@ public class TimeRangeTest {
     assertEquals(remainRanges.get(0).getLeftClose(), true);
     assertEquals(remainRanges.get(0).getRightClose(), true);
   }
+
+  @Test
+  public void testCompareTo() {
+    Assert.assertTrue(new TimeRange(Long.MIN_VALUE, 1).compareTo(new TimeRange(5, 6)) < 0);
+    Assert.assertTrue(
+        new TimeRange(Long.MIN_VALUE, 1).compareTo(new TimeRange(Long.MIN_VALUE, 2)) < 0);
+    Assert.assertTrue(new TimeRange(Long.MIN_VALUE, 1).compareTo(new TimeRange(-1, 6)) < 0);
+    Assert.assertTrue(
+        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE).compareTo(new TimeRange(Long.MIN_VALUE, 2))
+            > 0);
+    Assert.assertTrue(
+        new TimeRange(Long.MIN_VALUE, 1).compareTo(new TimeRange(Long.MIN_VALUE, 0)) > 0);
+    Assert.assertTrue(new TimeRange(0, 3).compareTo(new TimeRange(0, 2)) > 0);
+    Assert.assertTrue(new TimeRange(0, 3).compareTo(new TimeRange(-2, -1)) > 0);
+    Assert.assertTrue(new TimeRange(0, 3).compareTo(new TimeRange(-2, 1)) > 0);
+    Assert.assertTrue(new TimeRange(0, 3).compareTo(new TimeRange(-2, 3)) > 0);
+    Assert.assertTrue(new TimeRange(0, 3).compareTo(new TimeRange(1, 2)) < 0);
+    Assert.assertTrue(new TimeRange(5, 6).compareTo(new TimeRange(5, 6)) == 0);
+  }
 }

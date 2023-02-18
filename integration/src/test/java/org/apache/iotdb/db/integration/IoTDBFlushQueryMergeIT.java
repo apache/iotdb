@@ -46,7 +46,7 @@ public class IoTDBFlushQueryMergeIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBFlushQueryMergeIT.class);
   private static String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d0",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
         "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -114,9 +114,9 @@ public class IoTDBFlushQueryMergeIT {
         "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.group1");
-      statement.execute("SET STORAGE GROUP TO root.group2");
-      statement.execute("SET STORAGE GROUP TO root.group3");
+      statement.execute("CREATE DATABASE root.group1");
+      statement.execute("CREATE DATABASE root.group2");
+      statement.execute("CREATE DATABASE root.group3");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
@@ -161,9 +161,9 @@ public class IoTDBFlushQueryMergeIT {
   public void testFlushGivenGroupNoData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup1");
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup2");
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup3");
+      statement.execute("CREATE DATABASE root.nodatagroup1");
+      statement.execute("CREATE DATABASE root.nodatagroup2");
+      statement.execute("CREATE DATABASE root.nodatagroup3");
       statement.execute("FLUSH root.nodatagroup1");
       statement.execute("FLUSH root.nodatagroup2");
       statement.execute("FLUSH root.nodatagroup3");
@@ -179,13 +179,13 @@ public class IoTDBFlushQueryMergeIT {
   public void testFlushNotExistGroupNoData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.noexist.nodatagroup1");
+      statement.execute("CREATE DATABASE root.noexist.nodatagroup1");
       try {
         statement.execute(
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
         String expectedMsg =
-            "Storage group is not set for current seriesPath: [root.notExistGroup1,root.notExistGroup2]";
+            "Database is not set for current seriesPath: [root.notExistGroup2,root.notExistGroup1]";
         sqe.printStackTrace();
         Assert.assertTrue(sqe.getMessage().contains(expectedMsg));
       }

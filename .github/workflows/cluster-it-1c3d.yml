@@ -1,0 +1,84 @@
+name: Cluster IT - 1C3D
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  Simple:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [ 8, 11, 17 ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Check Apache Rat
+        run: mvn -B apache-rat:check -P site -P code-coverage
+      - name: Adjust network dynamic TCP ports range
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          netsh int ipv4 set dynamicport tcp start=32768 num=32768
+          netsh int ipv4 set dynamicport udp start=32768 num=32768
+          netsh int ipv6 set dynamicport tcp start=32768 num=32768
+          netsh int ipv6 set dynamicport udp start=32768 num=32768
+      - name: Adjust Linux kernel somaxconn
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: sudo sysctl -w net.core.somaxconn=65535
+      - name: Adjust Mac kernel somaxconn
+        if: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: sudo sysctl -w kern.ipc.somaxconn=65535
+      - name: IT/UT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -DskipUTs \
+          -pl integration-test \
+          -am -PClusterIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}
+          path: integration-test/target/cluster-logs
+          retention-days: 1

@@ -2,7 +2,7 @@
   "paragraphs": [
     {
       "title": "Set IoTDB Schema",
-      "text": "%iotdb\n\nSET STORAGE GROUP TO root.ln.wf01.wt01;\nCREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n\n",
+      "text": "%iotdb\n\nCREATE DATABASE root.ln.wf01.wt01;\nCREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n\n",
       "user": "anonymous",
       "dateUpdated": "2020-11-24T17:01:35+0800",
       "config": {

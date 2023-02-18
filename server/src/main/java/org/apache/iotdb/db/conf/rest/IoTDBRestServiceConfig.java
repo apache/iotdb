@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.conf.rest;
 
 public class IoTDBRestServiceConfig {
-  static final String CONFIG_NAME = "iotdb-rest.properties";
+  static final String CONFIG_NAME = "iotdb-common.properties";
   /** if the enableRestService is true, we will start REST Service */
   private boolean enableRestService = false;
 
   /** set the REST Service port. */
   private int restServicePort = 18080;
+
+  /** Whether to display rest service interface information through swagger */
+  private boolean enableSwagger = false;
 
   /** enable the REST Service ssl. */
   private boolean enableHttps = false;
@@ -55,6 +58,17 @@ public class IoTDBRestServiceConfig {
 
   private int restQueryDefaultRowSizeLimit = 10000;
 
+  /** Is client authentication required */
+  private boolean clientAuth = false;
+
+  public boolean isClientAuth() {
+    return clientAuth;
+  }
+
+  public void setClientAuth(boolean clientAuth) {
+    this.clientAuth = clientAuth;
+  }
+
   public String getTrustStorePwd() {
     return trustStorePwd;
   }
@@ -69,6 +83,14 @@ public class IoTDBRestServiceConfig {
 
   public void setIdleTimeoutInSeconds(int idleTimeoutInSeconds) {
     this.idleTimeoutInSeconds = idleTimeoutInSeconds;
+  }
+
+  public boolean isEnableSwagger() {
+    return enableSwagger;
+  }
+
+  public void setEnableSwagger(boolean enableSwagger) {
+    this.enableSwagger = enableSwagger;
   }
 
   public String getKeyStorePath() {

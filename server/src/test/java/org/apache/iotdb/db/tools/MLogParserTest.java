@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.tools.mlog.MLogParser;
+import org.apache.iotdb.db.tools.schema.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,12 +41,26 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MLogParserTest {
+
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sgcc", "root.sg"};
+  private int[] storageGroupIndex = new int[] {0, 1, 3, 4};
+
+  /*
+   * For root.sg0, we prepare 50 CreateTimeseriesPlan.
+   * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
+   * For root.sgcc, we prepare 0 plans on timeseries or device or template.
+   * For root.sg, we prepare none schema plan.
+   *
+   * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
+   * There' still 1 CreateTemplatePlan in template_log.bin
+   *
+   * */
+  private int[] mlogLineNum = new int[] {50, 53, 0, 0};
 
   @Before
   public void setUp() {
@@ -65,7 +76,7 @@ public class MLogParserTest {
     file.deleteOnExit();
   }
 
-  public void prepareData() {
+  private void prepareData() {
     // prepare data
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 5; j++) {
@@ -76,7 +87,7 @@ public class MLogParserTest {
             plan.setDataType(TSDataType.INT32);
             plan.setEncoding(TSEncoding.PLAIN);
             plan.setCompressor(CompressionType.GZIP);
-            IoTDB.metaManager.createTimeseries(plan);
+            IoTDB.schemaProcessor.createTimeseries(plan);
           } catch (MetadataException e) {
             e.printStackTrace();
           }
@@ -85,72 +96,68 @@ public class MLogParserTest {
     }
 
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath("root.ln.cc"));
-      IoTDB.metaManager.setStorageGroup(new PartialPath("root.sgcc"));
-      IoTDB.metaManager.setTTL(new PartialPath("root.sgcc"), 1234L);
-      IoTDB.metaManager.deleteTimeseries(new PartialPath("root.sg1.device1.s1"));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.ln.cc"));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sgcc"));
+      IoTDB.schemaProcessor.setTTL(new PartialPath("root.sgcc"), 1234L);
+      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.sg1.device1.s1"));
       List<PartialPath> paths = new ArrayList<>();
       paths.add(new PartialPath("root.ln.cc"));
-      IoTDB.metaManager.deleteStorageGroups(paths);
+      IoTDB.schemaProcessor.deleteStorageGroups(paths);
       Map<String, String> tags = new HashMap<String, String>();
       tags.put("tag1", "value1");
-      IoTDB.metaManager.addTags(tags, new PartialPath("root.sg1.device1.s2"));
-      IoTDB.metaManager.changeAlias(new PartialPath("root.sg1.device1.s3"), "hello");
+      IoTDB.schemaProcessor.addTags(tags, new PartialPath("root.sg1.device1.s2"));
+      IoTDB.schemaProcessor.changeAlias(new PartialPath("root.sg1.device1.s3"), "hello");
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
     }
 
     try {
-      IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-      IoTDB.metaManager.createSchemaTemplate(genCreateSchemaTemplatePlan());
-      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg");
-      IoTDB.metaManager.setSchemaTemplate(setTemplatePlan);
-      IoTDB.metaManager.setUsingSchemaTemplate(
-          new ActivateTemplatePlan(new PartialPath("root.sg.d1")));
+      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
     } catch (MetadataException e) {
       e.printStackTrace();
     }
   }
 
-  private CreateTemplatePlan genCreateSchemaTemplatePlan() {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s11"));
-    measurementList.add(Collections.singletonList("s12"));
+  @Test
+  public void testMLogParser() throws Exception {
+    prepareData();
+    testNonExistingStorageGroupDir("root.ln.cc");
 
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.DOUBLE));
+    IoTDB.schemaProcessor.forceMlog();
 
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
-    schemaNames.add("s12");
-
-    return new CreateTemplatePlan(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    for (int i = 0; i < storageGroups.length; i++) {
+      testParseMLog(storageGroups[i], storageGroupIndex[i], mlogLineNum[i]);
+    }
   }
 
-  @Test
-  public void testParseMLog() throws IOException {
-    prepareData();
-    IoTDB.metaManager.flushAllMlogForTest();
+  private void testNonExistingStorageGroupDir(String storageGroup) {
+    File storageGroupDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+                + File.separator
+                + storageGroup);
+    Assert.assertFalse(storageGroupDir.exists());
+  }
 
-    try {
-      MLogParser.parseFromFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-              + File.separator
-              + MetadataConstant.METADATA_LOG,
-          "target" + File.separator + "tmp" + File.separator + "text.mlog");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  private void testParseMLog(String storageGroup, int storageGroupId, int expectedLineNum)
+      throws IOException {
+    testParseLog(
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            + File.separator
+            + storageGroup
+            + File.separator
+            + storageGroupId
+            + File.separator
+            + MetadataConstant.METADATA_LOG,
+        expectedLineNum);
+  }
+
+  private void testParseLog(String path, int expectedNum) throws IOException {
+    File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
+    file.delete();
+
+    MLogParser.parseFromFile(
+        path, "target" + File.separator + "tmp" + File.separator + "text.mlog");
 
     try (BufferedReader reader =
         new BufferedReader(
@@ -162,70 +169,12 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 113) {
-        // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
-        // measurements.
-        // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
-        // Next, we do 6 operations which will be written into mlog, include set 2 sgs, set ttl,
-        // delete timeseries, delete sg, add tags.
-        // The final operation changeAlias only change the mtree in memory, so it will not write
-        // record to mlog.
-        // Then, we set 1 more storage group, create a template with 2 measurements(1 line), set
-        // the template to this storage group and set 1 device using template. The device will be
-        // auto created.
-        // Finally, the mlog should have 100 + 2 + 6 + 1 + 1 + 1 + 1 + 1 = 113 records
+      if (lineNum != expectedNum) {
         for (String content : lines) {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(113, lineNum);
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testParseSnapshot() {
-    prepareData();
-    IoTDB.metaManager.createMTreeSnapshot();
-
-    try {
-      MLogParser.parseFromFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-              + File.separator
-              + MetadataConstant.MTREE_SNAPSHOT,
-          "target" + File.separator + "tmp" + File.separator + "text.snapshot");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
-    try (BufferedReader reader =
-        new BufferedReader(
-            new FileReader("target" + File.separator + "tmp" + File.separator + "text.snapshot"))) {
-      int lineNum = 0;
-      List<String> lines = new ArrayList<>();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        lineNum++;
-        lines.add(line);
-      }
-      if (lineNum != 115) {
-        // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
-        // measurements.
-        // So, mtree records 2 * 5 * 10 = 100 TimeSeries, and 2 SetStorageGroup, 2 * 5 devices.
-        // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete
-        // timeseries, delete sg.
-        // Then, we set 1 more storage group, create a template with 2 measurements and set
-        // the template to this storage group and set 1 device using template. The device will be
-        // auto created.
-        // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 + 1 + 1 = 114 records,
-        // and we have root record,
-        // so we have 114 + 1 = 115 records finally.
-        for (String content : lines) {
-          System.out.println(content);
-        }
-      }
-      Assert.assertEquals(115, lineNum);
+      Assert.assertEquals(expectedNum, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

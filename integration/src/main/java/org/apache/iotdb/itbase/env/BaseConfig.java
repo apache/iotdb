@@ -50,7 +50,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+  default BaseConfig setDataRegionNum(int dataRegionNum) {
     return this;
   }
 
@@ -71,10 +71,6 @@ public interface BaseConfig {
   }
 
   default BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    return this;
-  }
-
-  default BaseConfig setEnablePartition(boolean enablePartition) {
     return this;
   }
 

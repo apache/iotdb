@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -34,14 +37,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -53,12 +51,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
@@ -96,17 +94,7 @@ public class CrossSpaceCompactionTest {
 
   @Before
   public void setUp() throws MetadataException {
-    IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
-    for (String fullPath : fullPaths) {
-      PartialPath path = new PartialPath(fullPath);
-      IoTDB.metaManager.createTimeseries(
-          path,
-          TSDataType.INT64,
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    }
+    CompactionTaskManager.getInstance().start();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -116,7 +104,8 @@ public class CrossSpaceCompactionTest {
     CompactionClearUtils.deleteEmptyDir(new File("target"));
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.metaManager.clear();
+    BloomFilterCache.getInstance().clear();
+    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
     new CompactionConfigRestorer().restoreCompactionConfig();
@@ -414,35 +403,39 @@ public class CrossSpaceCompactionTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceMergeResource mergeResource =
-              new CrossSpaceMergeResource(
+          CrossSpaceCompactionResource mergeResource =
+              new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
-          mergeResource.clear();
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           index++;
-          if (mergeFiles.length > 0) {
-            CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
-                taskFactory.createTask(
-                    COMPACTION_TEST_SG,
-                    "0",
+                new CrossSpaceCompactionTask(
                     0,
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
-            compactionTask.call();
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0),
+                    0,
+                    0);
+            compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -718,34 +711,38 @@ public class CrossSpaceCompactionTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceMergeResource mergeResource =
-              new CrossSpaceMergeResource(
+          CrossSpaceCompactionResource mergeResource =
+              new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
-          mergeResource.clear();
-          if (mergeFiles.length > 0) {
-            CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
-                taskFactory.createTask(
-                    COMPACTION_TEST_SG,
-                    "0",
+                new CrossSpaceCompactionTask(
                     0,
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
-            compactionTask.call();
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0),
+                    0,
+                    0);
+            compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1020,34 +1017,38 @@ public class CrossSpaceCompactionTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceMergeResource mergeResource =
-              new CrossSpaceMergeResource(
+          CrossSpaceCompactionResource mergeResource =
+              new CrossSpaceCompactionResource(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
-          ICrossSpaceMergeFileSelector fileSelector =
-              new RewriteCompactionFileSelector(mergeResource, Long.MAX_VALUE);
-          List[] mergeFiles = fileSelector.select();
-          mergeResource.clear();
-          if (mergeFiles.length > 0) {
-            CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
+          RewriteCrossSpaceCompactionSelector selector =
+              new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+          List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
+          if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
-                taskFactory.createTask(
-                    COMPACTION_TEST_SG,
-                    "0",
+                new CrossSpaceCompactionTask(
                     0,
                     new TsFileManager(
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles());
-            compactionTask.call();
+                    mergeResource.getUnseqFiles(),
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getCrossCompactionPerformer()
+                        .createInstance(),
+                    new AtomicInteger(0),
+                    0,
+                    0);
+            compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setClosed(true);
+              targetResource.setStatus(TsFileResourceStatus.CLOSED);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

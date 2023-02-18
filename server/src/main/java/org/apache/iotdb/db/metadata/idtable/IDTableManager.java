@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,19 +34,19 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
-/** This class manages one id table for each logical storage group */
+/** This class manages one id table for each logical database */
 public class IDTableManager {
 
   /** logger */
   Logger logger = LoggerFactory.getLogger(IDTableManager.class);
 
-  /** storage group path -> id table */
+  /** database path -> id table */
   HashMap<String, IDTable> idTableMap;
 
   /** system dir */
   private final String systemDir =
       FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
-          + "storage_groups";
+          + "databases";
 
   // region IDManager Singleton
   private static class IDManagerHolder {
@@ -75,14 +76,12 @@ public class IDTableManager {
    * get id table by device path
    *
    * @param devicePath device path
-   * @return id table belongs to path's storage group
+   * @return id table belongs to path's database
    */
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     try {
-      IStorageGroupMNode storageGroupMNode =
-          IoTDB.metaManager.getStorageGroupNodeByPath(devicePath);
       return idTableMap.computeIfAbsent(
-          storageGroupMNode.getFullPath(),
+          IoTDB.schemaProcessor.getStorageGroupNodeByPath(devicePath).getFullPath(),
           storageGroupPath ->
               new IDTableHashmapImpl(
                   SystemFileFactory.INSTANCE.getFile(
@@ -92,6 +91,39 @@ public class IDTableManager {
     }
 
     return null;
+  }
+
+  /**
+   * get id table by database path
+   *
+   * @param sgPath database path
+   * @return id table belongs to path's database
+   */
+  public synchronized IDTable getIDTableDirectly(String sgPath) {
+    return idTableMap.computeIfAbsent(
+        sgPath,
+        storageGroupPath ->
+            new IDTableHashmapImpl(
+                SystemFileFactory.INSTANCE.getFile(systemDir + File.separator + storageGroupPath)));
+  }
+
+  /**
+   * get schema from device and measurements
+   *
+   * @param deviceName device name of the time series
+   * @param measurementName measurement name of the time series
+   * @return schema entry of the time series
+   */
+  public synchronized IMeasurementSchema getSeriesSchema(String deviceName, String measurementName)
+      throws MetadataException {
+    for (IDTable idTable : idTableMap.values()) {
+      IMeasurementSchema measurementSchema = idTable.getSeriesSchema(deviceName, measurementName);
+      if (measurementSchema != null) {
+        return measurementSchema;
+      }
+    }
+
+    throw new PathNotExistException(new PartialPath(deviceName, measurementName).toString());
   }
 
   /** clear id table map */

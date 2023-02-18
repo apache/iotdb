@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.qp.sql.SqlLexer;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class FilterConstant {
 
   public static final Map<Integer, FilterType> lexerToFilterType = new HashMap<>();
+  public static final Map<ExpressionType, FilterType> ExpressionToFilterType = new HashMap<>();
   public static final Map<FilterType, String> filterSymbol = new EnumMap<>(FilterType.class);
   public static final Map<FilterType, String> filterNames = new EnumMap<>(FilterType.class);
   public static final Map<FilterType, FilterType> filterReverseWords =
@@ -50,15 +52,25 @@ public class FilterConstant {
   }
 
   static {
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_EQ, FilterType.EQUAL);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_NEQ, FilterType.NOTEQUAL);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_LTE, FilterType.LESSTHANOREQUALTO);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_LT, FilterType.LESSTHAN);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_GTE, FilterType.GREATERTHANOREQUALTO);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_GT, FilterType.GREATERTHAN);
-    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_IN, FilterType.IN);
-    lexerToFilterType.put(IoTDBSqlLexer.REGEXP, FilterType.REGEXP);
-    lexerToFilterType.put(IoTDBSqlLexer.LIKE, FilterType.LIKE);
+    lexerToFilterType.put(SqlLexer.OPERATOR_DEQ, FilterType.EQUAL);
+    lexerToFilterType.put(SqlLexer.OPERATOR_SEQ, FilterType.EQUAL);
+    lexerToFilterType.put(SqlLexer.OPERATOR_NEQ, FilterType.NOTEQUAL);
+    lexerToFilterType.put(SqlLexer.OPERATOR_LTE, FilterType.LESSTHANOREQUALTO);
+    lexerToFilterType.put(SqlLexer.OPERATOR_LT, FilterType.LESSTHAN);
+    lexerToFilterType.put(SqlLexer.OPERATOR_GTE, FilterType.GREATERTHANOREQUALTO);
+    lexerToFilterType.put(SqlLexer.OPERATOR_GT, FilterType.GREATERTHAN);
+    lexerToFilterType.put(SqlLexer.OPERATOR_IN, FilterType.IN);
+    lexerToFilterType.put(SqlLexer.REGEXP, FilterType.REGEXP);
+    lexerToFilterType.put(SqlLexer.LIKE, FilterType.LIKE);
+  }
+
+  static {
+    ExpressionToFilterType.put(ExpressionType.EQUAL_TO, FilterType.EQUAL);
+    ExpressionToFilterType.put(ExpressionType.NON_EQUAL, FilterType.NOTEQUAL);
+    ExpressionToFilterType.put(ExpressionType.LESS_EQUAL, FilterType.LESSTHANOREQUALTO);
+    ExpressionToFilterType.put(ExpressionType.LESS_THAN, FilterType.LESSTHAN);
+    ExpressionToFilterType.put(ExpressionType.GREATER_EQUAL, FilterType.GREATERTHANOREQUALTO);
+    ExpressionToFilterType.put(ExpressionType.GREATER_THAN, FilterType.GREATERTHAN);
   }
 
   static {

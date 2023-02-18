@@ -31,7 +31,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
         <>
           {index === 0 && (
             <SegmentInput
-              onChange={value => {
+              onChange={(value) => {
                 onChange(prefixPath.map((v, i) => (i === index ? value.toString() : v)));
               }}
               value={value}
@@ -53,7 +53,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
             <a
               itemID={index.toString()}
               className="gf-form-label query-part"
-              onClick={_ => {
+              onClick={(_) => {
                 prefixPath.splice(index, 1);
                 onChange(prefixPath);
               }}
@@ -71,7 +71,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
               <HorizontalGroup spacing="xs">
                 <QueryInlineField label={''}>
                   <SegmentInput
-                    onChange={value => {
+                    onChange={(value) => {
                       onChange(prefixPath.map((v, i) => (i === index ? value.toString() : v)));
                     }}
                     value={value}
@@ -81,7 +81,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
                     <a
                       itemID={index.toString()}
                       className="gf-form-label query-part"
-                      onClick={_ => {
+                      onClick={(_) => {
                         prefixPath.splice(index, 1);
                         onChange(prefixPath);
                       }}

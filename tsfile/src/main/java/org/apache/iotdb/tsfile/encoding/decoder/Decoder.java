@@ -24,16 +24,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 public abstract class Decoder {
-
-  protected static final Logger logger = LoggerFactory.getLogger(Decoder.class);
 
   private static final String ERROR_MSG = "Decoder not found: %s , DataType is : %s";
 
@@ -119,6 +114,25 @@ public abstract class Decoder {
         }
       case DICTIONARY:
         return new DictionaryDecoder();
+      case ZIGZAG:
+        switch (dataType) {
+          case INT32:
+            return new IntZigzagDecoder();
+          case INT64:
+            return new LongZigzagDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case FREQ:
+        return new FreqDecoder();
+      case HUFFMAN:
+        return new HuffmanDecoder();
+      case MTF:
+        return new MTFDecoder();
+      case BW:
+        return new BWDecoder();
+      case AC:
+        return new ACDecoder();
       case SPRINTZ:
         switch (dataType) {
           case INT32:
@@ -129,19 +143,6 @@ public abstract class Decoder {
             return new FloatSprintzDecoder();
           case DOUBLE:
             return new DoubleSprintzDecoder();
-          default:
-            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
-        }
-      case RLBE:
-        switch (dataType) {
-          case INT32:
-            return new IntRLBEDecoder();
-          case INT64:
-            return new LongRLBEDecoder();
-          case FLOAT:
-            return new FloatRLBEDecoder();
-          case DOUBLE:
-            return new DoubleRLBEDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
@@ -158,25 +159,16 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
-      case TEXTRLE:
+      case RLBE:
         switch (dataType) {
-          case TEXT:
-            return new TextRleDecoder();
           case INT32:
+            return new IntRLBEDecoder();
           case INT64:
+            return new LongRLBEDecoder();
           case FLOAT:
+            return new FloatRLBEDecoder();
           case DOUBLE:
-          default:
-            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
-        }
-      case HUFFMAN:
-        switch (dataType) {
-          case TEXT:
-            return new HuffmanDecoder();
-          case INT32:
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
+            return new DoubleRLBEDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }

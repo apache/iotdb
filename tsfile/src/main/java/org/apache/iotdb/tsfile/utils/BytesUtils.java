@@ -28,9 +28,9 @@ import java.io.InputStream;
 import java.util.List;
 
 /**
- * BytesUtils is a utility class. It provide conversion among byte array and other type including
+ * BytesUtils is a utility class. It provides conversion among byte array and other type including
  * integer, long, float, boolean, double and string. <br>
- * It also provide other usable function as follow:<br>
+ * It also provide other usable function as follows:<br>
  * reading function which receives InputStream. <br>
  * concat function to join a list of byte array to one.<br>
  * get and set one bit in a byte array.
@@ -93,7 +93,7 @@ public class BytesUtils {
         width -= m;
         int mask = 1 << (8 - cnt);
         cnt += m;
-        byte y = (byte) (srcNum >> width);
+        byte y = (byte) (srcNum >>> width);
         y = (byte) (y << (8 - cnt));
         mask = ~(mask - (1 << (8 - cnt)));
         result[index] = (byte) (result[index] & mask | y);
@@ -523,7 +523,7 @@ public class BytesUtils {
         width -= m;
         int mask = 1 << (8 - cnt);
         cnt += m;
-        byte y = (byte) (srcNum >> width);
+        byte y = (byte) (srcNum >>> width);
         y = (byte) (y << (8 - cnt));
         mask = ~(mask - (1 << (8 - cnt)));
         result[index] = (byte) (result[index] & mask | y);
@@ -739,9 +739,9 @@ public class BytesUtils {
   }
 
   /**
-   * get one bit in input byte. the offset is from low to high and start with 0<br>
+   * get one bit in input byte. the offset is from high to low and start with 0<br>
    * e.g.<br>
-   * data:16(00010000), if offset is 4, return 1(000 "1" 0000) if offset is 7, return 0("0"
+   * data:16(00010000), if offset is 3, return 1(000 "1" 0000) if offset is 0, return 0("0"
    * 0010000).
    *
    * @param data input byte variable
@@ -758,9 +758,9 @@ public class BytesUtils {
   }
 
   /**
-   * set one bit in input byte. the offset is from low to high and start with index 0<br>
+   * set one bit in input byte. the offset is from high to low and start with index 0<br>
    * e.g.<br>
-   * data:16(00010000), if offset is 4, value is 0, return 0({000 "0" 0000}) if offset is 1, value
+   * data:16(00010000), if offset is 3, value is 0, return 0({000 "0" 0000}) if offset is 6, value
    * is 1, return 18({00010010}) if offset is 0, value is 0, return 16(no change).
    *
    * @param data input byte variable

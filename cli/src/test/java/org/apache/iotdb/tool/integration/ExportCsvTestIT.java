@@ -51,8 +51,8 @@ public class ExportCsvTestIT extends AbstractScript {
       "````````````````````````````````````````````````",
       "Starting IoTDB Client Export Script",
       "````````````````````````````````````````````````",
-      "Connect failed because org.apache.thrift.transport.TTransportException: "
-          + "java.net.ConnectException: Connection refused"
+      "Connect failed because Fail to reconnect to server. "
+          + "Please check server status.127.0.0.1:6668"
     };
     String dir = getCliPath();
     ProcessBuilder builder =
@@ -69,8 +69,11 @@ public class ExportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-td",
-            "./");
-    testOutput(builder, output);
+            "./",
+            "&",
+            "exit",
+            "%^errorlevel%");
+    testOutput(builder, output, 1);
   }
 
   @Override
@@ -79,8 +82,8 @@ public class ExportCsvTestIT extends AbstractScript {
       "------------------------------------------",
       "Starting IoTDB Client Export Script",
       "------------------------------------------",
-      "Connect failed because org.apache.thrift.transport.TTransportException: "
-          + "java.net.ConnectException: Connection refused"
+      "Connect failed because Fail to reconnect to server. "
+          + "Please check server status.127.0.0.1:6668"
     };
     String dir = getCliPath();
     ProcessBuilder builder =
@@ -97,6 +100,6 @@ public class ExportCsvTestIT extends AbstractScript {
             "root",
             "-td",
             "./");
-    testOutput(builder, output);
+    testOutput(builder, output, 1);
   }
 }

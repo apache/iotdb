@@ -25,7 +25,7 @@ under the License.
 
 #### 配置
 
-IoTDB 默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-engine.properties`中的以下各项：
+IoTDB 默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-datanode.properties`中的以下各项：
 
 | 名称                    | 示例                                                   | 解释                                |
 | ----------------------- | ------------------------------------------------------ | ----------------------------------- |
@@ -43,7 +43,7 @@ IoTDB 默认关闭水印嵌入功能。为了使用这个功能，第一步要�
   - 均是正整数
   - `embed_row_cycle`控制了被嵌入水印的行占总行数的比例。`embed_row_cycle`越小，被嵌入水印的行的比例就越大。当`embed_row_cycle`等于 1 的时候，所有的行都将嵌入水印。
   - GroupBasedLSBMethod 使用 LSB 嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
-- `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-engine.properties`的安全管理。
+- `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-datanode.properties`的安全管理。
 
 #### 使用示例
 

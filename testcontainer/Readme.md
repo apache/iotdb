@@ -42,7 +42,7 @@ Before running `integration-test` in this module, binaries must be generated in 
 e.g, call `mvn package -Dmaven.test.skip=true`.
 
 In this module, when running `mvn pre-integration-test` (or `mvn integration-test`, `mvn post-integration-test`),
-the module will build two docker images, `apache/iotdb:maven-development`, and `apache/iotdb:cluster-maven-development`.
+the module will build docker image, `apache/iotdb:maven-development`.
 
 In the `post-integration-test` phase, the above images will be removed.
 
@@ -51,12 +51,8 @@ In the `integration-test` phase, all `src/test/java/**/*IT.java` will be tested.
 ## How it runs
 
 `apache/iotdb:maven-development` is generated following the Dockerfile `${basedir}/docker/src/main/Dockerfile-single`, and
-`apache/iotdb:cluster-maven-development` is generated following the Dockerfile `${basedir}/docker/src/main/Dockerfile-cluster`.
 
-For testing a cluster, we use `docker-compose` and `testcontainer`.
-
-The docker-compose file is located at  `src/test/resources/1nodes`,  `src/test/resources/3nodes` and `src/test/resources/5nodes`, 
-in which one is for 1 node with replica number =1 , 3 nodes with replica number=3, and the last one is for 5 nodes with replica number =3.
+For testing sync module only, we use `mvn integration-test -P sync`.
 
 TestContainer can start the docker (or docker compose) automatically.
 

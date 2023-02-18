@@ -43,7 +43,7 @@ public class IoTDBQueryMemoryControlIT {
 
   private static final String[] sqls =
       new String[] {
-        "set storage group to root.ln",
+        "CREATE DATABASE root.ln",
         "create timeseries root.ln.wf01.wt01 with datatype=INT32,encoding=PLAIN",
         "create timeseries root.ln.wf01.wt02 with datatype=INT32,encoding=PLAIN",
         "create timeseries root.ln.wf01.wt03 with datatype=INT32,encoding=PLAIN",

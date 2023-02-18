@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;

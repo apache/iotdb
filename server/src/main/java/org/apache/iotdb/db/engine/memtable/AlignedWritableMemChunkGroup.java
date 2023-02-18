@@ -19,17 +19,23 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -39,15 +45,18 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk = new AlignedWritableMemChunk(schemaList);
   }
 
+  private AlignedWritableMemChunkGroup() {}
+
   @Override
-  public void writeValues(
+  public boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    memChunk.writeAlignedValues(times, columns, bitMaps, schemaList, start, end);
+    return memChunk.writeAlignedValuesWithFlushCheck(
+        times, columns, bitMaps, schemaList, start, end);
   }
 
   @Override
@@ -74,8 +83,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    memChunk.writeAlignedValue(insertTime, objectValue, schemaList);
+  public boolean writeWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    return memChunk.writeAlignedValueWithFlushCheck(insertTime, objectValue, schemaList);
   }
 
   @Override
@@ -92,9 +102,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     int deletedPointsNumber = 0;
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
-    for (String measurement : measurements) {
-      PartialPath fullPath = devicePath.concatNode(measurement);
-      if (originalPath.matchFullPath(fullPath)) {
+    String targetMeasurement = originalPath.getMeasurement();
+    if (targetMeasurement.equals(ONE_LEVEL_PATH_WILDCARD)
+        || targetMeasurement.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      for (String measurement : measurements) {
         Pair<Integer, Boolean> deleteInfo =
             memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
         deletedPointsNumber += deleteInfo.left;
@@ -102,7 +113,17 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
           columnsToBeRemoved.add(measurement);
         }
       }
+    } else {
+      if (measurements.contains(targetMeasurement)) {
+        Pair<Integer, Boolean> deleteInfo =
+            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, targetMeasurement);
+        deletedPointsNumber += deleteInfo.left;
+        if (Boolean.TRUE.equals(deleteInfo.right)) {
+          columnsToBeRemoved.add(targetMeasurement);
+        }
+      }
     }
+
     for (String columnToBeRemoved : columnsToBeRemoved) {
       memChunk.removeColumn(columnToBeRemoved);
     }
@@ -114,7 +135,29 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunk.getTVList().rowCount();
   }
 
+  @Override
+  public long getMaxTime() {
+    return memChunk.getMaxTime();
+  }
+
   public AlignedWritableMemChunk getAlignedMemChunk() {
     return memChunk;
+  }
+
+  @Override
+  public int serializedSize() {
+    return memChunk.serializedSize();
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    memChunk.serializeToWAL(buffer);
+  }
+
+  public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
+      throws IOException {
+    AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
+    return memChunkGroup;
   }
 }

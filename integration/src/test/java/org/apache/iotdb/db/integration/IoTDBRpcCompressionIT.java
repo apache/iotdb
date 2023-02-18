@@ -107,7 +107,7 @@ public class IoTDBRpcCompressionIT {
 
   private void doSomething(Statement statement) throws SQLException, InterruptedException {
 
-    statement.execute("set storage group to root.demo");
+    statement.execute("CREATE DATABASE root.demo");
     statement.execute("create timeseries root.demo.d1.s1 with datatype=INT64,encoding=RLE");
     statement.execute("create timeseries root.demo.d1.s2 with datatype=INT64,encoding=RLE");
     statement.execute("create timeseries root.demo.d1.s3 with datatype=INT64,encoding=RLE");

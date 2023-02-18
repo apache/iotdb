@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableBinaryTVList;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.SerializableBinaryTVList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -31,7 +31,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SerializableBinaryTVListTest extends SerializableTVListTest {
 

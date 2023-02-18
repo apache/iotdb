@@ -45,13 +45,13 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(virtualStorageGroupNum);
+  public BaseConfig setDataRegionNum(int dataRegionNum) {
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
     return this;
   }
 
@@ -78,11 +78,6 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
-    return this;
-  }
-
-  public BaseConfig setEnablePartition(boolean enablePartition) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 

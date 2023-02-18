@@ -35,37 +35,31 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    byte r = buffer.get();
-    return r != 0;
+    return buffer.get() != 0;
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    short r = buffer.getShort();
-    return r;
+    return buffer.getShort();
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    int r = ReadWriteForEncodingUtils.readVarInt(buffer);
-    return r;
+    return ReadWriteForEncodingUtils.readVarInt(buffer);
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    long r = buffer.getLong();
-    return r;
+    return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    float r = buffer.getFloat();
-    return r;
+    return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    double r = buffer.getDouble();
     return buffer.getDouble();
   }
 

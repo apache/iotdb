@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -67,7 +67,7 @@ public class QueryResourceManager {
   /**
    * Record QueryDataSource used in queries
    *
-   * <p>Key: query job id. Value: QueryDataSource corresponding to each virtual storage group.
+   * <p>Key: query job id. Value: QueryDataSource corresponding to each data region.
    */
   private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
 
@@ -82,12 +82,8 @@ public class QueryResourceManager {
   }
 
   /** Register a new query. When a query request is created firstly, this method must be invoked. */
-  public long assignQueryId(boolean isDataQuery) {
-    long queryId = queryIdAtom.incrementAndGet();
-    if (isDataQuery) {
-      filePathsManager.addQueryId(queryId);
-    }
-    return queryId;
+  public long assignQueryId() {
+    return queryIdAtom.incrementAndGet();
   }
 
   /**
@@ -118,17 +114,16 @@ public class QueryResourceManager {
    * The method is called in mergeLock() when executing query. This method will get all the
    * QueryDataSource needed for this query and put them in the cachedQueryDataSourcesMap.
    *
-   * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
-   *     under the virtual storage group
+   * @param processorToSeriesMap Key: processor of the data region. Value: selected series under the
+   *     data region
    */
   public void initQueryDataSourceCache(
-      Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
+      Map<DataRegion, List<PartialPath>> processorToSeriesMap,
       QueryContext context,
       Filter timeFilter)
       throws QueryProcessException {
-    for (Map.Entry<VirtualStorageGroupProcessor, List<PartialPath>> entry :
-        processorToSeriesMap.entrySet()) {
-      VirtualStorageGroupProcessor processor = entry.getKey();
+    for (Map.Entry<DataRegion, List<PartialPath>> entry : processorToSeriesMap.entrySet()) {
+      DataRegion processor = entry.getKey();
       List<PartialPath> pathList =
           entry.getValue().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
 
@@ -172,8 +167,7 @@ public class QueryResourceManager {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
       // QueryDataSource is never cached in cluster mode
-      VirtualStorageGroupProcessor processor =
-          StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
+      DataRegion processor = StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       PartialPath translatedPath = IDTable.translateQueryPath(selectedPath);
       cachedQueryDataSource =
           processor.query(
@@ -201,7 +195,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     // close file stream of external sort files, and delete
     if (externalSortFileMap.get(queryId) != null) {
@@ -220,9 +214,6 @@ public class QueryResourceManager {
 
     // close and delete UDF temp files
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
-
-    // remove query info in QueryTimeManager
-    QueryTimeManager.getInstance().unRegisterQuery(queryId, true);
 
     // remove cached QueryDataSource
     cachedQueryDataSourcesMap.remove(queryId);

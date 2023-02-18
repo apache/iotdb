@@ -17,6 +17,7 @@
 #
 
 from enum import Enum, unique
+import numpy as np
 
 
 @unique
@@ -36,6 +37,16 @@ class TSDataType(Enum):
     def __hash__(self):
         return self.value
 
+    def np_dtype(self):
+        return {
+            TSDataType.BOOLEAN: np.dtype(">?"),
+            TSDataType.FLOAT: np.dtype(">f4"),
+            TSDataType.DOUBLE: np.dtype(">f8"),
+            TSDataType.INT32: np.dtype(">i4"),
+            TSDataType.INT64: np.dtype(">i8"),
+            TSDataType.TEXT: np.dtype("str"),
+        }[self]
+
 
 @unique
 class TSEncoding(Enum):
@@ -48,11 +59,15 @@ class TSEncoding(Enum):
     GORILLA_V1 = 6
     REGULAR = 7
     GORILLA = 8
-    SPRINTZ = 9,
-    RAKE = 10,
-    RLBE = 11,
-    TEXTRLE = 12,
-    HUFFMAN = 13
+    ZIGZAG = 9
+    FREQ = 10
+    HUFFMAN = 11
+    MTF = 12
+    BW = 13
+    AC = 14
+    SPRINTZ = 15
+    RAKE = 16
+    RLBE = 17
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

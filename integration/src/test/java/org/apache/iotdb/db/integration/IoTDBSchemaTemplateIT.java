@@ -18,15 +18,24 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -66,7 +75,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template
@@ -78,7 +89,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("DROP SCHEMA TEMPLATE t1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
+          TSStatusCode.METADATA_ERROR.getStatusCode()
+              + ": Template [t1] has been set on MTree, cannot be dropped now.",
+          e.getMessage());
     }
 
     statement.execute("SHOW TIMESERIES root.sg1.**");
@@ -104,13 +117,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.ENCODING);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -125,7 +138,9 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -135,7 +150,9 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
     }
   }
 
@@ -146,7 +163,9 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
+          e.getMessage());
     }
 
     // set schema template
@@ -176,13 +195,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("timeseries")
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -197,7 +216,9 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+            resultSet.getString(ColumnHeaderConstant.DEVICE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -207,7 +228,9 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
+      Assert.assertEquals(
+          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
+          e.getMessage());
     }
   }
 
@@ -219,8 +242,9 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
-        expectedResultSet.remove(resultSet.getString("template name"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -232,8 +256,9 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
-        expectedResultSet.remove(resultSet.getString("template name"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -248,13 +273,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString("child nodes")
+            resultSet.getString(ColumnHeaderConstant.CHILD_NODES)
                 + ","
-                + resultSet.getString("dataType")
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
                 + ","
-                + resultSet.getString("encoding")
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
                 + ","
-                + resultSet.getString("compression");
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
         Assert.assertTrue(expectedResultSet.contains(actualResult));
         expectedResultSet.remove(actualResult);
       }
@@ -283,8 +308,9 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -294,8 +320,9 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -305,8 +332,9 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(
+            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
+        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -317,10 +345,10 @@ public class IoTDBSchemaTemplateIT {
   }
 
   private void prepareTemplate() throws SQLException {
-    // create storage group
-    statement.execute("CREATE STORAGE GROUP root.sg1");
-    statement.execute("CREATE STORAGE GROUP root.sg2");
-    statement.execute("CREATE STORAGE GROUP root.sg3");
+    // create database
+    statement.execute("CREATE DATABASE root.sg1");
+    statement.execute("CREATE DATABASE root.sg2");
+    statement.execute("CREATE DATABASE root.sg3");
 
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");

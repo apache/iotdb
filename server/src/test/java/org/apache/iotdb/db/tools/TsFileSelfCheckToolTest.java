@@ -39,12 +39,16 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TsFileSelfCheckToolTest {
 
@@ -212,7 +216,7 @@ public class TsFileSelfCheckToolTest {
     byte[] serialArr = bo.toByteArray();
     // timeseriesMetadata begins at 878364
     // randomly modify timeseriesMetadata region
-    raf.seek(878375);
+    raf.seek(963375);
     raf.write(serialArr, 0, serialArr.length);
     bo.close();
     raf.close();

@@ -45,19 +45,19 @@ mvn clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.
 And if you want to run IT in the IDE like IntelliJ, you need to achieve the effect as the `LocalStandalone` profile in maven. Follow Steps 1-4 to achieve it.
 
 - Step 1. Run(Menu) -> Edit Configurations...  
-  ![Run(Menu)](pic/Run(Menu).png)  
+  ![Run(Menu)](https://github.com/apache/iotdb-bin-resources/blob/main/integration/pic/Run(Menu).png?raw=true)  
   
   
 - Step 2. Add New Configuration -> JUnit  
-  ![Add New Configuration](pic/Add_New_Configuration.png)  
+  ![Add New Configuration](https://github.com/apache/iotdb-bin-resources/blob/main/integration/pic/Add_New_Configuration.png?raw=true)  
   
   
 - Step 3. Input some fields as the following picture  
-  ![Standalone Category](pic/Standalone_Category.png)  
+  ![Standalone Category](https://github.com/apache/iotdb-bin-resources/blob/main/integration/pic/Standalone_Category.png?raw=true)  
   
   
 - Step 4. Pay attention to the `Fork mode` in `Modify options`: you need to change `None` to `class` in `Fork mode`  
-  ![Fork mode](pic/Fork_mode.png)  
+  ![Fork mode](https://github.com/apache/iotdb-bin-resources/blob/main/integration/pic/Fork_mode.png?raw=true)  
 
 Integration Testing with Cluster Mode
 -------------------
@@ -80,7 +80,7 @@ mvn clean package -pl integration -am -DskipTests -PCluster
   
   
 - Step 1. You can copy configuration and change some fields as the following picture,
-  ![Cluster Category](pic/Cluster_Category.png)
+  ![Cluster Category](https://github.com/apache/iotdb-bin-resources/blob/main/integration/pic/Cluster_Category.png?raw=true)
   
   
 Integration Testing with Remote Mode

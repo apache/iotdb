@@ -76,15 +76,15 @@ public class ReadWriteTest {
 
     IExpression valueExpression =
         BinaryExpression.and(
-            new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.gt(1.0f)),
-            new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.lt(22)));
+            new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilter.gt(1.0f)),
+            new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.lt(22)));
 
     IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
 
     QueryExpression queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1"))
-            .addSelectedPath(new Path("d1", "s2"))
+            .addSelectedPath(new Path("d1", "s1", true))
+            .addSelectedPath(new Path("d1", "s2", true))
             .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {

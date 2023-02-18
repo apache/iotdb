@@ -20,18 +20,46 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
+import org.apache.thrift.TException;
+
+import java.io.InputStream;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.NClob;
+import java.sql.Ref;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.BitSet;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
-public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
+public class IoTDBJDBCResultSet implements ResultSet {
+
+  protected Statement statement;
+  protected SQLWarning warningChain = null;
+  protected List<String> columnTypeList;
+  protected IoTDBRpcDataSet ioTDBRpcDataSet;
+  protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
@@ -42,32 +70,38 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       String sql,
       long queryId,
       long sessionId,
-      TSQueryDataSet dataset,
+      List<ByteBuffer> dataset,
       TSTracingInfo tracingInfo,
       long timeout,
       String operationType,
       List<String> columns,
       List<String> sgColumns,
-      BitSet aliasColumnMap)
+      BitSet aliasColumnMap,
+      boolean moreData)
       throws SQLException {
-    super(
-        statement,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        ignoreTimeStamp,
-        client,
-        sql,
-        queryId,
-        sessionId,
-        timeout,
-        sgColumns,
-        aliasColumnMap);
-    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            dataset,
+            statement.getFetchSize(),
+            timeout,
+            sgColumns,
+            aliasColumnMap);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
@@ -83,31 +117,342 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       boolean ignoreTimeStamp,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       String sql,
       long queryId,
       long sessionId,
-      TSQueryDataSet dataset,
+      List<ByteBuffer> dataSet,
       TSTracingInfo tracingInfo,
       long timeout,
-      boolean isRpcFetchResult)
+      boolean moreData)
       throws SQLException {
-    super(
-        statement,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        ignoreTimeStamp,
-        client,
-        sql,
-        queryId,
-        sessionId,
-        timeout,
-        isRpcFetchResult);
-    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            dataSet,
+            statement.getFetchSize(),
+            timeout);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
+    }
+  }
+
+  @Override
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public <T> T unwrap(Class<T> iface) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean absolute(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void afterLast() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void beforeFirst() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void cancelRowUpdates() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void clearWarnings() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void close() throws SQLException {
+    try {
+      ioTDBRpcDataSet.close();
+    } catch (StatementExecutionException e) {
+      throw new SQLException("Error occurs for close operation in server side because ", e);
+    } catch (TException e) {
+      throw new SQLException("Error occurs when connecting to server for close operation ", e);
+    }
+  }
+
+  @Override
+  public void deleteRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int findColumn(String columnName) {
+    return ioTDBRpcDataSet.findColumn(columnName);
+  }
+
+  @Override
+  public boolean first() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Array getArray(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Array getArray(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public InputStream getAsciiStream(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public InputStream getAsciiStream(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
+    try {
+      return getBigDecimal(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public BigDecimal getBigDecimal(String columnName) throws SQLException {
+    String value = getValueByName(columnName);
+    if (value != null) {
+      return new BigDecimal(value);
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
+    MathContext mc = new MathContext(scale);
+    return getBigDecimal(columnIndex).round(mc);
+  }
+
+  @Override
+  public BigDecimal getBigDecimal(String columnName, int scale) throws SQLException {
+    return getBigDecimal(findColumn(columnName), scale);
+  }
+
+  @Override
+  public InputStream getBinaryStream(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public InputStream getBinaryStream(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Blob getBlob(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Blob getBlob(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean getBoolean(int columnIndex) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getBoolean(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public boolean getBoolean(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getBoolean(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public byte getByte(int columnIndex) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public byte getByte(String columnName) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public byte[] getBytes(int columnIndex) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public byte[] getBytes(String columnName) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Reader getCharacterStream(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Reader getCharacterStream(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Clob getClob(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Clob getClob(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int getConcurrency() {
+    return ResultSet.CONCUR_READ_ONLY;
+  }
+
+  @Override
+  public String getCursorName() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Date getDate(int columnIndex) throws SQLException {
+    return new Date(getLong(columnIndex));
+  }
+
+  @Override
+  public Date getDate(String columnName) throws SQLException {
+    return getDate(findColumn(columnName));
+  }
+
+  @Override
+  public Date getDate(int arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Date getDate(String arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public double getDouble(int columnIndex) throws SQLException {
+    try {
+      return getDouble(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public double getDouble(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getDouble(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int getFetchDirection() {
+    return ResultSet.FETCH_FORWARD;
+  }
+
+  @Override
+  public void setFetchDirection(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int getFetchSize() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void setFetchSize(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public float getFloat(int columnIndex) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getFloat(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public float getFloat(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getFloat(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int getHoldability() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int getInt(int columnIndex) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getInt(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int getInt(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getInt(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public long getLong(int columnIndex) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getLong(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
   }
 
@@ -121,7 +466,279 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   }
 
   @Override
-  protected boolean fetchResults() throws SQLException {
+  public ResultSetMetaData getMetaData() {
+    String operationType = "";
+    boolean nonAlign = false;
+    try {
+      if (statement.getResultSet() != null) {
+        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      }
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+    return new IoTDBResultMetadata(
+        nonAlign,
+        sgColumns,
+        operationType,
+        ioTDBRpcDataSet.columnNameList,
+        ioTDBRpcDataSet.columnTypeList,
+        ioTDBRpcDataSet.ignoreTimeStamp);
+  }
+
+  @Override
+  public Reader getNCharacterStream(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Reader getNCharacterStream(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public NClob getNClob(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public NClob getNClob(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public String getNString(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public String getNString(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Object getObject(int columnIndex) throws SQLException {
+    try {
+      return getObject(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public Object getObject(String columnName) throws SQLException {
+    return getObjectByName(columnName);
+  }
+
+  @Override
+  public Object getObject(int arg0, Map<String, Class<?>> arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Object getObject(String arg0, Map<String, Class<?>> arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public <T> T getObject(int arg0, Class<T> arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public <T> T getObject(String arg0, Class<T> arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Ref getRef(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Ref getRef(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int getRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public RowId getRowId(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public RowId getRowId(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public SQLXML getSQLXML(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public SQLXML getSQLXML(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public short getShort(int columnIndex) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public short getShort(String columnName) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Statement getStatement() {
+    return this.statement;
+  }
+
+  @Override
+  public String getString(int columnIndex) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getString(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  public String getString(String columnName) throws SQLException {
+    return getValueByName(columnName);
+  }
+
+  @Override
+  public Time getTime(int columnIndex) throws SQLException {
+    return new Time(getLong(columnIndex));
+  }
+
+  @Override
+  public Time getTime(String columnName) throws SQLException {
+    return getTime(findColumn(columnName));
+  }
+
+  @Override
+  public Time getTime(int arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Time getTime(String arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Timestamp getTimestamp(int columnIndex) throws SQLException {
+    return new Timestamp(getLong(columnIndex));
+  }
+
+  @Override
+  public Timestamp getTimestamp(String columnName) throws SQLException {
+    return getTimestamp(findColumn(columnName));
+  }
+
+  @Override
+  public Timestamp getTimestamp(int arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Timestamp getTimestamp(String arg0, Calendar arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public int getType() {
+    return ResultSet.TYPE_FORWARD_ONLY;
+  }
+
+  @Override
+  public URL getURL(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public URL getURL(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public InputStream getUnicodeStream(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public InputStream getUnicodeStream(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public SQLWarning getWarnings() {
+    return warningChain;
+  }
+
+  @Override
+  public void insertRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean isAfterLast() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean isBeforeFirst() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean isClosed() {
+    return ioTDBRpcDataSet.isClosed;
+  }
+
+  @Override
+  public boolean isFirst() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean isLast() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean last() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void moveToCurrentRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void moveToInsertRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean next() throws SQLException {
+    try {
+      return ioTDBRpcDataSet.next();
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  private boolean fetchResults() throws SQLException {
     try {
       return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
@@ -130,25 +747,455 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   }
 
   @Override
-  protected boolean hasCachedResults() {
-    return ioTDBRpcDataSet.hasCachedResults();
+  public boolean previous() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  protected void constructOneRow() {
-    ioTDBRpcDataSet.constructOneRow();
+  public void refreshRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  protected void checkRecord() throws SQLException {
-    try {
-      ioTDBRpcDataSet.checkRecord();
-    } catch (StatementExecutionException e) {
-      throw new SQLException(e.getMessage());
-    }
+  public boolean relative(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
+  public boolean rowDeleted() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean rowInserted() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean rowUpdated() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateArray(int arg0, Array arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateArray(String arg0, Array arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(int arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(String arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(int arg0, InputStream arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(String arg0, InputStream arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(int arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateAsciiStream(String arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBigDecimal(int arg0, BigDecimal arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBigDecimal(String arg0, BigDecimal arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(int arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(String arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(int arg0, InputStream arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(String arg0, InputStream arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(int arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBinaryStream(String arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(int arg0, Blob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(String arg0, Blob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(int arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(String arg0, InputStream arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(int arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBlob(String arg0, InputStream arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBoolean(int arg0, boolean arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBoolean(String arg0, boolean arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateByte(int arg0, byte arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateByte(String arg0, byte arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBytes(int arg0, byte[] arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateBytes(String arg0, byte[] arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(int arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(String arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(int arg0, Reader arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(String arg0, Reader arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(int arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateCharacterStream(String arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(int arg0, Clob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(String arg0, Clob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(int arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(String arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(int arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateClob(String arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateDate(int arg0, Date arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateDate(String arg0, Date arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateDouble(int arg0, double arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateDouble(String arg0, double arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateFloat(int arg0, float arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateFloat(String arg0, float arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateInt(int arg0, int arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateInt(String arg0, int arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateLong(int arg0, long arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateLong(String arg0, long arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNCharacterStream(int arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNCharacterStream(String arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNCharacterStream(int arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNCharacterStream(String arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(int arg0, NClob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(String arg0, NClob arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(int arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(String arg0, Reader arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(int arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNClob(String arg0, Reader arg1, long arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNString(int arg0, String arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNString(String arg0, String arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNull(int arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateNull(String arg0) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateObject(int arg0, Object arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateObject(String arg0, Object arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateObject(int arg0, Object arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateObject(String arg0, Object arg1, int arg2) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateRef(int arg0, Ref arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateRef(String arg0, Ref arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateRow() throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateRowId(int arg0, RowId arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateRowId(String arg0, RowId arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateSQLXML(int arg0, SQLXML arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateSQLXML(String arg0, SQLXML arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateShort(int arg0, short arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateShort(String arg0, short arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateString(int arg0, String arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateString(String arg0, String arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateTime(int arg0, Time arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateTime(String arg0, Time arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateTimestamp(int arg0, Timestamp arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public void updateTimestamp(String arg0, Timestamp arg1) throws SQLException {
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  }
+
+  @Override
+  public boolean wasNull() {
+    return ioTDBRpcDataSet.lastReadWasNull;
+  }
+
   protected String getValueByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getValueByName(columnName);
@@ -157,13 +1204,35 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
   }
 
-  @Override
   protected Object getObjectByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getObjectByName(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
+  }
+
+  public boolean isSetTracingInfo() {
+    if (ioTDBRpcTracingInfo == null) {
+      return false;
+    }
+    return ioTDBRpcTracingInfo.isSetTracingInfo();
+  }
+
+  public List<String> getActivityList() {
+    return ioTDBRpcTracingInfo.getActivityList();
+  }
+
+  public List<Long> getElapsedTimeList() {
+    return ioTDBRpcTracingInfo.getElapsedTimeList();
+  }
+
+  public long getStatisticsByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsByName(name);
+  }
+
+  public String getStatisticsInfoByName(String name) throws Exception {
+    return ioTDBRpcTracingInfo.getStatisticsInfoByName(name);
   }
 
   public boolean isIgnoreTimeStamp() {

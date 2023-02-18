@@ -98,6 +98,9 @@ public abstract class AbstractCsvTool {
         "yyyy/MM/dd'T'HH:mm:ss",
         "yyyy.MM.dd'T'HH:mm:ss"
       };
+  protected static final int CODE_OK = 0;
+  protected static final int CODE_ERROR = 1;
+
   protected static String host;
   protected static String port;
   protected static String username;
@@ -211,24 +214,74 @@ public abstract class AbstractCsvTool {
   public static Boolean writeCsvFile(
       List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
-      CSVPrinter printer =
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withEscape('\\')
-              .withQuoteMode(QuoteMode.NONE)
-              .print(new PrintWriter(filePath));
+      final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(filePath);
       if (headerNames != null) {
-        printer.printRecord(headerNames);
+        csvPrinterWrapper.printRecord(headerNames);
       }
       for (List record : records) {
-        printer.printRecord(record);
+        csvPrinterWrapper.printRecord(record);
       }
-      printer.flush();
-      printer.close();
+      csvPrinterWrapper.flush();
+      csvPrinterWrapper.close();
       return true;
     } catch (IOException e) {
       e.printStackTrace();
       return false;
+    }
+  }
+
+  static class CSVPrinterWrapper {
+    private final String filePath;
+    private final CSVFormat csvFormat;
+    private CSVPrinter csvPrinter;
+
+    public CSVPrinterWrapper(String filePath) {
+      this.filePath = filePath;
+      this.csvFormat =
+          CSVFormat.Builder.create(CSVFormat.DEFAULT)
+              .setHeader()
+              .setSkipHeaderRecord(true)
+              .setEscape('\\')
+              .setQuoteMode(QuoteMode.NONE)
+              .build();
+    }
+
+    public void printRecord(final Iterable<?> values) throws IOException {
+      if (csvPrinter == null) {
+        csvPrinter = csvFormat.print(new PrintWriter(filePath));
+      }
+      csvPrinter.printRecord(values);
+    }
+
+    public void print(Object value) {
+      if (csvPrinter == null) {
+        try {
+          csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+      try {
+        csvPrinter.print(value);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    public void println() throws IOException {
+      csvPrinter.println();
+    }
+
+    public void close() throws IOException {
+      if (csvPrinter != null) {
+        csvPrinter.close();
+      }
+    }
+
+    public void flush() throws IOException {
+      if (csvPrinter != null) {
+        csvPrinter.flush();
+      }
     }
   }
 }

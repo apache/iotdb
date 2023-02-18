@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class SequenceStrategy extends DirectoryStrategy {
     // so currentIndex will not be -1 after loop
     currentIndex = -1;
     for (int i = 0; i < folders.size(); i++) {
-      if (CommonUtils.hasSpace(folders.get(i))) {
+      if (JVMCommonUtils.hasSpace(folders.get(i))) {
         currentIndex = i;
         break;
       }
@@ -52,7 +52,7 @@ public class SequenceStrategy extends DirectoryStrategy {
 
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
     int index = (start + 1) % folders.size();
-    while (!CommonUtils.hasSpace(folders.get(index))) {
+    while (!JVMCommonUtils.hasSpace(folders.get(index))) {
       index = (index + 1) % folders.size();
       if (index == start) {
         throw new DiskSpaceInsufficientException(folders);

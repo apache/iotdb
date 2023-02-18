@@ -19,10 +19,14 @@
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 
 /** Filter is a top level filter abstraction. */
 public interface Filter {
@@ -62,7 +66,18 @@ public interface Filter {
 
   void serialize(DataOutputStream outputStream);
 
+  default void serialize(ByteBuffer buffer) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    this.serialize(dataOutputStream);
+    buffer.put(byteArrayOutputStream.toByteArray());
+  }
+
   void deserialize(ByteBuffer buffer);
 
   FilterSerializeId getSerializeId();
+
+  default List<TimeRange> getTimeRanges() {
+    return Collections.emptyList();
+  }
 }

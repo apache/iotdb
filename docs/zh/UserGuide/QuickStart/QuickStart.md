@@ -51,27 +51,23 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 用户可以根据以下操作对 IoTDB 进行简单的试用，若以下操作均无误，则说明 IoTDB 安装成功。
 
 ### 启动 IoTDB
+IoTDB 是一个基于分布式系统的数据库。要启动 IoTDB ，你可以先启动单机版（一个 ConfigNode 和一个 DataNode）来检查安装。
 
-用户可以使用 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+用户可以使用 sbin 文件夹下的 start-standalone 脚本启动 IoTDB。
 
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+> bash sbin/start-standalone.sh
 ```
 
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-standalone.bat
 ```
-- "-c" and "-rpc_port" 都是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
-- 选项 "-rpc_port" 指定了启动的 rpc port。
-- 如果两个选项同时指定，那么* rpc_port *将会覆盖* conf_path *下面的配置。
 
+注意：目前，要使用单机模式，你需要保证所有的地址设置为 127.0.0.1，副本数设置为1。并且，推荐使用 SimpleConsensus，因为这会带来额外的效率。这些现在都是默认配置。
 ### 使用 Cli 工具
 
 IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使用 Cli 工具进行写入、查询数据的基本步骤。
@@ -83,7 +79,7 @@ IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使�
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 Windows 系统启动命令如下：
@@ -102,7 +98,7 @@ Windows 系统启动命令如下：
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
 |_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
-IoTDB> login successfully
+Successfully login at 127.0.0.1:6667
 IoTDB>
 ```
 
@@ -110,30 +106,30 @@ IoTDB>
 
 在这里，我们首先介绍一下使用 Cli 工具创建时间序列、插入数据并查看数据的方法。
 
-数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个存储组。在定义时间序列之前，要首先使用 SET STORAGE GROUP 语句定义存储组。SQL 语句如下：
+数据在 IoTDB 中的组织形式是以时间序列为单位，每一个时间序列中有若干个数据-时间点对，每一个时间序列属于一个 database。在定义时间序列之前，要首先使用 CREATE DATABASE 语句创建数据库。SQL 语句如下：
 
 ``` 
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们可以使用 SHOW STORAGE GROUP 语句来查看系统当前所有的存储组，SQL 语句如下：
+我们可以使用 SHOW DATABASES 语句来查看系统当前所有的 database，SQL 语句如下：
 
 ```
-IoTDB> SHOW STORAGE GROUP
+IoTDB> SHOW DATABASES
 ```
 
 执行结果为：
 
 ```
 +-------------+
-|storage group|
+|     database|
 +-------------+
 |      root.ln|
 +-------------+
 Total line number = 1
 ```
 
-存储组设定后，使用 CREATE TIMESERIES 语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL 语句如下：
+Database 设定后，使用 CREATE TIMESERIES 语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL 语句如下：
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -152,7 +148,7 @@ IoTDB> SHOW TIMESERIES
 
 ```
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -170,7 +166,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 
 ```
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|     database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -245,19 +241,32 @@ IoTDB> exit
 Linux 系统与 MacOS 系统停止命令如下：
 
 ```
-> $sbin/stop-server.sh
+> sudo bash sbin/stop-standalone.sh
 ```
 
 Windows 系统停止命令如下：
 
 ```
-> $sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
+注意：在 Linux 下，执行停止脚本时，请尽量加上 sudo 语句，不然停止可能会失败。更多的解释在分布式/分布式部署中。
+
+### IoTDB 的权限管理
+
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
+
+您可以通过以下命令修改其密码：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 ## 基础配置
 
 配置文件在"conf"文件夹下，包括：
 
-  * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`iotdb-engine.properties`)
+  * 环境配置模块 (`datanode-env.bat`, `datanode-env.sh`), 
+  * 系统配置模块 (`iotdb-datanode.properties`)
   * 日志配置模块 (`logback.xml`). 

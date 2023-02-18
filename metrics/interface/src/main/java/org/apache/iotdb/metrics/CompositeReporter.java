@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
@@ -29,61 +30,62 @@ import java.util.List;
 
 public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
-  private List<Reporter> reporters = new ArrayList<>();
+  private final List<Reporter> reporters = new ArrayList<>();
 
-  /** Start all reporter */
-  public boolean startAll() {
-    boolean result = true;
+  /** Start all reporters */
+  public void startAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.start()) {
-        LOGGER.warn("Failed to init {} reporter.", reporter.getReporterType());
-        result = false;
+        LOGGER.warn("Failed to start {} reporter.", reporter.getReporterType());
       }
     }
-    return result;
   }
 
-  /** Start reporter by name values in jmx, prometheus, iotdb */
+  /** Start reporter by reporterType */
   public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.start();
       }
     }
-    LOGGER.error("Failed to find {} reporter.", reporterType);
+    LOGGER.error("Failed to start {} reporter because not find.", reporterType);
     return false;
   }
 
-  /** Stop all reporter */
-  public boolean stopAll() {
-    boolean result = true;
+  /** Stop all reporters */
+  public void stopAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.stop()) {
         LOGGER.error("Failed to stop {} reporter.", reporter.getReporterType());
-        result = false;
       }
     }
-    return result;
   }
 
-  /** Stop reporter by name, values in jmx, prometheus, iotdb */
+  /** Stop reporter by reporterType */
   public boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
         return reporter.stop();
       }
     }
-    LOGGER.error("Failed to stop reporter: {}", reporterType.name());
-    return true;
+    LOGGER.error("Failed to stop {} reporter because not find.", reporterType.name());
+    return false;
   }
 
-  public boolean restartAll() {
-    LOGGER.info("Restart all reporter.");
-    return stopAll() & startAll();
-  }
-
-  /** Add reporter */
+  /** Add reporter into reporter list */
   public void addReporter(Reporter reporter) {
+    for (Reporter originReporter : reporters) {
+      if (originReporter.getReporterType() == reporter.getReporterType()) {
+        LOGGER.warn(
+            "Failed to load {} reporter because already existed", reporter.getReporterType());
+        return;
+      }
+    }
     reporters.add(reporter);
+  }
+
+  /** Clear all reporters */
+  public void clearReporter() {
+    reporters.clear();
   }
 }

@@ -25,7 +25,7 @@ ___________    ___________.__.__
 \__    ___/____\_   _____/|__|  |   ____  
   |    | /  ___/|    __)  |  |  | _/ __ \ 
   |    | \___ \ |     \   |  |  |_\  ___/ 
-  |____|/____  >\___  /   |__|____/\___  >  version 0.13.0-SNAPSHOT
+  |____|/____  >\___  /   |__|____/\___  >  version 1.0.0
              \/     \/                 \/  
 </pre>
 ## Abstract
@@ -60,4 +60,4 @@ The features of TsFile is as follow:
 * [Get Started](https://github.com/thulab/tsfile/wiki/Get-Started)
 * [TsFile-Spark Connector](https://github.com/thulab/tsfile/wiki/TsFile-Spark-Connector)
 
-test0
+ 

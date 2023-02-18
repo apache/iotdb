@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.util.Map;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
@@ -47,31 +46,38 @@ public interface IMNode extends Serializable {
 
   IMNode getChild(String name);
 
-  void addChild(String name, IMNode child);
+  IMNode addChild(String name, IMNode child);
 
   IMNode addChild(IMNode child);
 
-  void deleteChild(String name);
+  IMNode deleteChild(String name);
 
+  // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
+  // newChild
   void replaceChild(String oldChildName, IMNode newChildNode);
 
-  Map<String, IMNode> getChildren();
+  // this method will move all the reference or value of current node's attributes to newMNode
+  void moveDataToNewMNode(IMNode newMNode);
 
-  void setChildren(Map<String, IMNode> children);
+  IMNodeContainer getChildren();
+
+  void setChildren(IMNodeContainer children);
 
   boolean isUseTemplate();
 
   void setUseTemplate(boolean useTemplate);
 
-  Template getUpperTemplate();
+  int getSchemaTemplateId();
 
-  Template getSchemaTemplate();
+  void setSchemaTemplateId(int schemaTemplateId);
 
-  void setSchemaTemplate(Template schemaTemplate);
+  void preUnsetSchemaTemplate();
 
-  // EmptyInternal means there's no child or template under this node
-  // and this node is not the root nor a storageGroup nor a measurement.
-  boolean isEmptyInternal();
+  void rollbackUnsetSchemaTemplate();
+
+  boolean isSchemaTemplatePreUnset();
+
+  void unsetSchemaTemplate();
 
   boolean isStorageGroup();
 
@@ -79,11 +85,17 @@ public interface IMNode extends Serializable {
 
   boolean isMeasurement();
 
+  MNodeType getMNodeType(Boolean isConfig);
+
   IStorageGroupMNode getAsStorageGroupMNode();
 
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
 
-  void serializeTo(MLogWriter logWriter) throws IOException;
+  CacheEntry getCacheEntry();
+
+  void setCacheEntry(CacheEntry cacheEntry);
+
+  <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
 }

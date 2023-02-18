@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -42,7 +44,7 @@ import java.util.Map;
  * i.e., Writing and querying operations must already have gotten writeLock and readLock
  * respectively.<br>
  */
-public interface IMemTable {
+public interface IMemTable extends WALEntryValue {
 
   Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
@@ -57,13 +59,6 @@ public interface IMemTable {
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue);
-  /**
-   * write data in the range [start, end). Null value in each column values will be replaced by the
-   * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
-   */
-  void write(InsertTabletPlan insertTabletPlan, int start, int end);
-
-  void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** @return the number of points */
   long size();
@@ -94,25 +89,25 @@ public interface IMemTable {
   /**
    * insert into this memtable
    *
-   * @param insertRowPlan insertRowPlan
+   * @param insertRowNode insertRowNode
    */
-  void insert(InsertRowPlan insertRowPlan);
+  void insert(InsertRowNode insertRowNode);
 
-  void insertAlignedRow(InsertRowPlan insertRowPlan);
+  void insertAlignedRow(InsertRowNode insertRowNode);
 
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
    * value in each column values will be replaced by the subsequent non-null value, e.g., {1, null,
    * 3, null, 5} will be {1, 3, 5, null, 5}
    *
-   * @param insertTabletPlan insertTabletPlan
+   * @param insertTabletNode insertTabletNode
    * @param start included
    * @param end excluded
    */
-  void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+  void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(
@@ -167,5 +162,13 @@ public interface IMemTable {
 
   long getMinPlanIndex();
 
+  long getMemTableId();
+
   long getCreatedTime();
+
+  FlushStatus getFlushStatus();
+
+  void setFlushStatus(FlushStatus flushStatus);
+
+  Map<String, Long> getMaxTime();
 }

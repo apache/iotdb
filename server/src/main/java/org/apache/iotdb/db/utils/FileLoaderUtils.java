@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -38,11 +41,13 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -50,7 +55,7 @@ public class FileLoaderUtils {
 
   private FileLoaderUtils() {}
 
-  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
+  public static void loadOrGenerateResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader =
@@ -62,13 +67,19 @@ public class FileLoaderUtils {
     } else {
       tsFileResource.deserialize();
     }
-    tsFileResource.setClosed(true);
+    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
   }
 
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
-    for (Entry<String, List<TimeseriesMetadata>> entry :
-        reader.getAllTimeseriesMetadata().entrySet()) {
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
+    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+  }
+
+  public static void updateTsFileResource(
+      Map<String, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+    for (Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
@@ -76,8 +87,27 @@ public class FileLoaderUtils {
             entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
-    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+  }
+
+  /**
+   * Generate {@link TsFileResource} from a closed {@link TsFileIOWriter}. Notice that the writer
+   * should have executed {@link TsFileIOWriter#endFile()}. And this method will not record plan
+   * Index of this writer.
+   *
+   * @param writer a {@link TsFileIOWriter}
+   * @return a updated {@link TsFileResource}
+   */
+  public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
+    TsFileResource resource = new TsFileResource(writer.getFile());
+    for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
+      String device = chunkGroupMetadata.getDevice();
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        resource.updateStartTime(device, chunkMetadata.getStartTime());
+        resource.updateEndTime(device, chunkMetadata.getEndTime());
+      }
+    }
+    resource.setStatus(TsFileResourceStatus.CLOSED);
+    return resource;
   }
 
   /**
@@ -99,6 +129,8 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -107,6 +139,7 @@ public class FileLoaderUtils {
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -151,9 +184,6 @@ public class FileLoaderUtils {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
-      if (!resource.getTsFile().exists()) {
-        return null;
-      }
       // load all the TimeseriesMetadata of vector, the first one is for time column and the
       // remaining is for sub sensors
       // the order of timeSeriesMetadata list is same as subSensorList's order
@@ -164,8 +194,15 @@ public class FileLoaderUtils {
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
       String deviceId = vectorPath.getDevice();
+
+      // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
+      // we should not ignore the non-exist of device in TsFileMetadata
       TimeseriesMetadata timeColumn =
-          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
+          cache.get(
+              new TimeSeriesMetadataCacheKey(filePath, deviceId, ""),
+              allSensors,
+              resource.getTimeIndexType() != 1,
+              isDebug);
       if (timeColumn != null) {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -176,6 +213,7 @@ public class FileLoaderUtils {
               cache.get(
                   new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
                   allSensors,
+                  resource.getTimeIndexType() != 1,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);

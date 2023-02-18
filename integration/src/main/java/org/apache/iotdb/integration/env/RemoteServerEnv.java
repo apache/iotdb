@@ -40,8 +40,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeClass() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -55,8 +55,8 @@ public class RemoteServerEnv implements BaseEnv {
   public void initBeforeTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.init;");
-      statement.execute("DELETE STORAGE GROUP root;");
+      statement.execute("CREATE DATABASE root.init;");
+      statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

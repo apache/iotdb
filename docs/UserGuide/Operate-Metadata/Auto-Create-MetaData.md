@@ -25,7 +25,7 @@ Automatically creating schema means creating time series based on the characteri
 This function can not only solve the problem that entities and measurements are difficult to predict and model in advance under massive time series scenarios,
 but also provide users with an out-of-the-box writing experience.
 
-## Auto create storage group metadata
+## Auto create database metadata
 
 * enable\_auto\_create\_schema
 
@@ -40,18 +40,18 @@ but also provide users with an out-of-the-box writing experience.
 
 | Name | default\_storage\_group\_level |
 |:---:|:---|
-| Description | Specify which level storage group is in the time series, the default level is 1 (root is on level 0) |
+| Description | Specify which level database is in the time series, the default level is 1 (root is on level 0) |
 | Type | int |
 | Default | 1 |
 | Effective | Only allowed to be modified in first start up |
 
 Illustrated as the following figure:
 
-* When default_storage_group_level=1, root.turbine1 and root.turbine2 will be set as storage group.
+* When default_storage_group_level=1, root.turbine1 and root.turbine2 will be created as database.
 
-* When default_storage_group_level=2, root.turbine1.d1, root.turbine1.d2, root.turbine2.d1 and root.turbine2.d2 will be set as storage group.
+* When default_storage_group_level=2, root.turbine1.d1, root.turbine1.d2, root.turbine2.d1 and root.turbine2.d2 will be created as database.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create storage group example">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create database example">
 
 ## Auto create time series metadata(specify data type in the frontend)
 
@@ -83,14 +83,14 @@ Illustrated as the following figure:
 
 ### Type inference
 
-| Data(String Format) | Format Type | iotdb-engine.properties | Default |
-|:---:|:---|:---|:---|
-| true | boolean | boolean\_string\_infer\_type | BOOLEAN |
-| 1 | integer | integer\_string\_infer\_type | FLOAT |
-| 17000000（integer > 2^24） | integer | long\_string\_infer\_type | DOUBLE |
+| Data(String Format) | Format Type | iotdb-datanode.properties     | Default |
+|:---:|:---|:------------------------------|:---|
+| true | boolean | boolean\_string\_infer\_type  | BOOLEAN |
+| 1 | integer | integer\_string\_infer\_type  | FLOAT |
+| 17000000（integer > 2^24） | integer | long\_string\_infer\_type     | DOUBLE |
 | 1.2 | floating | floating\_string\_infer\_type | FLOAT |
-| NaN | nan | nan\_string\_infer\_type | DOUBLE |
-| 'I am text' | text | x | x |
+| NaN | nan | nan\_string\_infer\_type      | DOUBLE |
+| 'I am text' | text | x                             | x |
 
 * Data types can be configured as BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT.
 
@@ -98,14 +98,14 @@ Illustrated as the following figure:
 
 ### Encoding Type
 
-| Data Type | iotdb-engine.properties | Default |
-|:---|:---|:---|
+| Data Type | iotdb-datanode.properties  | Default |
+|:---|:---------------------------|:---|
 | BOOLEAN | default\_boolean\_encoding | RLE |
-| INT32 | default\_int32\_encoding | RLE |
-| INT64 | default\_int64\_encoding | RLE |
-| FLOAT | default\_float\_encoding | GORILLA |
-| DOUBLE | default\_double\_encoding | GORILLA |
-| TEXT | default\_text\_encoding | PLAIN |
+| INT32 | default\_int32\_encoding   | RLE |
+| INT64 | default\_int64\_encoding   | RLE |
+| FLOAT | default\_float\_encoding   | GORILLA |
+| DOUBLE | default\_double\_encoding  | GORILLA |
+| TEXT | default\_text\_encoding    | PLAIN |
 
 * Encoding types can be configured as PLAIN, RLE, TS_2DIFF, GORILLA, DICTIONARY.
 

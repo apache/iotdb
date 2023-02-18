@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,13 +49,14 @@ public abstract class DirectoryStrategy {
   public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
     boolean hasSpace = false;
     for (String folder : folders) {
-      if (CommonUtils.hasSpace(folder)) {
+      if (JVMCommonUtils.hasSpace(folder)) {
         hasSpace = true;
         break;
       }
     }
     if (!hasSpace) {
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+      logger.error("Disk space is insufficient, change system mode to read-only");
+      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw new DiskSpaceInsufficientException(folders);
     }
 

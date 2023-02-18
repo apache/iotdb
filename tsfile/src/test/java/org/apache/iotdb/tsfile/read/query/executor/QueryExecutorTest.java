@@ -77,15 +77,15 @@ public class QueryExecutorTest {
 
     IExpression IExpression =
         BinaryExpression.and(
-            new SingleSeriesExpression(new Path("d1", "s1"), filter),
-            new SingleSeriesExpression(new Path("d1", "s4"), filter2));
+            new SingleSeriesExpression(new Path("d1", "s1", true), filter),
+            new SingleSeriesExpression(new Path("d1", "s4", true), filter2));
 
     QueryExpression queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1"))
-            .addSelectedPath(new Path("d1", "s2"))
-            .addSelectedPath(new Path("d1", "s4"))
-            .addSelectedPath(new Path("d1", "s5"))
+            .addSelectedPath(new Path("d1", "s1", true))
+            .addSelectedPath(new Path("d1", "s2", true))
+            .addSelectedPath(new Path("d1", "s4", true))
+            .addSelectedPath(new Path("d1", "s5", true))
             .setExpression(IExpression);
     long startTimestamp = System.currentTimeMillis();
     QueryDataSet queryDataSet = queryExecutorWithQueryFilter.execute(queryExpression);
@@ -104,11 +104,11 @@ public class QueryExecutorTest {
 
     QueryExpression queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1"))
-            .addSelectedPath(new Path("d1", "s2"))
-            .addSelectedPath(new Path("d1", "s3"))
-            .addSelectedPath(new Path("d1", "s4"))
-            .addSelectedPath(new Path("d1", "s5"));
+            .addSelectedPath(new Path("d1", "s1", true))
+            .addSelectedPath(new Path("d1", "s2", true))
+            .addSelectedPath(new Path("d1", "s3", true))
+            .addSelectedPath(new Path("d1", "s4", true))
+            .addSelectedPath(new Path("d1", "s5", true));
 
     long aimedTimestamp = 1480562618000L;
     int count = 0;
@@ -133,11 +133,11 @@ public class QueryExecutorTest {
             FilterFactory.and(TimeFilter.gtEq(1480562618100L), TimeFilter.lt(1480562618200L)));
     QueryExpression queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1"))
-            .addSelectedPath(new Path("d1", "s2"))
-            .addSelectedPath(new Path("d1", "s3"))
-            .addSelectedPath(new Path("d1", "s4"))
-            .addSelectedPath(new Path("d1", "s5"))
+            .addSelectedPath(new Path("d1", "s1", true))
+            .addSelectedPath(new Path("d1", "s2", true))
+            .addSelectedPath(new Path("d1", "s3", true))
+            .addSelectedPath(new Path("d1", "s4", true))
+            .addSelectedPath(new Path("d1", "s5", true))
             .setExpression(IExpression);
 
     long aimedTimestamp = 1480562618100L;

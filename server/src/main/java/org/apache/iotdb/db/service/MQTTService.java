@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
-import org.apache.iotdb.db.protocol.mqtt.PublishHandler;
+import org.apache.iotdb.db.protocol.mqtt.MPPPublishHandler;
 
-import com.google.common.collect.Lists;
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
 import io.moquette.broker.config.IConfig;
@@ -33,13 +34,14 @@ import io.moquette.interception.InterceptHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 /** The IoTDB MQTT Service. */
 public class MQTTService implements IService {
   private static final Logger LOG = LoggerFactory.getLogger(MQTTService.class);
-  private Server server = new Server();
+  private final Server server = new Server();
 
   private MQTTService() {}
 
@@ -56,7 +58,8 @@ public class MQTTService implements IService {
   public void startup() {
     IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
     IConfig config = createBrokerConfig(iotDBConfig);
-    List<InterceptHandler> handlers = Lists.newArrayList(new PublishHandler(iotDBConfig));
+    List<InterceptHandler> handlers = new ArrayList<>(1);
+    handlers.add(new MPPPublishHandler(iotDBConfig));
     IAuthenticator authenticator = new BrokerAuthenticator();
 
     server.startServer(config, handlers, null, authenticator, null);

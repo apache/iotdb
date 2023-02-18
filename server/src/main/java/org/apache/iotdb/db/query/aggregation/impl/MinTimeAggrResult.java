@@ -126,4 +126,9 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) {}
+
+  @Override
+  public long getTime() {
+    return getLongValue();
+  }
 }

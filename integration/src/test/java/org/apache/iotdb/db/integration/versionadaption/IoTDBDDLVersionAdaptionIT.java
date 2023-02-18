@@ -58,20 +58,20 @@ public class IoTDBDDLVersionAdaptionIT {
 
       String[] insertSqls =
           new String[] {
-            "SET STORAGE GROUP TO root.ln.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln.wf01.wt02",
-            "SET STORAGE GROUP TO root.ln1.wf01.wt01",
-            "SET STORAGE GROUP TO root.ln2.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt01",
+            "CREATE DATABASE root.ln.wf01.wt02",
+            "CREATE DATABASE root.ln1.wf01.wt01",
+            "CREATE DATABASE root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'",
             "CREATE ALIGNED TIMESERIES root.ln.wf01.wt02(s1 INT32, s2 DOUBLE)",
             "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'",
             "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'"
           };
 
       for (String sql : insertSqls) {
@@ -109,27 +109,27 @@ public class IoTDBDDLVersionAdaptionIT {
         new Set[] {
           new HashSet<>(
               Collections.singletonList(
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,")),
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,")),
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,")),
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,",
-                  "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                  "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                  "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                  "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,",
+                  "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                  "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,",
+                  "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,",
+                  "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,")),
           new HashSet<>()
         };
     executeAndCheckResult(sqls, standards);
@@ -139,9 +139,7 @@ public class IoTDBDDLVersionAdaptionIT {
   public void showStorageGroupTest() throws SQLException {
     String[] sqls =
         new String[] {
-          "show storage group",
-          "show storage group root.ln.wf01",
-          "show storage group root.ln.wf01.wt01.status"
+          "show databases", "show databases root.ln.wf01", "show databases root.ln.wf01.wt01.status"
         };
     Set<String>[] standards =
         new Set[] {
@@ -161,7 +159,7 @@ public class IoTDBDDLVersionAdaptionIT {
   public void showDevicesWithSgTest() throws SQLException {
     String[] sqls =
         new String[] {
-          "show devices root.ln with storage group", "show devices root.ln.wf01.wt01.temperature"
+          "show devices root.ln with database", "show devices root.ln.wf01.wt01.temperature"
         };
     Set<String>[] standards =
         new Set[] {
@@ -189,7 +187,8 @@ public class IoTDBDDLVersionAdaptionIT {
   @Test
   public void showChildPaths() throws SQLException {
     String[] sqls = new String[] {"show child paths root.ln"};
-    Set<String>[] standards = new Set[] {new HashSet<>(Collections.singletonList("root.ln.wf01,"))};
+    Set<String>[] standards =
+        new Set[] {new HashSet<>(Collections.singletonList("root.ln.wf01,SG INTERNAL,"))};
     executeAndCheckResult(sqls, standards);
   }
 
@@ -230,9 +229,7 @@ public class IoTDBDDLVersionAdaptionIT {
   public void showCountStorageGroup() throws SQLException {
     String[] sqls =
         new String[] {
-          "count storage group root.ln",
-          "count storage group",
-          "count storage group root.ln.wf01.wt01.status"
+          "count databases root.ln", "count databases", "count databases root.ln.wf01.wt01.status"
         };
     Set<String>[] standards =
         new Set[] {
@@ -275,7 +272,7 @@ public class IoTDBDDLVersionAdaptionIT {
           "COUNT NODES root.ln.wf01 level=1",
           "COUNT NODES root.ln.wf01 level=2",
           "COUNT NODES root.ln.wf01 level=3",
-          "COUNT NODES root.ln.wf01 level=4"
+          "COUNT NODES root.ln.wf01.wt01 level=4"
         };
     Set<String>[] standards =
         new Set[] {
@@ -285,7 +282,7 @@ public class IoTDBDDLVersionAdaptionIT {
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("2,")),
-          new HashSet<>(Collections.singletonList("4,"))
+          new HashSet<>(Collections.singletonList("2,"))
         };
     executeAndCheckResult(sqls, standards);
   }
@@ -319,11 +316,11 @@ public class IoTDBDDLVersionAdaptionIT {
   @Test
   public void testDeleteStorageGroup() throws Exception {
     executeDeleteAndCheckResult(
-        "DELETE STORAGE GROUP root.ln.*",
-        "SHOW STORAGE GROUP",
+        "DELETE DATABASE root.ln.*",
+        "SHOW DATABASES",
         new String[] {"root.ln1.wf01.wt01", "root.ln2.wf01.wt01"});
     executeDeleteAndCheckResult(
-        "DELETE STORAGE GROUP root.ln1", "SHOW STORAGE GROUP", new String[] {"root.ln2.wf01.wt01"});
+        "DELETE DATABASE root.ln1", "SHOW DATABASES", new String[] {"root.ln2.wf01.wt01"});
   }
 
   @Test

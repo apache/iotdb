@@ -34,7 +34,7 @@ Java VisualVM 提供了一个可视化的界面，用于查看 Java 应用程序
 若新增用户，编辑`$IOTDB_HOME/conf/jmx.access`，添加新增用户权限
 
 * IoTDB 不在本地
-编辑`$IOTDB_HOME/conf/iotdb-env.sh`
+编辑`$IOTDB_HOME/conf/datanode-env.sh`
 修改以下参数：
 ```
 JMX_LOCAL="false"

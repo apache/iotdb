@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.integration.env.ConfigFactory;
@@ -71,7 +71,7 @@ public class IoTDBMultiSeriesIT {
     ConfigFactory.getConfig().setPageSizeInByte(1024 * 150);
     ConfigFactory.getConfig().setGroupSizeInByte(1024 * 1000);
     ConfigFactory.getConfig().setMemtableSizeThreshold(1024 * 1000);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(100);
     ConfigFactory.getConfig().setCompressor("LZ4");
 
@@ -100,7 +100,7 @@ public class IoTDBMultiSeriesIT {
         statement.execute(sql);
       }
 
-      statement.execute("SET STORAGE GROUP TO root.fans");
+      statement.execute("CREATE DATABASE root.fans");
       statement.execute("CREATE TIMESERIES root.fans.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.fans.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE");
 

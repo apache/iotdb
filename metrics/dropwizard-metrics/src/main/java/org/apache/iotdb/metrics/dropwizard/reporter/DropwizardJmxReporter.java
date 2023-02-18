@@ -19,20 +19,19 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import com.codahale.metrics.jmx.JmxReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DropwizardJmxReporter implements Reporter {
+public class DropwizardJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardJmxReporter.class);
 
-  private MetricManager dropwizardMetricManager = null;
-  private JmxReporter jmxReporter = null;
+  private AbstractMetricManager dropwizardMetricManager = null;
+  private com.codahale.metrics.jmx.JmxReporter jmxReporter = null;
 
   @Override
   public boolean start() {
@@ -42,7 +41,7 @@ public class DropwizardJmxReporter implements Reporter {
     }
     try {
       jmxReporter =
-          JmxReporter.forRegistry(
+          com.codahale.metrics.jmx.JmxReporter.forRegistry(
                   ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
               .inDomain("org.apache.iotdb.metrics")
               .build();
@@ -56,22 +55,20 @@ public class DropwizardJmxReporter implements Reporter {
 
   @Override
   public boolean stop() {
-    if (jmxReporter == null) {
-      LOGGER.warn("Dropwizard JmxReporter already stop!");
-      return false;
+    if (jmxReporter != null) {
+      jmxReporter.stop();
+      jmxReporter = null;
     }
-    jmxReporter.stop();
-    jmxReporter = null;
     return true;
   }
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.jmx;
+    return ReporterType.JMX;
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

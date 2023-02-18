@@ -37,6 +37,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
+import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
+
 /** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
 
@@ -49,21 +54,22 @@ public class TsFileWriteWithTablet {
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }
+
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
         List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-        measurementSchemas.add(new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
-        measurementSchemas.add(new MeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
-        measurementSchemas.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+        measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.TEXT, TSEncoding.PLAIN));
+        measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.TEXT, TSEncoding.PLAIN));
+        measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.TEXT, TSEncoding.PLAIN));
 
         // register nonAligned timeseries
-        tsFileWriter.registerTimeseries(new Path("root.sg.d1"), measurementSchemas);
+        tsFileWriter.registerTimeseries(new Path(DEVICE_1), measurementSchemas);
 
         List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example 1
         writeMeasurementScheams.add(measurementSchemas.get(0));
         writeMeasurementScheams.add(measurementSchemas.get(1));
         writeMeasurementScheams.add(measurementSchemas.get(2));
-        writeWithTablet(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 10000, 0, 0);
+        writeWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);

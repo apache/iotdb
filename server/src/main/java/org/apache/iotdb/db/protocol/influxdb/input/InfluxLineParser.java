@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.input;
 
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CharStream;
@@ -28,7 +28,10 @@ import org.antlr.v4.runtime.TokenStream;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -41,7 +44,7 @@ public class InfluxLineParser {
   }
 
   public static List<Point> parserRecordsToPointsWithPrecision(String records, String precision) {
-    return parserRecordsToPoints(records, DatetimeUtils.toTimeUnit(precision));
+    return parserRecordsToPoints(records, DateTimeUtils.toTimeUnit(precision));
   }
 
   public static List<Point> parserRecordsToPoints(String records, TimeUnit precision) {
