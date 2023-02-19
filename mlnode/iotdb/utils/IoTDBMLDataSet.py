@@ -17,9 +17,9 @@
 #
 import numpy as np
 import pandas as pd
+import MLDataSerde
 from iotdb.thrift.rpc.ttypes import TSFetchResultsReq
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils import MLDataSerde
 from thrift.transport import TTransport
 
 

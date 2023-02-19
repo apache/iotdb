@@ -18,11 +18,9 @@
 
 import random
 import time
-import sys
 import numpy as np
 import pandas as pd
 
-sys.path.append('../')
 from iotdb.thrift.rpc.IClientRPCService import Client
 from iotdb.thrift.rpc.ttypes import TSOpenSessionReq, TSProtocolVersion, TSCreateMultiTimeseriesReq, TSInsertTabletReq, \
     TSExecuteStatementReq, TSCloseSessionReq, TSInsertRecordReq
@@ -84,7 +82,7 @@ def create_ts(client, session_id, statement_id):
 
 
 def verify_success(status):
-    if status.code == Session.SUCCESS_CODE:
+    if status.code == 200:
         return 0
     raise Exception("Something happened in client ", status.code)
 
@@ -347,4 +345,3 @@ def test_multi_fetch():
 
         close(client, session_id, transport)
     assert_frame_equal(df_input, df_output)
-
