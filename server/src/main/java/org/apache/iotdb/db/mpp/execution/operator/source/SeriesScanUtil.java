@@ -292,6 +292,7 @@ public class SeriesScanUtil {
         if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
           skipCurrentChunk();
         }
+        // TODO implement allSatisfied interface for filter, then we can still skip offset.
       } else {
         long rowCount = firstChunkMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {
@@ -1036,6 +1037,7 @@ public class SeriesScanUtil {
         if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
           skipCurrentFile();
         }
+        // TODO implement allSatisfied interface for filter, then we can still skip offset.
       } else {
         long rowCount = firstTimeSeriesMetadata.getStatistics().getCount();
         if (paginationController.hasCurOffset(rowCount)) {

@@ -242,7 +242,6 @@ public class ValuePageReader {
   }
 
   public void writeColumnBuilderWithNextBatch(
-      long[] timeBatch,
       int readEndIndex,
       ColumnBuilder columnBuilder,
       boolean[] keepCurrentRow,

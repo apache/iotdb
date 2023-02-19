@@ -34,9 +34,6 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -46,8 +43,6 @@ import java.util.List;
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class AlignedPageReader implements IPageReader, IAlignedPageReader {
-
-  private static final Logger logger = LoggerFactory.getLogger(AlignedPageReader.class);
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
@@ -119,19 +114,24 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return pageData.flip();
   }
 
-  @Override
-  public boolean pageSatisfy() {
+  private boolean pageSatisfy() {
     if (filter != null) {
       // TODO accept valueStatisticsList to filter
       return filter.satisfy(getStatistics());
     } else {
+      // For aligned series, When we only query some measurements under an aligned device, if the
+      // values of these queried measurements at a timestamp are all null, the timestamp will not be
+      // selected.
+      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+      // this check here.
       long rowCount = getTimeStatistics().getCount();
       for (Statistics statistics : getValueStatisticsList()) {
         if (statistics == null || statistics.getCount() != rowCount) {
           return true;
         }
       }
-
+      // When the number of points in all value pages is the same as that in the time page, it means
+      // that there is no null value, and all timestamps will be selected.
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
@@ -224,7 +224,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
         pageReader.writeColumnBuilderWithNextBatch(
-            timeBatch, readEndIndex, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
+            readEndIndex, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
       } else {
         for (int j = 0; j < readEndIndex; j++) {
           if (keepCurrentRow[j]) {
@@ -262,8 +262,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return timePageReader.getStatistics();
   }
 
-  @Override
-  public List<Statistics> getValueStatisticsList() {
+  private List<Statistics> getValueStatisticsList() {
     List<Statistics> valueStatisticsList = new ArrayList<>();
     for (ValuePageReader v : valuePageReaderList) {
       valueStatisticsList.add(v == null ? null : v.getStatistics());

@@ -34,13 +34,10 @@ import java.util.Set;
 
 public class SeriesScanOptions {
 
-  //
   private Filter globalTimeFilter;
 
-  //
   private Filter queryFilter;
 
-  //
   private final long limit;
   private final long offset;
 

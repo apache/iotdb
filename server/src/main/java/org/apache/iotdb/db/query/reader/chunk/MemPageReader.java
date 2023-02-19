@@ -93,8 +93,7 @@ public class MemPageReader implements IPageReader {
     return batchData.flip();
   }
 
-  @Override
-  public boolean pageSatisfy() {
+  private boolean pageSatisfy() {
     if (valueFilter != null) {
       return valueFilter.satisfy(getStatistics());
     } else {

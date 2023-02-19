@@ -20,13 +20,9 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-import java.util.List;
-
 public interface IAlignedPageReader {
 
   Statistics getStatistics(int index);
 
   Statistics getTimeStatistics();
-
-  List<Statistics> getValueStatisticsList();
 }

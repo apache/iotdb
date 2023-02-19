@@ -162,8 +162,7 @@ public class PageReader implements IPageReader {
     return pageData.flip();
   }
 
-  @Override
-  public boolean pageSatisfy() {
+  private boolean pageSatisfy() {
     if (filter != null) {
       return filter.satisfy(getStatistics());
     } else {

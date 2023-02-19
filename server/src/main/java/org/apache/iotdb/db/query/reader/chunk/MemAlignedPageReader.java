@@ -91,19 +91,24 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     return batchData.flip();
   }
 
-  @Override
-  public boolean pageSatisfy() {
+  private boolean pageSatisfy() {
     if (valueFilter != null) {
       // TODO accept valueStatisticsList to filter
       return valueFilter.satisfy(getStatistics());
     } else {
+      // For aligned series, When we only query some measurements under an aligned device, if the
+      // values of these queried measurements at a timestamp are all null, the timestamp will not be
+      // selected.
+      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+      // this check here.
       long rowCount = getTimeStatistics().getCount();
       for (Statistics statistics : getValueStatisticsList()) {
         if (statistics == null || statistics.getCount() != rowCount) {
           return true;
         }
       }
-
+      // When the number of points in all value pages is the same as that in the time page, it means
+      // that there is no null value, and all timestamps will be selected.
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
@@ -115,6 +120,9 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   @Override
   public TsBlock getAllSatisfiedData() {
     builder.reset();
+    if (!pageSatisfy()) {
+      return builder.build();
+    }
 
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
@@ -189,8 +197,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     return chunkMetadata.getTimeStatistics();
   }
 
-  @Override
-  public List<Statistics> getValueStatisticsList() {
+  private List<Statistics> getValueStatisticsList() {
     return chunkMetadata.getValueStatisticsList();
   }
 

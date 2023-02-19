@@ -140,6 +140,11 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
           skipCurrentFile();
         }
       } else {
+        // For aligned series, When we only query some measurements under an aligned device, if the
+        // values of these queried measurements at a timestamp are all null, the timestamp will not
+        // be selected.
+        // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+        // this check here.
         long rowCount =
             ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
         for (Statistics statistics :
@@ -148,7 +153,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
             return;
           }
         }
-
+        // When the number of points in all value chunk groups is the same as that in the time chunk
+        // group, it means that there is no null value, and all timestamps will be selected.
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentFile();
           paginationController.consumeOffset(rowCount);
@@ -167,6 +173,11 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
           skipCurrentChunk();
         }
       } else {
+        // For aligned series, When we only query some measurements under an aligned device, if the
+        // values of these queried measurements at a timestamp are all null, the timestamp will not
+        // be selected.
+        // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+        // this check here.
         long rowCount = firstChunkMetadata.getStatistics().getCount();
         for (Statistics statistics :
             ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
@@ -174,7 +185,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
             return;
           }
         }
-
+        // When the number of points in all value chunks is the same as that in the time chunk, it
+        // means that there is no null value, and all timestamps will be selected.
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentChunk();
           paginationController.consumeOffset(rowCount);

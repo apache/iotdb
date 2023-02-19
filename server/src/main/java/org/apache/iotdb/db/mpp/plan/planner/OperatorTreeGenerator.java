@@ -387,7 +387,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            ascending ? Ordering.ASC : Ordering.DESC,
+            node.getScanOrder(),
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -459,7 +459,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            ascending ? Ordering.ASC : Ordering.DESC,
+            node.getScanOrder(),
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,

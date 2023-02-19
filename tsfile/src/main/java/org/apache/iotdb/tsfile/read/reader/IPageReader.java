@@ -47,6 +47,4 @@ public interface IPageReader {
   void initTsBlockBuilder(List<TSDataType> dataTypes);
 
   void setLimitOffset(PaginationController paginationController);
-
-  boolean pageSatisfy();
 }
