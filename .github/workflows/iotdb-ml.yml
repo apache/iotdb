@@ -1,6 +1,6 @@
-# This workflow is just for checking whether modifications works for the Python client.
+# This workflow is just for checking whether modifications works for the MLNode
 
-name: Python Client
+name: MLNode
 
 on:
   push:
@@ -44,13 +44,13 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server distribution zip and python client
+      - name: Build IoTDB server distribution zip and mlnode
         run: mvn -B clean install -pl distribution,mlnode -am -DskipTests && cd mlnode && potery build && pip install dist/apache_iotdb_mlnode-1.0.0-py3-none-any.whl --force-reinstall
       - name: Build IoTDB server docker image
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
-      - name: Install IoTDB mlnode client requirements
+      - name: Install IoTDB mlnode requirements
         run: pip3 install -r requirements_dev.txt
       - name: Integration test
         shell: bash
