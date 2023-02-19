@@ -164,7 +164,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // the chunk partially overlaps in time with the current M4 interval Ii.
         // load this chunk, split it on deletes and all w intervals.
         // add to currentChunkList and futureChunkList.
-        // TODO chunk data read operation (b) get the closest data point after or before a timestamp
         itr.remove();
         // B: loads chunk data from disk to memory
         // C: decompress page data, split time&value buffers
@@ -175,8 +174,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
         //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
         //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
-        // DIRECTLY),
-        //  WHICH WILL INTRODUCE BUGS!
+        //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
+
+        // chunk data read operation (b) get the closest data point after or before a timestamp
         pageReader.split4CPV(
             startTime,
             endTime,
@@ -225,10 +225,10 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
-    while (currentChunkList.size() > 0) { // 循环1 TODO debug
-      // check size>0 because after updateBPTP empty ChunkSuit4CPV will be removed from
-      // currentChunkList
-      // 按照bottomValue排序，找出BP candidate set
+    // check size>0 because after updateBPTP because empty ChunkSuit4CPV will be removed from
+    // currentChunkList
+    while (currentChunkList.size() > 0) { // loop 1
+      // sorted by bottomValue, find BP candidate set
       currentChunkList.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
             // aggregations
@@ -265,12 +265,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                           o1.getChunkMetadata().getOffsetOfChunkHeader()));
             }
           });
-      while (true) { // 循环2
-        // 如果set里所有点所在的chunk都是lazy
-        // load，则对所有块进行load，应用deleteIntervals，并把BP删掉（因为不管是被删除删掉还是被更新删掉都是删掉这个点）
+      while (true) { // loop 2
+        // if there is no chunk for lazy loading, then load all chunks in candidateSet,
+        // and apply deleteIntervals, deleting BP no matter out of deletion or update
         if (nonLazyLoad.size() == 0) {
           for (ChunkSuit4CPV chunkSuit4CPV : candidateSet) {
-            // TODO 注意delete intervals的传递
+            // Note the pass of delete intervals
             if (chunkSuit4CPV.getPageReader() == null) {
               PageReader pageReader =
                   FileLoaderUtils.loadPageReaderList4CPV(
@@ -279,29 +279,29 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
               //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
-              // DIRECTLY),
-              //  WHICH WILL INTRODUCE BUGS!
+              //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
               chunkSuit4CPV.setPageReader(pageReader);
             } else {
-              // TODO 注意delete intervals的传递：主要是被重写点作为点删除传递
+              // Note the pass of delete intervals, especially deleting the non-latest candidate
+              // point.
               // pageReader does not refer to the same deleteInterval as those in chunkMetadata
               // after chunkMetadata executes insertIntoSortedDeletions
               chunkSuit4CPV
                   .getPageReader()
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
-            // TODO chunk data read operation (c): get all data points
-            // (c) get all data points
+            // chunk data read operation (c): get all data points
             chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
-            // TODO check if empty
+            // check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
               currentChunkList.remove(chunkSuit4CPV);
             }
           }
-          break; // 退出循环2，进入循环1
+          break; // exit loop 2, enter loop 1
         }
-        // 否则，找出candidate set里非lazy load里version最高的那个块的BP点作为candidate point
-        ChunkSuit4CPV candidate = nonLazyLoad.get(0); // TODO check sort right
+        // otherwise, extract the next new candidate point from the candidate set with the lazy load
+        // strategy
+        ChunkSuit4CPV candidate = nonLazyLoad.get(0); // sorted by version
         MergeReaderPriority candidateVersion =
             new MergeReaderPriority(
                 candidate.getChunkMetadata().getVersion(),
@@ -311,8 +311,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
         // verify if this candidate point is deleted
         boolean isDeletedItself = false;
-        // TODO add M4 interval virtual delete since BP/TP is not updated in
-        // getCurrentChunkListFromFutureChunkList
         if (candidateTimestamp < curStartTime || candidateTimestamp >= curStartTime + interval) {
           isDeletedItself = true;
         } else {
@@ -320,16 +318,18 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               PageReader.isDeleted(
                   candidateTimestamp, candidate.getChunkMetadata().getDeleteIntervalList());
         }
-        if (isDeletedItself) { // 是被删除，则标记candidate point所在块为lazy load，然后回到循环2
+        if (isDeletedItself) {
+          // the candidate point is deleted, then label the chunk as already lazy loaded, and back
+          // to loop 2
           nonLazyLoad.remove(candidate);
           // TODO check this can really remove the element
           // TODO check whether nonLazyLoad remove affects candidateSet
           // TODO check nonLazyLoad sorted by version number from high to low
-          continue; // 回到循环2
+          continue; // back to loop 2
 
-        } else { // 否被删除
+        } else { // not deleted
           boolean isUpdate = false;
-          // 找出所有更高版本的overlap它的块
+          // find overlapping chunks with higher versions
           List<ChunkSuit4CPV> overlaps = new ArrayList<>();
           for (ChunkSuit4CPV chunkSuit4CPV : currentChunkList) {
             ChunkMetadata chunkMetadata = chunkSuit4CPV.getChunkMetadata();
@@ -353,18 +353,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             overlaps.add(chunkSuit4CPV);
           }
 
-          if (!isUpdate && overlaps.size() == 0) { // 否被overlap，则当前candidate point就是计算结果，结束
+          if (!isUpdate && overlaps.size() == 0) {
+            // no overlaps, then the candidate point is not updated, then it is the final result
             results
-                .get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-                // minValue[bottomTimestamp], maxValue[topTimestamp]
+                .get(4)
                 .updateResultUsingValues(
                     new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
-            // TODO check updateResult
-            return; // 计算结束
-          } else if (!isUpdate) { // 是被overlap，则partial scan所有这些overlap的块
+            return; // finished
+          } else if (!isUpdate) {
+            // verify whether the candidate point is updated
             for (ChunkSuit4CPV chunkSuit4CPV : overlaps) {
-              // scan这个chunk的数据
-              // TODO chunk data read operation (a): check existence of data point at a timestamp
               if (chunkSuit4CPV.getPageReader() == null) {
                 PageReader pageReader =
                     FileLoaderUtils.loadPageReaderList4CPV(
@@ -373,46 +371,41 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
                 //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
-                // ASSIGN DIRECTLY),
-                //  WHICH WILL INTRODUCE BUGS!
+                //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
                 chunkSuit4CPV.setPageReader(pageReader);
               }
-              // (a) check existence of data point at a timestamp:
+              // chunk data read operation (a): check existence of data point at a timestamp
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
-              if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
+              if (isUpdate) {
+                // since the candidate point is updated, early break
                 break;
               }
             }
           }
-          if (!isUpdate) { // partial scan了所有overlap的块都没有找到这样的点，则当前candidate point就是计算结果，结束
+          if (!isUpdate) {
+            // the candidate point is not updated, then it is the final result
             results
-                .get(4) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-                // minValue[bottomTimestamp], maxValue[topTimestamp]
+                .get(4)
                 .updateResultUsingValues(
                     new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
-            // TODO check updateResult
-            return; // 计算结束
-          } else { // 找到这样的点，于是标记candidate point所在块为lazy
-            // load，并对其chunkMetadata的deleteInterval里加上对该点时间的删除，然后进入循环2
+            return; // finished
+          } else {
+            // the candidate point is updated, then label the chunk as already lazy loaded,
+            // add the deletion of the candidate point in deleteInterval, and back to loop 2
             if (candidate.getChunkMetadata().getDeleteIntervalList() == null) {
               List<TimeRange> tmp = new ArrayList<>();
               tmp.add(new TimeRange(candidateTimestamp, candidateTimestamp));
               candidate.getChunkMetadata().setDeleteIntervalList(tmp);
             } else {
-              //              candidate.getChunkMetadata().getDeleteIntervalList()
-              //                  .add(new TimeRange(candidateTimestamp, candidateTimestamp)); //
-              // TODO check
               candidate
                   .getChunkMetadata()
                   .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); // TODO check
-              // TODO debug chunk and page deleteInterval not the same
             }
-            // 删除那里不需要再加了，而这里更新就需要手动加一下删除操作
             nonLazyLoad.remove(candidate);
             // TODO check this can really remove the element
             // TODO check whether nonLazyLoad remove affects candidateSet
             // TODO check nonLazyLoad sorted by version number from high to low
-            continue; // 回到循环2
+            continue; // back to loop 2
           }
         }
       }
@@ -426,10 +419,10 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
-    while (currentChunkList.size() > 0) { // 循环1
-      // check size>0 because after updateBPTP empty ChunkSuit4CPV will be removed from
-      // currentChunkList
-      // 按照topValue排序，找出TP candidate set
+    // check size>0 because after updateBPTP empty ChunkSuit4CPV will be removed from
+    // currentChunkList
+    while (currentChunkList.size() > 0) { // loop 1
+      // sorted by topValue, find TP candidate set
       currentChunkList.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
             // aggregations
@@ -455,7 +448,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       }
 
       List<ChunkSuit4CPV> nonLazyLoad = new ArrayList<>(candidateSet);
-      // TODO check, whether nonLazyLoad remov  e affects candidateSet
+      // TODO check, whether nonLazyLoad remove affects candidateSet
       nonLazyLoad.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
@@ -468,12 +461,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                           o1.getChunkMetadata().getOffsetOfChunkHeader()));
             }
           });
-      while (true) { // 循环2
-        // 如果set里所有点所在的chunk都是lazy
-        // load，则对所有块进行load，应用deleteIntervals，并把TP删掉（因为不管是被删除删掉还是被更新删掉都是删掉这个点）
+      while (true) { // loop 2
+        // if there is no chunk for lazy loading, then load all chunks in candidateSet,
+        // and apply deleteIntervals, deleting TP no matter out of deletion or update
         if (nonLazyLoad.size() == 0) {
           for (ChunkSuit4CPV chunkSuit4CPV : candidateSet) {
-            // TODO 注意delete intervals的传递
+            // Note the pass of delete intervals
             if (chunkSuit4CPV.getPageReader() == null) {
               PageReader pageReader =
                   FileLoaderUtils.loadPageReaderList4CPV(
@@ -482,29 +475,29 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
               //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
-              // DIRECTLY),
-              //  WHICH WILL INTRODUCE BUGS!
+              //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
               chunkSuit4CPV.setPageReader(pageReader);
             } else {
-              // TODO 注意delete intervals的传递：主要是被重写点作为点删除传递
+              // Note the pass of delete intervals, especially deleting the non-latest candidate
+              // point.
               // pageReader does not refer to the same deleteInterval as those in chunkMetadata
               // after chunkMetadata executes insertIntoSortedDeletions
               chunkSuit4CPV
                   .getPageReader()
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
-            // TODO chunk data read operation (c): get all data points
-            // (c) get all data points
+            // chunk data read operation (c): get all data points
             chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
-            // TODO check if empty
+            // check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
               currentChunkList.remove(chunkSuit4CPV);
             }
           }
-          break; // 退出循环2，进入循环1
+          break; // exit loop 2, enter loop 1
         }
-        // 否则，找出candidate set里非lazy load里version最高的那个块的TP点作为candidate point
-        ChunkSuit4CPV candidate = nonLazyLoad.get(0); // TODO check sort right
+        // otherwise, extract the next new candidate point from the candidate set with the lazy load
+        // strategy
+        ChunkSuit4CPV candidate = nonLazyLoad.get(0); // sorted by version
         MergeReaderPriority candidateVersion =
             new MergeReaderPriority(
                 candidate.getChunkMetadata().getVersion(),
@@ -516,11 +509,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         long candidateTimestamp = candidate.getStatistics().getTopTimestamp(); // TODO check
         Object candidateValue = candidate.getStatistics().getMaxValue(); // TODO check
 
-        // verify这个candidate point
-        // 是否被删除
+        // verify if this candidate point is deleted
         boolean isDeletedItself = false;
-        // TODO add M4 interval virtual delete since BP/TP is not updated in
-        // getCurrentChunkListFromFutureChunkList
         if (candidateTimestamp < curStartTime || candidateTimestamp >= curStartTime + interval) {
           isDeletedItself = true;
         } else {
@@ -528,16 +518,18 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               PageReader.isDeleted(
                   candidateTimestamp, candidate.getChunkMetadata().getDeleteIntervalList());
         }
-        if (isDeletedItself) { // 是被删除，则标记candidate point所在块为lazy load，然后回到循环2
+        if (isDeletedItself) {
+          // the candidate point is deleted, then label the chunk as already lazy loaded, and back
+          // to loop 2
           nonLazyLoad.remove(candidate);
           // TODO check this can really remove the element
           // TODO check whether nonLazyLoad remove affects candidateSet
           // TODO check nonLazyLoad sorted by version number from high to low
-          continue; // 回到循环2
+          continue; // back to loop 2
 
-        } else { // 否被删除
+        } else { // not deleted
           boolean isUpdate = false;
-          // 找出所有更高版本的overlap它的块
+          // find overlapping chunks with higher versions
           List<ChunkSuit4CPV> overlaps = new ArrayList<>();
           for (ChunkSuit4CPV chunkSuit4CPV : currentChunkList) {
             ChunkMetadata chunkMetadata = chunkSuit4CPV.getChunkMetadata();
@@ -561,18 +553,16 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             overlaps.add(chunkSuit4CPV);
           }
 
-          if (!isUpdate && overlaps.size() == 0) { // 否被overlap，则当前candidate point就是计算结果，结束
+          if (!isUpdate && overlaps.size() == 0) {
+            // no overlaps, then the candidate point is not updated, then it is the final result
             results
-                .get(5) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-                // minValue[bottomTimestamp], maxValue[topTimestamp]
+                .get(5)
                 .updateResultUsingValues(
                     new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
-            // TODO check updateResult
-            return; // 计算结束
-          } else if (!isUpdate) { // 是被overlap，则partial scan所有这些overlap的块
+            return; // finished
+          } else if (!isUpdate) {
+            // verify whether the candidate point is updated
             for (ChunkSuit4CPV chunkSuit4CPV : overlaps) {
-              // scan这个chunk的数据
-              // TODO chunk data read operation (a): check existence of data point at a timestamp
               if (chunkSuit4CPV.getPageReader() == null) {
                 PageReader pageReader =
                     FileLoaderUtils.loadPageReaderList4CPV(
@@ -581,45 +571,41 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
                 //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
-                // ASSIGN DIRECTLY),
-                //  WHICH WILL INTRODUCE BUGS!
+                //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
                 chunkSuit4CPV.setPageReader(pageReader);
               }
-              // (a) check existence of data point at a timestamp
+              // chunk data read operation (a): check existence of data point at a timestamp
               isUpdate = chunkSuit4CPV.checkIfExist(candidateTimestamp);
-              if (isUpdate) { // 提前结束对overlaps块的scan，因为已经找到一个update点证明candidate失效
+              if (isUpdate) {
+                // since the candidate point is updated, early break
                 break;
               }
             }
           }
-          if (!isUpdate) { // partial scan了所有overlap的块都没有找到这样的点，则当前candidate point就是计算结果，结束
+          if (!isUpdate) {
+            // the candidate point is not updated, then it is the final result
             results
-                .get(5) // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-                // minValue[bottomTimestamp], maxValue[topTimestamp]
+                .get(5)
                 .updateResultUsingValues(
                     new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
-            // TODO check updateResult
-            return; // 计算结束
-          } else { // 找到这样的点，于是标记candidate point所在块为lazy
-            // load，并对其chunkMetadata的deleteInterval里加上对该点时间的删除，然后进入循环2
+            return; // finished
+          } else {
+            // the candidate point is updated, then label the chunk as already lazy loaded,
+            // add the deletion of the candidate point in deleteInterval, and back to loop 2
             if (candidate.getChunkMetadata().getDeleteIntervalList() == null) {
               List<TimeRange> tmp = new ArrayList<>();
               tmp.add(new TimeRange(candidateTimestamp, candidateTimestamp));
               candidate.getChunkMetadata().setDeleteIntervalList(tmp);
             } else {
-              //              candidate.getChunkMetadata().getDeleteIntervalList()
-              //                  .add(new TimeRange(candidateTimestamp, candidateTimestamp)); //
-              // TODO check
               candidate
                   .getChunkMetadata()
                   .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); // TODO check
             }
-            // 删除那里不需要再加了，而这里更新就需要手动加一下删除操作
             nonLazyLoad.remove(candidate);
             // TODO check this can really remove the element
             // TODO check whether nonLazyLoad remove affects candidateSet
             // TODO check nonLazyLoad sorted by version number from high to low
-            continue; // 回到循环2
+            continue; // back to loop 2
           }
         }
       }
@@ -633,8 +619,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
-    while (currentChunkList.size() > 0) { // 循环1 TODO debug when currentChunkList size=0
-      // 按照startTime和version排序，找出疑似FP candidate
+    while (currentChunkList.size() > 0) { // loop 1
+      // sorted by startTime and version, find FP candidate
       currentChunkList.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
             // aggregations
@@ -657,10 +643,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             }
           });
 
-      // 判断该疑似candidate所在chunk是否lazy load
       ChunkSuit4CPV susp_candidate = currentChunkList.get(0);
-      if (susp_candidate.isLazyLoad()) { // 如果是lazy
-        // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
+      if (susp_candidate.isLazyLoad()) {
+        // means the chunk is already lazy loaded, then load the chunk, apply deletes, update
+        // statistics,
+        // cancel the lazy loaded mark, and back to loop 1
         if (susp_candidate.getPageReader() == null) {
           PageReader pageReader =
               FileLoaderUtils.loadPageReaderList4CPV(
@@ -669,19 +656,18 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
           //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
-          // DIRECTLY),
-          //  WHICH WILL INTRODUCE BUGS!
+          //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
           susp_candidate.setPageReader(pageReader);
         }
-        // TODO update FP equal to or after statistics.getEndTime
-        // (b) get the closest data point after or before a timestamp
+        // chunk data read operation (b): get the closest data point after or before a timestamp
         susp_candidate.updateFPwithTheClosetPointEqualOrAfter(
-            susp_candidate.getStatistics().getStartTime()); // TODO DEBUG
+            susp_candidate.getStatistics().getStartTime());
         susp_candidate.setLazyLoad(false); // DO NOT FORGET THIS!!!
-        continue; // 回到循环1
-      } else { // 如果不是lazy load，则该疑似candidate就是真正的candidate。
-        // 于是verification判断该点是否被更高优先级（更高优先级这一点在QueryUtils.modifyChunkMetaData(chunkMetadataList,
-        // pathModifications)已做好）的deletes覆盖
+        continue; // back to loop 1
+      } else {
+        // the chunk has not been lazy loaded, then verify whether the candidate point is deleted
+        // Note the higher versions of deletes are guaranteed by
+        // QueryUtils.modifyChunkMetaData(chunkMetadataList,pathModifications)
         // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
         long candidateTimestamp = susp_candidate.getStatistics().getStartTime(); // TODO check
         Object candidateValue = susp_candidate.getStatistics().getFirstValue(); // TODO check
@@ -698,29 +684,30 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             } else if (deleteIntervalList.get(deleteCursor).contains(candidateTimestamp)) {
               isDeletedItself = true;
               deleteEndTime = deleteIntervalList.get(deleteCursor).getMax();
-              // deleteEndTime可能会大于当前的endTime，因为delete起点可以在整个chunk startTime之后
               break; // since delete intervals are already sorted and merged
             } else {
               break; // since delete intervals are already sorted and merged
             }
           }
         }
-        // 如果被删除，标记该点所在chunk为lazy load，并且在不load数据的情况下更新chunkStartTime，然后回到循环1
         if (isDeletedItself) {
-          if (deleteEndTime >= susp_candidate.getStatistics().getEndTime()) { // NOTE 这里计算的是FP
-            // TODO debug 整个区间内点删掉
+          // deleteEndTime may be after the current endTime,
+          // because deleteStartTime can be after the startTime of the whole chunk
+          if (deleteEndTime
+              >= susp_candidate.getStatistics().getEndTime()) { // NOTE here calculate FP
+            // deleted as a whole
             currentChunkList.remove(susp_candidate);
           } else {
+            // the candidate point is deleted, then label the chunk as already lazy loaded,
+            // update chunkStartTime without loading data, and back to loop 1
             susp_candidate.setLazyLoad(true);
             // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
             susp_candidate.getStatistics().setStartTime(deleteEndTime + 1); // TODO check
             // +1 is because delete is closed interval
           }
-          continue; // 回到循环1
+          continue; // back to loop 1
         } else {
-          // 否则，则就是计算结果，结束
-          // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-          // minValue[bottomTimestamp], maxValue[topTimestamp]
+          // the candidate point is not deleted, then it is the final result
           results
               .get(0)
               .updateResultUsingValues(
@@ -742,8 +729,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
-    while (currentChunkList.size() > 0) { // 循环1
-      // 按照startTime和version排序，找出疑似LP candidate
+    while (currentChunkList.size() > 0) { // loop 1
+      // sorted by endTime and version, find LP candidate
       currentChunkList.sort(
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
             // aggregations
@@ -766,10 +753,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             }
           });
 
-      // 判断该疑似candidate所在chunk是否lazy load
       ChunkSuit4CPV susp_candidate = currentChunkList.get(0);
-      if (susp_candidate.isLazyLoad()) { // 如果是lazy
-        // load，则此时load、应用deletes、更新batchData和statistics，取消lazyLoad标记，然后回到循环1
+      if (susp_candidate.isLazyLoad()) {
+        // means the chunk is already lazy loaded, then load the chunk, apply deletes, update
+        // statistics,
+        // cancel the lazy loaded mark, and back to loop 1
         if (susp_candidate.getPageReader() == null) {
           PageReader pageReader =
               FileLoaderUtils.loadPageReaderList4CPV(
@@ -778,19 +766,19 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
           //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
-          // DIRECTLY),
-          //  WHICH WILL INTRODUCE BUGS!
+          //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
           susp_candidate.setPageReader(pageReader);
         }
-        // TODO update FP equal to or after statistics.getEndTime
+        // TODO update LP equal to or before statistics.getEndTime
         // (b) get the closest data point after or before a timestamp
         susp_candidate.updateLPwithTheClosetPointEqualOrBefore(
             susp_candidate.getStatistics().getEndTime()); // TODO DEBUG
         susp_candidate.setLazyLoad(false); // TODO DO NOT FORGET THIS!!!
-        continue; // 回到循环1
-      } else { // 如果不是lazy load，则该疑似candidate就是真正的candidate。
-        // 于是verification判断该点是否被更高优先级（更高优先级这一点在QueryUtils.modifyChunkMetaData(chunkMetadataList,
-        // pathModifications)已做好）的deletes覆盖
+        continue; // back to loop 1
+      } else {
+        // the chunk has not been lazy loaded, then verify whether the candidate point is deleted
+        // Note the higher versions of deletes are guaranteed by
+        // QueryUtils.modifyChunkMetaData(chunkMetadataList,pathModifications)
         // TODO NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
         long candidateTimestamp = susp_candidate.getStatistics().getEndTime(); // TODO check
         Object candidateValue = susp_candidate.getStatistics().getLastValue(); // TODO check
@@ -807,17 +795,18 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             } else if (deleteIntervalList.get(deleteCursor).contains(candidateTimestamp)) {
               isDeletedItself = true;
               deleteStartTime = deleteIntervalList.get(deleteCursor).getMin();
-              // deleteEndTime可能会大于当前的endTime，因为delete起点可以在整个chunk startTime之后
               break; // since delete intervals are already sorted and merged
             } else {
               break; // since delete intervals are already sorted and merged
             }
           }
         }
-        // 如果被删除，标记该点所在chunk为lazy load，并且在不load数据的情况下更新chunkEndTime，然后回到循环1
         if (isDeletedItself) {
-          if (deleteStartTime <= susp_candidate.getStatistics().getStartTime()) { // NOTE 这里计算的是LP
-            // TODO debug 整个区间内点删掉
+          // deleteStartTime may be before the current startTime,
+          // because deleteEndTime can be before the endTime of the whole chunk
+          if (deleteStartTime <= susp_candidate.getStatistics().getStartTime()) {
+            // NOTE here calculate LP.
+            // deleted as a whole
             currentChunkList.remove(susp_candidate);
           } else {
             susp_candidate.setLazyLoad(true);
@@ -827,11 +816,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             // -1 is because delete is closed interval
             // TODO check
           }
-          continue; // 回到循环1
+          continue; // back to loop 1
         } else {
-          // 否则，则就是计算结果，结束
-          // TODO check: minTimestamp, maxTimestamp, firstValue, lastValue,
-          // minValue[bottomTimestamp], maxValue[topTimestamp]
+          // the candidate point is not deleted, then it is the final result
           results
               .get(1)
               .updateResultUsingValues(

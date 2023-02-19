@@ -229,24 +229,6 @@ public class PageReader implements IPageReader {
     }
   }
 
-  /**
-   * chunk里点时间戳从小到大递增， 所以遍历直到点的时间戳大于或等于candidateTimestamp即可结束
-   *
-   * @return true if the point whose time equals candidateTimestamp exists, false if not
-   */
-  public boolean partialScan(long candidateTimestamp) throws IOException {
-    while (timeDecoder.hasNext(timeBuffer)) {
-      long timestamp = timeDecoder.readLong(timeBuffer);
-      if (timestamp > candidateTimestamp) {
-        return false;
-      }
-      if (timestamp == candidateTimestamp) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   /** @return the returned BatchData may be empty, but never be null */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override

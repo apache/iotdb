@@ -47,7 +47,7 @@ public class MyTest1 {
       new String[] {
         "SET STORAGE GROUP TO root.vehicle.d0",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT64, ENCODING=PLAIN",
-        // iotdb的int类型的plain编码用的是自制的不支持random access，所以值类型用long
+        // IoTDB int data type does not support plain encoding, so use long data type
       };
 
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -66,7 +66,6 @@ public class MyTest1 {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     originalEnableCPV = config.isEnableCPV();
-    //    config.setEnableCPV(false); // MOC
     config.setEnableCPV(true); // CPV
 
     EnvironmentUtils.envSetUp();
