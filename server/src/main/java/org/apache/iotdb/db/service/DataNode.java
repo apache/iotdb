@@ -18,12 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.common.rpc.thrift.*;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -42,14 +37,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
-import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.*;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -80,6 +68,8 @@ import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -551,7 +541,12 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(MetricService.getInstance());
 
     // init metric service
-    MetricService.getInstance().updateInternalReporter(new IoTDBInternalLocalReporter());
+    if (MetricConfigDescriptor.getInstance()
+        .getMetricConfig()
+        .getInternalReportType()
+        .equals(InternalReporterType.IOTDB)) {
+      MetricService.getInstance().updateInternalReporter(new IoTDBInternalLocalReporter());
+    }
     MetricService.getInstance().startInternalReporter();
     // bind predefined metrics
     DataNodeMetricsHelper.bind();
