@@ -149,7 +149,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
             ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
         for (Statistics statistics :
             ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
-          if (statistics == null || statistics.getCount() != rowCount) {
+          if (statistics == null || statistics.hasNullValue(rowCount)) {
             return;
           }
         }
@@ -181,7 +181,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         long rowCount = firstChunkMetadata.getStatistics().getCount();
         for (Statistics statistics :
             ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
-          if (statistics == null || statistics.getCount() != rowCount) {
+          if (statistics == null || statistics.hasNullValue(rowCount)) {
             return;
           }
         }

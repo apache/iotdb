@@ -103,7 +103,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // this check here.
       long rowCount = getTimeStatistics().getCount();
       for (Statistics statistics : getValueStatisticsList()) {
-        if (statistics == null || statistics.getCount() != rowCount) {
+        if (statistics == null || statistics.hasNullValue(rowCount)) {
           return true;
         }
       }
