@@ -49,6 +49,8 @@ import static org.junit.Assert.assertTrue;
 
 public class MetricServiceTest {
 
+  private static final double DELTA = 0.000001;
+
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static AbstractMetricService metricService = new DoNothingMetricService();
@@ -140,16 +142,16 @@ public class MetricServiceTest {
     AutoGauge autoGauge =
         metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
-    assertEquals(0L, autoGauge.value());
+    assertEquals(0d, autoGauge.value(), DELTA);
     list.add(1);
-    assertEquals(1L, autoGauge.value());
+    assertEquals(1d, autoGauge.value(), DELTA);
     list.clear();
-    assertEquals(0L, autoGauge.value());
+    assertEquals(0d, autoGauge.value(), DELTA);
     list.add(1);
-    assertEquals(1L, autoGauge.value());
+    assertEquals(1d, autoGauge.value(), DELTA);
     list = null;
     System.gc();
-    assertEquals(0L, autoGauge.value());
+    assertEquals(0d, autoGauge.value(), DELTA);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
     metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
