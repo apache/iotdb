@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-class MetricRegistryManager extends MetricRegistries {
+public class MetricRegistryManager extends MetricRegistries {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricRegistryManager.class);
   private final List<Consumer<RatisMetricRegistry>> reporterRegistrations =
@@ -46,7 +46,7 @@ class MetricRegistryManager extends MetricRegistries {
   // TODO: enable ratis metrics after verifying its correctness and efficiency
   private final AbstractMetricService service = new DoNothingMetricService();
 
-  MetricRegistryManager() {
+  public MetricRegistryManager() {
     this.registries = new RefCountingMap<>();
   }
 
