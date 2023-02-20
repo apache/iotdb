@@ -38,7 +38,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortComparator;
@@ -167,11 +167,11 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(
           6, new PlanNodeId("6"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          7, new PlanNodeId("7"), TimeJoinOperator.class.getSimpleName());
+          7, new PlanNodeId("7"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           8, new PlanNodeId("8"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -275,8 +275,8 @@ public class MergeSortOperatorTest {
               Collections.singletonList(1),
               tsDataTypes);
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(6),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -301,8 +301,8 @@ public class MergeSortOperatorTest {
               Arrays.asList(2, 3),
               tsDataTypes);
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -351,7 +351,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -397,7 +397,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -443,7 +443,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -489,7 +489,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -541,7 +541,8 @@ public class MergeSortOperatorTest {
   //                   /               |                       /               \
   //               [SDO]             [SDO]                   [SDO]            [SDO]
   //                 |                 |                       |                |
-  //               [SSO]       TimeJoinOperator        TimeJoinOperator   TimeJoinOperator
+  //               [SSO]       RowBasedTimeJoinOperator        RowBasedTimeJoinOperator
+  // RowBasedTimeJoinOperator
   //                              /         \              /         \       /         \
   //                            [SSO]      [SSO]         [SSO]      [SSO] [SSO]        [SSO]
   // ------------------------------------------------------------------------------------------------
@@ -575,11 +576,11 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), SingleDeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -712,8 +713,8 @@ public class MergeSortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -731,8 +732,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -750,8 +751,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator3 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator3 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -843,7 +844,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -885,7 +886,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -927,7 +928,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -969,7 +970,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
@@ -1013,7 +1014,8 @@ public class MergeSortOperatorTest {
   //                                 /                      \
   //                    DeviceViewOperator              DeviceViewOperator
   //                    /               |                /               \
-  //                [SSO]       TimeJoinOperator TimeJoinOperator    TimeJoinOperator
+  //                [SSO]       RowBasedTimeJoinOperator RowBasedTimeJoinOperator
+  // RowBasedTimeJoinOperator
   //                               /         \      /         \         /         \
   //                             [SSO]      [SSO] [SSO]      [SSO]  [SSO]       [SSO]
   // ------------------------------------------------------------------------------------------------
@@ -1047,11 +1049,11 @@ public class MergeSortOperatorTest {
       driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
       driverContext.addOperatorContext(
-          8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
+          8, new PlanNodeId("8"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
+          10, new PlanNodeId("10"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), DeviceViewOperator.class.getSimpleName());
       driverContext.addOperatorContext(
@@ -1176,8 +1178,8 @@ public class MergeSortOperatorTest {
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
 
-      TimeJoinOperator timeJoinOperator1 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator1 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
@@ -1195,8 +1197,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator2 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator2 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
@@ -1214,8 +1216,8 @@ public class MergeSortOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
-      TimeJoinOperator timeJoinOperator3 =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator3 =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
@@ -1287,7 +1289,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1339,7 +1341,7 @@ public class MergeSortOperatorTest {
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1391,7 +1393,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1443,7 +1445,7 @@ public class MergeSortOperatorTest {
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
-    while (mergeSortOperator.hasNext()) {
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
       assertEquals(3, tsBlock.getValueColumnCount());
@@ -1585,7 +1587,7 @@ public class MergeSortOperatorTest {
           new String[] {
             "sql1_node2", "sql1_node1", "sql2_node2", "sql2_node1", "sql3_node2", "sql3_node1"
           };
-      while (root.hasNext()) {
+      while (root.isBlocked().isDone() && root.hasNext()) {
         TsBlock result = root.next();
         if (result == null) {
           continue;

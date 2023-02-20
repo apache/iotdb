@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
@@ -141,8 +142,8 @@ public class LimitOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
@@ -155,7 +156,7 @@ public class LimitOperatorTest {
       LimitOperator limitOperator =
           new LimitOperator(driverContext.getOperatorContexts().get(3), 250, timeJoinOperator);
       int count = 0;
-      while (limitOperator.hasNext()) {
+      while (limitOperator.isBlocked().isDone() && limitOperator.hasNext()) {
         TsBlock tsBlock = limitOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
