@@ -114,7 +114,9 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         listenableFutures.add(blocked);
       }
     }
-    return hasReadyChild ? NOT_BLOCKED : successfulAsList(listenableFutures);
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   @Override

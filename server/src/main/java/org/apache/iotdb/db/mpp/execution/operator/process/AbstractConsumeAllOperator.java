@@ -75,7 +75,9 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         listenableFutures.add(blocked);
       }
     }
-    return hasReadyChild ? NOT_BLOCKED : successfulAsList(listenableFutures);
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   /**
