@@ -43,7 +43,45 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupBySessionIT {
+
   private static final String[] SQLs =
+      new String[] {
+        "CREATE DATABASE root.ln.wf02.wt01",
+        "CREATE TIMESERIES root.ln.wf02.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.ln.wf02.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.ln.wf02.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(1000, 35.7, false, 11)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(2000, 35.8,  true, 22)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(3000, 35.4, false, 33 )",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(4000, 36.4, false, 44)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(5000, 36.8, false, 55)",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(10000, 36.8, false, 110)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(20000, 37.8,  true, 220)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(30000, 37.5, false, 330 )",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(40000, 37.4, false, 440)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(50000, 37.9, false, 550)",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(100000, 38.0, false, 110)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(150000, 38.8,  true, 220)",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(200000, 38.6, false, 330 )",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(260000, 38.4, false, 440)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(320000, 38.3, false, 550)",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(400000, null, null, 0)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(470000, null, null, 0)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(480000, null, null, 0)",
+        "flush",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86881000, 38.2, false, 110)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86882000, 37.5,  true, 220)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86883000, 37.4, false, 330 )",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(868840000, 36.8, false, 440)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86885000, 37.4, false, 550)",
+      };
+
+  private static final String[] SQLs2 =
       new String[] {
         "CREATE DATABASE root.ln.wf02.wt02",
         "CREATE TIMESERIES root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -52,6 +90,7 @@ public class IoTDBGroupBySessionIT {
         "INSERT INTO root.ln.wf02.wt02(timestamp, temperature, status, hardware) values(1, 35.7, false, 11)",
         "INSERT INTO root.ln.wf02.wt02(timestamp, temperature, status, hardware) values(2, 35.8,  true, 22)",
         "INSERT INTO root.ln.wf02.wt02(timestamp, temperature, status, hardware) values(3, 35.4, false, 33 )",
+        "flush",
         "INSERT INTO root.ln.wf02.wt02(timestamp, temperature, status, hardware) values(4, 36.4, false, 44)",
         "INSERT INTO root.ln.wf02.wt02(timestamp, temperature, status, hardware) values(5, 36.8, false, 55)",
         "flush",
@@ -103,6 +142,7 @@ public class IoTDBGroupBySessionIT {
         .setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
+    prepareData(SQLs2);
   }
 
   @AfterClass
@@ -161,6 +201,19 @@ public class IoTDBGroupBySessionIT {
 
     String sql =
         "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(99ms)";
+    normalTest(res, sql);
+  }
+
+  @Test
+  public void groupBySessionTest1WithHaving() {
+    String[][] res =
+        new String[][] {
+          {"1", "15", "37.3067", "3465"},
+          {"400", "10", "37.73", "3300"},
+        };
+
+    String sql =
+        "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(99ms) having avg(temperature) > 30";
     normalTest(res, sql);
   }
 
@@ -264,5 +317,100 @@ public class IoTDBGroupBySessionIT {
     String sql =
         "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(1s)";
     normalTest(res, sql);
+  }
+
+  @Test
+  public void GroupBySessionAlignByDeviceTest() {
+    String[][] res =
+        new String[][] {
+          {"1000", "200000", "13", "37.1461538462", "2475", "11"},
+          {"1", "7550", "30", "32.95", "14094", "11"}
+        };
+    String sql =
+        "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(50s) having count(status)>5 align by device";
+    normalTestAlignByDevice(res, sql, 1);
+  }
+
+  @Test
+  public void GroupBySessionAlignByDeviceTest2() {
+    String[][] res =
+        new String[][] {
+          {"1000", "480000", "15", "37.3066666667", "3465", "11"},
+          {"86881000", "86885000", "5", "37.46", "1650", "110"},
+          {"1", "7550", "30", "32.95", "14094", "11"}
+        };
+    String sql =
+        "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(1d) align by device";
+    normalTestAlignByDevice(res, sql, 2);
+  }
+
+  @Test
+  public void GroupBySessionAlignByDeviceTest3() {
+    String[][] res =
+        new String[][] {
+          {"1000", "200000", "11"},
+          {"260000", "260000", "440"},
+          {"320000", "320000", "550"},
+          {"400000", "400000", "0"},
+          {"470000", "480000", "0"},
+          {"86881000", "86885000", "110"},
+          {"1", "7550", "11"}
+        };
+    String sql =
+        "select __endTime,first_value(hardware) from root.ln.** group by session(50s) align by device";
+    normalTestAlignByDevice(res, sql, 6);
+  }
+
+  @Test
+  public void GroupBySessionAlignByDeviceTest4() {
+    String[][] res =
+        new String[][] {
+          {"1000", "480000", "18"},
+          {"86881000", "86885000", "5"},
+          {"1", "7550", "33"}
+        };
+    String sql =
+        "select __endTime,first_value(hardware) from root.ln.** group by session(1d) align by device";
+    normalTestAlignByDevice(res, sql, 2);
+  }
+
+  private void normalTestAlignByDevice(String[][] res, String sql, int split) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(
+            resultSetMetaData,
+            "Time,count(root.ln.wf02.wt02.status),avg(root.ln.wf02.wt02.temperature),sum(root.ln.wf02.wt02.hardware)");
+        int count = 0;
+        String device = "root.ln.wf02.wt01";
+        while (resultSet.next()) {
+          if (count == split) {
+            device = "root.ln.wf02.wt02";
+          }
+          String actualTime = resultSet.getString(1);
+          String actualDevice = resultSet.getString(2);
+          String actualEndTime = resultSet.getString(3);
+          String actualCount = resultSet.getString(4);
+          double actualAvg = resultSet.getDouble(5);
+          double actualSum = resultSet.getDouble(6);
+          String actualFirstValue = resultSet.getString(7);
+
+          assertEquals(device, actualDevice);
+          assertEquals(res[count][0], actualTime);
+          assertEquals(res[count][1], actualEndTime);
+          assertEquals(res[count][2], actualCount);
+          assertEquals(Double.parseDouble(res[count][3]), actualAvg, 0.01);
+          assertEquals(Double.parseDouble(res[count][4]), actualSum, 0.01);
+          assertEquals(res[count][5], actualFirstValue);
+          count++;
+        }
+        assertEquals(res.length, count);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

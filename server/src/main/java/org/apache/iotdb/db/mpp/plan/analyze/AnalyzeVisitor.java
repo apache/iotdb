@@ -890,7 +890,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // we need to reconsider the process of it
           sourceTransformExpressions.add(expression.getExpressions().get(0));
         }
-        if (analysis.hasGroupByParameter()) {
+        if (queryStatement.hasGroupByExpression()) {
           sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
         }
         deviceToSourceTransformExpressions.put(deviceName, sourceTransformExpressions);
