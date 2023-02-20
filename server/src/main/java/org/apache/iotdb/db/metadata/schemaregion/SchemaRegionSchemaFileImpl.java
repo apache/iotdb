@@ -41,6 +41,9 @@ import org.apache.iotdb.db.metadata.logfile.MLogDescriptionReader;
 import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.CachedSchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
@@ -163,6 +166,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     this.seriesNumerMonitor = seriesNumerMonitor;
     this.regionStatistics = new CachedSchemaRegionStatistics(schemaRegionId.getId());
+    SchemaMetricManager.getInstance().createSchemaRegionMetric(this);
     init();
   }
 
@@ -225,6 +229,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (usingMLog && !isRecovering) {
       try {
         logDescriptionWriter.updateCheckPoint(logWriter.position());
+        regionStatistics.setMLogCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
             "Update {} failed because {}",
@@ -277,6 +282,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
+      regionStatistics.setMLogLength(logWriter.position());
     }
   }
 
@@ -300,6 +306,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    return new CachedSchemaRegionMetric(regionStatistics);
   }
 
   /** Init from metadata log file. */
@@ -429,6 +440,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+
+    // delete metric
+    SchemaMetricManager.getInstance().deleteSchemaRegionMetric(schemaRegionId.getId());
   }
 
   @Override

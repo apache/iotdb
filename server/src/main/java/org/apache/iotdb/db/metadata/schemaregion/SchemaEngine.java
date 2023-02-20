@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -114,6 +115,7 @@ public class SchemaEngine {
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
     SchemaResourceManager.initSchemaResource();
+    SchemaMetricManager.getInstance().init();
 
     schemaRegionMap = new ConcurrentHashMap<>();
 
@@ -239,6 +241,7 @@ public class SchemaEngine {
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }
+    SchemaMetricManager.getInstance().clear();
   }
 
   public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {

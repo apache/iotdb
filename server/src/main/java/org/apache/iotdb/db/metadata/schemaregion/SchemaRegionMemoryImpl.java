@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -170,7 +172,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     this.seriesNumerMonitor = seriesNumerMonitor;
     this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId());
-
+    SchemaMetricManager.getInstance().createSchemaRegionMetric(this);
     init();
   }
 
@@ -275,6 +277,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    // TODO
+    return null;
   }
 
   /**
@@ -393,6 +401,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+
+    // delete metric
+    SchemaMetricManager.getInstance().deleteSchemaRegionMetric(schemaRegionId.getId());
   }
 
   // currently, this method is only used for cluster-ratis mode

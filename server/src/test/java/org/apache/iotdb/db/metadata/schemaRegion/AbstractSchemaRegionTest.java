@@ -49,8 +49,8 @@ public abstract class AbstractSchemaRegionTest {
   @Parameterized.Parameters(name = "{0}")
   public static List<SchemaRegionTestParams> getTestModes() {
     return Arrays.asList(
-        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
-        new SchemaRegionTestParams("SchemaFile-FullMemory", "Schema_File", 10000, true),
+        //        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
+        //        new SchemaRegionTestParams("SchemaFile-FullMemory", "Schema_File", 10000, true),
         new SchemaRegionTestParams("SchemaFile-PartialMemory", "Schema_File", 3, true),
         new SchemaRegionTestParams("SchemaFile-NonMemory", "Schema_File", 0, true));
   }

@@ -186,6 +186,10 @@ public class CacheMemoryManager {
     }
   }
 
+  /**
+   * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
+   * no node could be evicted. Update the memory status after evicting each node.
+   */
   private void executeMemoryRelease(CachedMTreeStore store) {
     while (isExceedReleaseThreshold()) {
       // store try to release memory if not exceed release threshold

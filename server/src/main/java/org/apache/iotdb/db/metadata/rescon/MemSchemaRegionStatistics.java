@@ -29,6 +29,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong seriesNumber = new AtomicLong(0);
 
+  private long mLogLength = 0;
+
   public MemSchemaRegionStatistics(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
   }
@@ -71,6 +73,14 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public int getSchemaRegionId() {
     return schemaRegionId;
+  }
+
+  public void setMLogLength(long mLogLength) {
+    this.mLogLength = mLogLength;
+  }
+
+  public long getMLogLength() {
+    return mLogLength;
   }
 
   @Override
