@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
@@ -1892,7 +1893,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
-    TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+    ILastCacheValue cacheValue = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+    if (cacheValue.isNull()) {
+      return null;
+    }
+    TimeValuePair timeValuePair = cacheValue.getTimeValuePair();
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
     } else if (!LastQueryUtil.satisfyFilter(
@@ -1982,7 +1987,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> measurementList = alignedPath.getMeasurementList();
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      ILastCacheValue cacheValue = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      if (cacheValue.isNull()) {
+        // current series is cached, and we know its cache value is null.
+        continue;
+      }
+      TimeValuePair timeValuePair = cacheValue.getTimeValuePair();
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
       } else if (!LastQueryUtil.satisfyFilter(

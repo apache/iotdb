@@ -32,4 +32,7 @@ public interface ILastCacheValue {
   void setValue(TsPrimitiveType value);
 
   TimeValuePair getTimeValuePair();
+
+  /** It's possible that we need to cache an empty value */
+  boolean isNull();
 }

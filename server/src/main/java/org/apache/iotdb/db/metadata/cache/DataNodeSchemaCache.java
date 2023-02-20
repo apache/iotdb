@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -206,7 +207,7 @@ public class DataNodeSchemaCache {
         measurementPath.getDevicePath(), measurementPath.getMeasurement(), schemaCacheEntry);
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
+  public ILastCacheValue getLastCache(PartialPath seriesPath) {
     SchemaCacheEntry entry =
         dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
     if (null == entry) {

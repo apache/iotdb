@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.cache.lastCache.container;
 
 import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.value.LastCacheValue;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.NullLastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -34,14 +35,22 @@ public class LastCacheContainer implements ILastCacheContainer {
   ILastCacheValue lastCacheValue;
 
   @Override
-  public TimeValuePair getCachedLast() {
-    return lastCacheValue == null ? null : lastCacheValue.getTimeValuePair();
+  public ILastCacheValue getCachedLast() {
+    return lastCacheValue;
   }
 
   @Override
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) {
+    if (timeValuePair == null) {
+      // !highPriorityUpdate == true means it is an update from last query
+      if (lastCacheValue == null && !highPriorityUpdate) {
+        lastCacheValue = new NullLastCacheValue();
+      }
+      return;
+    }
+
+    if (timeValuePair.getValue() == null) {
       return;
     }
 

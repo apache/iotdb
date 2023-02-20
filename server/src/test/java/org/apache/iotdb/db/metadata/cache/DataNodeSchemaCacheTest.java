@@ -145,7 +145,8 @@ public class DataNodeSchemaCacheTest {
     // put into last cache when cache not exist
     TimeValuePair timeValuePair = new TimeValuePair(timestamp, value);
     dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair, false, 99L);
-    TimeValuePair cachedTimeValuePair = dataNodeSchemaCache.getLastCache(seriesPath1);
+    TimeValuePair cachedTimeValuePair =
+        dataNodeSchemaCache.getLastCache(seriesPath1).getTimeValuePair();
     Assert.assertNotNull(cachedTimeValuePair);
     Assert.assertEquals(timestamp, cachedTimeValuePair.getTimestamp());
     Assert.assertEquals(value, cachedTimeValuePair.getValue());
@@ -155,7 +156,8 @@ public class DataNodeSchemaCacheTest {
     // same time but low priority
     TimeValuePair timeValuePair2 = new TimeValuePair(timestamp, value2);
     dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair2, false, 100L);
-    TimeValuePair cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    TimeValuePair cachedTimeValuePair2 =
+        dataNodeSchemaCache.getLastCache(seriesPath1).getTimeValuePair();
     Assert.assertNotNull(cachedTimeValuePair2);
     Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
     Assert.assertEquals(value, cachedTimeValuePair2.getValue());
@@ -164,7 +166,7 @@ public class DataNodeSchemaCacheTest {
 
     // same time but high priority
     dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair2, true, 100L);
-    cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1).getTimeValuePair();
     Assert.assertNotNull(cachedTimeValuePair2);
     Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
     Assert.assertEquals(value2, cachedTimeValuePair2.getValue());
@@ -174,7 +176,8 @@ public class DataNodeSchemaCacheTest {
     // put into last cache when cache already exist
     TimeValuePair timeValuePair3 = new TimeValuePair(timestamp2, value3);
     dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair3, false, 100L);
-    TimeValuePair cachedTimeValuePair3 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    TimeValuePair cachedTimeValuePair3 =
+        dataNodeSchemaCache.getLastCache(seriesPath1).getTimeValuePair();
     Assert.assertNotNull(cachedTimeValuePair3);
     Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
     Assert.assertEquals(value3, cachedTimeValuePair3.getValue());

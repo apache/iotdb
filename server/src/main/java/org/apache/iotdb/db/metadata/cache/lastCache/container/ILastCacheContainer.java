@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.metadata.cache.lastCache.container;
 
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /** this interface declares the operations of LastCache data */
 public interface ILastCacheContainer {
 
   // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
+  ILastCacheValue getCachedLast();
 
   /**
    * update last point cache

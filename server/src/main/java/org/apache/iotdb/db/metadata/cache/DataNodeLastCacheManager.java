@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import org.slf4j.Logger;
@@ -38,7 +39,7 @@ public class DataNodeLastCacheManager {
    * @param entry schema cache entry in DataNodeSchemaCache
    * @return the last cache value
    */
-  public static TimeValuePair getLastCache(SchemaCacheEntry entry) {
+  public static ILastCacheValue getLastCache(SchemaCacheEntry entry) {
     if (!CACHE_ENABLED || null == entry) {
       return null;
     }
