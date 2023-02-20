@@ -643,6 +643,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                 // Sleep 1s before stop itself
                 TimeUnit.SECONDS.sleep(1);
               } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 LOGGER.warn(e.getMessage());
               } finally {
                 ConfigNode.getInstance().stop();
