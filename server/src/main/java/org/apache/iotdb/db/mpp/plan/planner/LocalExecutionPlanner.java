@@ -69,8 +69,7 @@ public class LocalExecutionPlanner {
 
     context.addPipelineDriverFactory(root, context.getDriverContext());
 
-    List<PartialPath> sourcePaths = collectSourcePaths(context);
-    instanceContext.initQueryDataSource(sourcePaths);
+    instanceContext.setSourcePaths(collectSourcePaths(context));
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
