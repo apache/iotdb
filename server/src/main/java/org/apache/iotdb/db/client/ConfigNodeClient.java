@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -398,6 +399,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         TDataNodeRegisterResp resp = client.updateDataNode(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.reportDataNodeShutdown(dataNodeLocation);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
         }
       } catch (TException e) {
         configLeader = null;
@@ -924,6 +941,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
+  }
+
+  @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
+      throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
   }
 
   @Override
