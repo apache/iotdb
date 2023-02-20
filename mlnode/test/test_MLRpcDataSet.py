@@ -15,10 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import os
-import sys
-
-sys.path.append("/client-py/iotdb")
 import random
 import time
 
