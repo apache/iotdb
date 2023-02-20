@@ -168,7 +168,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return chunkMetadata.getStatistics();
   }
 

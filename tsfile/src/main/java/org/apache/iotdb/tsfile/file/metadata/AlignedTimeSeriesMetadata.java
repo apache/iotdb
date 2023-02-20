@@ -45,18 +45,18 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
    * return the Statistics of the time column
    */
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return valueTimeseriesMetadataList.size() == 1 && valueTimeseriesMetadataList.get(0) != null
         ? valueTimeseriesMetadataList.get(0).getStatistics()
         : timeseriesMetadata.getStatistics();
   }
 
-  public Statistics getStatistics(int index) {
+  public Statistics<?> getStatistics(int index) {
     TimeseriesMetadata v = valueTimeseriesMetadataList.get(index);
     return v == null ? null : v.getStatistics();
   }
 
-  public Statistics getTimeStatistics() {
+  public Statistics<?> getTimeStatistics() {
     return timeseriesMetadata.getStatistics();
   }
 

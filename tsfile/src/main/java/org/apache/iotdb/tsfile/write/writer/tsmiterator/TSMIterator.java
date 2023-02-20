@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -82,7 +83,7 @@ public class TSMIterator {
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
     TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
-    Statistics seriesStatistics = Statistics.getStatsByType(dataType);
+    Statistics<? extends Serializable> seriesStatistics = Statistics.getStatsByType(dataType);
 
     int chunkMetadataListLength = 0;
     boolean serializeStatistic = (chunkMetadataList.size() > 1);

@@ -71,7 +71,7 @@ public class CountAccumulator implements Accumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
+  public void addStatistics(Statistics<?> statistics) {
     if (statistics == null) {
       return;
     }

@@ -45,7 +45,7 @@ public class NotFilter implements Filter, Serializable {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     return !that.satisfy(statistics);
   }
 

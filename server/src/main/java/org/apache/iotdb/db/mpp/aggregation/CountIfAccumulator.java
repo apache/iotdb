@@ -100,7 +100,7 @@ public class CountIfAccumulator implements Accumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
+  public void addStatistics(Statistics<?> statistics) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

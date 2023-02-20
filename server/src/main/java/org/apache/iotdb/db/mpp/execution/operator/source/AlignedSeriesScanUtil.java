@@ -60,27 +60,27 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected Statistics currentFileStatistics(int index) throws IOException {
+  protected Statistics<?> currentFileStatistics(int index) throws IOException {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
   @Override
-  protected Statistics currentFileTimeStatistics() throws IOException {
+  protected Statistics<?> currentFileTimeStatistics() throws IOException {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
   }
 
   @Override
-  protected Statistics currentChunkStatistics(int index) throws IOException {
+  protected Statistics<?> currentChunkStatistics(int index) throws IOException {
     return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
   @Override
-  protected Statistics currentChunkTimeStatistics() {
+  protected Statistics<?> currentChunkTimeStatistics() {
     return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
   }
 
   @Override
-  protected Statistics currentPageStatistics(int index) throws IOException {
+  protected Statistics<?> currentPageStatistics(int index) throws IOException {
     if (firstPageReader == null) {
       return null;
     }
@@ -88,7 +88,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected Statistics currentPageTimeStatistics() throws IOException {
+  protected Statistics<?> currentPageTimeStatistics() throws IOException {
     if (firstPageReader == null) {
       return null;
     }

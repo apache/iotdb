@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +37,7 @@ public interface Filter {
    *
    * @param statistics statistics with min time, max time, min value, max value.
    */
-  boolean satisfy(Statistics statistics);
+  boolean satisfy(Statistics<? extends Serializable> statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.

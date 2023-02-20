@@ -128,7 +128,7 @@ public class Aggregator {
   }
 
   /** Used for SeriesAggregateScanOperator. */
-  public void processStatistics(Statistics[] statistics) {
+  public void processStatistics(Statistics<?>[] statistics) {
     long startTime = System.nanoTime();
     try {
       for (InputLocation[] inputLocations : inputLocationList) {

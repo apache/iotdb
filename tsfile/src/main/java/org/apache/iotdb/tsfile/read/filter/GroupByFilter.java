@@ -49,7 +49,7 @@ public class GroupByFilter implements Filter, Serializable {
   public GroupByFilter() {}
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     return satisfyStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }
 

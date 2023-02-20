@@ -135,17 +135,17 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return chunkMetadata.getStatistics();
   }
 
   @Override
-  public Statistics getStatistics(int index) {
+  public Statistics<?> getStatistics(int index) {
     return chunkMetadata.getStatistics(index);
   }
 
   @Override
-  public Statistics getTimeStatistics() {
+  public Statistics<?> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 

@@ -49,7 +49,7 @@ public interface Accumulator {
    * This method can only be used in seriesAggregateScanOperator, it will use different statistics
    * based on the type of Accumulator.
    */
-  void addStatistics(Statistics statistics);
+  void addStatistics(Statistics<?> statistics);
 
   /**
    * Attention: setFinal should be invoked only once, and addInput() and addIntermediate() are not

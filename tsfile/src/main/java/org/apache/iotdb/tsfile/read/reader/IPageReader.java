@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 public interface IPageReader {
@@ -37,7 +38,7 @@ public interface IPageReader {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  Statistics getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   void setFilter(Filter filter);
 

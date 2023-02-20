@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import java.io.Serializable;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class SumAccumulator implements Accumulator {
@@ -71,7 +73,7 @@ public class SumAccumulator implements Accumulator {
   }
 
   @Override
-  public void addStatistics(Statistics statistics) {
+  public void addStatistics(Statistics<? extends Serializable> statistics) {
     if (statistics == null) {
       return;
     }

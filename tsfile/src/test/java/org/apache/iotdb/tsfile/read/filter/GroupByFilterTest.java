@@ -39,7 +39,7 @@ public class GroupByFilterTest {
   @Test
   public void TestStatisticsSatisfy() {
 
-    Statistics statistics = new LongStatistics();
+    Statistics<?> statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(7);
     assertFalse(groupByFilter.satisfy(statistics));

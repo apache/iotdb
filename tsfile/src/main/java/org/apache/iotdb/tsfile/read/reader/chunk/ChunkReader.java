@@ -109,7 +109,7 @@ public class ChunkReader implements IChunkReader {
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
   }
 
-  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
+  private void initAllPageReaders(Statistics<?> chunkStatistic) throws IOException {
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer

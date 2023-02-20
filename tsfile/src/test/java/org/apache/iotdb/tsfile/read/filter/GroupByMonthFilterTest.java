@@ -166,7 +166,7 @@ public class GroupByMonthFilterTest {
             MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false, TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
-    Statistics statistics = new LongStatistics();
+    Statistics<?> statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(MS_TO_DAY);
     assertTrue(filter.satisfy(statistics));

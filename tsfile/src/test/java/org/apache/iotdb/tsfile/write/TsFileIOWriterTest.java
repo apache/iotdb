@@ -45,6 +45,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -169,7 +170,7 @@ public class TsFileIOWriterTest {
       // chunk group
       writer.startChunkGroup(DEVICE_1);
       // ordinary chunk, chunk statistics
-      Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
+      Statistics<? extends Serializable> statistics = Statistics.getStatsByType(measurementSchema.getType());
       statistics.updateStats(0L, 0L);
       writer.startFlushChunk(
           measurementSchema.getMeasurementId(),
@@ -203,7 +204,7 @@ public class TsFileIOWriterTest {
       writer.endCurrentChunk();
       // vector chunk (values)
       for (int j = 0; j < vectorMeasurementSchema.getSubMeasurementsCount(); j++) {
-        Statistics subStatistics =
+        Statistics<? extends Serializable> subStatistics =
             Statistics.getStatsByType(
                 vectorMeasurementSchema.getSubMeasurementsTSDataTypeList().get(j));
         subStatistics.updateStats(0L, 0L);

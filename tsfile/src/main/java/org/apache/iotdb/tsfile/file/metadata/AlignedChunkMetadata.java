@@ -43,18 +43,18 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return valueChunkMetadataList.size() == 1 && valueChunkMetadataList.get(0) != null
         ? valueChunkMetadataList.get(0).getStatistics()
         : timeChunkMetadata.getStatistics();
   }
 
-  public Statistics getStatistics(int index) {
+  public Statistics<?> getStatistics(int index) {
     IChunkMetadata v = valueChunkMetadataList.get(index);
     return v == null ? null : v.getStatistics();
   }
 
-  public Statistics getTimeStatistics() {
+  public Statistics<?> getTimeStatistics() {
     return timeChunkMetadata.getStatistics();
   }
 

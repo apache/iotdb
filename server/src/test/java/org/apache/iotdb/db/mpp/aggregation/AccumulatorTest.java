@@ -44,7 +44,7 @@ import java.util.List;
 public class AccumulatorTest {
 
   private TsBlock rawData;
-  private Statistics statistics;
+  private Statistics<?> statistics;
   private TimeRange defaultTimeRange = new TimeRange(0, Long.MAX_VALUE);
 
   private TimeWindow timeWindow = new TimeWindow(defaultTimeRange);

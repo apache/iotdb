@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
+import java.io.Serializable;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -74,7 +76,7 @@ public class Utils {
     }
   }
 
-  public static void isStatisticsEqual(Statistics statistics1, Statistics statistics2) {
+  public static void isStatisticsEqual(Statistics<? extends Serializable> statistics1, Statistics<? extends Serializable> statistics2) {
     if ((statistics1 == null) || (statistics2 == null)) {
       System.out.println("error");
       fail("one of statistics is null");

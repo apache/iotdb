@@ -201,20 +201,20 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return valuePageReaderList.size() == 1 && valuePageReaderList.get(0) != null
         ? valuePageReaderList.get(0).getStatistics()
         : timePageReader.getStatistics();
   }
 
   @Override
-  public Statistics getStatistics(int index) {
+  public Statistics<?> getStatistics(int index) {
     ValuePageReader valuePageReader = valuePageReaderList.get(index);
     return valuePageReader == null ? null : valuePageReader.getStatistics();
   }
 
   @Override
-  public Statistics getTimeStatistics() {
+  public Statistics<?> getTimeStatistics() {
     return timePageReader.getStatistics();
   }
 

@@ -51,7 +51,7 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     return left.satisfy(statistics) || right.satisfy(statistics);
   }
 

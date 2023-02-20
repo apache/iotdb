@@ -39,7 +39,7 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     return left.satisfy(statistics) && right.satisfy(statistics);
   }
 

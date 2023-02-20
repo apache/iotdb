@@ -58,7 +58,7 @@ public class Regexp<T extends Comparable<T>> implements Filter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     return true;
   }
 

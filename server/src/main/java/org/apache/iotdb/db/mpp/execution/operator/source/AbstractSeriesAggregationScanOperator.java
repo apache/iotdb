@@ -199,7 +199,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return calcResult.getLeft();
   }
 
-  protected void calcFromStatistics(Statistics[] statistics) {
+  protected void calcFromStatistics(Statistics<?>[] statistics) {
     for (Aggregator aggregator : aggregators) {
       if (aggregator.hasFinalResult()) {
         continue;
@@ -211,7 +211,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean readAndCalcFromFile() throws IOException {
     while (seriesScanUtil.hasNextFile()) {
       if (canUseCurrentFileStatistics()) {
-        Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
+        Statistics<?> fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
@@ -223,7 +223,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         // calc from fileMetaData
         if (curTimeRange.contains(
             fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
+          Statistics<?>[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
           }
@@ -249,7 +249,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean readAndCalcFromChunk() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (canUseCurrentChunkStatistics()) {
-        Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
+        Statistics<?> chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
@@ -262,7 +262,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         if (curTimeRange.contains(
             chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
           // calc from chunkMetaData
-          Statistics[] statisticsList = new Statistics[subSensorSize];
+          Statistics<?>[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
           }
@@ -287,7 +287,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean readAndCalcFromPage() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
       if (canUseCurrentPageStatistics()) {
-        Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
+        Statistics<?> pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
         // There is no more eligible points in current time range
         if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -300,7 +300,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         // can use pageHeader
         if (curTimeRange.contains(
             pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
+          Statistics<?>[] statisticsList = new Statistics[subSensorSize];
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
           }
@@ -329,21 +329,21 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected boolean canUseCurrentFileStatistics() throws IOException {
-    Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
+    Statistics<?> fileStatistics = seriesScanUtil.currentFileTimeStatistics();
     return !seriesScanUtil.isFileOverlapped()
         && fileStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
         && !seriesScanUtil.currentFileModified();
   }
 
   protected boolean canUseCurrentChunkStatistics() throws IOException {
-    Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
+    Statistics<?> chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
     return !seriesScanUtil.isChunkOverlapped()
         && chunkStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
         && !seriesScanUtil.currentChunkModified();
   }
 
   protected boolean canUseCurrentPageStatistics() throws IOException {
-    Statistics currentPageStatistics = seriesScanUtil.currentPageTimeStatistics();
+    Statistics<?> currentPageStatistics = seriesScanUtil.currentPageTimeStatistics();
     if (currentPageStatistics == null) {
       return false;
     }

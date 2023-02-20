@@ -32,7 +32,7 @@ import java.util.List;
 public class Chunk {
 
   private ChunkHeader chunkHeader;
-  private Statistics chunkStatistic;
+  private Statistics<?> chunkStatistic;
   private ByteBuffer chunkData;
   private boolean isFromOldFile = false;
   /** A list of deleted intervals. */
@@ -44,7 +44,7 @@ public class Chunk {
       ChunkHeader header,
       ByteBuffer buffer,
       List<TimeRange> deleteIntervalList,
-      Statistics chunkStatistic) {
+      Statistics<?> chunkStatistic) {
     this.chunkHeader = header;
     this.chunkData = buffer;
     this.deleteIntervalList = deleteIntervalList;
@@ -147,7 +147,7 @@ public class Chunk {
     chunkData = newChunkData;
   }
 
-  public Statistics getChunkStatistic() {
+  public Statistics<?> getChunkStatistic() {
     return chunkStatistic;
   }
 

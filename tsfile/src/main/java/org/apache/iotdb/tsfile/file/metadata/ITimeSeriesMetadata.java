@@ -22,11 +22,12 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 public interface ITimeSeriesMetadata {
 
-  Statistics getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   boolean isModified();
 

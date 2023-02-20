@@ -237,7 +237,7 @@ public class SeriesScanUtil {
       throw new IOException("no first file");
     }
 
-    Statistics fileStatistics = firstTimeSeriesMetadata.getStatistics();
+    Statistics<?> fileStatistics = firstTimeSeriesMetadata.getStatistics();
     return !seqTimeSeriesMetadata.isEmpty()
             && orderUtils.isOverlapped(fileStatistics, seqTimeSeriesMetadata.get(0).getStatistics())
         || !unSeqTimeSeriesMetadata.isEmpty()
@@ -245,16 +245,16 @@ public class SeriesScanUtil {
                 fileStatistics, unSeqTimeSeriesMetadata.peek().getStatistics());
   }
 
-  Statistics currentFileStatistics() {
+  Statistics<?> currentFileStatistics() {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
-  protected Statistics currentFileStatistics(int index) throws IOException {
+  protected Statistics<?> currentFileStatistics(int index) throws IOException {
     checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
     return currentFileStatistics();
   }
 
-  protected Statistics currentFileTimeStatistics() throws IOException {
+  protected Statistics<?> currentFileTimeStatistics() throws IOException {
     return currentFileStatistics();
   }
 
@@ -371,21 +371,21 @@ public class SeriesScanUtil {
       throw new IOException("no first chunk");
     }
 
-    Statistics chunkStatistics = firstChunkMetadata.getStatistics();
+    Statistics<?> chunkStatistics = firstChunkMetadata.getStatistics();
     return !cachedChunkMetadata.isEmpty()
         && orderUtils.isOverlapped(chunkStatistics, cachedChunkMetadata.peek().getStatistics());
   }
 
-  Statistics currentChunkStatistics() {
+  Statistics<?> currentChunkStatistics() {
     return firstChunkMetadata.getStatistics();
   }
 
-  protected Statistics currentChunkStatistics(int index) throws IOException {
+  protected Statistics<?> currentChunkStatistics(int index) throws IOException {
     checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
     return currentChunkStatistics();
   }
 
-  protected Statistics currentChunkTimeStatistics() throws IOException {
+  protected Statistics<?> currentChunkTimeStatistics() throws IOException {
     return currentChunkStatistics();
   }
 
@@ -590,25 +590,25 @@ public class SeriesScanUtil {
       throw new IOException("overlapped data should be consumed first");
     }
 
-    Statistics firstPageStatistics = firstPageReader.getStatistics();
+    Statistics<?> firstPageStatistics = firstPageReader.getStatistics();
 
     return !unSeqPageReaders.isEmpty()
         && orderUtils.isOverlapped(firstPageStatistics, unSeqPageReaders.peek().getStatistics());
   }
 
-  Statistics currentPageStatistics() {
+  Statistics<?> currentPageStatistics() {
     if (firstPageReader == null) {
       return null;
     }
     return firstPageReader.getStatistics();
   }
 
-  protected Statistics currentPageStatistics(int index) throws IOException {
+  protected Statistics<?> currentPageStatistics(int index) throws IOException {
     checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
     return currentPageStatistics();
   }
 
-  protected Statistics currentPageTimeStatistics() throws IOException {
+  protected Statistics<?> currentPageTimeStatistics() throws IOException {
     return currentPageStatistics();
   }
 
@@ -1115,18 +1115,18 @@ public class SeriesScanUtil {
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
-    Statistics getStatistics() {
+    Statistics<?> getStatistics() {
       return data.getStatistics();
     }
 
-    Statistics getStatistics(int index) throws IOException {
+    Statistics<?> getStatistics(int index) throws IOException {
       if (!(data instanceof IAlignedPageReader)) {
         throw new IOException("Can only get statistics by index from AlignedPageReader");
       }
       return ((IAlignedPageReader) data).getStatistics(index);
     }
 
-    Statistics getTimeStatistics() throws IOException {
+    Statistics<?> getTimeStatistics() throws IOException {
       if (!(data instanceof IAlignedPageReader)) {
         throw new IOException("Can only get statistics of time column from AlignedPageReader");
       }
@@ -1210,7 +1210,7 @@ public class SeriesScanUtil {
   class DescTimeOrderUtils implements TimeOrderUtils {
 
     @Override
-    public long getOrderTime(Statistics statistics) {
+    public long getOrderTime(Statistics<?> statistics) {
       return statistics.getEndTime();
     }
 
@@ -1220,17 +1220,17 @@ public class SeriesScanUtil {
     }
 
     @Override
-    public long getOverlapCheckTime(Statistics range) {
+    public long getOverlapCheckTime(Statistics<?> range) {
       return range.getStartTime();
     }
 
     @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
+    public boolean isOverlapped(Statistics<?> left, Statistics<?> right) {
       return left.getStartTime() <= right.getEndTime();
     }
 
     @Override
-    public boolean isOverlapped(long time, Statistics right) {
+    public boolean isOverlapped(long time, Statistics<?> right) {
       return time <= right.getEndTime();
     }
 
@@ -1326,7 +1326,7 @@ public class SeriesScanUtil {
   class AscTimeOrderUtils implements TimeOrderUtils {
 
     @Override
-    public long getOrderTime(Statistics statistics) {
+    public long getOrderTime(Statistics<?> statistics) {
       return statistics.getStartTime();
     }
 
@@ -1336,17 +1336,17 @@ public class SeriesScanUtil {
     }
 
     @Override
-    public long getOverlapCheckTime(Statistics range) {
+    public long getOverlapCheckTime(Statistics<?> range) {
       return range.getEndTime();
     }
 
     @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
+    public boolean isOverlapped(Statistics<?> left, Statistics<?> right) {
       return left.getEndTime() >= right.getStartTime();
     }
 
     @Override
-    public boolean isOverlapped(long time, Statistics right) {
+    public boolean isOverlapped(long time, Statistics<?> right) {
       return time >= right.getStartTime();
     }
 

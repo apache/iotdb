@@ -78,7 +78,7 @@ public class Between<T extends Comparable<T>> implements Filter {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     if (filterType == FilterType.TIME_FILTER) {
       long time1 = (Long) value1, time2 = (Long) value2;
       if (not) {

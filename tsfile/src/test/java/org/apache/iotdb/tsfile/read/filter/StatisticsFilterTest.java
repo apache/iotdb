@@ -27,10 +27,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.Serializable;
+
 public class StatisticsFilterTest {
 
-  private Statistics statistics1 = Statistics.getStatsByType(TSDataType.INT64);
-  private Statistics statistics2 = Statistics.getStatsByType(TSDataType.INT64);
+  private Statistics<? extends Serializable> statistics1 = Statistics.getStatsByType(TSDataType.INT64);
+  private Statistics<? extends Serializable> statistics2 = Statistics.getStatsByType(TSDataType.INT64);
 
   @Before
   public void before() {

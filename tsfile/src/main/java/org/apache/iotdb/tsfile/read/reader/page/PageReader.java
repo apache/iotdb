@@ -239,7 +239,7 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<?> getStatistics() {
     return pageHeader.getStatistics();
   }
 

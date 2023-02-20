@@ -41,7 +41,7 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     if (filterType == FilterType.TIME_FILTER) {
       return ((Long) value) > statistics.getStartTime();
     } else {

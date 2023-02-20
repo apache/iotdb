@@ -41,7 +41,7 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public LtEq() {}
 
   @Override
-  public boolean satisfy(Statistics statistics) {
+  public boolean satisfy(Statistics<?> statistics) {
     if (filterType == FilterType.TIME_FILTER) {
       return ((Long) value) >= statistics.getStartTime();
     } else {

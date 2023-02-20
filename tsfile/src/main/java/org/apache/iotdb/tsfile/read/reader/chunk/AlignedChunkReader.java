@@ -79,7 +79,7 @@ public class AlignedChunkReader implements IChunkReader {
     this.timeChunkHeader = timeChunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     this.currentTimestamp = Long.MIN_VALUE;
-    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+    List<Statistics<?>> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
           valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
@@ -103,7 +103,7 @@ public class AlignedChunkReader implements IChunkReader {
     this.timeChunkHeader = timeChunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     this.currentTimestamp = currentTimestamp;
-    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+    List<Statistics<?>> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
           valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
@@ -116,7 +116,7 @@ public class AlignedChunkReader implements IChunkReader {
 
   /** construct all the page readers in this chunk */
   private void initAllPageReaders(
-      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      Statistics<?> timeChunkStatistics, List<Statistics<?>> valueChunkStatisticsList)
       throws IOException {
     // construct next satisfied page header
     while (timeChunkDataBuffer.remaining() > 0) {
