@@ -77,7 +77,7 @@ public class IoTDBGroupBySessionIT {
         "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86881000, 38.2, false, 110)",
         "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86882000, 37.5,  true, 220)",
         "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86883000, 37.4, false, 330 )",
-        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(868840000, 36.8, false, 440)",
+        "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86884000, 36.8, false, 440)",
         "INSERT INTO root.ln.wf02.wt01(timestamp, temperature, status, hardware) values(86885000, 37.4, false, 550)",
       };
 
@@ -328,7 +328,11 @@ public class IoTDBGroupBySessionIT {
         };
     String sql =
         "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(50s) having count(status)>5 align by device";
-    normalTestAlignByDevice(res, sql, 1);
+    normalTestAlignByDevice(
+        res,
+        sql,
+        1,
+        "Time,Device,__endTime,count(status),avg(temperature),sum(hardware),first_value(hardware)");
   }
 
   @Test
@@ -341,7 +345,11 @@ public class IoTDBGroupBySessionIT {
         };
     String sql =
         "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(1d) align by device";
-    normalTestAlignByDevice(res, sql, 2);
+    normalTestAlignByDevice(
+        res,
+        sql,
+        2,
+        "Time,Device,__endTime,count(status),avg(temperature),sum(hardware),first_value(hardware)");
   }
 
   @Test
@@ -358,7 +366,7 @@ public class IoTDBGroupBySessionIT {
         };
     String sql =
         "select __endTime,first_value(hardware) from root.ln.** group by session(50s) align by device";
-    normalTestAlignByDevice(res, sql, 6);
+    normalTestAlignByDevice2(res, sql, 6, "Time,Device,__endTime,first_value(hardware)");
   }
 
   @Test
@@ -370,19 +378,17 @@ public class IoTDBGroupBySessionIT {
           {"1", "7550", "33"}
         };
     String sql =
-        "select __endTime,first_value(hardware) from root.ln.** group by session(1d) align by device";
-    normalTestAlignByDevice(res, sql, 2);
+        "select __endTime,count(hardware) from root.ln.** group by session(1d) align by device";
+    normalTestAlignByDevice2(res, sql, 2, "Time,Device,__endTime,count(hardware)");
   }
 
-  private void normalTestAlignByDevice(String[][] res, String sql, int split) {
+  private void normalTestAlignByDevice(String[][] res, String sql, int split, String title) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(
-            resultSetMetaData,
-            "Time,count(root.ln.wf02.wt02.status),avg(root.ln.wf02.wt02.temperature),sum(root.ln.wf02.wt02.hardware)");
+        checkHeader(resultSetMetaData, title);
         int count = 0;
         String device = "root.ln.wf02.wt01";
         while (resultSet.next()) {
@@ -404,6 +410,38 @@ public class IoTDBGroupBySessionIT {
           assertEquals(Double.parseDouble(res[count][3]), actualAvg, 0.01);
           assertEquals(Double.parseDouble(res[count][4]), actualSum, 0.01);
           assertEquals(res[count][5], actualFirstValue);
+          count++;
+        }
+        assertEquals(res.length, count);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void normalTestAlignByDevice2(String[][] res, String sql, int split, String title) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, title);
+        int count = 0;
+        String device = "root.ln.wf02.wt01";
+        while (resultSet.next()) {
+          if (count == split) {
+            device = "root.ln.wf02.wt02";
+          }
+          String actualTime = resultSet.getString(1);
+          String actualDevice = resultSet.getString(2);
+          String actualEndTime = resultSet.getString(3);
+          String actualValue = resultSet.getString(4);
+
+          assertEquals(device, actualDevice);
+          assertEquals(res[count][0], actualTime);
+          assertEquals(res[count][1], actualEndTime);
+          assertEquals(res[count][2], actualValue);
           count++;
         }
         assertEquals(res.length, count);
