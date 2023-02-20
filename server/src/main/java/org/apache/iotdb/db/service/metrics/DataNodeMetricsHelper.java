@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
@@ -40,7 +41,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new CompactionMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
-    MetricService.getInstance().addMetricSet(new DiskMetrics("DataNode"));
+    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());

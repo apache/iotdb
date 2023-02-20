@@ -19,54 +19,97 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
 public interface IDiskMetricsManager {
-  Map<String, Long> getReadDataSizeForDisk();
+  default Map<String, Long> getReadDataSizeForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getWriteDataSizeForDisk();
+  default Map<String, Long> getWriteDataSizeForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getReadOperationCountForDisk();
+  default Map<String, Long> getReadOperationCountForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getWriteOperationCountForDisk();
+  default Map<String, Long> getWriteOperationCountForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getMergedWriteOperationForDisk();
+  default Map<String, Long> getMergedWriteOperationForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getMergedReadOperationForDisk();
+  default Map<String, Long> getMergedReadOperationForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getReadCostTimeForDisk();
+  default Map<String, Long> getReadCostTimeForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getWriteCostTimeForDisk();
+  default Map<String, Long> getWriteCostTimeForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getIoUtilsPercentage();
+  default Map<String, Long> getIoUtilsPercentage() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk();
+  default Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk();
+  default Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Double> getAvgSectorCountOfEachReadForDisk();
+  default Map<String, Double> getAvgSizeOfEachReadForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Double> getAvgSectorCountOfEachWriteForDisk();
+  default Map<String, Double> getAvgSizeOfEachWriteForDisk() {
+    return Collections.emptyMap();
+  }
 
-  Map<String, Long> getQueueSizeForDisk();
+  default Map<String, Long> getQueueSizeForDisk() {
+    return Collections.emptyMap();
+  }
 
-  long getActualReadDataSizeForProcess();
+  default long getActualReadDataSizeForProcess() {
+    return 0L;
+  }
 
-  long getActualWriteDataSizeForProcess();
+  default long getActualWriteDataSizeForProcess() {
+    return 0L;
+  }
 
-  long getReadOpsCountForProcess();
+  default long getReadOpsCountForProcess() {
+    return 0L;
+  }
 
-  long getWriteOpsCountForProcess();
+  default long getWriteOpsCountForProcess() {
+    return 0L;
+  }
 
-  long getAttemptReadSizeForProcess();
+  default long getAttemptReadSizeForProcess() {
+    return 0L;
+  }
 
-  long getAttemptWriteSizeForProcess();
+  default long getAttemptWriteSizeForProcess() {
+    return 0L;
+  }
 
-  Set<String> getDiskIds();
+  default Set<String> getDiskIds() {
+    return Collections.emptySet();
+  }
 
   /** Return different implementation of DiskMetricsManager according to OS type. */
-  public static IDiskMetricsManager getDiskMetricsManager() {
+  static IDiskMetricsManager getDiskMetricsManager() {
     String os = System.getProperty("os.name").toLowerCase();
 
     if (os.startsWith("windows")) {
