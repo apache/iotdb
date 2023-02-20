@@ -3079,7 +3079,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_queue_size{instance=~\"$instance\"}/10000",
+          "expr": "disk_io_avg_queue_size{instance=~\"$instance\"}/10000",
           "interval": "",
           "legendFormat": "{{name}}",
           "range": true,
@@ -3345,6 +3345,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7T",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
