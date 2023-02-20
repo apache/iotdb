@@ -166,6 +166,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
    * If the tsBlock of tsBlockIndex is null or has no more data in the tsBlock, return true; else
    * return false;
    */
+  @Override
   protected boolean isEmpty(int tsBlockIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == inputIndex[tsBlockIndex];

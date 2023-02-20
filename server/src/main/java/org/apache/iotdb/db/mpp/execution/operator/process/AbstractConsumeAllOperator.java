@@ -35,7 +35,6 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 public abstract class AbstractConsumeAllOperator extends AbstractOperator
     implements ProcessOperator {
 
-  protected final OperatorContext operatorContext;
   protected final List<Operator> children;
   protected final int inputOperatorsCount;
   /** TsBlock from child operator. Only one cache now. */
@@ -52,11 +51,6 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     for (int i = 0; i < inputOperatorsCount; i++) {
       canCallNext[i] = false;
     }
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
   }
 
   @Override
