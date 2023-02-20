@@ -25,8 +25,6 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +34,6 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 /** ConsumeAllOperator will consume all children's result every time. */
 public abstract class AbstractConsumeAllOperator extends AbstractOperator
     implements ProcessOperator {
-
-  private static final Logger logger = LoggerFactory.getLogger(AbstractConsumeAllOperator.class);
   protected final List<Operator> children;
   protected final int inputOperatorsCount;
   /** TsBlock from child operator. Only one cache now. */
@@ -93,8 +89,6 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         continue;
       }
       if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
-        logger.info(
-            "During prepareInput, child {} hasNext() is {}", i, children.get(i).hasNextWithTimer());
         inputTsBlocks[i] = getNextTsBlock(i);
         canCallNext[i] = false;
         // child operator has next but return an empty TsBlock which means that it may not
