@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import sys
+sys.path.append("../../client-py/iotdb")
+
 import random
 import time
-
 import numpy as np
 import pandas as pd
 from iotdb.IoTDBContainer import IoTDBContainer
