@@ -1468,7 +1468,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
+
+      // "" and * have special meaning in implementation. Currently, we do not deal with them.
+      if (!req.getName().equals("") && !req.getName().equals("*")) {
+        req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
+      }
       req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
+
       Statement statement = StatementGenerator.createStatement(req);
       if (statement == null) {
         resp.setStatus(
