@@ -634,7 +634,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.reportConfigNodeShutdown(configNodeLocation);
   }
 
-  /** stop config node */
+  /** Stop ConfigNode */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
@@ -642,10 +642,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               try {
                 // Sleep 1s before stop itself
                 TimeUnit.SECONDS.sleep(1);
-              } catch (InterruptedException ignored) {
-                // Ignored
+              } catch (InterruptedException e) {
+                LOGGER.warn(e.getMessage());
+              } finally {
+                ConfigNode.getInstance().stop();
               }
-              ConfigNode.getInstance().stop();
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
