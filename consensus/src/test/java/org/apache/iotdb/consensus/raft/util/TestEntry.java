@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.consensus.raft.util;
 
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class TestEntry extends IoTConsensusRequest {
 

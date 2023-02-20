@@ -27,7 +27,7 @@ import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
-import org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol.FlowMonitorManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
@@ -76,8 +76,7 @@ public class LogDispatcher {
   public LogDispatcher(RaftMember member, RaftConfig config) {
     this.member = member;
     this.config = config;
-    this.queueOrdered =
-        !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
+    this.queueOrdered = !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
     createQueueAndBindingThreads();
   }
@@ -108,8 +107,12 @@ public class LogDispatcher {
                 pair.getKey(),
                 n ->
                     IoTDBThreadPoolFactory.newCachedThreadPool(
-                        "LogDispatcher-" + member.getName() + "-" + pair.getKey().getEndpoint()
-                            .getIp() + "-" + pair.getKey().getEndpoint().getPort()))
+                        "LogDispatcher-"
+                            + member.getName()
+                            + "-"
+                            + pair.getKey().getEndpoint().getIp()
+                            + "-"
+                            + pair.getKey().getEndpoint().getPort()))
             .submit(newDispatcherThread(pair.getKey(), pair.getValue()));
       }
     }

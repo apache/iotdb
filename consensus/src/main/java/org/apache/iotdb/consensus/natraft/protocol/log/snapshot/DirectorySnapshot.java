@@ -4,9 +4,10 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.snapshot;
 
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+
 import java.io.File;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
 public class DirectorySnapshot extends Snapshot {
   private File directory;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.PeerInfo;
@@ -33,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_AGREE;
 
 /**
  * HeartbeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
@@ -82,8 +81,11 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
   private void handleNormalHeartbeatResponse(HeartBeatResponse resp) {
 
     // check the necessity of performing a catch-up
-    Peer peer = new Peer(ConsensusGroupId.Factory.createFromTConsensusGroupId(resp.groupId),
-        resp.followerId, resp.follower);
+    Peer peer =
+        new Peer(
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(resp.groupId),
+            resp.followerId,
+            resp.follower);
     long lastLogIdx = resp.getLastLogIndex();
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
@@ -143,8 +145,8 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
   public void onError(Exception exception) {
     if (exception instanceof ConnectException) {
       logger.debug("{}: Cannot connect to {}: {}", memberName, receiver, exception.getMessage());
-    } else if (exception instanceof TApplicationException && exception.getMessage()
-        .contains("No such member")) {
+    } else if (exception instanceof TApplicationException
+        && exception.getMessage().contains("No such member")) {
       logger.debug("{}: node {} not ready: {}", memberName, receiver, exception.getMessage());
     } else {
       logger.error(

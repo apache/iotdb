@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.client;
 
-import java.net.ConnectException;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
@@ -37,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 
 public class AsyncRaftServiceClient extends RaftService.AsyncClient {
 
@@ -91,8 +91,8 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
    */
   @Override
   public void onError(Exception e) {
-    if (e.getCause() instanceof NoMemberException ||
-     e instanceof TApplicationException && e.getMessage().contains("No such member")) {
+    if (e.getCause() instanceof NoMemberException
+        || e instanceof TApplicationException && e.getMessage().contains("No such member")) {
       logger.debug(e.getMessage());
       ___currentMethod = null;
       returnSelf();

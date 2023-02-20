@@ -99,10 +99,8 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
 
   @Override
   public void matchTerm(
-      long index,
-      long term,
-      TConsensusGroupId groupId,
-      AsyncMethodCallback<Boolean> resultHandler) throws TException {
+      long index, long term, TConsensusGroupId groupId, AsyncMethodCallback<Boolean> resultHandler)
+      throws TException {
     RaftMember member = getMember(groupId);
     resultHandler.onComplete(member.matchLog(index, term));
   }

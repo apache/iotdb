@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.natraft.Utils;
+package org.apache.iotdb.consensus.natraft.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;

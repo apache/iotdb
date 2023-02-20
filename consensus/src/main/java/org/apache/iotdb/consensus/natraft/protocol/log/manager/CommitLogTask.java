@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.natraft.protocol.log;
-
-import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

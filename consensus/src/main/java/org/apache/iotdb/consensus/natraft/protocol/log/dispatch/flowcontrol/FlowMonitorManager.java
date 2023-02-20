@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol;
+package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol;
 
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;

@@ -4,7 +4,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.Utils.Response;
+import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatResponse;
 
@@ -46,7 +46,7 @@ public class HeartbeatReqHandler {
             member.getName(),
             request.getLeader());
       }
-    } else  {
+    } else {
       if (leaderTerm > thisTerm || member.getStatus().getLeader().get() == null) {
         // try updating local term or leader
         try {

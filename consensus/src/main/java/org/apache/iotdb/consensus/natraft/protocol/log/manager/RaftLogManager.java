@@ -28,8 +28,8 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
-import org.apache.iotdb.consensus.natraft.protocol.log.serialization.LogManagerMeta;
-import org.apache.iotdb.consensus.natraft.protocol.log.serialization.StableEntryManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.LogManagerMeta;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
 
 import org.slf4j.Logger;

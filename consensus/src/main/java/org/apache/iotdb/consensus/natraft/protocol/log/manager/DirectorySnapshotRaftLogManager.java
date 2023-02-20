@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
-import java.io.File;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
-import org.apache.iotdb.consensus.natraft.protocol.log.serialization.StableEntryManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
+
+import java.io.File;
 
 public class DirectorySnapshotRaftLogManager extends RaftLogManager {
 
@@ -47,7 +48,13 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
 
   @Override
   public void takeSnapshot() {
-    latestSnapshotDir = new File(config.getStorageDir() + File.separator + getName() + "-snapshot-" + System.currentTimeMillis());
+    latestSnapshotDir =
+        new File(
+            config.getStorageDir()
+                + File.separator
+                + getName()
+                + "-snapshot-"
+                + System.currentTimeMillis());
     stateMachine.takeSnapshot(latestSnapshotDir);
   }
 }

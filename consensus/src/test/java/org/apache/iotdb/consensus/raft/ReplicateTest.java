@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.raft;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -28,9 +26,9 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.raft.util.TestEntry;
 import org.apache.iotdb.consensus.raft.util.TestStateMachine;
-import org.apache.iotdb.consensus.natraft.RaftConsensus;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;

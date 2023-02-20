@@ -1,24 +1,24 @@
 /*
 
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
 
 
- */
+*/
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
@@ -33,9 +33,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.consensus.natraft.Utils.IOUtils;
-import org.apache.iotdb.consensus.natraft.Utils.Response;
-import org.apache.iotdb.consensus.natraft.Utils.StatusUtils;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.GenericHandler;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -48,8 +45,6 @@ import org.apache.iotdb.consensus.natraft.protocol.consistency.StrongCheckConsis
 import org.apache.iotdb.consensus.natraft.protocol.heartbeat.ElectionReqHandler;
 import org.apache.iotdb.consensus.natraft.protocol.heartbeat.HeartbeatReqHandler;
 import org.apache.iotdb.consensus.natraft.protocol.heartbeat.HeartbeatThread;
-import org.apache.iotdb.consensus.natraft.protocol.log.CommitLogCallback;
-import org.apache.iotdb.consensus.natraft.protocol.log.CommitLogTask;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
@@ -61,16 +56,21 @@ import org.apache.iotdb.consensus.natraft.protocol.log.applier.BaseApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.catchup.CatchUpManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.VotingLogList;
-import org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol.FlowBalancer;
-import org.apache.iotdb.consensus.natraft.protocol.log.flowcontrol.FlowMonitorManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowBalancer;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
-import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.CommitLogCallback;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.CommitLogTask;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.DirectorySnapshotRaftLogManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.SyncLogDequeSerializer;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.LogSequencer;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.LogSequencerFactory;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.SynchronousSequencer;
-import org.apache.iotdb.consensus.natraft.protocol.log.serialization.SyncLogDequeSerializer;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
+import org.apache.iotdb.consensus.natraft.utils.IOUtils;
+import org.apache.iotdb.consensus.natraft.utils.Response;
+import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
@@ -127,9 +127,7 @@ public class RaftMember {
    */
   private final Object waitLeaderCondition = new Object();
 
-  /**
-   * the lock is to make sure that only one thread can apply snapshot at the same time
-   */
+  /** the lock is to make sure that only one thread can apply snapshot at the same time */
   private final Lock snapshotApplyLock = new ReentrantLock();
   /**
    * when the commit progress is updated by a heartbeat, this object is notified so that we may know
@@ -138,9 +136,7 @@ public class RaftMember {
   private Object syncLock = new Object();
 
   protected Peer thisNode;
-  /**
-   * the nodes that belong to the same raft group as thisNode.
-   */
+  /** the nodes that belong to the same raft group as thisNode. */
   protected List<Peer> allNodes;
 
   protected ConsensusGroupId groupId;
@@ -149,9 +145,7 @@ public class RaftMember {
 
   protected RaftStatus status = new RaftStatus();
 
-  /**
-   * the raft logs are all stored and maintained in the log manager
-   */
+  /** the raft logs are all stored and maintained in the log manager */
   protected RaftLogManager logManager;
 
   protected HeartbeatThread heartbeatThread;
@@ -176,15 +170,12 @@ public class RaftMember {
   protected IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager;
 
   protected CatchUpManager catchUpManager;
-  /**
-   * a thread pool that is used to do commit log tasks asynchronous in heartbeat thread
-   */
+  /** a thread pool that is used to do commit log tasks asynchronous in heartbeat thread */
   private ExecutorService commitLogPool;
 
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
-   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous
-   * logs.
+   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
    */
   private volatile LogDispatcher logDispatcher;
 
@@ -215,8 +206,11 @@ public class RaftMember {
 
     this.groupId = groupId;
     this.name =
-        groupId.toString() + "-" + thisNode.getEndpoint().getIp() + "-" + thisNode.getEndpoint()
-            .getPort();
+        groupId.toString()
+            + "-"
+            + thisNode.getEndpoint().getIp()
+            + "-"
+            + thisNode.getEndpoint().getPort();
 
     this.clientManager = clientManager;
     this.stateMachine = stateMachine;
@@ -457,9 +451,7 @@ public class RaftMember {
     return appendEntriesInternal(request);
   }
 
-  /**
-   * Similar to appendEntry, while the incoming load is batch of logs instead of a single log.
-   */
+  /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
   private AppendEntryResult appendEntriesInternal(AppendEntriesRequest request)
       throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntriesRequest", name);
@@ -664,7 +656,7 @@ public class RaftMember {
 
     if (log.getEntry().getCurrLogIndex() == Long.MIN_VALUE
         || ((stronglyAccepted < quorumSize
-        || (!enableWeakAcceptance || (totalAccepted < quorumSize)) && !log.isHasFailed()))) {
+            || (!enableWeakAcceptance || (totalAccepted < quorumSize)) && !log.isHasFailed()))) {
       waitAppendResultLoop(log, quorumSize);
     }
     totalAccepted = votingLogList.totalAcceptedNodeNum(log);
@@ -724,9 +716,9 @@ public class RaftMember {
     synchronized (log.getEntry()) {
       while (log.getEntry().getCurrLogIndex() == Long.MIN_VALUE
           || (stronglyAccepted < quorumSize
-          && (!(enableWeakAcceptance || (totalAccepted < quorumSize))
-          && alreadyWait < config.getWriteOperationTimeoutMS()
-          && !log.isHasFailed()))) {
+              && (!(enableWeakAcceptance || (totalAccepted < quorumSize))
+                  && alreadyWait < config.getWriteOperationTimeoutMS()
+                  && !log.isHasFailed()))) {
         try {
           log.getEntry().wait(waitTime);
         } catch (InterruptedException e) {
@@ -818,7 +810,7 @@ public class RaftMember {
    *
    * @return true if this node has caught up before timeout, false otherwise
    * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
-   *                                   value after timeout
+   *     value after timeout
    */
   protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
@@ -850,7 +842,7 @@ public class RaftMember {
    * sync local applyId to leader commitId
    *
    * @param leaderCommitId leader commit id
-   * @param fastFail       if enabled, when log differ too much, return false directly.
+   * @param fastFail if enabled, when log differ too much, return false directly.
    * @return true if leaderCommitId <= localAppliedId
    */
   public boolean syncLocalApply(long leaderCommitId, boolean fastFail) {
@@ -897,9 +889,7 @@ public class RaftMember {
     return false;
   }
 
-  /**
-   * Wait until the leader of this node becomes known or time out.
-   */
+  /** Wait until the leader of this node becomes known or time out. */
   public void waitLeader() {
     long startTime = System.currentTimeMillis();
     while (status.leader.get() == null || status.leader.get() == null) {
@@ -936,9 +926,7 @@ public class RaftMember {
     return handler.getResult(config.getConnectionTimeoutInMS());
   }
 
-  /**
-   * @return true if there is a log whose index is "index" and term is "term", false otherwise
-   */
+  /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
   public boolean matchLog(long index, long term) {
     boolean matched = logManager.matchTerm(term, index);
     logger.debug("Log {}-{} matched: {}", index, term, matched);
@@ -948,10 +936,10 @@ public class RaftMember {
   /**
    * Forward a non-query plan to a node using the default client.
    *
-   * @param plan    a non-query plan
-   * @param node    cannot be the local node
+   * @param plan a non-query plan
+   * @param node cannot be the local node
    * @param groupId must be set for data group communication, set to null for meta group
-   *                communication
+   *     communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
   public TSStatus forwardRequest(IConsensusRequest plan, TEndPoint node, ConsensusGroupId groupId) {
@@ -978,7 +966,7 @@ public class RaftMember {
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
-   * @param plan    a non-query plan
+   * @param plan a non-query plan
    * @param groupId to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */

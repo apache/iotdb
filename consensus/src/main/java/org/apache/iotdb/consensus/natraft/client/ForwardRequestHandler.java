@@ -7,7 +7,7 @@ package org.apache.iotdb.consensus.natraft.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.natraft.Utils.StatusUtils;
+import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

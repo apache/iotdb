@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.appender;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.consensus.natraft.Utils.Response;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class SlidingWindowLogAppender implements LogAppender {
 
@@ -135,8 +137,7 @@ public class SlidingWindowLogAppender implements LogAppender {
     while (true) {
       // TODO: Consider memory footprint to execute a precise rejection
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
-          <= config
-              .getUnAppliedRaftLogNumForRejectThreshold()) {
+          <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
         synchronized (logManager) {
           success =
               logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
@@ -144,8 +145,7 @@ public class SlidingWindowLogAppender implements LogAppender {
         }
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(
-            config.getCheckPeriodWhenInsertBlocked());
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startWaitingTime
             > config.getMaxWaitingTimeWhenInsertBlocked()) {
           result.status = Response.RESPONSE_TOO_BUSY;
@@ -206,7 +206,6 @@ public class SlidingWindowLogAppender implements LogAppender {
     return result;
   }
 
-
   private AppendEntryResult appendEntry(
       long prevLogIndex, long prevLogTerm, long leaderCommit, Entry entry) {
     long appendedPos = 0;
@@ -216,8 +215,9 @@ public class SlidingWindowLogAppender implements LogAppender {
       int windowPos = (int) (entry.getCurrLogIndex() - logManager.getLastLogIndex() - 1);
       if (windowPos < 0) {
         // the new entry may replace an appended entry
-        appendedPos = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit,
-            Collections.singletonList(entry));
+        appendedPos =
+            logManager.maybeAppend(
+                prevLogIndex, prevLogTerm, leaderCommit, Collections.singletonList(entry));
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());

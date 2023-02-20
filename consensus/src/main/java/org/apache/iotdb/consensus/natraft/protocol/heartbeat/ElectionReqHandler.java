@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.Utils.Response;
+import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
 
 import org.slf4j.Logger;

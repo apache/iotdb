@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
@@ -54,8 +53,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
   boolean abort = false;
   protected RaftConfig config;
 
-  LogCatchUpTask(
-      List<Entry> logs, Peer node, CatchUpManager catchUpManager, RaftConfig config) {
+  LogCatchUpTask(List<Entry> logs, Peer node, CatchUpManager catchUpManager, RaftConfig config) {
     this.logs = logs;
     this.node = node;
     this.raftMember = catchUpManager.getMember();
@@ -72,15 +70,13 @@ public class LogCatchUpTask implements Callable<Boolean> {
     request.setLeaderId(raftMember.getThisNode().getNodeId());
     request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
-    synchronized (raftMember.getStatus().getTerm()) {
-      // make sure this node is still a leader
-      if (raftMember.getRole() != RaftRole.LEADER) {
-        logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
-        abort = true;
-        return null;
-      }
-      request.setTerm(raftMember.getStatus().getTerm().get());
+    // make sure this node is still a leader
+    if (raftMember.getRole() != RaftRole.LEADER) {
+      logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
+      abort = true;
+      return null;
     }
+    request.setTerm(raftMember.getStatus().getTerm().get());
 
     request.setEntries(logList);
     // set index for raft

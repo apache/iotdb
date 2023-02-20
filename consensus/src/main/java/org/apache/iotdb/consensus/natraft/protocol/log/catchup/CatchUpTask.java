@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
@@ -78,7 +77,7 @@ public class CatchUpTask implements Runnable {
 
   /**
    * @return true if a matched index is found so that we can use logs only to catch up, or false if
-   * the catch up must be done with a snapshot.
+   *     the catch up must be done with a snapshot.
    * @throws TException
    * @throws InterruptedException
    */
@@ -237,7 +236,7 @@ public class CatchUpTask implements Runnable {
   /**
    * @param index the index of a log in logs
    * @return true if the previous log at logs[index] matches a log in the remote node, false if the
-   * corresponding log cannot be found
+   *     corresponding log cannot be found
    * @throws LeaderUnknownException
    * @throws TException
    * @throws InterruptedException
@@ -270,9 +269,9 @@ public class CatchUpTask implements Runnable {
 
   /**
    * @param logIndex the log index needs to check
-   * @param logTerm  the log term need to check
+   * @param logTerm the log term need to check
    * @return true if the log's index and term matches a log in the remote node, false if the
-   * corresponding log cannot be found
+   *     corresponding log cannot be found
    * @throws TException
    * @throws InterruptedException
    */
@@ -284,8 +283,8 @@ public class CatchUpTask implements Runnable {
       return false;
     }
     matched =
-        SyncClientAdaptor.matchTerm(client, node.getEndpoint(), logIndex, logTerm,
-            raftMember.getRaftGroupId());
+        SyncClientAdaptor.matchTerm(
+            client, node.getEndpoint(), logIndex, logTerm, raftMember.getRaftGroupId());
     return matched;
   }
 
@@ -307,9 +306,7 @@ public class CatchUpTask implements Runnable {
     }
   }
 
-  /**
-   * Remove logs that are contained in the snapshot.
-   */
+  /** Remove logs that are contained in the snapshot. */
   private void removeSnapshotLogs() {
     Entry logToSearch = new EmptyEntry(snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
     int pos =

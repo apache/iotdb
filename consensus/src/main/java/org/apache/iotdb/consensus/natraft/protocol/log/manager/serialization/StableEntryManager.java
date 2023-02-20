@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.natraft.protocol.log.serialization;
+package org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization;
 
 import org.apache.iotdb.consensus.natraft.protocol.HardState;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;

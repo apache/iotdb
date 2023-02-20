@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
@@ -32,10 +31,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_STRONG_ACCEPT;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_WEAK_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_WEAK_ACCEPT;
 
 public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntryResult> {
 

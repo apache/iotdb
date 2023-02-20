@@ -17,36 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.raft.util;
+package org.apache.iotdb.consensus.natraft.utils;
 
-import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
-import java.util.Set;
+@SuppressWarnings("java:S1135")
+public class IOUtils {
 
-public class FakeDataSet implements DataSet {
+  private static final Logger logger = LoggerFactory.getLogger(IOUtils.class);
 
-  private final Set<IConsensusRequest> requestSet;
-
-  public FakeDataSet(Set<IConsensusRequest> requestSet) {
-    this.requestSet = requestSet;
+  private IOUtils() {
+    // util class
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
+  public static Throwable getRootCause(Throwable e) {
+    Throwable curr = e;
+    while (curr.getCause() != null) {
+      curr = curr.getCause();
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    FakeDataSet that = (FakeDataSet) o;
-    return Objects.equals(requestSet, that.requestSet);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(requestSet);
+    return curr;
   }
 }

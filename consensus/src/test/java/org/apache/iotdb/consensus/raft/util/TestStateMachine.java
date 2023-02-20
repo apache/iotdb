@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.consensus.raft.util;
 
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -32,8 +26,16 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
@@ -44,6 +46,7 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   public Set<IConsensusRequest> getRequestSet() {
     return requestSet;
   }
+
   @Override
   public void start() {}
 
@@ -68,6 +71,7 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
     byteBuffer.rewind();
     return TestEntry.deserialize(byteBuffer);
   }
+
   @Override
   public synchronized DataSet read(IConsensusRequest request) {
     return new FakeDataSet(requestSet);

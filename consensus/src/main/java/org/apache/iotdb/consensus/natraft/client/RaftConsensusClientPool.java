@@ -37,8 +37,7 @@ public class RaftConsensusClientPool {
       implements IClientPoolFactory<TEndPoint, AsyncRaftServiceClient> {
 
     private final RaftConfig config;
-    private static final String RAFT_CONSENSUS_CLIENT_POOL_THREAD_NAME =
-        "RaftConsensusClientPool";
+    private static final String RAFT_CONSENSUS_CLIENT_POOL_THREAD_NAME = "RaftConsensusClientPool";
 
     public AsyncRaftServiceClientPoolFactory(RaftConfig config) {
       this.config = config;

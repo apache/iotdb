@@ -31,11 +31,11 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_OUT_OF_WINDOW;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_STRONG_ACCEPT;
-import static org.apache.iotdb.consensus.natraft.Utils.Response.RESPONSE_WEAK_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_OUT_OF_WINDOW;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_WEAK_ACCEPT;
 
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has

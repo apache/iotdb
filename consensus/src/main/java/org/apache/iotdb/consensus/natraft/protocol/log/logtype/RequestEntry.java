@@ -58,8 +58,7 @@ public class RequestEntry extends Entry {
       ByteBuffer byteBuffer = request.serializeToByteBuffer();
       byteBuffer.rewind();
       dataOutputStream.writeInt(byteBuffer.remaining());
-      dataOutputStream.write(
-          byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.remaining());
+      dataOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.remaining());
     } catch (IOException e) {
       // unreachable
     }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.natraft.protocol.log;
+package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
