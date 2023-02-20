@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -232,7 +233,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
-    MetricService.getInstance().addMetricSet(new DiskMetrics("ConfigNode"));
+    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
 
     LOGGER.info("Successfully setup internal services.");
   }
