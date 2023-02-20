@@ -1585,7 +1585,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
-      req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
+      // "" and * have special meaning in implementation. Currently, we do not deal with them.
+      if (!req.getName().equals("") && !req.getName().equals("*")) {
+        req.setName(checkIdentifierAndRemoveBackQuotesIfNecessary(req.getName()));
+      }
 
       Statement statement = StatementGenerator.createStatement(req);
       if (statement == null) {
