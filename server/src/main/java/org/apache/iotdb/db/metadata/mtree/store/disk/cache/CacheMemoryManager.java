@@ -20,7 +20,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.metric.CachedSchemaEngineMetric;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
@@ -50,6 +52,7 @@ public class CacheMemoryManager {
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
   private CachedSchemaEngineStatistics engineStatistics;
+  private CachedSchemaEngineMetric engineMetric;
 
   private static final int CONCURRENT_NUM = 10;
 
@@ -62,10 +65,8 @@ public class CacheMemoryManager {
   private FiniteSemaphore releaseSemaphore;
 
   private volatile boolean hasFlushTask;
-  private int flushCount = 0;
 
   private volatile boolean hasReleaseTask;
-  private int releaseCount = 0;
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
@@ -149,6 +150,10 @@ public class CacheMemoryManager {
         });
   }
 
+  public void setEngineMetric(CachedSchemaEngineMetric engineMetric) {
+    this.engineMetric = engineMetric;
+  }
+
   public boolean isExceedReleaseThreshold() {
     return releaseFlushStrategy.isExceedReleaseThreshold();
   }
@@ -197,6 +202,7 @@ public class CacheMemoryManager {
    */
   private void tryExecuteMemoryRelease() {
     synchronized (storeList) {
+      long startTime = System.currentTimeMillis();
       CompletableFuture.allOf(
               storeList.stream()
                   .map(
@@ -213,7 +219,9 @@ public class CacheMemoryManager {
                               releaseTaskProcessor))
                   .toArray(CompletableFuture[]::new))
           .join();
-      releaseCount++;
+      if (engineMetric != null) {
+        engineMetric.recordRelease(System.currentTimeMillis() - startTime);
+      }
       synchronized (blockObject) {
         hasReleaseTask = false;
         if (isExceedFlushThreshold()) {
@@ -246,6 +254,7 @@ public class CacheMemoryManager {
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void tryFlushVolatileNodes() {
     synchronized (storeList) {
+      long startTime = System.currentTimeMillis();
       CompletableFuture.allOf(
               storeList.stream()
                   .map(
@@ -263,7 +272,9 @@ public class CacheMemoryManager {
                               flushTaskProcessor))
                   .toArray(CompletableFuture[]::new))
           .join();
-      flushCount++;
+      if (engineMetric != null) {
+        engineMetric.recordFlush(System.currentTimeMillis() - startTime);
+      }
       synchronized (blockObject) {
         hasFlushTask = false;
         blockObject.notifyAll();
@@ -306,6 +317,15 @@ public class CacheMemoryManager {
     engineStatistics = null;
     releaseSemaphore = null;
     flushSemaphore = null;
+    engineMetric = null;
+  }
+
+  public int getReleaseThreadNum() {
+    return ((WrappedThreadPoolExecutor) releaseTaskProcessor).getActiveCount();
+  }
+
+  public int getFlushThreadNum() {
+    return ((WrappedThreadPoolExecutor) flushTaskProcessor).getActiveCount();
   }
 
   private CacheMemoryManager() {}

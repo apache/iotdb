@@ -21,9 +21,12 @@ package org.apache.iotdb.db.metadata.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -43,6 +46,11 @@ public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
   private static final String FLUSH_TIMER = "schema_file_flush_timer";
   private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
   private static final String FLUSH_THREAD_NUM = "schema_file_flush_thread_num";
+
+  private Counter releaseCounter;
+  private Counter flushCounter;
+  private Timer releaseTimer;
+  private Timer flushTimer;
 
   public CachedSchemaEngineMetric(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
@@ -94,28 +102,44 @@ public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
         CachedSchemaEngineStatistics::getUnpinnedMemorySize,
         Tag.NAME.toString(),
         UNPINNED_MEM);
-    metricService.getOrCreateCounter(
-        Metric.SCHEMA_REGION.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), RELEASE_COUNT);
-    metricService.getOrCreateCounter(
-        Metric.SCHEMA_REGION.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), FLUSH_COUNT);
-    metricService.getOrCreateTimer(
-        Metric.SCHEMA_REGION.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), RELEASE_TIMER);
-    metricService.getOrCreateTimer(
-        Metric.SCHEMA_REGION.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), FLUSH_TIMER);
+    releaseCounter =
+        metricService.getOrCreateCounter(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RELEASE_COUNT);
+    flushCounter =
+        metricService.getOrCreateCounter(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            FLUSH_COUNT);
+    releaseTimer =
+        metricService.getOrCreateTimer(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RELEASE_TIMER);
+    flushTimer =
+        metricService.getOrCreateTimer(
+            Metric.SCHEMA_REGION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            FLUSH_TIMER);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
-        engineStatistics,
-        CachedSchemaEngineStatistics::getUnpinnedMemorySize,
+        CacheMemoryManager.getInstance(),
+        CacheMemoryManager::getReleaseThreadNum,
         Tag.NAME.toString(),
-        UNPINNED_MEM);
+        RELEASE_THREAD_NUM);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
-        engineStatistics,
-        CachedSchemaEngineStatistics::getUnpinnedMemorySize,
+        CacheMemoryManager.getInstance(),
+        CacheMemoryManager::getFlushThreadNum,
         Tag.NAME.toString(),
-        UNPINNED_MEM);
+        FLUSH_THREAD_NUM);
   }
 
   @Override
@@ -150,5 +174,15 @@ public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
         Metric.SCHEMA_ENGINE.toString(),
         Tag.NAME.toString(),
         FLUSH_THREAD_NUM);
+  }
+
+  public void recordFlush(long milliseconds) {
+    flushCounter.inc();
+    flushTimer.updateMillis(milliseconds);
+  }
+
+  public void recordRelease(long milliseconds) {
+    releaseCounter.inc();
+    releaseTimer.updateMillis(milliseconds);
   }
 }

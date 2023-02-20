@@ -115,6 +115,8 @@ public class SchemaEngine {
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
     SchemaResourceManager.initSchemaResource();
+    // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after
+    // CacheMemoryManager
     SchemaMetricManager.getInstance().init();
 
     schemaRegionMap = new ConcurrentHashMap<>();
@@ -241,6 +243,7 @@ public class SchemaEngine {
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }
+    // SchemaMetric should be cleared lastly
     SchemaMetricManager.getInstance().clear();
   }
 
