@@ -64,6 +64,14 @@ public class SessionWindow implements IWindow {
   @Override
   public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
     long currentTime = controlTimeAndValueColumn[0].getLong(index);
+    // judge whether we need initialize timeValue
+    if (!initializedTimeValue) {
+      startTime = currentTime;
+      endTime = currentTime;
+      lastTsBlockTime = controlTimeAndValueColumn[0].getLong(0);
+      timeValue = currentTime;
+      initializedTimeValue = true;
+    }
     // judge whether we need update startTime
     if (startTime > currentTime) {
       startTime = currentTime;
@@ -74,14 +82,6 @@ public class SessionWindow implements IWindow {
     }
     // update the last time of session window
     timeValue = ascending ? Math.max(timeValue, currentTime) : Math.min(timeValue, currentTime);
-    // judge whether we need initialize timeValue
-    if (!initializedTimeValue) {
-      startTime = currentTime;
-      endTime = currentTime;
-      lastTsBlockTime = controlTimeAndValueColumn[0].getLong(0);
-      timeValue = currentTime;
-      initializedTimeValue = true;
-    }
   }
 
   @Override
