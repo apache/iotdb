@@ -1278,6 +1278,6 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the model was removed successfully
    */
-   common.TSStatus updateModelState(TUpdateModelStateReq req)
+  common.TSStatus updateModelState(TUpdateModelStateReq req)
 }
 
