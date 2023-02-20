@@ -50,7 +50,8 @@ public class DiskMetrics implements IMetricSet {
   private static final String DISK_IO_AVG_TIME = "disk_io_avg_time";
   private static final String DISK_IO_AVG_SIZE = "disk_io_avg_size";
   private static final String DISK_IO_BUSY_PERCENTAGE = "disk_io_busy_percentage";
-  private static final String DISK_IO_QUEUE_SIZE = "disk_io_queue_size";
+  private static final String DISK_IO_QUEUE_SIZE = "disk_io_avg_queue_size";
+
   private static final String PROCESS_IO_OPS = "process_io_ops";
   private static final String PROCESS_IO_SIZE = "process_io_size";
 

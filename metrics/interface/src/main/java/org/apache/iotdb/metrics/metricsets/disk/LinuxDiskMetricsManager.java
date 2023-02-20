@@ -71,8 +71,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final int DISK_MERGED_WRITE_COUNT_OFFSET = 9;
   private static final int DISK_SECTOR_WRITE_COUNT_OFFSET = 10;
   private static final int DISK_WRITE_TIME_COST_OFFSET = 11;
-  private static final int DISK_QUEUE_SIZE_OFFSET = 12;
   private static final int DISK_IO_TOTAL_TIME_OFFSET = 13;
+  private static final int DISK_TIME_IN_QUEUE_OFFSET = 14;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
   private Set<String> diskIdSet;
   private final Map<String, Integer> diskSectorSizeMap;
@@ -89,6 +89,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private final Map<String, Long> lastReadSectorCountForDisk;
   private final Map<String, Long> lastWriteSectorCountForDisk;
   private final Map<String, Long> lastIoBusyTimeForDisk;
+  private final Map<String, Long> lastTimeInQueueForDisk;
   private final Map<String, Long> incrementReadOperationCountForDisk;
   private final Map<String, Long> incrementWriteOperationCountForDisk;
   private final Map<String, Long> incrementReadTimeCostForDisk;
@@ -96,7 +97,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private final Map<String, Long> incrementReadSectorCountForDisk;
   private final Map<String, Long> incrementWriteSectorCountForDisk;
   private final Map<String, Long> incrementIoBusyTimeForDisk;
-  private final Map<String, Long> queueSizeMap;
+  private final Map<String, Long> incrementTimeInQueueForDisk;
 
   // Process IO status structure
   private long lastReallyReadSizeForProcess = 0L;
@@ -122,6 +123,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     lastReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
     lastWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
     lastIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
+    lastTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
     incrementReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
     incrementWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
     incrementReadTimeCostForDisk = new HashMap<>(diskIdSet.size());
@@ -129,7 +131,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     incrementReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
     incrementWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
     incrementIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
-    queueSizeMap = new HashMap<>(diskIdSet.size());
+    incrementTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
   }
 
   @Override
@@ -251,7 +253,12 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
 
   @Override
   public Map<String, Long> getQueueSizeForDisk() {
-    return queueSizeMap;
+    Map<String, Long> avgQueueSizeMap = new HashMap<>(diskIdSet.size());
+    for (Map.Entry<String, Long> entry : incrementTimeInQueueForDisk.entrySet()) {
+      avgQueueSizeMap.put(
+          entry.getKey(), (long) (((double) entry.getValue()) * 10000.0 / updateInterval));
+    }
+    return avgQueueSizeMap;
   }
 
   @Override
@@ -353,8 +360,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           DISK_SECTOR_WRITE_COUNT_OFFSET,
           DISK_READ_TIME_OFFSET,
           DISK_WRITE_TIME_COST_OFFSET,
-          DISK_QUEUE_SIZE_OFFSET,
-          DISK_IO_TOTAL_TIME_OFFSET
+          DISK_IO_TOTAL_TIME_OFFSET,
+          DISK_TIME_IN_QUEUE_OFFSET
         };
         Map[] lastMapArray = {
           lastReadOperationCountForDisk,
@@ -365,8 +372,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           lastWriteSectorCountForDisk,
           lastReadTimeCostForDisk,
           lastWriteTimeCostForDisk,
-          queueSizeMap,
-          lastIoBusyTimeForDisk
+          lastIoBusyTimeForDisk,
+          lastTimeInQueueForDisk
         };
         Map[] incrementMapArray = {
           incrementReadOperationCountForDisk,
@@ -377,8 +384,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           incrementWriteSectorCountForDisk,
           incrementReadTimeCostForDisk,
           incrementWriteTimeCostForDisk,
-          null,
-          incrementIoBusyTimeForDisk
+          incrementIoBusyTimeForDisk,
+          incrementTimeInQueueForDisk
         };
         for (int index = 0, length = offsetArray.length; index < length; ++index) {
           updateSingleDiskInfo(
