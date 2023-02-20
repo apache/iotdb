@@ -82,6 +82,17 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
             measurementPath.getFullPath(),
             lastValue.getStringValue(),
             seriesPath.getSchemaList().get(i / 2).getType().name());
+      } else {
+        // last value is null
+        if (needUpdateCache) {
+          MeasurementPath measurementPath =
+              new MeasurementPath(
+                  devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
+                  seriesPath.getSchemaList().get(i / 2),
+                  true);
+          lastCache.updateLastCache(
+              getDatabaseName(), measurementPath, null, false, Long.MIN_VALUE);
+        }
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;

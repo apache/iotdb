@@ -65,6 +65,10 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
     // last value is null
     if (res.getColumn(0).isNull(0)) {
+      if (needUpdateCache) {
+        // we still try to update the last cache using a null TimeValuePair
+        lastCache.updateLastCache(getDatabaseName(), fullPath, null, false, Long.MIN_VALUE);
+      }
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
