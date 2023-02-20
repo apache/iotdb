@@ -71,6 +71,7 @@ public class SessionWindow implements IWindow {
       lastTsBlockTime = controlTimeAndValueColumn[0].getLong(0);
       timeValue = currentTime;
       initializedTimeValue = true;
+      return;
     }
     // judge whether we need update startTime
     if (startTime > currentTime) {
