@@ -202,10 +202,10 @@ public class ConfigNodeConfig {
   private String readConsistencyLevel = "strong";
 
   /** RatisConsensus protocol, Max size for a single log append request from leader */
-  private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
-  private long configNodeRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
-  private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+  private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+  private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
