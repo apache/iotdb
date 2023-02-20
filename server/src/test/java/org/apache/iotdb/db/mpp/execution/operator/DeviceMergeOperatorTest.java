@@ -36,6 +36,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -123,16 +125,16 @@ public class DeviceMergeOperatorTest {
       dataTypes.add(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -148,16 +150,14 @@ public class DeviceMergeOperatorTest {
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor1"));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -276,16 +276,15 @@ public class DeviceMergeOperatorTest {
       dataTypes.add(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       List<TsFileResource> seqResources1 = new ArrayList<>();
       List<TsFileResource> unSeqResources1 = new ArrayList<>();
       seqResources1.add(seqResources.get(0));
@@ -313,11 +312,8 @@ public class DeviceMergeOperatorTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -425,16 +421,15 @@ public class DeviceMergeOperatorTest {
       dataTypes.add(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       List<TsFileResource> seqResources1 = new ArrayList<>();
       List<TsFileResource> unSeqResources1 = new ArrayList<>();
       seqResources1.add(seqResources.get(0));
@@ -451,16 +446,14 @@ public class DeviceMergeOperatorTest {
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor1"));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -483,16 +476,14 @@ public class DeviceMergeOperatorTest {
               deviceColumnIndex,
               dataTypes);
 
+      scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));

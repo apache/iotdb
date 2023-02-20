@@ -161,12 +161,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 schemas);
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
-                path,
-                TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
-                seqResources,
-                unseqResources,
-                true);
+                path, EnvironmentUtils.TEST_QUERY_FI_CONTEXT, seqResources, unseqResources, true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
           TsBlock batchData = tsFilesReader.nextBatch();
@@ -263,7 +258,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),
@@ -389,12 +383,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 schemas);
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
-                path,
-                TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
-                seqResources,
-                unseqResources,
-                true);
+                path, EnvironmentUtils.TEST_QUERY_FI_CONTEXT, seqResources, unseqResources, true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
           TsBlock batchData = tsFilesReader.nextBatch();
@@ -492,7 +481,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                TSDataType.VECTOR,
                 EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),

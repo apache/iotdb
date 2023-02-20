@@ -48,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -858,16 +859,17 @@ public class RawDataAggregationOperatorTest {
     if (groupByTimeParameter != null && !groupByTimeParameter.isLeftCRightO()) {
       timeFilter = new Gt<>(0L, FilterType.TIME_FILTER);
     }
+
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
     SeriesScanOperator seriesScanOperator1 =
         new SeriesScanOperator(
             driverContext.getOperatorContexts().get(0),
             planNodeId1,
             measurementPath1,
-            allSensors,
-            TSDataType.INT32,
-            timeFilter,
-            null,
-            true);
+            Ordering.ASC,
+            scanOptionsBuilder.build());
     seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
     MeasurementPath measurementPath2 =
@@ -877,11 +879,8 @@ public class RawDataAggregationOperatorTest {
             driverContext.getOperatorContexts().get(1),
             planNodeId2,
             measurementPath2,
-            allSensors,
-            TSDataType.INT32,
-            timeFilter,
-            null,
-            true);
+            Ordering.ASC,
+            scanOptionsBuilder.build());
     seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
     RowBasedTimeJoinOperator timeJoinOperator =
