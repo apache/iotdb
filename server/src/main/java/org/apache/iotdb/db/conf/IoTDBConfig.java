@@ -488,6 +488,9 @@ public class IoTDBConfig {
 
   private boolean enableCompactionValidation = true;
 
+  /** The number of candidate compaction task queue. */
+  private int candidateCompactionTaskQueueSize = 50;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -3594,6 +3597,14 @@ public class IoTDBConfig {
 
   public void setEnableCompactionValidation(boolean enableCompactionValidation) {
     this.enableCompactionValidation = enableCompactionValidation;
+  }
+
+  public int getCandidateCompactionTaskQueueSize() {
+    return candidateCompactionTaskQueueSize;
+  }
+
+  public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
+    this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
   public boolean isEnableAuditLog() {

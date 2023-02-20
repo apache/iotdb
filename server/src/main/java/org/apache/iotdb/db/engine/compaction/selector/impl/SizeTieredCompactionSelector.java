@@ -105,8 +105,11 @@ public class SizeTieredCompactionSelector
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level) {
+        // meet files of another level
         if (selectedFileList.size() > 1) {
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          if (!addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize)) {
+            return false;
+          }
           shouldContinueToSearch = false;
         }
         selectedFileList = new ArrayList<>();
@@ -131,7 +134,9 @@ public class SizeTieredCompactionSelector
           || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          if (!addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize)) {
+            return false;
+          }
           shouldContinueToSearch = false;
         }
         selectedFileList = new ArrayList<>();
@@ -142,10 +147,23 @@ public class SizeTieredCompactionSelector
     // if next time partition exists
     // submit a merge task even it does not meet the requirement for file num or file size
     if (hasNextTimePartition && selectedFileList.size() > 1) {
-      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize);
       shouldContinueToSearch = false;
     }
     return shouldContinueToSearch;
+  }
+
+  private boolean addOneTaskToQueue(
+      PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue,
+      List<TsFileResource> selectedFileList,
+      long selectedFileSize) {
+    if (CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
+            + taskPriorityQueue.size()
+        < config.getCandidateCompactionTaskQueueSize()) {
+      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      return true;
+    }
+    return false;
   }
 
   /**

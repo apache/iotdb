@@ -34,16 +34,26 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
+    if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
+      return compareWithBalance(o1, o2);
+    } else {
+      return compareWithCrossInnerOrInnerCross(o1, o2, config.getCompactionPriority());
+    }
+  }
+
+  private int compareWithCrossInnerOrInnerCross(
+      AbstractCompactionTask o1, AbstractCompactionTask o2, CompactionPriority compactionPriority) {
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
         || ((o2 instanceof InnerSpaceCompactionTask)
             && (o1 instanceof CrossSpaceCompactionTask)))) {
-      if (config.getCompactionPriority() != CompactionPriority.CROSS_INNER) {
-        return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
-      } else {
+      if (compactionPriority == CompactionPriority.CROSS_INNER) {
+        // priority is CROSS_INNER
         return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
+      } else {
+        // priority is INNER_CROSS
+        return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
       }
-    }
-    if (o1 instanceof InnerSpaceCompactionTask) {
+    } else if (o1 instanceof InnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
           (InnerSpaceCompactionTask) o1, (InnerSpaceCompactionTask) o2);
     } else {
@@ -52,13 +62,16 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     }
   }
 
+  private int compareWithBalance(AbstractCompactionTask o1, AbstractCompactionTask o2) {
+    if (o1.getSerialId() != o2.getSerialId()) {
+      return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
+    } else {
+      return compareWithCrossInnerOrInnerCross(o1, o2, CompactionPriority.CROSS_INNER);
+    }
+  }
+
   public int compareInnerSpaceCompactionTask(
       InnerSpaceCompactionTask o1, InnerSpaceCompactionTask o2) {
-    if (o1.isSequence() ^ o2.isSequence()) {
-      // prioritize sequence file compaction
-      return o1.isSequence() ? -1 : 1;
-    }
-
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification
