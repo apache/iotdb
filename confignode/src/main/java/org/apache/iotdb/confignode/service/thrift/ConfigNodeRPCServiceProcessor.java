@@ -642,8 +642,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               try {
                 // Sleep 1s before stop itself
                 TimeUnit.SECONDS.sleep(1);
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+              } catch (InterruptedException ignored) {
+                // Ignored
               }
               ConfigNode.getInstance().stop();
             })
