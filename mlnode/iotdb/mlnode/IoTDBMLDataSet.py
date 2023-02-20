@@ -17,7 +17,7 @@
 #
 import numpy as np
 import pandas as pd
-import MLDataSerde
+from iotdb.mlnode.MLDataSerde import deserialize
 from iotdb.thrift.rpc.ttypes import TSFetchResultsReq
 from iotdb.utils.IoTDBConstants import TSDataType
 from thrift.transport import TTransport
@@ -38,7 +38,7 @@ class IoTDBMLDataSet(object):
                  session_id,
                  query_result,
                  fetch_size,
-                 ignore_timestamp,
+                 ignore_timestamp
                  ):
         self.__current_tsBlock = None
         self.__statement_id = statement_id
@@ -140,7 +140,7 @@ class IoTDBMLDataSet(object):
         while self.has_cached_byteBuffer():
             buffer = self.__query_result[self.__query_result_Index]
             self.__query_result_Index += 1
-            time_column_values, column_values, null_indicators, position_count, buffer = MLDataSerde.deserialize(buffer)
+            time_column_values, column_values, null_indicators, position_count, buffer = deserialize(buffer)
             time_array = np.frombuffer(
                 time_column_values, np.dtype(np.longlong).newbyteorder(">")
             )

@@ -15,22 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+import sys
 
+sys.path.append("/client-py/iotdb")
 import random
 import time
+
 import numpy as np
 import pandas as pd
-
+from iotdb.IoTDBContainer import IoTDBContainer
+from iotdb.Session import Session
+from iotdb.mlnode.IoTDBMLDataSet import IoTDBMLDataSet
 from iotdb.thrift.rpc.IClientRPCService import Client
 from iotdb.thrift.rpc.ttypes import TSOpenSessionReq, TSProtocolVersion, TSCreateMultiTimeseriesReq, TSInsertTabletReq, \
     TSExecuteStatementReq, TSCloseSessionReq, TSInsertRecordReq
-from iotdb.utils.IoTDBMLDataSet import IoTDBMLDataSet
-from pandas.testing import assert_frame_equal
-
-from iotdb.IoTDBContainer import IoTDBContainer
-from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
+from pandas.testing import assert_frame_equal
 from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TTransport, TSocket
 
