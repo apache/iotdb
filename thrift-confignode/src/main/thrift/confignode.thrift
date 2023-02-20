@@ -710,6 +710,7 @@ struct TUpdateModelInfoReq {
 struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
+  3: optional string bestTrailId
 }
 
 service IConfigNodeRPCService {
