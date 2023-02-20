@@ -91,7 +91,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
       // Only fresh data can be pushed into mergeSortHeap
-      if (!noMoreTsBlocks[i] && !isEmpty(i) && isFreshData[i]) {
+      if (!noMoreTsBlocks[i] && isFreshData[i]) {
         mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
         isFreshData[i] = false;
       }
@@ -227,7 +227,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         if (children.get(i).hasNextWithTimer()) {
           inputTsBlocks[i] = getNextTsBlock(i);
           canCallNext[i] = false;
-          if (inputTsBlocks[i] == null) {
+          if (isEmpty(i)) {
             allReady = false;
           } else {
             isFreshData[i] = true;

@@ -137,7 +137,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     // get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && !isEmpty(i)) {
+      if (!noMoreTsBlocks[i]) {
         updateTimeSelector(i);
         // update the currentEndTime if the TsBlock is not empty
         currentEndTime =
@@ -280,7 +280,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         if (children.get(i).hasNextWithTimer()) {
           inputTsBlocks[i] = getNextTsBlock(i);
           canCallNext[i] = false;
-          if (inputTsBlocks[i] == null) {
+          if (isEmpty(i)) {
             allReady = false;
           }
         } else {

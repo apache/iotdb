@@ -96,7 +96,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         // methods of the child operator until its hasNext() returns false or the next() gets
         // the data that is not empty, but this will cause the execution time of the while loop
         // to be uncontrollable and may exceed all allocated time slice
-        if (inputTsBlocks[i] == null) {
+        if (isEmpty(i)) {
           allReady = false;
         }
       } else {
