@@ -79,6 +79,7 @@ public class SessionWindow implements IWindow {
       startTime = currentTime;
       endTime = currentTime;
       lastTsBlockTime = controlTimeAndValueColumn[0].getLong(0);
+      timeValue = currentTime;
       initializedTimeValue = true;
     }
   }
@@ -103,6 +104,7 @@ public class SessionWindow implements IWindow {
         startTime = Long.MAX_VALUE;
         endTime = Long.MIN_VALUE;
         lastTsBlockTime = column.getLong(0);
+        timeValue = ascending ? maxTime : minTime;
         initializedTimeValue = true;
       }
       timeValue = ascending ? Math.max(timeValue, maxTime) : Math.min(timeValue, minTime);

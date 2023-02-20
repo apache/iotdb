@@ -272,17 +272,7 @@ public class IoTDBGroupBySessionIT {
     normalTest(res, sql);
   }
 
-  @Test
-  public void groupBySessionTest4() {
-    String[][] res =
-        new String[][] {
-          {"1", "35.7"}, {"100", "38"}, {"150", "38.8"}, {"200", "38.6"}, {"250", "38.4"},
-          {"300", "38.3"}, {"500", "38.2"}, {"580", "37.8"}, {"1500", "9.8"}, {"1550", "10.2"},
-          {"3550", "10.8"}, {"5550", "10.6"}, {"7550", "10.2"}
-        };
-
-    String sql = "select first_value(temperature) from root.ln.wf02.wt02 group by session(10ms)";
-
+  public void groupBySessionFirstValueTest(String sql, String[][] res) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -305,6 +295,19 @@ public class IoTDBGroupBySessionIT {
   }
 
   @Test
+  public void groupBySessionTest4() {
+    String[][] res =
+        new String[][] {
+          {"1", "35.7"}, {"100", "38"}, {"150", "38.8"}, {"200", "38.6"}, {"250", "38.4"},
+          {"300", "38.3"}, {"500", "38.2"}, {"580", "37.8"}, {"1500", "9.8"}, {"1550", "10.2"},
+          {"3550", "10.8"}, {"5550", "10.6"}, {"7550", "10.2"}
+        };
+
+    String sql = "select first_value(temperature) from root.ln.wf02.wt02 group by session(10ms)";
+    groupBySessionFirstValueTest(sql, res);
+  }
+
+  @Test
   public void groupBySessionTest5() {
     String[][] res =
         new String[][] {
@@ -317,6 +320,58 @@ public class IoTDBGroupBySessionIT {
     String sql =
         "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(1s)";
     normalTest(res, sql);
+  }
+
+  @Test
+  public void groupBySessionTest6() {
+    String[][] res =
+        new String[][] {
+          {"7550", "1", "10.2", "2888"},
+          {"5550", "1", "10.6", "1888"},
+          {"3550", "1", "10.8", "999"},
+          {"1", "27", "35.441", "8319"}
+        };
+
+    String sql =
+        "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(1s) order by time desc";
+    normalTest(res, sql);
+  }
+
+  @Test
+  public void groupBySessionTest7() {
+    String[][] res =
+        new String[][] {
+          {"7550", "1", "10.2", "2888"},
+          {"5550", "1", "10.6", "1888"},
+          {"3550", "1", "10.8", "999"},
+          {"1550", "1", "10.2", "888"},
+          {"1500", "1", "9.8", "666"},
+          {"400", "10", "37.73", "3300"},
+          {"300", "1", "38.3", "550"},
+          {"250", "1", "38.4", "440"},
+          {"200", "1", "38.6", "330"},
+          {"150", "1", "38.8", "220"},
+          {"100", "1", "38", "110"},
+          {"1", "10", "36.75", "1815"}
+        };
+
+    String sql =
+        "select count(status), avg(temperature), sum(hardware) from root.ln.wf02.wt02 group by session(49ms) order by time desc";
+    normalTest(res, sql);
+  }
+
+  @Test
+  public void groupBySessionTest8() {
+    String[][] res =
+        new String[][] {
+          {"7550", "10.2"}, {"5550", "10.6"}, {"3550", "10.8"}, {"1550", "10.2"}, {"1500", "9.8"},
+          {"580", "37.8"}, {"500", "38.2"}, {"300", "38.3"}, {"250", "38.4"}, {"200", "38.6"},
+          {"150", "38.8"}, {"100", "38"}, {"1", "35.7"}
+        };
+
+    String sql =
+        "select first_value(temperature) from root.ln.wf02.wt02 group by session(10ms) order by time desc";
+    groupBySessionFirstValueTest(sql, res);
   }
 
   @Test
