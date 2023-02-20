@@ -431,8 +431,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @param path Format: root.node(.node)+
    */
   @Override
-  public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
-      PartialPath path) throws MetadataException {
+  public IMeasurementMNode deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0) {
       throw new IllegalPathException(path.getFullPath());
@@ -445,11 +445,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.deleteAliasChild(deletedNode.getAlias());
     }
-    return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
+    deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent);
+    return deletedNode;
   }
 
   /** Used when delete timeseries or deactivate template */
-  public PartialPath deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode) {
+  public void deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode) {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -477,12 +478,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     while (isEmptyInternalMNode(curNode)) {
       // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
-        return curNode.getPartialPath();
+        return;
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
-    return null;
   }
 
   @Override
