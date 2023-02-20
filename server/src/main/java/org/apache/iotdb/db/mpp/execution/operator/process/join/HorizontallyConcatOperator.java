@@ -30,6 +30,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -43,6 +46,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
+  private static final Logger logger = LoggerFactory.getLogger(HorizontallyConcatOperator.class);
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
 
@@ -168,6 +172,13 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
    */
   @Override
   protected boolean isEmpty(int tsBlockIndex) {
+    if (inputTsBlocks[tsBlockIndex] != null) {
+      logger.info(
+          "child {}, inputIndex is {}, positionCount is {}",
+          tsBlockIndex,
+          inputIndex[tsBlockIndex],
+          inputTsBlocks[tsBlockIndex].getPositionCount());
+    }
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == inputIndex[tsBlockIndex];
   }
