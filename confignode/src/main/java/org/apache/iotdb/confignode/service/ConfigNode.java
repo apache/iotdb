@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.SystemMetrics;
+import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -231,6 +232,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
+    MetricService.getInstance().addMetricSet(new DiskMetrics("ConfigNode"));
 
     LOGGER.info("Successfully setup internal services.");
   }
