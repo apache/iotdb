@@ -77,7 +77,7 @@ public class QueryStatement extends Statement {
   private WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
-  // row limit and offset for result set. The default value is 0, which means no limit
+  // row limit for result set. The default value is 0, which means no limit
   private int rowLimit = 0;
   // row offset for result set. The default value is 0
   private int rowOffset = 0;
