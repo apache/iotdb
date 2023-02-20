@@ -44,6 +44,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   protected final TsBlock[] inputTsBlocks;
 
   protected final boolean[] canCallNext;
+  protected int readyChildIndex;
 
   protected AbstractConsumeAllOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
@@ -59,6 +60,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   @Override
   public ListenableFuture<?> isBlocked() {
     boolean hasReadyChild = false;
+    readyChildIndex = 0;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!isEmpty(i)) {
@@ -68,7 +70,8 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
       if (blocked.isDone()) {
         hasReadyChild = true;
         canCallNext[i] = true;
-      } else if (!blocked.isDone()) {
+        readyChildIndex = i;
+      } else {
         listenableFutures.add(blocked);
       }
     }
@@ -89,7 +92,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
       if (!isEmpty(i)) {
         continue;
       }
-      if (canCallNext[i]) {
+      if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
         logger.info(
             "During prepareInput, child {} hasNext() is {}", i, children.get(i).hasNextWithTimer());
         inputTsBlocks[i] = getNextTsBlock(i);

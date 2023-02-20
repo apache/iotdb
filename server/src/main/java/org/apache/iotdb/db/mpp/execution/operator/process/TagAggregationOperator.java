@@ -150,12 +150,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
 
   @Override
   public boolean hasNext() {
-    for (int i = 0; i < children.size(); i++) {
-      if (isEmpty(i) && !children.get(i).hasNextWithTimer()) {
-        return false;
-      }
-    }
-    return true;
+    return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
   }
 
   @Override
@@ -182,5 +177,11 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   protected boolean isEmpty(int index) {
     return inputTsBlocks[index] == null
         || consumedIndices[index] == inputTsBlocks[index].getPositionCount();
+  }
+
+  @Override
+  protected TsBlock getNextTsBlock(int childIndex) {
+    consumedIndices[childIndex] = 0;
+    return children.get(childIndex).nextWithTimer();
   }
 }
