@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.io.IOException;
 import java.util.List;
@@ -44,4 +45,6 @@ public interface IPageReader {
   boolean isModified();
 
   void initTsBlockBuilder(List<TSDataType> dataTypes);
+
+  void setLimitOffset(PaginationController paginationController);
 }
