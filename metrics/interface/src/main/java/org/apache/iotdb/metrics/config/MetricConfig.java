@@ -40,11 +40,10 @@ public class MetricConfig {
   private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
   /** The list of reporters provide metrics for external tool. */
-  private List<ReporterType> metricReporterList =
-      Collections.singletonList(ReporterType.PROMETHEUS);
+  private List<ReporterType> metricReporterList = Collections.emptyList();
 
   /** The level of metric service. */
-  private MetricLevel metricLevel = MetricLevel.IMPORTANT;
+  private MetricLevel metricLevel = MetricLevel.CORE;
 
   /** The period of async collection of some metrics in second. */
   private Integer asyncCollectPeriodInSecond = 5;
