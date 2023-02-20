@@ -159,7 +159,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public <T extends Metric> T register(String name, T t) throws IllegalArgumentException {
-    return null;
+    throw new UnsupportedOperationException("register is not used in Ratis Metrics");
   }
 
   @Override
@@ -173,11 +173,14 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   }
 
   @Override
-  public void registerAll(String s, MetricSet metricSet) {}
+  public void registerAll(String s, MetricSet metricSet) {
+    throw new UnsupportedOperationException("registerAll is not used in Ratis Metrics");
+  }
 
   @Override
   public void setJmxReporter(JmxReporter jmxReporter) {
     // Not Implemented: JmxReporter is not used in Ratis Metrics
+    throw new UnsupportedOperationException("JmxReporter is not used in Ratis Metrics");
   }
 
   @Override
@@ -188,6 +191,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   @Override
   public void setConsoleReporter(ConsoleReporter consoleReporter) {
     // Not Implemented: ConsoleReporter is not used in Ratis Metrics
+    throw new UnsupportedOperationException("ConsoleReporter is not used in Ratis Metrics");
   }
 
   @Override

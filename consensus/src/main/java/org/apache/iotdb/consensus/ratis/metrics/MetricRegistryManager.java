@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.DoNothingMetricService;
 
 import org.apache.ratis.metrics.MetricRegistries;
 import org.apache.ratis.metrics.MetricRegistryInfo;
@@ -36,16 +36,17 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class MetricRegistryManager extends MetricRegistries {
+class MetricRegistryManager extends MetricRegistries {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricRegistryManager.class);
   private final List<Consumer<RatisMetricRegistry>> reporterRegistrations =
       new CopyOnWriteArrayList<>();
   private final List<Consumer<RatisMetricRegistry>> stopReporters = new CopyOnWriteArrayList<>();
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
-  private final AbstractMetricService service = MetricService.getInstance();
+  // TODO: enable ratis metrics after verifying its correctness and efficiency
+  private final AbstractMetricService service = new DoNothingMetricService();
 
-  public MetricRegistryManager() {
+  MetricRegistryManager() {
     this.registries = new RefCountingMap<>();
   }
 
