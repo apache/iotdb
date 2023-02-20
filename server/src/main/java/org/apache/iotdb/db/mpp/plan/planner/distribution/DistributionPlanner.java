@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.optimization.LimitOffsetPushDownOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import java.util.List;
 
@@ -74,11 +74,17 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement() instanceof QueryStatement
-        || analysis.getStatement() instanceof ShowQueriesStatement) {
+    if (analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
+    }
+    if (analysis.getStatement() instanceof QueryStatement) {
+      QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+      if (!queryStatement.isAggregationQuery()
+          && (queryStatement.hasLimit() || queryStatement.hasOffset())) {
+        rootWithExchange = new LimitOffsetPushDownOptimizer().optimize(rootWithExchange, context);
+      }
     }
     SubPlan subPlan = splitFragment(rootWithExchange);
     // Mark the root Fragment of root SubPlan as `root`

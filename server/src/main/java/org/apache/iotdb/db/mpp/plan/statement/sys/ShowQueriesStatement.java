@@ -45,6 +45,11 @@ public class ShowQueriesStatement extends ShowStatement {
   public ShowQueriesStatement() {}
 
   @Override
+  public boolean isQuery() {
+    return true;
+  }
+
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowQueries(this, context);
   }

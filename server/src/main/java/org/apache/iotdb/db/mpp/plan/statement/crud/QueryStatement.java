@@ -117,6 +117,11 @@ public class QueryStatement extends Statement {
   }
 
   @Override
+  public boolean isQuery() {
+    return true;
+  }
+
+  @Override
   public List<PartialPath> getPaths() {
     Set<PartialPath> authPaths = new HashSet<>();
     List<PartialPath> prefixPaths = fromComponent.getPrefixPaths();
@@ -371,6 +376,14 @@ public class QueryStatement extends Statement {
 
   public void setCqQueryBody(boolean cqQueryBody) {
     isCqQueryBody = cqQueryBody;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
+  public boolean hasOffset() {
+    return rowOffset > 0;
   }
 
   public void semanticCheck() {
