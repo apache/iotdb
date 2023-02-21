@@ -41,7 +41,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -61,8 +61,8 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
-    return new MicrometerAutoGauge<T>(
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+    return new MicrometerAutoGauge<>(
         meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }
 
