@@ -85,12 +85,11 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   public TsBlock next() {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-    boolean successful = true;
-    while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull() && successful) {
+    while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull()) {
       if (!prepareInput()) {
         break;
       }
-      successful = processOneRow();
+      processOneRow();
     }
     TsBlock tsBlock = null;
     if (tsBlockBuilder.getPositionCount() > 0) {
@@ -100,7 +99,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     return tsBlock;
   }
 
-  private boolean processOneRow() {
+  private void processOneRow() {
     TsBlock[] rowBlocks = new TsBlock[children.size()];
     for (int i = 0; i < children.size(); i++) {
       rowBlocks[i] = inputTsBlocks[i].getRegion(consumedIndices[i], 1);
@@ -144,7 +143,6 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     for (int i = 0; i < children.size(); i++) {
       consumedIndices[i]++;
     }
-    return true;
   }
 
   @Override
