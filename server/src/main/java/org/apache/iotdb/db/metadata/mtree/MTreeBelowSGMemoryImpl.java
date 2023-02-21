@@ -445,12 +445,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.deleteAliasChild(deletedNode.getAlias());
     }
-    deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent);
+    deleteEmptyInternalMNode(parent);
     return deletedNode;
   }
 
   /** Used when delete timeseries or deactivate template */
-  public void deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode) {
+  public void deleteEmptyInternalMNode(IEntityMNode entityMNode) {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -782,7 +782,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 node.deactivateTemplate();
-                deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node);
+                deleteEmptyInternalMNode(node);
               }
             }
           }) {

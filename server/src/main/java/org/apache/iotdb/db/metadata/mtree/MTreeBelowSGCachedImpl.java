@@ -525,7 +525,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.deleteAliasChild(deletedNode.getAlias());
     }
-    deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent);
+    deleteAndUnpinEmptyInternalMNode(parent);
     return deletedNode;
   }
 
@@ -535,8 +535,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    *
    * @param entityMNode delete empty InternalMNode from entityMNode to storageGroupMNode
    */
-  private void deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode)
-      throws MetadataException {
+  private void deleteAndUnpinEmptyInternalMNode(IEntityMNode entityMNode) throws MetadataException {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -913,7 +912,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
     }
     for (PartialPath path : resultTemplateSetInfo.keySet()) {
-      deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(getNodeByPath(path).getAsEntityMNode());
+      deleteAndUnpinEmptyInternalMNode(getNodeByPath(path).getAsEntityMNode());
     }
     return resultTemplateSetInfo;
   }
