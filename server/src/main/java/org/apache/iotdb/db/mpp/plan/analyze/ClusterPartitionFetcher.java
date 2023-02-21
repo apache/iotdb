@@ -101,7 +101,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, false);
+          partitionCache.getDatabaseToDevice(devicePaths, true, false);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -133,7 +133,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, true);
+          partitionCache.getDatabaseToDevice(devicePaths, true, true);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =

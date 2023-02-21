@@ -164,7 +164,7 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg1.d1", "root.sg1.d2"),
             Arrays.asList("root.sg2.d1", "root.sg2.d2"));
     for (List<String> searchDevices : existedDevicesInOneStorageGroup) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(searchDevices, false, false);
       assertEquals(1, storageGroupToDeviceMap.size());
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(2, devices.size());
@@ -178,7 +178,7 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg1.d1", "root.sg2.d2"),
             Arrays.asList("root.sg1.d1", "root.sg2.d2"));
     for (List<String> searchDevices : existedDevicesInMultiStorageGroup) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(searchDevices, false, false);
       assertEquals(2, storageGroupToDeviceMap.size());
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(1, devices.size());
@@ -193,7 +193,7 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg.d1", "root.sg.d2"),
             Arrays.asList("root.sg3.**", "root.sg4.**"));
     for (List<String> searchDevices : nonExistedDevices) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(searchDevices, false, false);
       assertEquals(0, storageGroupToDeviceMap.size());
       deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
       assertEquals(0, deviceToStorageGroupMap.size());
@@ -201,7 +201,7 @@ public class PartitionCacheTest {
     // test invalid all cache
     partitionCache.invalidAllCache();
     List<String> oneDeviceList = Collections.singletonList("root.sg1.d1");
-    storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(oneDeviceList, false, false);
+    storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(oneDeviceList, false, false);
     assertEquals(0, storageGroupToDeviceMap.size());
     deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(oneDeviceList, false, false);
     assertEquals(0, deviceToStorageGroupMap.size());

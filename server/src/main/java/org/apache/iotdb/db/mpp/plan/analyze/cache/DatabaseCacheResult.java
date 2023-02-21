@@ -23,46 +23,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class StorageGroupCacheResult<V> {
-  /** the result */
+public abstract class DatabaseCacheResult<V> {
+  /** the result of database cache search. */
   private boolean success = true;
-  /** the list of devices that miss */
+  /** the list of missed devices. */
   private List<String> missedDevices = new ArrayList<>();
-  /** result map, Notice: this map will be empty when failed */
-  protected Map<String, V> map = new HashMap<>();
+  /** the result map, notice that this map will be empty when failed. */
+  protected Map<String, V> resultMap = new HashMap<>();
 
   public boolean isSuccess() {
     return success;
   }
 
-  public void setSuccess(boolean success) {
-    this.success = success;
-  }
-
-  public List<String> getMissedDevices() {
-    return missedDevices;
+  public void setFailed() {
+    this.success = false;
   }
 
   public void addMissedDevice(String missedDevice) {
     this.missedDevices.add(missedDevice);
   }
 
-  public Map<String, V> getMap() {
-    return map;
+  public abstract void put(String device, String databaseName);
+
+  public List<String> getMissedDevices() {
+    return missedDevices;
   }
 
-  public abstract void put(String device, String storageGroupName);
-
-  /** set failed and clear the map */
-  public void setFailed() {
-    this.success = false;
-    this.map = new HashMap<>();
+  public Map<String, V> getResultMap() {
+    return resultMap;
   }
 
-  /** reset storageGroupCacheResult */
-  public void reset() {
+  public void clear() {
     this.success = true;
     this.missedDevices = new ArrayList<>();
-    this.map = new HashMap<>();
+    this.resultMap = new HashMap<>();
   }
 }

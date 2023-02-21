@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.analyze.cache;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -72,36 +73,32 @@ public class PartitionCache {
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
-  private static final String STORAGE_GROUP_CACHE_NAME = "Database";
+  private static final String DATABASE_CACHE_NAME = "Database";
   private static final String SCHEMA_PARTITION_CACHE_NAME = "SchemaPartition";
   private static final String DATA_PARTITION_CACHE_NAME = "DataPartition";
 
-  /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
-
   private final int seriesPartitionSlotNum = config.getSeriesPartitionSlotNum();
   private final SeriesPartitionExecutor partitionExecutor;
 
-  /** the size of partitionCache */
+  /** the size of database cache/schema partition cache/data partition cache. */
   private final int cacheSize = config.getPartitionCacheSize();
-  /** the cache of database */
-  private final Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
-  /** storage -> schemaPartitionTable */
+  /** the cache of database. */
+  private final Set<String> databaseCache = Collections.synchronizedSet(new HashSet<>());
+  /** the cache of schema partition table, from database to schema partition table. */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
-  /** storage -> dataPartitionTable */
+  /** the cache of data partition table, from database to data partition table. */
   private final Cache<String, DataPartitionTable> dataPartitionCache;
-
+  /** the cache of region replica set, from consensus group id to region replica set */
+  private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
-  /** TConsensusGroupId -> TRegionReplicaSet */
-  private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
 
-  /** The lock of cache */
-  private final ReentrantReadWriteLock storageGroupCacheLock = new ReentrantReadWriteLock();
+  /** The lock of cache. */
+  private final ReentrantReadWriteLock databaseCacheLock = new ReentrantReadWriteLock();
 
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
-
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
   private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
@@ -118,24 +115,25 @@ public class PartitionCache {
   // region database cache
 
   /**
-   * get database to device map
+   * get database to device map.
    *
    * @param devicePaths the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
    */
-  public Map<String, List<String>> getStorageGroupToDevice(
+  public Map<String, List<String>> getDatabaseToDevice(
       List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
-    StorageGroupCacheResult<List<String>> result =
-        new StorageGroupCacheResult<List<String>>() {
+    DatabaseCacheResult<List<String>> result =
+        new DatabaseCacheResult<List<String>>() {
           @Override
-          public void put(String device, String storageGroupName) {
-            map.computeIfAbsent(storageGroupName, k -> new ArrayList<>());
-            map.get(storageGroupName).add(device);
+          public void put(String device, String databaseName) {
+            resultMap.computeIfAbsent(databaseName, k -> new ArrayList<>());
+            resultMap.get(databaseName).add(device);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
-    return result.getMap();
+    getDatabaseCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
+    // TODO spricoder check result
+    return result.getResultMap();
   }
 
   /**
@@ -147,15 +145,15 @@ public class PartitionCache {
    */
   public Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
-    StorageGroupCacheResult<String> result =
-        new StorageGroupCacheResult<String>() {
+    DatabaseCacheResult<String> result =
+        new DatabaseCacheResult<String>() {
           @Override
-          public void put(String device, String storageGroupName) {
-            map.put(device, storageGroupName);
+          public void put(String device, String databaseName) {
+            resultMap.put(device, databaseName);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
-    return result.getMap();
+    getDatabaseCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
+    return result.getResultMap();
   }
 
   /**
@@ -165,8 +163,8 @@ public class PartitionCache {
    * @return database name, return null if cache miss
    */
   private String getStorageGroupName(String devicePath) {
-    synchronized (storageGroupCache) {
-      for (String storageGroupName : storageGroupCache) {
+    synchronized (databaseCache) {
+      for (String storageGroupName : databaseCache) {
         if (PathUtils.isStartWith(devicePath, storageGroupName)) {
           return storageGroupName;
         }
@@ -182,12 +180,12 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    */
   private void fetchStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      DatabaseCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      storageGroupCacheLock.writeLock().lock();
-      result.reset();
+      databaseCacheLock.writeLock().lock();
+      result.clear();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
         TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
@@ -199,7 +197,7 @@ public class PartitionCache {
         }
       }
     } finally {
-      storageGroupCacheLock.writeLock().unlock();
+      databaseCacheLock.writeLock().unlock();
     }
   }
 
@@ -211,13 +209,13 @@ public class PartitionCache {
    * @throws RuntimeException if failed to create database
    */
   private void createStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      DatabaseCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, MetadataException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      storageGroupCacheLock.writeLock().lock();
+      databaseCacheLock.writeLock().lock();
       // try to check whether database need to be created
-      result.reset();
+      result.clear();
       // try to hit database with all missed devices
       getStorageGroupMap(result, devicePaths, false);
       if (!result.isSuccess()) {
@@ -242,9 +240,7 @@ public class PartitionCache {
             // try to update cache by databases successfully created
             updateStorageCache(successFullyCreatedStorageGroup);
             logger.warn(
-                "[{} Cache] failed to create database {}",
-                STORAGE_GROUP_CACHE_NAME,
-                storageGroupName);
+                "[{} Cache] failed to create database {}", DATABASE_CACHE_NAME, storageGroupName);
             throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
           }
         }
@@ -252,7 +248,7 @@ public class PartitionCache {
         updateStorageCache(storageGroupNamesNeedCreated);
       }
     } finally {
-      storageGroupCacheLock.writeLock().unlock();
+      databaseCacheLock.writeLock().unlock();
     }
   }
 
@@ -264,17 +260,16 @@ public class PartitionCache {
    * @param failFast if true, return when failed. if false, return when all devices hit
    */
   private void getStorageGroupMap(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
+      DatabaseCacheResult<?> result, List<String> devicePaths, boolean failFast) {
     try {
-      storageGroupCacheLock.readLock().lock();
+      databaseCacheLock.readLock().lock();
       // reset result before try
-      result.reset();
+      result.clear();
       boolean status = true;
       for (String devicePath : devicePaths) {
         String storageGroupName = getStorageGroupName(devicePath);
         if (null == storageGroupName) {
-          logger.debug(
-              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
+          logger.debug("[{} Cache] miss when search device {}", DATABASE_CACHE_NAME, devicePath);
           status = false;
           if (failFast) {
             break;
@@ -289,10 +284,10 @@ public class PartitionCache {
       if (!status) {
         result.setFailed();
       }
-      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(status, STORAGE_GROUP_CACHE_NAME);
+      logger.debug("[{} Cache] hit when search device {}", DATABASE_CACHE_NAME, devicePaths);
+      CacheMetricsRecorder.record(status, DATABASE_CACHE_NAME);
     } finally {
-      storageGroupCacheLock.readLock().unlock();
+      databaseCacheLock.readLock().unlock();
     }
   }
 
@@ -304,8 +299,8 @@ public class PartitionCache {
    * @param tryToFetch whether try to get all database from confignode
    * @param isAutoCreate whether auto create database when device miss
    */
-  private void getStorageGroupCacheResult(
-      StorageGroupCacheResult<?> result,
+  private void getDatabaseCacheResult(
+      DatabaseCacheResult<?> result,
       List<String> devicePaths,
       boolean tryToFetch,
       boolean isAutoCreate) {
@@ -345,11 +340,11 @@ public class PartitionCache {
    * @param storageGroupNames the database names that need to update
    */
   public void updateStorageCache(Set<String> storageGroupNames) {
-    storageGroupCacheLock.writeLock().lock();
+    databaseCacheLock.writeLock().lock();
     try {
-      storageGroupCache.addAll(storageGroupNames);
+      databaseCache.addAll(storageGroupNames);
     } finally {
-      storageGroupCacheLock.writeLock().unlock();
+      databaseCacheLock.writeLock().unlock();
     }
   }
 
@@ -359,23 +354,23 @@ public class PartitionCache {
    * @param storageGroupNames the databases that need to invalid
    */
   public void removeFromStorageGroupCache(List<String> storageGroupNames) {
-    storageGroupCacheLock.writeLock().lock();
+    databaseCacheLock.writeLock().lock();
     try {
       for (String storageGroupName : storageGroupNames) {
-        storageGroupCache.remove(storageGroupName);
+        databaseCache.remove(storageGroupName);
       }
     } finally {
-      storageGroupCacheLock.writeLock().unlock();
+      databaseCacheLock.writeLock().unlock();
     }
   }
 
   /** invalidate all database cache */
   public void removeFromStorageGroupCache() {
-    storageGroupCacheLock.writeLock().lock();
+    databaseCacheLock.writeLock().lock();
     try {
-      storageGroupCache.clear();
+      databaseCache.clear();
     } finally {
-      storageGroupCacheLock.writeLock().unlock();
+      databaseCacheLock.writeLock().unlock();
     }
   }
 
@@ -821,8 +816,8 @@ public class PartitionCache {
     return "PartitionCache{"
         + "cacheSize="
         + cacheSize
-        + ", storageGroupCache="
-        + storageGroupCache
+        + ", databaseCache="
+        + databaseCache
         + ", replicaSetCache="
         + groupIdToReplicaSetMap
         + ", schemaPartitionCache="
