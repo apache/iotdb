@@ -33,6 +33,8 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -109,11 +111,8 @@ public class DeviceViewOperatorTest {
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -126,11 +125,8 @@ public class DeviceViewOperatorTest {
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()

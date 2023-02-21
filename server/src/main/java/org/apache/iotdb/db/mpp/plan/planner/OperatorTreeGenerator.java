@@ -189,6 +189,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParam
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -218,6 +219,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -225,11 +227,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -260,7 +262,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -271,16 +273,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
+    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
+    if (timeFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+    }
+    seriesScanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
-            seriesPath.getSeriesType(),
-            timeFilter != null ? timeFilter.copy() : null,
-            valueFilter != null ? valueFilter.copy() : null,
-            ascending);
+            node.getScanOrder(),
+            seriesScanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -293,7 +302,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
     AlignedPath seriesPath = node.getAlignedPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -304,14 +313,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
+    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
+    if (timeFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+    }
+    seriesScanOptionsBuilder.withLimit(node.getLimit());
+    seriesScanOptionsBuilder.withOffset(node.getOffset());
+    seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
+            operatorContext,
             node.getPlanNodeId(),
             seriesPath,
-            operatorContext,
-            timeFilter != null ? timeFilter.copy() : null,
-            valueFilter != null ? valueFilter.copy() : null,
-            ascending);
+            node.getScanOrder(),
+            seriesScanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -357,16 +376,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            timeFilter != null ? timeFilter.copy() : null,
-            ascending,
             node.getGroupByTimeParameter(),
             maxReturnSize);
 
@@ -424,15 +449,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            timeFilter != null ? timeFilter.copy() : null,
-            ascending,
             groupByTimeParameter,
             maxReturnSize);
 
@@ -1953,16 +1984,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         calculateMaxAggregationResultSizeForLastQuery(
             aggregators, seriesPath.transformToPartialPath());
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    scanOptionsBuilder.withGlobalTimeFilter(context.getLastQueryTimeFilter());
+
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
+            Ordering.DESC,
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            context.getLastQueryTimeFilter(),
-            false,
             null,
             maxReturnSize);
     ((DataDriverContext) context.getDriverContext())
@@ -2051,15 +2086,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators, unCachedPath);
 
+    Filter timeFilter = context.getLastQueryTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(new HashSet<>(unCachedPath.getMeasurementList()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             unCachedPath,
+            Ordering.DESC,
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            context.getLastQueryTimeFilter(),
-            false,
             null,
             maxReturnSize);
     ((DataDriverContext) context.getDriverContext())
