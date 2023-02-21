@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
@@ -55,7 +55,7 @@ public abstract class Driver implements IDriver {
 
   protected final DriverContext driverContext;
   protected final Operator root;
-  protected final ISinkHandle sinkHandle;
+  protected final ISink sinkHandle;
   protected final AtomicReference<SettableFuture<?>> driverBlockedFuture = new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
@@ -182,7 +182,7 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
-  public ISinkHandle getSinkHandle() {
+  public ISink getSinkHandle() {
     return sinkHandle;
   }
 

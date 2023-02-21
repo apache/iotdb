@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
-import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -35,35 +35,33 @@ import java.util.Optional;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
-public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
+public class LocalSinkChannel implements ISinkChannel {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSinkHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSinkChannel.class);
 
   private TFragmentInstanceId localFragmentInstanceId;
-  private final SinkHandleListener sinkHandleListener;
+  private final SinkListener sinkListener;
 
   private final SharedTsBlockQueue queue;
   private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
 
-  private boolean noMoreTsBlocks = false;
-
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
-  public LocalSinkHandle(SharedTsBlockQueue queue, SinkHandleListener sinkHandleListener) {
-    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+  public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
+    this.sinkListener = Validate.notNull(sinkListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkHandle(this);
     blocked = queue.getCanAddTsBlock();
   }
 
-  public LocalSinkHandle(
+  public LocalSinkChannel(
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
-      SinkHandleListener sinkHandleListener) {
+      SinkListener sinkListener) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.sinkListener = Validate.notNull(sinkListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkHandle(this);
     // SinkHandle can send data after SourceHandle asks it to
@@ -77,7 +75,9 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
 
   @Override
   public long getBufferRetainedSizeInBytes() {
-    return queue.getBufferRetainedSizeInBytes();
+    synchronized (queue) {
+      return queue.getBufferRetainedSizeInBytes();
+    }
   }
 
   @Override
@@ -102,7 +102,7 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
-          sinkHandleListener.onFinish(this);
+          sinkListener.onFinish(this);
         }
       }
     }
@@ -140,12 +140,11 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
     synchronized (queue) {
       synchronized (this) {
         LOGGER.debug("[StartSetNoMoreTsBlocksOnLocal]");
-        noMoreTsBlocks = true;
         if (aborted || closed) {
           return;
         }
         queue.setNoMoreTsBlocks(true);
-        sinkHandleListener.onEndOfBlocks(this);
+        sinkListener.onEndOfBlocks(this);
       }
     }
     checkAndInvokeOnFinished();
@@ -161,7 +160,7 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
           return;
         }
         aborted = true;
-        Optional<Throwable> t = sinkHandleListener.onAborted(this);
+        Optional<Throwable> t = sinkListener.onAborted(this);
         if (t.isPresent()) {
           queue.abort(t.get());
         } else {
@@ -182,7 +181,7 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
         }
         closed = true;
         queue.close();
-        sinkHandleListener.onFinish(this);
+        sinkListener.onFinish(this);
       }
     }
     LOGGER.debug("[EndCloseLocalSinkHandle]");
@@ -202,8 +201,9 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
-    // LocalSourceHandle
+    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
+      queue.setMaxBytesCanReserve(maxBytesCanReserve);
+    }
   }
 
   // region ============ ISinkChannel related ============
@@ -213,17 +213,16 @@ public class LocalSinkHandle implements ISinkHandle, ISinkChannel {
 
   @Override
   public boolean isNoMoreTsBlocks() {
-    return noMoreTsBlocks;
-  }
-
-  @Override
-  public long getRetainedSizeInBytes() {
-    return queue.getBufferRetainedSizeInBytes();
+    synchronized (queue) {
+      return queue.hasNoMoreTsBlocks();
+    }
   }
 
   @Override
   public int getNumOfBufferedTsBlocks() {
-    return queue.getNumOfBufferedTsBlocks();
+    synchronized (queue) {
+      return queue.getNumOfBufferedTsBlocks();
+    }
   }
 
   // end region

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -70,7 +70,7 @@ public interface IDriver {
   void failed(Throwable t);
 
   /** @return get SinkHandle of current IDriver */
-  ISinkHandle getSinkHandle();
+  ISink getSinkHandle();
 
   int getDependencyDriverIndex();
 }

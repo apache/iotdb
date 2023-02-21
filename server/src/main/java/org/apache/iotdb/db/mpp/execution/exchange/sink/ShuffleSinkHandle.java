@@ -40,7 +40,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
   /** Each ISinkHandle in the list matches one downStream ISourceHandle */
-  private final List<ISinkHandle> downStreamChannelList;
+  private final List<ISinkChannel> downStreamChannelList;
 
   private final boolean[] hasSetNoMoreTsBlocks;
 
@@ -56,7 +56,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private final TFragmentInstanceId localFragmentInstanceId;
 
-  private final MPPDataExchangeManager.SinkHandleListener sinkHandleListener;
+  private final MPPDataExchangeManager.SinkListener sinkListener;
 
   private boolean aborted = false;
 
@@ -70,17 +70,17 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   public ShuffleSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      List<ISinkHandle> downStreamChannelList,
+      List<ISinkChannel> downStreamChannelList,
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
       String localPlanNodeId,
-      MPPDataExchangeManager.SinkHandleListener sinkHandleListener) {
+      MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
-    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.sinkListener = Validate.notNull(sinkListener);
     this.channelNum = downStreamChannelList.size();
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
@@ -93,7 +93,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
     return localFragmentInstanceId;
   }
 
-  public ISinkHandle getChannel(int index) {
+  public ISinkChannel getChannel(int index) {
     return downStreamChannelList.get(index);
   }
 
@@ -102,8 +102,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
     // It is safe to use currentSinkHandle.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
-    ISinkHandle currentSinkHandle =
-        downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
+    ISink currentSinkHandle = downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
     return currentSinkHandle.isFull();
   }
 
@@ -111,8 +110,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
-      ISinkHandle currentSinkHandle =
-          downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
+      ISink currentSinkHandle = downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
       checkState();
       currentSinkHandle.send(tsBlock);
     } finally {
@@ -130,7 +128,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
         hasSetNoMoreTsBlocks[i] = true;
       }
     }
-    sinkHandleListener.onEndOfBlocks(this);
+    sinkListener.onEndOfBlocks(this);
   }
 
   @Override
@@ -148,7 +146,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized boolean isFinished() {
-    for (ISinkHandle channel : downStreamChannelList) {
+    for (ISink channel : downStreamChannelList) {
       if (!channel.isFinished()) {
         return false;
       }
@@ -162,7 +160,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
-    for (ISinkHandle channel : downStreamChannelList) {
+    for (ISink channel : downStreamChannelList) {
       try {
         channel.abort();
       } catch (Exception e) {
@@ -170,7 +168,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     aborted = true;
-    sinkHandleListener.onAborted(this);
+    sinkListener.onAborted(this);
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
   }
 
@@ -180,7 +178,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return;
     }
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
-    for (ISinkHandle channel : downStreamChannelList) {
+    for (ISink channel : downStreamChannelList) {
       try {
         channel.close();
       } catch (Exception e) {
@@ -188,7 +186,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     closed = true;
-    sinkHandleListener.onFinish(this);
+    sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
   }
 
@@ -214,7 +212,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   public void tryOpenChannel(int channelIndex) {
     if (!channelOpened[channelIndex]) {
-      ((ISinkChannel) downStreamChannelList.get(channelIndex)).open();
+      downStreamChannelList.get(channelIndex).open();
       channelOpened[channelIndex] = true;
     }
   }
@@ -264,11 +262,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
     private boolean satisfy(int channelIndex) {
       // downStreamChannel is always an ISinkChannel
-      ISinkChannel channel = (ISinkChannel) downStreamChannelList.get(channelIndex);
+      ISinkChannel channel = downStreamChannelList.get(channelIndex);
       if (channel.isNoMoreTsBlocks()) {
         return false;
       }
-      return channel.getRetainedSizeInBytes() <= channelMemoryThreshold
+      return channel.getBufferRetainedSizeInBytes() <= channelMemoryThreshold
           && channel.getNumOfBufferedTsBlocks() < 3;
     }
   }
@@ -291,7 +289,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
   @Override
   public long getBufferRetainedSizeInBytes() {
     return downStreamChannelList.stream()
-        .map(ISinkHandle::getBufferRetainedSizeInBytes)
+        .map(ISink::getBufferRetainedSizeInBytes)
         .reduce(Long::sum)
         .orElse(0L);
   }

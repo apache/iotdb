@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
@@ -37,7 +37,7 @@ public class DriverContext {
   private DriverTaskId driverTaskID;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-  private ISinkHandle sinkHandle;
+  private ISink sinkHandle;
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
   private int dependencyDriverIndex = -1;
 
@@ -78,11 +78,11 @@ public class DriverContext {
     return dependencyDriverIndex;
   }
 
-  public void setSinkHandle(ISinkHandle sinkHandle) {
+  public void setSinkHandle(ISink sinkHandle) {
     this.sinkHandle = sinkHandle;
   }
 
-  public ISinkHandle getSinkHandle() {
+  public ISink getSinkHandle() {
     return sinkHandle;
   }
 

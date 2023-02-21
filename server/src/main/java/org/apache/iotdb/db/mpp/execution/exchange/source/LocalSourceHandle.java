@@ -252,8 +252,7 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
-      queue.setMaxBytesCanReserve(maxBytesCanReserve);
-    }
+    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
+    // LocalSinkChannel
   }
 }

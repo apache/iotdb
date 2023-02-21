@@ -41,7 +41,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBPipeSinkIT {
+public class IoTDBPipeSinkITChannel {
 
   private static final String SHOW_PIPESINK_HEADER =
       StringUtils.join(

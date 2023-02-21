@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -229,7 +229,7 @@ public class LocalExecutionPlanContext {
     return cachedLastValueAndPathList;
   }
 
-  public void setSinkHandle(ISinkHandle sinkHandle) {
+  public void setSinkHandle(ISink sinkHandle) {
     requireNonNull(sinkHandle, "sinkHandle is null");
     checkArgument(driverContext.getSinkHandle() == null, "There must be at most one SinkNode");
     driverContext.setSinkHandle(sinkHandle);

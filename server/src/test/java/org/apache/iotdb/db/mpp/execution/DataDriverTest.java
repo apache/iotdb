@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.StubSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.StubSink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
@@ -176,7 +176,7 @@ public class DataDriverTest {
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
-      StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
+      StubSink sinkHandle = new StubSink(fragmentInstanceContext);
       driverContext.setSinkHandle(sinkHandle);
       IDriver dataDriver = null;
       try {

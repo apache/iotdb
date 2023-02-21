@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -75,7 +75,7 @@ public class SharedTsBlockQueue {
   private boolean closed = false;
 
   private LocalSourceHandle sourceHandle;
-  private LocalSinkHandle sinkHandle;
+  private LocalSinkChannel sinkHandle;
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
@@ -128,7 +128,7 @@ public class SharedTsBlockQueue {
     return queue.size();
   }
 
-  public void setSinkHandle(LocalSinkHandle sinkHandle) {
+  public void setSinkHandle(LocalSinkChannel sinkHandle) {
     this.sinkHandle = sinkHandle;
   }
 

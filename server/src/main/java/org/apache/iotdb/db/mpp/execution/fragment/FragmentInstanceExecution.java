@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -43,7 +43,7 @@ public class FragmentInstanceExecution {
   private List<IDriver> drivers;
 
   // it will be set to null while this FI is FINISHED
-  private ISinkHandle sinkHandle;
+  private ISink sinkHandle;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -54,7 +54,7 @@ public class FragmentInstanceExecution {
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       List<IDriver> drivers,
-      ISinkHandle sinkHandle,
+      ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances,
       long timeOut) {
@@ -70,7 +70,7 @@ public class FragmentInstanceExecution {
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       List<IDriver> drivers,
-      ISinkHandle sinkHandle,
+      ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine) {
     this.instanceId = instanceId;
     this.context = context;

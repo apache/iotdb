@@ -34,7 +34,7 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
-public class ShuffleSinkNodeSerdeTest {
+public class ShuffleSinkHandleNodeSerdeTestChannel {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     DownStreamChannelLocation downStreamChannelLocation =
