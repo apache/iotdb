@@ -49,7 +49,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBMQTTSinkITChannel {
+public class IoTDBMQTTSinkIT {
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableMQTTService(true);
