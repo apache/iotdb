@@ -35,7 +35,8 @@ SELECT [LAST] selectExpr [, selectExpr] ...
         LEVEL = levelNum [, levelNum] ... |
         TAGS(tagKey [, tagKey] ... )
         VARIATION(expression[,delta][,ignoreNull=true/false])|
-        SERIES(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])
+        SERIES(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])|
+        SESSION(timeInterval)
     }]
     [HAVING havingCondition]
     [ORDER BY sortKey {ASC | DESC}]
@@ -75,7 +76,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
 ### `GROUP BY` clause
 
 - The `GROUP BY` clause specifies how the time series are aggregated by segment or group.
-- Segmented aggregation refers to segmenting data in the row direction according to the time dimension, aiming at the time relationship between different data points in the same time series, and obtaining an aggregated value for each segment. Currently only **segmentation by time interval**、**group by variation** and **group by series** is supported, and more segmentation methods will be supported in the future.
+- Segmented aggregation refers to segmenting data in the row direction according to the time dimension, aiming at the time relationship between different data points in the same time series, and obtaining an aggregated value for each segment. Currently only **segmentation by time interval**、**group by variation**、**group by series** and **group by session** is supported, and more segmentation methods will be supported in the future.
 - Group aggregation refers to grouping the potential business attributes of time series for different time series. Each group contains several time series, and each group gets an aggregated value. Support **group by path level** and **group by tag** two grouping methods.
 - Segment aggregation and group aggregation can be mixed.
 - For details and examples, see the document [Group By Aggregation](./Group-By.md).

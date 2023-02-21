@@ -115,6 +115,9 @@ public class SeriesWindowManager implements IWindowManager {
       if (isFirstSkip) {
         k++;
         long currentTime = timeColumn.getLong(i);
+        if (seriesWindow.getStartTime() > currentTime) {
+          seriesWindow.setStartTime(currentTime);
+        }
         if (seriesWindow.getEndTime() < currentTime) {
           seriesWindow.setEndTime(currentTime);
         }
