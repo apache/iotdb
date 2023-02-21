@@ -37,11 +37,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class MetricRegistryManager extends MetricRegistries {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MetricRegistryManager.class);
-  private final List<Consumer<RatisMetricRegistry>> reporterRegistrations =
-      new CopyOnWriteArrayList<>();
-  private final List<Consumer<RatisMetricRegistry>> stopReporters = new CopyOnWriteArrayList<>();
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
   // TODO: enable ratis metrics after verifying its correctness and efficiency
   private final AbstractMetricService service = new DoNothingMetricService();
@@ -62,20 +57,11 @@ public class MetricRegistryManager extends MetricRegistries {
   public RatisMetricRegistry create(MetricRegistryInfo metricRegistryInfo) {
     return registries.put(
         metricRegistryInfo,
-        () -> {
-          RatisMetricRegistry registry = new IoTDBMetricRegistry(metricRegistryInfo, service);
-          reporterRegistrations.forEach(reg -> reg.accept(registry));
-          return registry;
-        });
+        () -> new IoTDBMetricRegistry(metricRegistryInfo, service));
   }
 
   @Override
   public boolean remove(MetricRegistryInfo metricRegistryInfo) {
-    RatisMetricRegistry registry = registries.get(metricRegistryInfo);
-    if (registry != null) {
-      stopReporters.forEach(reg -> reg.accept(registry));
-    }
-
     return registries.remove(metricRegistryInfo) == null;
   }
 
@@ -98,13 +84,7 @@ public class MetricRegistryManager extends MetricRegistries {
   public void addReporterRegistration(
       Consumer<RatisMetricRegistry> reporterRegistration,
       Consumer<RatisMetricRegistry> stopReporter) {
-    if (registries.size() > 0) {
-      LOG.warn(
-          "New reporters are added after registries were created. Some metrics will be missing from the reporter. "
-              + "Please add reporter before adding any new registry.");
-    }
-    this.reporterRegistrations.add(reporterRegistration);
-    this.stopReporters.add(stopReporter);
+    throw new UnsupportedOperationException("Reporter is disabled from RatisMetricRegistries");
   }
 
   @Override

@@ -48,7 +48,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, String> metricNameCache = new ConcurrentHashMap<>();
   private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
-
   private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
 
   IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
@@ -117,7 +116,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     final GaugeProxy previous = gaugeCache.putIfAbsent(fullName, gauge);
     if (previous == null) {
       metricService.createAutoGauge(
-          fullName, MetricLevel.IMPORTANT, gauge, GaugeProxy::getValueAsLong);
+          fullName, MetricLevel.IMPORTANT, gauge, GaugeProxy::getValueAsDouble);
     }
     return gauge;
   }

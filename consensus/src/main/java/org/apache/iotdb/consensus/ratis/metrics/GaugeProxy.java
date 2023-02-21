@@ -35,11 +35,11 @@ public class GaugeProxy implements Gauge {
     return gauge.getValue();
   }
 
-  Long getValueAsLong() {
+  double getValueAsDouble() {
     Object value = getValue();
     if (value instanceof Number) {
-      return ((Number) value).longValue();
+      return ((Number) value).doubleValue();
     }
-    return -1L;
+    return 0.0;
   }
 }
