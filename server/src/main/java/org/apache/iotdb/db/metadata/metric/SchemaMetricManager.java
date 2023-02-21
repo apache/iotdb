@@ -35,10 +35,13 @@ public class SchemaMetricManager {
 
   public void init() {
     if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
-      engineMetric = new MemSchemaEngineMetric(); // TODO
+      engineMetric =
+          new SchemaEngineMemMetric(
+              SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
+                  .getAsMemSchemaEngineStatistics());
     } else {
       engineMetric =
-          new CachedSchemaEngineMetric(
+          new SchemaEngineCachedMetric(
               SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
                   .getAsCachedSchemaEngineStatistics());
     }

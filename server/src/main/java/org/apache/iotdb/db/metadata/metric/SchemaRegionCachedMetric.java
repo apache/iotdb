@@ -25,10 +25,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class CachedSchemaRegionMetric implements ISchemaRegionMetric {
-
-  private final CachedSchemaRegionStatistics regionStatistics;
-  private final String regionTagValue;
+public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
 
   private static final String PINNED_NUM = "schema_file_pinned_num";
   private static final String UNPINNED_NUM = "schema_file_unpinned_num";
@@ -39,13 +36,21 @@ public class CachedSchemaRegionMetric implements ISchemaRegionMetric {
   private static final String MLOG_LENGTH = "schema_file_mlog_length";
   private static final String MLOG_CHECKPOINT = "schema_file_mlog_checkpoint";
 
-  public CachedSchemaRegionMetric(CachedSchemaRegionStatistics regionStatistics) {
+  private final CachedSchemaRegionStatistics regionStatistics;
+  private final String regionTagValue;
+
+  // MemSchemaRegionMetric is a subset of CachedSchemaRegionMetric
+  private final SchemaRegionMemMetric memSchemaRegionMetric;
+
+  public SchemaRegionCachedMetric(CachedSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
     this.regionTagValue = String.format("SchemaRegion[%d]", regionStatistics.getSchemaRegionId());
+    this.memSchemaRegionMetric = new SchemaRegionMemMetric(regionStatistics);
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    memSchemaRegionMetric.bindTo(metricService);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -122,6 +127,7 @@ public class CachedSchemaRegionMetric implements ISchemaRegionMetric {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    memSchemaRegionMetric.unbindFrom(metricService);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),

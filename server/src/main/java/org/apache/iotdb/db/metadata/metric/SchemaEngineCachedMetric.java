@@ -30,9 +30,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
-
-  private final CachedSchemaEngineStatistics engineStatistics;
+public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
   private static final String RELEASE_THRESHOLD = "schema_file_release_threshold";
   private static final String FLUSH_THRESHOLD = "schema_file_flush_threshold";
@@ -47,17 +45,23 @@ public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
   private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
   private static final String FLUSH_THREAD_NUM = "schema_file_flush_thread_num";
 
+  private final CachedSchemaEngineStatistics engineStatistics;
+
   private Counter releaseCounter;
   private Counter flushCounter;
   private Timer releaseTimer;
   private Timer flushTimer;
 
-  public CachedSchemaEngineMetric(CachedSchemaEngineStatistics engineStatistics) {
+  private final SchemaEngineMemMetric schemaEngineMemMetric;
+
+  public SchemaEngineCachedMetric(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
+    this.schemaEngineMemMetric = new SchemaEngineMemMetric(engineStatistics);
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    schemaEngineMemMetric.bindTo(metricService);
     metricService.gauge(
         (long)
             (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion()
@@ -144,6 +148,7 @@ public class CachedSchemaEngineMetric implements ISchemaEngineMetric {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    schemaEngineMemMetric.unbindFrom(metricService);
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_THRESHOLD);
     metricService.remove(

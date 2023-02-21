@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.metadata.rescon;
+package org.apache.iotdb.db.metadata.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.Objects;
+public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
-public class SchemaResourceManagerMetrics implements IMetricSet {
-  private final ISchemaEngineStatistics schemaEngineStatistics;
+  private static final String TIME_SERES_CNT = "timeSeries";
+  private static final String TOTAL_MEM_USAGE = "schema_region_total_mem_usage";
+  private static final String MEM_CAPACITY = "schema_region_mem_capacity";
 
-  public SchemaResourceManagerMetrics(ISchemaEngineStatistics schemaEngineStatistics) {
-    this.schemaEngineStatistics = schemaEngineStatistics;
+  private final MemSchemaEngineStatistics engineStatistics;
+
+  public SchemaEngineMemMetric(MemSchemaEngineStatistics engineStatistics) {
+    this.engineStatistics = engineStatistics;
   }
 
   @Override
@@ -40,57 +43,48 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.CORE,
-        schemaEngineStatistics,
+        engineStatistics,
         ISchemaEngineStatistics::getTotalSeriesNumber,
         Tag.NAME.toString(),
-        "timeSeries");
-
+        TIME_SERES_CNT);
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
-        schemaEngineStatistics,
+        engineStatistics,
         ISchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
         "schema_region_total_usage");
-
     metricService.createAutoGauge(
-        Metric.MEM.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
-        schemaEngineStatistics,
-        schemaEngineStatistics ->
-            schemaEngineStatistics.getMemoryCapacity() - schemaEngineStatistics.getMemoryUsage(),
+        engineStatistics,
+        ISchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
-        "schema_region_total_remaining");
+        TOTAL_MEM_USAGE);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        ISchemaEngineStatistics::getMemoryCapacity,
+        Tag.NAME.toString(),
+        MEM_CAPACITY);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
-
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
         "schema_region_total_usage");
-
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.MEM.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         Tag.NAME.toString(),
-        "schema_region_total_remaining");
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    SchemaResourceManagerMetrics that = (SchemaResourceManagerMetrics) o;
-    return Objects.equals(schemaEngineStatistics, that.schemaEngineStatistics);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(schemaEngineStatistics);
+        TOTAL_MEM_USAGE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), MEM_CAPACITY);
   }
 }

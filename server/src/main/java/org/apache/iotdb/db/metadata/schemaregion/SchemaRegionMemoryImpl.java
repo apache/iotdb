@@ -41,6 +41,7 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -281,8 +282,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaRegionMetric createSchemaRegionMetric() {
-    // TODO
-    return null;
+    return new SchemaRegionMemMetric(regionStatistics);
   }
 
   /**

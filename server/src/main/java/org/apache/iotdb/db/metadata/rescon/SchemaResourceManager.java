@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -30,10 +29,6 @@ public class SchemaResourceManager {
 
   public static void initSchemaResource() {
     SchemaEngineStatisticsHolder.initSchemaEngineStatisticsInstance();
-    MetricService.getInstance()
-        .addMetricSet(
-            new SchemaResourceManagerMetrics(
-                SchemaEngineStatisticsHolder.getSchemaEngineStatistics()));
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()

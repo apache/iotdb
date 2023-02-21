@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.metric.CachedSchemaEngineMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
@@ -52,7 +52,7 @@ public class CacheMemoryManager {
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
   private CachedSchemaEngineStatistics engineStatistics;
-  private CachedSchemaEngineMetric engineMetric;
+  private SchemaEngineCachedMetric engineMetric;
 
   private static final int CONCURRENT_NUM = 10;
 
@@ -150,7 +150,7 @@ public class CacheMemoryManager {
         });
   }
 
-  public void setEngineMetric(CachedSchemaEngineMetric engineMetric) {
+  public void setEngineMetric(SchemaEngineCachedMetric engineMetric) {
     this.engineMetric = engineMetric;
   }
 

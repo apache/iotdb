@@ -41,9 +41,9 @@ import org.apache.iotdb.db.metadata.logfile.MLogDescriptionReader;
 import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
-import org.apache.iotdb.db.metadata.metric.CachedSchemaRegionMetric;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
@@ -310,7 +310,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public ISchemaRegionMetric createSchemaRegionMetric() {
-    return new CachedSchemaRegionMetric(regionStatistics);
+    return new SchemaRegionCachedMetric(regionStatistics);
   }
 
   /** Init from metadata log file. */
