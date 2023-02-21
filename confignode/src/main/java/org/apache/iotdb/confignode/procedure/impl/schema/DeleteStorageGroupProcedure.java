@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -51,6 +52,8 @@ public class DeleteStorageGroupProcedure
   private static final int RETRY_THRESHOLD = 5;
 
   private TDatabaseSchema deleteSgSchema;
+
+  private transient List<RegionMaintainTask> regionDeleteTaskList;
 
   public DeleteStorageGroupProcedure() {
     super();
@@ -122,6 +125,7 @@ public class DeleteStorageGroupProcedure
                     .removeRegionRouteCache(regionReplicaSet.getRegionId());
               });
           env.getConfigManager().getConsensusManager().write(offerPlan);
+          regionDeleteTaskList = offerPlan.getRegionMaintainTaskList();
 
           // Delete StorageGroupPartitionTable
           TSStatus status = env.deleteConfig(deleteSgSchema.getName());
@@ -215,5 +219,9 @@ public class DeleteStorageGroupProcedure
           && thatProc.deleteSgSchema.equals(this.getDeleteSgSchema());
     }
     return false;
+  }
+
+  public List<RegionMaintainTask> getRegionDeleteTaskList() {
+    return regionDeleteTaskList;
   }
 }
