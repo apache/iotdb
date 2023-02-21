@@ -511,8 +511,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param path Format: root.node(.node)+
    */
   @Override
-  public IMeasurementMNode deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
-      throws MetadataException {
+  public IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0) {
       throw new IllegalPathException(path.getFullPath());

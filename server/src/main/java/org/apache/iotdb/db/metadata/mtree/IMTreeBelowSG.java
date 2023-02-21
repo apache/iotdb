@@ -89,8 +89,7 @@ public interface IMTreeBelowSG {
    *
    * @param path Format: root.node(.node)+
    */
-  IMeasurementMNode deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
-      throws MetadataException;
+  IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException;
 
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 

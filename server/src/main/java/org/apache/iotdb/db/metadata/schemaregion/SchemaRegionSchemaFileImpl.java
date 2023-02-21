@@ -877,7 +877,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode measurementMNode = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
@@ -889,7 +889,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   /** @param path full path from root to leaf node */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode measurementMNode = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
