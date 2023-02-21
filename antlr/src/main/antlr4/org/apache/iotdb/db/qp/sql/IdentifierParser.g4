@@ -156,6 +156,7 @@ keyWords
     | SELECT
     | SERIES
     | SERIESSLOTID
+    | SESSION
     | SET
     | SETTLE
     | SGLEVEL

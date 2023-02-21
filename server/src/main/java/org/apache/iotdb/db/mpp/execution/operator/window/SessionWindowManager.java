@@ -19,39 +19,32 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory.KeepEvaluator;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-public class SeriesWindowManager implements IWindowManager {
+public class SessionWindowManager implements IWindowManager {
 
-  private final SeriesWindow seriesWindow;
+  private final boolean isNeedOutputEndTime;
+
   private boolean initialized;
+
   private boolean needSkip;
 
-  // skipPointsOutOfBound has two phrases in SeriesWindowManager.
-  // First phrase is to skip the row with the controlColumn of true in current window, which usually
-  // happens when LAST_VALUE or MAX_TIME leaves early in accumulator.
-  // Second phrase is to skip the row with the controlColumn of false/null which don't belong
-  // current window.
-  // isFirstSkip is used to identify the phrase.
-  private boolean isFirstSkip;
-  private final KeepEvaluator keepEvaluator;
+  private final SessionWindow sessionWindow;
 
-  public SeriesWindowManager(SeriesWindowParameter seriesWindowParameter) {
-    this.seriesWindow = new SeriesWindow(seriesWindowParameter);
+  public SessionWindowManager(boolean isNeedOutputEndTime, long timeInterval, boolean ascending) {
+    this.isNeedOutputEndTime = isNeedOutputEndTime;
+    this.initialized = false;
+    // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
-    this.keepEvaluator =
-        AccumulatorFactory.initKeepEvaluator(seriesWindowParameter.getKeepExpression());
+    this.sessionWindow = new SessionWindow(timeInterval, ascending);
   }
 
   @Override
@@ -62,8 +55,7 @@ public class SeriesWindowManager implements IWindowManager {
   @Override
   public void initCurWindow() {
     this.initialized = true;
-    this.seriesWindow.setTimeInitialized(false);
-    this.seriesWindow.setKeep(0);
+    this.sessionWindow.setInitializedTimeValue(false);
   }
 
   @Override
@@ -73,14 +65,16 @@ public class SeriesWindowManager implements IWindowManager {
 
   @Override
   public void next() {
+    // When we go into next window, we should pay attention to previous window whether all points
+    // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
-    isFirstSkip = true;
+    this.sessionWindow.setLastTsBlockTime(0);
   }
 
   @Override
   public IWindow getCurWindow() {
-    return seriesWindow;
+    return sessionWindow;
   }
 
   @Override
@@ -93,57 +87,49 @@ public class SeriesWindowManager implements IWindowManager {
       return inputTsBlock;
     }
 
-    Column controlColumn = seriesWindow.getControlColumn(inputTsBlock);
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
-    int k = 0;
+    long previousTimeValue = sessionWindow.getTimeValue();
+
     for (; i < size; i++) {
-
-      // if ignoreNull is true, ignore the controlColumn of null
-      if (isIgnoringNull() && controlColumn.isNull(i)) continue;
-
-      // the first phrase of skip
-      if (isFirstSkip && (controlColumn.isNull(i) || !controlColumn.getBoolean(i))) {
-        break;
-        // the second phrase of skip
-      } else if (!isFirstSkip && !controlColumn.isNull(i) && controlColumn.getBoolean(i)) {
+      long currentTime = timeColumn.getLong(i);
+      if (Math.abs(currentTime - previousTimeValue) > sessionWindow.getTimeInterval()) {
+        sessionWindow.setTimeValue(previousTimeValue);
         break;
       }
-
-      // update endTime and record the row processed, only the first phrase of skip in current
-      // window need to record them.
-      if (isFirstSkip) {
-        k++;
-        long currentTime = timeColumn.getLong(i);
-        if (seriesWindow.getStartTime() > currentTime) {
-          seriesWindow.setStartTime(currentTime);
-        }
-        if (seriesWindow.getEndTime() < currentTime) {
-          seriesWindow.setEndTime(currentTime);
-        }
+      // judge whether we need update endTime
+      if (sessionWindow.getStartTime() > currentTime) {
+        sessionWindow.setStartTime(currentTime);
       }
+      // judge whether we need update endTime
+      if (sessionWindow.getEndTime() < currentTime) {
+        sessionWindow.setEndTime(currentTime);
+      }
+      previousTimeValue = currentTime;
     }
 
-    // record the row processed in the first phrase of skip. If the tsBlock is null, the skip may
-    // not finish.
-    if (isFirstSkip) {
-      if (i != size) isFirstSkip = false;
-      seriesWindow.setKeep(seriesWindow.getKeep() + k);
-      return inputTsBlock.subTsBlock(i);
-    }
-
+    // we can create a new window beginning at index i of inputTsBlock
     if (i < size) {
-      // we can create a new window beginning at index i of inputTsBlock
       needSkip = false;
     }
     return inputTsBlock.subTsBlock(i);
   }
 
   @Override
+  public boolean satisfiedCurWindow(TsBlock inputTsBlock) {
+    return true;
+  }
+
+  @Override
+  public boolean isTsBlockOutOfBound(TsBlock inputTsBlock) {
+    return false;
+  }
+
+  @Override
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
-    if (seriesWindow.isOutputEndTime()) {
+    if (isNeedOutputEndTime) {
       dataTypes.add(0, TSDataType.INT64);
     }
     return new TsBlockBuilder(dataTypes);
@@ -152,18 +138,14 @@ public class SeriesWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    if (!keepEvaluator.apply(seriesWindow.getKeep())) {
-      for (Aggregator aggregator : aggregators) aggregator.reset();
-      return;
-    }
-    // Use the start time of eventWindow as default output time.
+    // Use the start time of sessionWindow as default output time.
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    timeColumnBuilder.writeLong(seriesWindow.getStartTime());
+    timeColumnBuilder.writeLong(sessionWindow.getStartTime());
 
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
-    if (seriesWindow.isOutputEndTime()) {
-      columnBuilders[0].writeLong(seriesWindow.getEndTime());
+    if (isNeedOutputEndTime) {
+      columnBuilders[0].writeLong(sessionWindow.getEndTime());
       columnIndex = 1;
     }
     for (Aggregator aggregator : aggregators) {
@@ -178,17 +160,22 @@ public class SeriesWindowManager implements IWindowManager {
   }
 
   @Override
+  public boolean notInitedLastTimeWindow() {
+    return false;
+  }
+
+  @Override
   public boolean needSkipInAdvance() {
-    return true;
+    return isNeedOutputEndTime;
   }
 
   @Override
   public boolean isIgnoringNull() {
-    return seriesWindow.ignoringNull();
+    return false;
   }
 
   @Override
-  public void setKeep(long keep) {
-    seriesWindow.setKeep(seriesWindow.getKeep() + keep);
+  public void setLastTsBlockTime() {
+    this.sessionWindow.setLastTsBlockTime(this.sessionWindow.getTimeValue());
   }
 }
