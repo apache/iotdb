@@ -286,7 +286,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     NodeDistributionType distributionType;
     if (context.isAlignByDevice()) {
       // For align by device,
-      // if dataRegions of children are all same, we set child's dataRegion to this node,
+      // if dataRegions of children are the same, we set child's dataRegion to this node,
       // else we set the maxUseDataRegion to this node
       dataRegion =
           nodeDistributionIsSame(visitedChildren, context)
@@ -296,8 +296,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
           newNode.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
     } else {
-      // TODO For align by time,
-      //  we keep pre-logic util we can meet optimize as before by new logic
+      // TODO For align by time, we keep old logic for now
       dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       distributionType =
           nodeDistributionIsSame(visitedChildren, context)

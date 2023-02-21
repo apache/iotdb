@@ -126,9 +126,9 @@ public class DistributionPlanner {
             });
 
     // step3: add child for each ExchangeNode,
-    // the child is IdentitySinkNode/ShuffleSinkNode we generate last step
+    // the child is IdentitySinkNode/ShuffleSinkNode we generated in the last step
 
-    // count the time of each SinkNode are visited
+    // count the visited time of each SinkNode
     Map<TRegionReplicaSet, Integer> visitedCount = new HashMap<>();
     context.exchangeNodes.forEach(
         exchangeNode -> {
