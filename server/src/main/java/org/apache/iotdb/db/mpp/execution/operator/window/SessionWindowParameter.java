@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-public enum WindowType {
-  TIME_WINDOW((byte) 0),
-  EVENT_WINDOW((byte) 1),
-  SERIES_WINDOW((byte) 2),
-  SESSION_WINDOW((byte) 3);
+public class SessionWindowParameter extends WindowParameter {
 
-  private final byte type;
+  private final long timeInterval;
 
-  WindowType(byte type) {
-    this.type = type;
+  public SessionWindowParameter(long timeInterval, boolean needOutputEndTime) {
+    super(needOutputEndTime);
+    this.timeInterval = timeInterval;
+    this.windowType = WindowType.SESSION_WINDOW;
   }
 
-  public byte getType() {
-    return type;
+  public long getTimeInterval() {
+    return timeInterval;
   }
 }

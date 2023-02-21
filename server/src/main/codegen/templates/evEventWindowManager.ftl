@@ -95,8 +95,12 @@ public class ${className} extends Event${dataType.dataType?cap_first}WindowManag
         }
       }
 
-      // judge whether we need update endTime
       long currentTime = timeColumn.getLong(i);
+      // judge whether we need update startTime
+      if (eventWindow.getStartTime() > currentTime) {
+        eventWindow.setStartTime(currentTime);
+      }
+      // judge whether we need update endTime
       if (eventWindow.getEndTime() < currentTime) {
         eventWindow.setEndTime(currentTime);
       }

@@ -17,21 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.window;
+package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public enum WindowType {
-  TIME_WINDOW((byte) 0),
-  EVENT_WINDOW((byte) 1),
-  SERIES_WINDOW((byte) 2),
-  SESSION_WINDOW((byte) 3);
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 
-  private final byte type;
+public class GroupBySessionComponent extends GroupByComponent {
 
-  WindowType(byte type) {
-    this.type = type;
+  private final long timeInterval;
+
+  public GroupBySessionComponent(long timeInterval) {
+    super(WindowType.SESSION_WINDOW);
+    this.timeInterval = timeInterval;
   }
 
-  public byte getType() {
-    return type;
+  public long getTimeInterval() {
+    return timeInterval;
   }
 }
