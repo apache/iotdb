@@ -24,11 +24,11 @@ import java.util.Map;
 import java.util.Set;
 
 public interface IDiskMetricsManager {
-  default Map<String, Long> getReadDataSizeForDisk() {
+  default Map<String, Double> getReadDataSizeForDisk() {
     return Collections.emptyMap();
   }
 
-  default Map<String, Long> getWriteDataSizeForDisk() {
+  default Map<String, Double> getWriteDataSizeForDisk() {
     return Collections.emptyMap();
   }
 
@@ -56,7 +56,7 @@ public interface IDiskMetricsManager {
     return Collections.emptyMap();
   }
 
-  default Map<String, Long> getIoUtilsPercentage() {
+  default Map<String, Double> getIoUtilsPercentage() {
     return Collections.emptyMap();
   }
 
@@ -76,15 +76,15 @@ public interface IDiskMetricsManager {
     return Collections.emptyMap();
   }
 
-  default Map<String, Long> getQueueSizeForDisk() {
+  default Map<String, Double> getQueueSizeForDisk() {
     return Collections.emptyMap();
   }
 
-  default long getActualReadDataSizeForProcess() {
+  default double getActualReadDataSizeForProcess() {
     return 0L;
   }
 
-  default long getActualWriteDataSizeForProcess() {
+  default double getActualWriteDataSizeForProcess() {
     return 0L;
   }
 
@@ -96,11 +96,11 @@ public interface IDiskMetricsManager {
     return 0L;
   }
 
-  default long getAttemptReadSizeForProcess() {
+  default double getAttemptReadSizeForProcess() {
     return 0L;
   }
 
-  default long getAttemptWriteSizeForProcess() {
+  default double getAttemptWriteSizeForProcess() {
     return 0L;
   }
 
