@@ -122,7 +122,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       Expression[] outputExpressions = node.getOutputExpressions();
       boolean enablePushDown = true;
       for (Expression expression : outputExpressions) {
-        if (!ExpressionAnalyzer.check(expression, context.getAnalysis())) {
+        if (!ExpressionAnalyzer.checkIsScalarExpression(expression, context.getAnalysis())) {
           enablePushDown = false;
           break;
         }
