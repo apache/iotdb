@@ -55,7 +55,7 @@ public abstract class Driver implements IDriver {
 
   protected final DriverContext driverContext;
   protected final Operator root;
-  protected final ISink sinkHandle;
+  protected final ISink sink;
   protected final AtomicReference<SettableFuture<?>> driverBlockedFuture = new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
@@ -71,10 +71,10 @@ public abstract class Driver implements IDriver {
 
   protected Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
-    checkNotNull(driverContext.getSinkHandle(), "SinkHandle should not be null");
+    checkNotNull(driverContext.getSink(), "SinkHandle should not be null");
     this.driverContext = driverContext;
     this.root = root;
-    this.sinkHandle = driverContext.getSinkHandle();
+    this.sink = driverContext.getSink();
 
     // initially the driverBlockedFuture is not blocked (it is completed)
     SettableFuture<Void> future = SettableFuture.create();
@@ -182,8 +182,8 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
-  public ISink getSinkHandle() {
-    return sinkHandle;
+  public ISink getSink() {
+    return sink;
   }
 
   @GuardedBy("exclusiveLock")
@@ -204,14 +204,14 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
-      blocked = sinkHandle.isFull();
+      blocked = sink.isFull();
       if (!blocked.isDone()) {
         return blocked;
       }
       if (root.hasNextWithTimer()) {
         TsBlock tsBlock = root.nextWithTimer();
         if (tsBlock != null && !tsBlock.isEmpty()) {
-          sinkHandle.send(tsBlock);
+          sink.send(tsBlock);
         }
       }
       return NOT_BLOCKED;
@@ -363,7 +363,7 @@ public abstract class Driver implements IDriver {
 
     try {
       root.close();
-      sinkHandle.setNoMoreTsBlocks();
+      sink.setNoMoreTsBlocks();
 
       // record operator execution statistics to metrics
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();

@@ -1863,7 +1863,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSinkHandle(sinkHandle);
+    context.getDriverContext().setSink(sinkHandle);
 
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
@@ -1898,7 +1898,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSinkHandle(sinkHandle);
+    context.getDriverContext().setSink(sinkHandle);
 
     return new ShuffleHelperOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
@@ -2439,7 +2439,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
             // Attention, there is no parent node, use first child node instead
             subContext.getDriverContext(), childNode.getPlanNodeId().getId());
-    subContext.setSinkHandle(localSinkChannel);
+    subContext.setISink(localSinkChannel);
     subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
     ExchangeOperator sourceOperator =
@@ -2495,7 +2495,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
                   // Attention, there is no parent node, use first child node instead
                   context.getDriverContext(), childNode.getPlanNodeId().getId());
-          subContext.setSinkHandle(localSinkChannel);
+          subContext.setISink(localSinkChannel);
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
           int curChildPipelineNum = subContext.getPipelineNumber() - originPipeNum;

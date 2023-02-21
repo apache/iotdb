@@ -264,7 +264,7 @@ public class DriverTask implements IDIndexedAccessible {
     public void failed(Throwable t) {}
 
     @Override
-    public ISink getSinkHandle() {
+    public ISink getSink() {
       return null;
     }
 

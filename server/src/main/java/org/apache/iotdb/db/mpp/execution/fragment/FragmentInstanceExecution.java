@@ -43,7 +43,7 @@ public class FragmentInstanceExecution {
   private List<IDriver> drivers;
 
   // it will be set to null while this FI is FINISHED
-  private ISink sinkHandle;
+  private ISink sink;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -70,12 +70,12 @@ public class FragmentInstanceExecution {
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       List<IDriver> drivers,
-      ISink sinkHandle,
+      ISink sink,
       FragmentInstanceStateMachine stateMachine) {
     this.instanceId = instanceId;
     this.context = context;
     this.drivers = drivers;
-    this.sinkHandle = sinkHandle;
+    this.sink = sink;
     this.stateMachine = stateMachine;
   }
 
@@ -119,13 +119,13 @@ public class FragmentInstanceExecution {
             }
 
             if (newState.isFailed()) {
-              sinkHandle.abort();
+              sink.abort();
             } else {
-              sinkHandle.close();
+              sink.close();
             }
             // help for gc
-            sinkHandle = null;
-            // close the driver after sinkHandle is aborted or closed because in driver.close() it
+            sink = null;
+            // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISinkHandle.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
               driver.close();

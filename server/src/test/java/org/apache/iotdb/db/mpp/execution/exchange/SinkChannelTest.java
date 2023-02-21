@@ -81,13 +81,13 @@ public class SinkChannelTest {
       e.printStackTrace();
       Assert.fail();
     }
-    // Construct a mock SinkHandleListener.
+    // Construct a mock SinkListener.
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
 
-    // Construct SinkHandle.
-    SinkChannel sinkChannelHandle =
+    // Construct SinkChannel.
+    SinkChannel sinkChannel =
         new SinkChannel(
             remoteEndpoint,
             remoteFragmentInstanceId,
@@ -99,22 +99,22 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(0, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkChannel.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkChannelHandle.send(mockTsBlocks.get(0));
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.send(mockTsBlocks.get(0));
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(numOfMockTsBlock, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkChannel.getNumOfBufferedTsBlocks());
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
@@ -141,29 +141,28 @@ public class SinkChannelTest {
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       try {
-        sinkChannelHandle.getSerializedTsBlock(i);
+        sinkChannel.getSerializedTsBlock(i);
       } catch (IOException e) {
         e.printStackTrace();
         Assert.fail();
       }
-      Assert.assertTrue(sinkChannelHandle.isFull().isDone());
+      Assert.assertTrue(sinkChannel.isFull().isDone());
     }
-    Assert.assertFalse(sinkChannelHandle.isFinished());
+    Assert.assertFalse(sinkChannel.isFinished());
 
     // Set no-more-tsblocks.
-    sinkChannelHandle.setNoMoreTsBlocks();
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(1))
-        .onEndOfBlocks(sinkChannelHandle);
+    sinkChannel.setNoMoreTsBlocks();
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(1)).onEndOfBlocks(sinkChannel);
 
     // Ack tsblocks.
-    sinkChannelHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertTrue(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
-    Assert.assertEquals(mockTsBlockSize, sinkChannelHandle.getBufferRetainedSizeInBytes());
+    sinkChannel.acknowledgeTsBlock(0, numOfMockTsBlock);
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertTrue(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
+    Assert.assertEquals(mockTsBlockSize, sinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(
             queryId,
@@ -171,7 +170,7 @@ public class SinkChannelTest {
                 localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock * mockTsBlockSize);
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkChannelHandle);
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkChannel);
 
     try {
       Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
@@ -212,7 +211,7 @@ public class SinkChannelTest {
             mockTsBlockSize);
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
 
-    // Construct a mock SinkHandleListener.
+    // Construct a mock SinkListener.
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
@@ -234,8 +233,8 @@ public class SinkChannelTest {
       Assert.fail();
     }
 
-    // Construct SinkHandle.
-    SinkChannel sinkChannelHandle =
+    // Construct SinkChannel.
+    SinkChannel sinkChannel =
         new SinkChannel(
             remoteEndpoint,
             remoteFragmentInstanceId,
@@ -247,22 +246,22 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(0, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkChannel.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkChannelHandle.send(mockTsBlocks.get(0));
-    Assert.assertFalse(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.send(mockTsBlocks.get(0));
+    Assert.assertFalse(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(numOfMockTsBlock, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkChannel.getNumOfBufferedTsBlocks());
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
@@ -289,22 +288,22 @@ public class SinkChannelTest {
     // Get tsblocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       try {
-        sinkChannelHandle.getSerializedTsBlock(i);
+        sinkChannel.getSerializedTsBlock(i);
       } catch (IOException e) {
         e.printStackTrace();
         Assert.fail();
       }
-      Assert.assertFalse(sinkChannelHandle.isFull().isDone());
+      Assert.assertFalse(sinkChannel.isFull().isDone());
     }
-    Assert.assertFalse(sinkChannelHandle.isFinished());
+    Assert.assertFalse(sinkChannel.isFinished());
 
     // Ack tsblocks.
-    sinkChannelHandle.acknowledgeTsBlock(0, numOfMockTsBlock);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.acknowledgeTsBlock(0, numOfMockTsBlock);
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
         .free(
             queryId,
@@ -314,14 +313,14 @@ public class SinkChannelTest {
             numOfMockTsBlock * mockTsBlockSize);
 
     // Send tsblocks.
-    sinkChannelHandle.send(mockTsBlocks.get(0));
-    Assert.assertFalse(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.send(mockTsBlocks.get(0));
+    Assert.assertFalse(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(numOfMockTsBlock, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkChannel.getNumOfBufferedTsBlocks());
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(3))
     //        .reserve(
     //            queryId,
@@ -346,11 +345,10 @@ public class SinkChannelTest {
     }
 
     // Set no-more-tsblocks.
-    sinkChannelHandle.setNoMoreTsBlocks();
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(1))
-        .onEndOfBlocks(sinkChannelHandle);
+    sinkChannel.setNoMoreTsBlocks();
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(1)).onEndOfBlocks(sinkChannel);
 
     try {
       Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
@@ -369,20 +367,20 @@ public class SinkChannelTest {
     // Get tsblocks after no-more-tsblocks is set.
     for (int i = numOfMockTsBlock; i < numOfMockTsBlock * 2; i++) {
       try {
-        sinkChannelHandle.getSerializedTsBlock(i);
+        sinkChannel.getSerializedTsBlock(i);
       } catch (IOException e) {
         e.printStackTrace();
         Assert.fail();
       }
     }
-    Assert.assertFalse(sinkChannelHandle.isFinished());
+    Assert.assertFalse(sinkChannel.isFinished());
 
     // Ack tsblocks.
-    sinkChannelHandle.acknowledgeTsBlock(numOfMockTsBlock, numOfMockTsBlock * 2);
-    Assert.assertTrue(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.acknowledgeTsBlock(numOfMockTsBlock, numOfMockTsBlock * 2);
+    Assert.assertTrue(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(2))
         .free(
             queryId,
@@ -390,7 +388,7 @@ public class SinkChannelTest {
                 localFragmentInstanceId),
             localPlanNodeId,
             numOfMockTsBlock * mockTsBlockSize);
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkChannelHandle);
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onFinish(sinkChannel);
   }
 
   @Test
@@ -416,7 +414,7 @@ public class SinkChannelTest {
             numOfMockTsBlock,
             mockTsBlockSize);
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
-    // Construct a mock SinkHandleListener.
+    // Construct a mock SinkListener.
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
@@ -439,8 +437,8 @@ public class SinkChannelTest {
       Assert.fail();
     }
 
-    // Construct SinkHandle.
-    SinkChannel sinkChannelHandle =
+    // Construct SinkChannel.
+    SinkChannel sinkChannel =
         new SinkChannel(
             remoteEndpoint,
             remoteFragmentInstanceId,
@@ -452,23 +450,23 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
-    sinkChannelHandle.setRetryIntervalInMs(0L);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.setRetryIntervalInMs(0L);
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(0, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkChannel.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkChannelHandle.send(mockTsBlocks.get(0));
-    Assert.assertFalse(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.send(mockTsBlocks.get(0));
+    Assert.assertFalse(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(numOfMockTsBlock, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkChannel.getNumOfBufferedTsBlocks());
     //    Mockito.verify(mockMemoryPool, Mockito.timeout(10_0000).times(1))
     //        .reserve(
     //            queryId,
@@ -492,20 +490,18 @@ public class SinkChannelTest {
       Assert.fail();
     }
     Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(1))
-        .onFailure(sinkChannelHandle, mockException);
+        .onFailure(sinkChannel, mockException);
 
-    // Close the SinkHandle.
-    sinkChannelHandle.setNoMoreTsBlocks();
-    Assert.assertFalse(sinkChannelHandle.isAborted());
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(0))
-        .onEndOfBlocks(sinkChannelHandle);
+    // Close the SinkChannel.
+    sinkChannel.setNoMoreTsBlocks();
+    Assert.assertFalse(sinkChannel.isAborted());
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_000).times(0)).onEndOfBlocks(sinkChannel);
 
-    // Abort the SinkHandle.
-    sinkChannelHandle.abort();
-    Assert.assertTrue(sinkChannelHandle.isAborted());
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1))
-        .onAborted(sinkChannelHandle);
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(0)).onFinish(sinkChannelHandle);
+    // Abort the SinkChannel.
+    sinkChannel.abort();
+    Assert.assertTrue(sinkChannel.isAborted());
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onAborted(sinkChannel);
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(0)).onFinish(sinkChannel);
   }
 
   @Test
@@ -528,7 +524,7 @@ public class SinkChannelTest {
                 "test", numOfMockTsBlock * mockTsBlockSize, numOfMockTsBlock * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
-    // Construct a mock SinkHandleListener.
+    // Construct a mock SinkListener.
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
@@ -550,8 +546,8 @@ public class SinkChannelTest {
       Assert.fail();
     }
 
-    // Construct SinkHandle.
-    SinkChannel sinkChannelHandle =
+    // Construct SinkChannel.
+    SinkChannel sinkChannel =
         new SinkChannel(
             remoteEndpoint,
             remoteFragmentInstanceId,
@@ -563,35 +559,34 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
-    sinkChannelHandle.setMaxBytesCanReserve(Long.MAX_VALUE);
-    Assert.assertTrue(sinkChannelHandle.isFull().isDone());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    sinkChannel.setMaxBytesCanReserve(Long.MAX_VALUE);
+    Assert.assertTrue(sinkChannel.isFull().isDone());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(0, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkChannel.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    sinkChannelHandle.send(mockTsBlocks.get(0));
-    Future<?> blocked = sinkChannelHandle.isFull();
+    sinkChannel.send(mockTsBlocks.get(0));
+    Future<?> blocked = sinkChannel.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(blocked.isCancelled());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertFalse(sinkChannelHandle.isAborted());
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertFalse(sinkChannel.isAborted());
     Assert.assertEquals(
         mockTsBlockSize * numOfMockTsBlock + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-        sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(numOfMockTsBlock, sinkChannelHandle.getNumOfBufferedTsBlocks());
+        sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkChannel.getNumOfBufferedTsBlocks());
 
-    sinkChannelHandle.abort();
+    sinkChannel.abort();
     Assert.assertTrue(blocked.isDone());
     Assert.assertTrue(blocked.isCancelled());
-    Assert.assertFalse(sinkChannelHandle.isFinished());
-    Assert.assertTrue(sinkChannelHandle.isAborted());
-    Assert.assertEquals(0L, sinkChannelHandle.getBufferRetainedSizeInBytes());
-    Assert.assertEquals(0, sinkChannelHandle.getNumOfBufferedTsBlocks());
-    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1))
-        .onAborted(sinkChannelHandle);
+    Assert.assertFalse(sinkChannel.isFinished());
+    Assert.assertTrue(sinkChannel.isAborted());
+    Assert.assertEquals(0L, sinkChannel.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkChannel.getNumOfBufferedTsBlocks());
+    Mockito.verify(mockSinkListener, Mockito.timeout(10_0000).times(1)).onAborted(sinkChannel);
     Assert.assertEquals(0L, spyMemoryPool.getQueryMemoryReservedBytes(queryId));
   }
 }

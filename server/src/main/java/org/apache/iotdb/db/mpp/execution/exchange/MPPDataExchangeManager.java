@@ -356,7 +356,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
-      // TODO: (xingtanzjr) should we remove the sinkHandle from MPPDataExchangeManager ?
+      // TODO: (xingtanzjr) should we remove the sink from MPPDataExchangeManager ?
       LOGGER.warn("Sink failed due to", t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
@@ -481,7 +481,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
   /**
    * As we know the upstream and downstream node of shared queue, we don't need to put it into the
-   * sinkHandle map.
+   * sink map.
    */
   public ISinkChannel createLocalSinkChannelForPipeline(
       DriverContext driverContext, String planNodeId) {

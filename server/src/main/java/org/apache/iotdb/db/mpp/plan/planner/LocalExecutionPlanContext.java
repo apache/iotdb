@@ -229,10 +229,10 @@ public class LocalExecutionPlanContext {
     return cachedLastValueAndPathList;
   }
 
-  public void setSinkHandle(ISink sinkHandle) {
-    requireNonNull(sinkHandle, "sinkHandle is null");
-    checkArgument(driverContext.getSinkHandle() == null, "There must be at most one SinkNode");
-    driverContext.setSinkHandle(sinkHandle);
+  public void setISink(ISink sink) {
+    requireNonNull(sink, "sink is null");
+    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    driverContext.setSink(sink);
   }
 
   public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {

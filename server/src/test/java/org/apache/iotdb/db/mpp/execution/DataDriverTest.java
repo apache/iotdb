@@ -176,8 +176,8 @@ public class DataDriverTest {
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
-      StubSink sinkHandle = new StubSink(fragmentInstanceContext);
-      driverContext.setSinkHandle(sinkHandle);
+      StubSink stubSink = new StubSink(fragmentInstanceContext);
+      driverContext.setSink(stubSink);
       IDriver dataDriver = null;
       try {
         dataDriver = new DataDriver(limitOperator, driverContext);
@@ -194,7 +194,7 @@ public class DataDriverTest {
 
         assertEquals(FragmentInstanceState.FLUSHING, stateMachine.getState());
 
-        List<TsBlock> result = sinkHandle.getTsBlocks();
+        List<TsBlock> result = stubSink.getTsBlocks();
 
         int row = 0;
         for (TsBlock tsBlock : result) {

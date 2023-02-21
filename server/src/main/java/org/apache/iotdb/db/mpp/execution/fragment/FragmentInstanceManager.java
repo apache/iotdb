@@ -138,15 +138,15 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
-                  // get the sinkHandle of last driver
-                  ISink sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+                  // get the sink of last driver
+                  ISink sink = drivers.get(drivers.size() - 1).getSink();
 
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
                       context,
                       drivers,
-                      sinkHandle,
+                      sink,
                       stateMachine,
                       failedInstances,
                       instance.getTimeOut());
@@ -198,15 +198,15 @@ public class FragmentInstanceManager {
 
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
-                // get the sinkHandle of last driver
-                ISink sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+                // get the sink of last driver
+                ISink sink = drivers.get(drivers.size() - 1).getSink();
 
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
                     context,
                     drivers,
-                    sinkHandle,
+                    sink,
                     stateMachine,
                     failedInstances,
                     instance.getTimeOut());

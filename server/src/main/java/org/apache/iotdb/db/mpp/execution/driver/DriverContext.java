@@ -37,7 +37,7 @@ public class DriverContext {
   private DriverTaskId driverTaskID;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-  private ISink sinkHandle;
+  private ISink sink;
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
   private int dependencyDriverIndex = -1;
 
@@ -78,12 +78,12 @@ public class DriverContext {
     return dependencyDriverIndex;
   }
 
-  public void setSinkHandle(ISink sinkHandle) {
-    this.sinkHandle = sinkHandle;
+  public void setSink(ISink sink) {
+    this.sink = sink;
   }
 
-  public ISink getSinkHandle() {
-    return sinkHandle;
+  public ISink getSink() {
+    return sink;
   }
 
   public boolean isInputDriver() {
