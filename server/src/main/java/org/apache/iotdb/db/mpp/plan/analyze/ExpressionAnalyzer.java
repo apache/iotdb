@@ -629,6 +629,17 @@ public class ExpressionAnalyzer {
       for (Expression childExpression : expression.getExpressions()) {
         childrenExpressions.add(
             replaceRawPathWithGroupedPath(childExpression, rawPathToGroupedPathMap));
+
+        // We just process first input Expression of AggregationFunction.
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
+        if (expression.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = expression.getExpressions();
+          for (int i = 1; i < children.size(); i++) {
+            childrenExpressions.add(children.get(i));
+          }
+          break;
+        }
       }
       return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
