@@ -318,6 +318,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
@@ -326,6 +332,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
     return this;
   }
 }

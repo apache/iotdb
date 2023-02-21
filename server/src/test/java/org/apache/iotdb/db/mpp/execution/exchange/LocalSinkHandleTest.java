@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
@@ -86,7 +87,8 @@ public class LocalSinkHandleTest {
     Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
             Long.MAX_VALUE);
@@ -102,7 +104,12 @@ public class LocalSinkHandleTest {
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .free(queryId, localFragmentInstanceId.getInstanceId(), remotePlanNodeId, mockTsBlockSize);
+        .free(
+            queryId,
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
+            remotePlanNodeId,
+            mockTsBlockSize);
 
     // Set no-more-TsBlocks.
     localSinkHandle.setNoMoreTsBlocks();
@@ -169,7 +176,8 @@ public class LocalSinkHandleTest {
     Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
-            localFragmentInstanceId.getInstanceId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
             Long.MAX_VALUE);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -75,7 +77,7 @@ public class QueryStatement extends Statement {
   private WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
-  // row limit and offset for result set. The default value is 0, which means no limit
+  // row limit for result set. The default value is 0, which means no limit
   private int rowLimit = 0;
   // row offset for result set. The default value is 0
   private int rowOffset = 0;
@@ -100,10 +102,15 @@ public class QueryStatement extends Statement {
   // `GROUP BY TAG` clause
   private GroupByTagComponent groupByTagComponent;
 
+  // `GROUP BY VARIATION` clause
+  private GroupByComponent groupByComponent;
+
   // `INTO` clause
   private IntoComponent intoComponent;
 
   private boolean isCqQueryBody;
+
+  private boolean isOutputEndTime = false;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -241,6 +248,22 @@ public class QueryStatement extends Statement {
     this.groupByTagComponent = groupByTagComponent;
   }
 
+  public GroupByComponent getGroupByComponent() {
+    return groupByComponent;
+  }
+
+  public void setGroupByComponent(GroupByComponent groupByComponent) {
+    this.groupByComponent = groupByComponent;
+  }
+
+  public void setOutputEndTime(boolean outputEndTime) {
+    isOutputEndTime = outputEndTime;
+  }
+
+  public boolean isOutputEndTime() {
+    return isOutputEndTime;
+  }
+
   public boolean isLastQuery() {
     return selectComponent.hasLast();
   }
@@ -259,6 +282,22 @@ public class QueryStatement extends Statement {
 
   public boolean isGroupByTime() {
     return groupByTimeComponent != null;
+  }
+
+  public boolean isGroupBy() {
+    return isGroupByTime() || groupByComponent != null;
+  }
+
+  private boolean isGroupByVariation() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
+  }
+
+  private boolean isGroupBySeries() {
+    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
+  }
+
+  public boolean hasGroupByExpression() {
+    return isGroupByVariation() || isGroupBySeries();
   }
 
   public boolean isAlignByTime() {
@@ -339,6 +378,9 @@ public class QueryStatement extends Statement {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
       }
+      if (groupByComponent != null && isGroupByLevel()) {
+        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
+      }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
       }
@@ -378,9 +420,17 @@ public class QueryStatement extends Statement {
         }
       }
     } else {
-      if (isGroupByTime() || isGroupByLevel()) {
+      if (isGroupBy() || isGroupByLevel()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
+    }
+
+    if (hasWhere()) {
+      Expression whereExpression = getWhereCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
+          == ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
     }
 

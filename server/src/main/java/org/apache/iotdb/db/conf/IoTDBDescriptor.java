@@ -38,7 +38,6 @@ import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceComp
 import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
@@ -46,9 +45,6 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
-import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -539,6 +535,15 @@ public class IoTDBDescriptor {
 
     if (conf.getQueryThreadCount() <= 0) {
       conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
+    }
+
+    conf.setDegreeOfParallelism(
+        Integer.parseInt(
+            properties.getProperty(
+                "degree_of_query_parallelism", Integer.toString(conf.getDegreeOfParallelism()))));
+
+    if (conf.getDegreeOfParallelism() <= 0) {
+      conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -1485,18 +1490,7 @@ public class IoTDBDescriptor {
     }
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
-    if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      IoTDBInternalReporter internalReporter;
-      if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
-          == InternalReporterType.IOTDB) {
-        internalReporter = new IoTDBInternalLocalReporter();
-      } else {
-        internalReporter = new IoTDBInternalMemoryReporter();
-      }
-      MetricService.getInstance().reloadInternalReporter(internalReporter);
-    } else {
-      MetricService.getInstance().reloadService(reloadLevel);
-    }
+    MetricService.getInstance().reloadService(reloadLevel);
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1629,15 +1623,14 @@ public class IoTDBDescriptor {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 8;
-    int schemaCacheProportion = 1;
-    int partitionCacheProportion = 0;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
     int lastCacheProportion = 1;
 
     String schemaMemoryAllocatePortion =
         properties.getProperty("schema_memory_allocate_proportion");
     if (schemaMemoryAllocatePortion != null) {
-      conf.setDefaultSchemaMemoryConfig(false);
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
@@ -1651,8 +1644,6 @@ public class IoTDBDescriptor {
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
         lastCacheProportion = Integer.parseInt(proportions[3].trim());
       }
-    } else {
-      conf.setDefaultSchemaMemoryConfig(true);
     }
 
     conf.setAllocateMemoryForSchemaRegion(
@@ -1931,40 +1922,6 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForStorageEngine(
         conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
     SystemInfo.getInstance().allocateWriteMemory();
-  }
-
-  public void initClusterSchemaMemoryAllocate() {
-    if (!conf.isDefaultSchemaMemoryConfig()) {
-      // the config has already been updated as user config in properties file
-      return;
-    }
-
-    // process the default schema memory allocate
-
-    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
-
-    int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
-    int partitionCacheProportion = 1;
-    int lastCacheProportion = 1;
-
-    conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * schemaRegionProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
-
-    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
-
-    conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * partitionCacheProportion / proportionSum);
-    logger.info(
-        "Cluster allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
-
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
-    logger.info("Cluster allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   private static class IoTDBDescriptorHolder {

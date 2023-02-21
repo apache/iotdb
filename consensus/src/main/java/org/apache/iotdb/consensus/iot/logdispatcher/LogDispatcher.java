@@ -50,6 +50,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
@@ -64,6 +65,9 @@ public class LogDispatcher {
   private ExecutorService executorService;
 
   private boolean stopped = false;
+
+  private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
+  private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
@@ -171,6 +175,14 @@ public class LogDispatcher {
     }
   }
 
+  public long getLogEntriesFromWAL() {
+    return logEntriesFromWAL.get();
+  }
+
+  public long getLogEntriesFromQueue() {
+    return logEntriesFromQueue.get();
+  }
+
   public class LogDispatcherThread implements Runnable {
 
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
@@ -205,7 +217,7 @@ public class LogDispatcher {
               peer,
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
-      this.syncStatus = new SyncStatus(controller, config);
+      this.syncStatus = new SyncStatus(controller, config, impl::getSearchIndex);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.metrics = new LogDispatcherThreadMetrics(this);
     }
@@ -244,19 +256,19 @@ public class LogDispatcher {
         success = pendingEntries.offer(indexedConsensusRequest);
       } catch (Throwable t) {
         // If exception occurs during request offer, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
         throw t;
       }
       if (!success) {
         // If offer failed, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
       }
       return success;
     }
 
     /** try to remove a request from queue with memory control. */
     private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
-      iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
+      iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
     }
 
     public void stop() {
@@ -266,12 +278,12 @@ public class LogDispatcher {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
       pendingEntries.clear();
-      iotConsensusMemoryManager.free(requestSize);
+      iotConsensusMemoryManager.free(requestSize, true);
       requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedEntries) {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
-      iotConsensusMemoryManager.free(requestSize);
+      iotConsensusMemoryManager.free(requestSize, true);
       syncStatus.free();
       MetricService.getInstance().removeMetricSet(metrics);
     }
@@ -291,7 +303,7 @@ public class LogDispatcher {
       try {
         Batch batch;
         while (!Thread.interrupted() && !stopped) {
-          long startTime = System.currentTimeMillis();
+          long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
@@ -314,9 +326,12 @@ public class LogDispatcher {
                   "constructBatch",
                   Tag.REGION.toString(),
                   peer.getGroupId().toString())
-              .update((System.currentTimeMillis() - startTime) / batch.getLogEntries().size());
+              .update((System.nanoTime() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
+          logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
+          logEntriesFromQueue.addAndGet(
+              batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }

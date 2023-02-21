@@ -83,6 +83,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -113,6 +114,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 
 public class LogicalPlanBuilder {
 
@@ -142,7 +144,8 @@ public class LogicalPlanBuilder {
     }
     expressions.forEach(
         expression -> {
-          if (!expression.getExpressionString().equals(DEVICE)) {
+          if (!expression.getExpressionString().equals(DEVICE)
+              && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
                 .setType(expression.toString(), getPreAnalyzedType.apply(expression));
@@ -354,7 +357,10 @@ public class LogicalPlanBuilder {
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
     AggregationDescriptor aggregationDescriptor =
         new AggregationDescriptor(
-            sourceExpression.getFunctionName(), curStep, sourceExpression.getExpressions());
+            sourceExpression.getFunctionName(),
+            curStep,
+            sourceExpression.getExpressions(),
+            sourceExpression.getFunctionAttributes());
     if (curStep.isOutputPartial()) {
       updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
     }
@@ -616,7 +622,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planAggregation(
       Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
       GroupByTimeParameter groupByTimeParameter,
+      GroupByParameter groupByParameter,
+      boolean outputEndTime,
       AggregationStep curStep,
       Ordering scanOrder) {
     if (aggregationExpressions == null) {
@@ -632,12 +641,18 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
+    if (outputEndTime) {
+      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),
             Collections.singletonList(this.getRoot()),
             aggregationDescriptorList,
             groupByTimeParameter,
+            groupByParameter,
+            groupByExpression,
+            outputEndTime,
             scanOrder);
     return this;
   }
@@ -680,16 +695,18 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       Ordering scanOrder) {
     List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
-    for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
+    for (Map.Entry<Expression, Set<Expression>> entry : groupByLevelExpressions.entrySet()) {
       groupByLevelDescriptors.add(
           new CrossSeriesAggregationDescriptor(
-              ((FunctionExpression) groupedExpression).getFunctionName(),
+              ((FunctionExpression) entry.getKey()).getFunctionName(),
               curStep,
-              groupByLevelExpressions.get(groupedExpression).stream()
+              entry.getValue().stream()
                   .map(Expression::getExpressions)
                   .flatMap(List::stream)
                   .collect(Collectors.toList()),
-              groupedExpression.getExpressions().get(0)));
+              entry.getValue().size(),
+              ((FunctionExpression) entry.getKey()).getFunctionAttributes(),
+              entry.getKey().getExpressions().get(0)));
     }
     updateTypeProvider(groupByLevelExpressions.keySet());
     updateTypeProvider(
@@ -734,6 +751,7 @@ public class LogicalPlanBuilder {
                   functionName,
                   curStep,
                   groupedTimeseriesOperands.get(next),
+                  ((FunctionExpression) next).getFunctionAttributes(),
                   next.getExpressions().get(0));
           aggregationDescriptors.add(aggregationDescriptor);
         } else {
@@ -797,7 +815,8 @@ public class LogicalPlanBuilder {
               return new AggregationDescriptor(
                   ((FunctionExpression) expression).getFunctionName(),
                   curStep,
-                  expression.getExpressions());
+                  expression.getExpressions(),
+                  ((FunctionExpression) expression).getFunctionAttributes());
             })
         .collect(Collectors.toList());
   }

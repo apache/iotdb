@@ -37,6 +37,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -92,7 +94,12 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithoutTimeFilter() throws IllegalPathException {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
@@ -109,7 +116,12 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws IllegalPathException {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, null);
@@ -128,7 +140,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
@@ -152,7 +169,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, null);
@@ -181,7 +203,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, false)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            false)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, null);
@@ -203,7 +230,12 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithTimeFilter1() throws IllegalPathException {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     Filter timeFilter = TimeFilter.gtEq(120);
     SeriesAggregationScanOperator seriesAggregationScanOperator =
@@ -222,7 +254,12 @@ public class SeriesAggregationScanOperatorTest {
     Filter timeFilter = TimeFilter.ltEq(379);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
@@ -240,7 +277,12 @@ public class SeriesAggregationScanOperatorTest {
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
@@ -263,7 +305,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(100), TimeFilter.ltEq(399));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
@@ -288,7 +335,12 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -312,7 +364,12 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, timeFilter, true, groupByTimeParameter);
@@ -345,7 +402,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -381,7 +443,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, false)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            false)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, false, groupByTimeParameter);
@@ -407,7 +474,12 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -431,7 +503,12 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -465,7 +542,12 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(aggregationTypes, TSDataType.INT32, true)
+    AccumulatorFactory.createAccumulators(
+            aggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.SINGLE)));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         initSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
@@ -512,16 +594,18 @@ public class SeriesAggregationScanOperatorTest {
               operatorContext.setMaxRunTime(TEST_TIME_SLICE);
             });
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             planNodeId,
             measurementPath,
-            allSensors,
+            ascending ? Ordering.ASC : Ordering.DESC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
-            timeFilter,
-            ascending,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(

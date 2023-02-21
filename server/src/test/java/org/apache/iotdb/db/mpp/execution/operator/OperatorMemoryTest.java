@@ -79,6 +79,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
@@ -138,16 +139,15 @@ public class OperatorMemoryTest {
       PlanNodeId planNodeId = new PlanNodeId("1");
       driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
 
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
@@ -188,12 +188,11 @@ public class OperatorMemoryTest {
 
       AlignedSeriesScanOperator seriesScanOperator =
           new AlignedSeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               alignedPath,
-              driverContext.getOperatorContexts().get(0),
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath));
 
       long maxPeekMemory =
           Math.max(
@@ -1205,7 +1204,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, true);
@@ -1213,15 +1216,16 @@ public class OperatorMemoryTest {
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
     return new SeriesAggregationScanOperator(
         planNodeId,
         measurementPath,
-        allSensors,
+        Ordering.ASC,
+        scanOptionsBuilder.build(),
         driverContext.getOperatorContexts().get(0),
         aggregators,
         timeRangeIterator,
-        null,
-        true,
         groupByTimeParameter,
         maxReturnSize);
   }
@@ -1255,7 +1259,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
@@ -1323,7 +1331,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 5, true);
@@ -1397,7 +1409,11 @@ public class OperatorMemoryTest {
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
-                        o.getAggregationType(), measurementPath.getSeriesType(), true),
+                        o.getAggregationType(),
+                        measurementPath.getSeriesType(),
+                        Collections.emptyList(),
+                        Collections.emptyMap(),
+                        true),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
