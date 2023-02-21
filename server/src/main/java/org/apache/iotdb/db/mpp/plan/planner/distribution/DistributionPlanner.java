@@ -37,7 +37,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
@@ -97,6 +96,10 @@ public class DistributionPlanner {
       return;
     }
 
+    final boolean isOrderByTime =
+        analysis.getStatement() instanceof QueryStatement
+            && ((QueryStatement) analysis.getStatement()).isOrderByTime();
+
     // step1: group children of ExchangeNodes
     Map<TRegionReplicaSet, List<PlanNode>> nodeGroups = new HashMap<>();
     context.exchangeNodes.forEach(
@@ -113,11 +116,7 @@ public class DistributionPlanner {
         .forEach(
             planNodeList -> {
               MultiChildrenSinkNode parent =
-                  analysis.getStatement() instanceof QueryStatement
-                          && analysis.getMergeOrderParameter() != null
-                          && !analysis.getMergeOrderParameter().isEmpty()
-                          && analysis.getMergeOrderParameter().getSortItemList().get(0).getSortKey()
-                              == SortKey.TIME
+                  isOrderByTime
                       ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
                       : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
               parent.addChildren(planNodeList);

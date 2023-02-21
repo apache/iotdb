@@ -140,9 +140,6 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
             localFragmentInstanceId.instanceId);
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-
-    // delete this once ShuffleSinkHandle is finished
-    open();
   }
 
   @Override
