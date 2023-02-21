@@ -81,11 +81,11 @@ public interface IDiskMetricsManager {
   }
 
   default double getActualReadDataSizeForProcess() {
-    return 0L;
+    return 0.0;
   }
 
   default double getActualWriteDataSizeForProcess() {
-    return 0L;
+    return 0.0;
   }
 
   default long getReadOpsCountForProcess() {
@@ -97,11 +97,11 @@ public interface IDiskMetricsManager {
   }
 
   default double getAttemptReadSizeForProcess() {
-    return 0L;
+    return 0.0;
   }
 
   default double getAttemptWriteSizeForProcess() {
-    return 0L;
+    return 0.0;
   }
 
   default Set<String> getDiskIds() {
