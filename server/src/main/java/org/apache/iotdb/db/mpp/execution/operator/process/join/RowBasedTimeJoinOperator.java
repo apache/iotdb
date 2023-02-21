@@ -138,7 +138,6 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i]) {
-        updateTimeSelector(i);
         // update the currentEndTime if the TsBlock is not empty
         currentEndTime =
             init
@@ -196,9 +195,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       if (!isEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (!canCallNext[i]) {
-          return true;
-        } else if (children.get(i).hasNextWithTimer()) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
@@ -284,6 +281,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
           canCallNext[i] = false;
           if (isEmpty(i)) {
             allReady = false;
+          } else {
+            updateTimeSelector(i);
           }
         } else {
           noMoreTsBlocks[i] = true;

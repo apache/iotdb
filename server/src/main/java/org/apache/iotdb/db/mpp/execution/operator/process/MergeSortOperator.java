@@ -44,7 +44,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   private final boolean[] noMoreTsBlocks;
   private final MergeSortHeap mergeSortHeap;
   private final Comparator<MergeSortKey> comparator;
-  private final boolean[] isFreshData;
 
   private boolean finished;
 
@@ -59,7 +58,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.isFreshData = new boolean[inputOperatorsCount];
   }
 
   @Override
@@ -88,13 +86,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     // 1. fill consumed up TsBlock
     if (!prepareInput()) {
       return null;
-    }
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      // Only fresh data can be pushed into mergeSortHeap
-      if (!noMoreTsBlocks[i] && isFreshData[i]) {
-        mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
-        isFreshData[i] = false;
-      }
     }
 
     // 2. check if we can directly return the original TsBlock instead of merging way
@@ -152,9 +143,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       if (!isEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (!canCallNext[i]) {
-          return true;
-        } else if (children.get(i).hasNextWithTimer()) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
@@ -232,7 +221,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
           if (isEmpty(i)) {
             allReady = false;
           } else {
-            isFreshData[i] = true;
+            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
           }
         } else {
           noMoreTsBlocks[i] = true;
