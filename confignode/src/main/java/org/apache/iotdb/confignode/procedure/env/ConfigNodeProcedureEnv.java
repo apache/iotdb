@@ -63,7 +63,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
@@ -382,16 +381,11 @@ public class ConfigNodeProcedureEnv {
               DataNodeRequestType.SET_SYSTEM_STATUS);
     }
 
-    // Force updating NodeStatus
-    long currentTime = System.currentTimeMillis();
-    NodeHeartbeatSample removingSample =
-        new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Removing.getStatus()).setStatusReason(null),
-            currentTime);
+    // Force updating NodeStatus to Removing
     getNodeManager()
         .getNodeCacheMap()
         .get(dataNodeLocation.getDataNodeId())
-        .forceUpdate(removingSample);
+        .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
   }
 
   /**

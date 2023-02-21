@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -92,6 +93,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
     try {
       processPid();
+      // Add shutdown hook
+      Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -191,11 +194,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
-      try {
-        stop();
-      } catch (IOException e2) {
-        LOGGER.error("Meet error when stop ConfigNode!", e);
-      }
+      stop();
     }
   }
 
@@ -211,11 +210,7 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager = new ConfigManager();
     } catch (IOException e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
-      try {
-        stop();
-      } catch (IOException e2) {
-        LOGGER.error("Meet error when stop ConfigNode!", e);
-      }
+      stop();
     }
     // Add some Metrics for configManager
     configManager.addMetrics();
@@ -348,7 +343,8 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  public void stop() throws IOException {
+  /** Deactivating ConfigNode internal services */
+  public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
@@ -356,6 +352,14 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager.close();
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  public void stop() {
+    try {
+      deactivate();
+    } catch (IOException e) {
+      LOGGER.error("Meet error when deactivate ConfigNode", e);
+    }
     System.exit(-1);
   }
 
