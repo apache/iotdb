@@ -183,8 +183,6 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getIoUtilsPercentage() {
     Map<String, Double> utilsMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementIoBusyTimeForDisk.entrySet()) {
-      // The result is multiplied by an amplification factor to avoid loss of precision when
-      // converted to long
       utilsMap.put(entry.getKey(), ((double) entry.getValue()) / updateInterval);
     }
     return utilsMap;
@@ -196,7 +194,6 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     for (Map.Entry<String, Long> readCostEntry : incrementReadTimeCostForDisk.entrySet()) {
       long writeOpsCount =
           incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L);
-      // convert to nanosecond
       avgReadTimeCostMap.put(
           readCostEntry.getKey(), (double) readCostEntry.getValue() / writeOpsCount);
     }
@@ -209,7 +206,6 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     for (Map.Entry<String, Long> writeCostEntry : incrementWriteTimeCostForDisk.entrySet()) {
       long writeOpsCount =
           incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L);
-      // convert to nanosecond
       avgWriteTimeCostMap.put(
           writeCostEntry.getKey(), (double) writeCostEntry.getValue() / writeOpsCount);
     }
@@ -226,7 +222,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           diskSectorSizeMap.getOrDefault(readSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfReadMap.put(
           readSectorSizeEntry.getKey(),
-          ((double) readSectorSizeEntry.getValue()) * sectorSize / readOpsCount);
+          ((double) readSectorSizeEntry.getValue()) / readOpsCount * sectorSize);
     }
     return avgSizeOfReadMap;
   }
@@ -242,7 +238,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           diskSectorSizeMap.getOrDefault(writeSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfWriteMap.put(
           writeSectorSizeEntry.getKey(),
-          ((double) writeSectorSizeEntry.getValue()) * sectorSize / writeOpsCount);
+          ((double) writeSectorSizeEntry.getValue()) / writeOpsCount * sectorSize);
     }
     return avgSizeOfWriteMap;
   }
@@ -261,8 +257,6 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getQueueSizeForDisk() {
     Map<String, Double> avgQueueSizeMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementTimeInQueueForDisk.entrySet()) {
-      // The result is multiplied by an amplification factor to avoid loss of precision when
-      // converted to long
       avgQueueSizeMap.put(entry.getKey(), (((double) entry.getValue()) / updateInterval));
     }
     return avgQueueSizeMap;
