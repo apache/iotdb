@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
@@ -34,7 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCou
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -94,14 +95,15 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
     NodePathsSchemaScanNode childPathsSchemaScanNode =
         new NodePathsSchemaScanNode(
             new PlanNodeId("NodePathsScan"), new PartialPath("root.ln"), -1);
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
-    fragmentSinkNode.addChild(childPathsSchemaScanNode);
-    fragmentSinkNode.setDownStream(
-        new TEndPoint("127.0.0.1", 6667),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
+    IdentitySinkNode identitySinkNode = new IdentitySinkNode(new PlanNodeId("fragmentSink"));
+    identitySinkNode.addChild(childPathsSchemaScanNode);
+    identitySinkNode.addDownStreamChannelLocation(
+        new DownStreamChannelLocation(
+            new TEndPoint("127.0.0.1", 6667),
+            new FragmentInstanceId(new PlanFragmentId("q", 1), "ds").toThrift(),
+            "test"));
     exchangeNode.addChild(schemaMergeNode);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    exchangeNode.setRemoteSourceNode(identitySinkNode);
     exchangeNode.setUpstream(
         new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),

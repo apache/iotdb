@@ -22,11 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 
 import org.junit.Test;
@@ -42,14 +43,15 @@ public class ExchangeNodeSerdeTest {
     TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), Ordering.ASC);
 
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("TestExchangeNode"));
-    FragmentSinkNode fragmentSinkNode =
-        new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
-    fragmentSinkNode.setDownStream(
-        new TEndPoint("127.0.0.1", 6666),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
-    fragmentSinkNode.addChild(timeJoinNode);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    IdentitySinkNode identitySinkNode =
+        new IdentitySinkNode(new PlanNodeId("TestFragmentSinkNode"));
+    identitySinkNode.addDownStreamChannelLocation(
+        new DownStreamChannelLocation(
+            new TEndPoint("127.0.0.1", 6666),
+            new FragmentInstanceId(new PlanFragmentId("q", 1), "ds").toThrift(),
+            "test"));
+    identitySinkNode.addChild(timeJoinNode);
+    exchangeNode.setRemoteSourceNode(identitySinkNode);
     exchangeNode.setUpstream(
         new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),

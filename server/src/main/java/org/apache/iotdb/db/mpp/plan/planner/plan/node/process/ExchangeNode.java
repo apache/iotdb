@@ -48,7 +48,7 @@ public class ExchangeNode extends SingleChildProcessNode {
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
-  private List<String> outputColumnNames;
+  private List<String> outputColumnNames = new ArrayList<>();
 
   /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
   private int indexOfUpstreamSinkHandle = 0;
