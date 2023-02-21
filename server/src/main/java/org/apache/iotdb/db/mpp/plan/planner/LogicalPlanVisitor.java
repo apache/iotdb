@@ -466,8 +466,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
             && !showTimeSeriesStatement.isOrderByHeat();
 
-    int limit = showTimeSeriesStatement.getLimit();
-    int offset = showTimeSeriesStatement.getOffset();
+    long limit = showTimeSeriesStatement.getLimit();
+    long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;
       offset = 0;
@@ -523,8 +523,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
 
-    int limit = showDevicesStatement.getLimit();
-    int offset = showDevicesStatement.getOffset();
+    long limit = showDevicesStatement.getLimit();
+    long offset = showDevicesStatement.getOffset();
     if (!canPushDownOffsetLimit) {
       limit = showDevicesStatement.getLimit() + showDevicesStatement.getOffset();
       offset = 0;

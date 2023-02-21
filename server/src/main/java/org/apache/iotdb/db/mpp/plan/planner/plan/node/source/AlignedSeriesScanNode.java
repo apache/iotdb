@@ -62,10 +62,10 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   @Nullable private Filter valueFilter;
 
   // Limit for result set. The default value is -1, which means no limit
-  private int limit;
+  private long limit;
 
   // offset for result set. The default value is 0
-  private int offset;
+  private long offset;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -86,8 +86,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       Ordering scanOrder,
       @Nullable Filter timeFilter,
       @Nullable Filter valueFilter,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, alignedPath, scanOrder);
     this.timeFilter = timeFilter;
@@ -119,19 +119,19 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     return valueFilter;
   }
 
-  public int getLimit() {
+  public long getLimit() {
     return limit;
   }
 
-  public int getOffset() {
+  public long getOffset() {
     return offset;
   }
 
-  public void setLimit(int limit) {
+  public void setLimit(long limit) {
     this.limit = limit;
   }
 
-  public void setOffset(int offset) {
+  public void setOffset(long offset) {
     this.offset = offset;
   }
 

@@ -162,8 +162,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
   }
 
   private static class RewriterContext {
-    private int limit;
-    private int offset;
+    private long limit;
+    private long offset;
 
     private boolean enablePushDown = true;
 
@@ -175,19 +175,19 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       this.analysis = analysis;
     }
 
-    public int getLimit() {
+    public long getLimit() {
       return limit;
     }
 
-    public void setLimit(int limit) {
+    public void setLimit(long limit) {
       this.limit = limit;
     }
 
-    public int getOffset() {
+    public long getOffset() {
       return offset;
     }
 
-    public void setOffset(int offset) {
+    public void setOffset(long offset) {
       this.offset = offset;
     }
 

@@ -41,8 +41,8 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   public DevicesSchemaScanNode(
       PlanNodeId id,
       PartialPath path,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean isPrefixPath,
       boolean hasSgCol) {
     super(id, path, limit, offset, isPrefixPath);

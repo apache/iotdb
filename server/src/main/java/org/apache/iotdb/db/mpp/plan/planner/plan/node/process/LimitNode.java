@@ -33,19 +33,19 @@ import java.util.Objects;
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
 public class LimitNode extends SingleChildProcessNode {
 
-  private final int limit;
+  private final long limit;
 
-  public LimitNode(PlanNodeId id, int limit) {
+  public LimitNode(PlanNodeId id, long limit) {
     super(id);
     this.limit = limit;
   }
 
-  public LimitNode(PlanNodeId id, PlanNode child, int limit) {
+  public LimitNode(PlanNodeId id, PlanNode child, long limit) {
     super(id, child);
     this.limit = limit;
   }
 
-  public int getLimit() {
+  public long getLimit() {
     return limit;
   }
 
