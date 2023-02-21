@@ -83,14 +83,13 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
 
   @Override
   public TsBlock next() {
-    if (!prepareInput()) {
-      return null;
-    }
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
     boolean successful = true;
     while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull() && successful) {
+      if (!prepareInput()) {
+        break;
+      }
       successful = processOneRow();
     }
     TsBlock tsBlock = null;

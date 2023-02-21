@@ -196,7 +196,9 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       if (!isEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (children.get(i).hasNextWithTimer()) {
+        if (!canCallNext[i]) {
+          return true;
+        } else if (children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
