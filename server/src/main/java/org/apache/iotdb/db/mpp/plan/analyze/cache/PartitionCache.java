@@ -118,11 +118,11 @@ public class PartitionCache {
    * get database to device map.
    *
    * @param devicePaths the devices that need to hit
-   * @param tryToFetch whether try to get all database from config node
-   * @param isAutoCreate whether auto create database when cache miss
+   * @param fetchDatabases whether try to get all database from config node
+   * @param autoCreateDatabases whether auto create database when cache miss
    */
   public Map<String, List<String>> getDatabaseToDevice(
-      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
+      List<String> devicePaths, boolean fetchDatabases, boolean autoCreateDatabases) {
     DatabaseCacheResult<List<String>> result =
         new DatabaseCacheResult<List<String>>() {
           @Override
@@ -131,7 +131,7 @@ public class PartitionCache {
             resultMap.get(databaseName).add(device);
           }
         };
-    getDatabaseCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
+    getDatabaseCacheResult(result, devicePaths, fetchDatabases, autoCreateDatabases);
     // TODO spricoder check result
     return result.getResultMap();
   }
@@ -292,18 +292,21 @@ public class PartitionCache {
   }
 
   /**
-   * get database map in three try
+   * get map from device to database in three trys. Firstly, we generate result locally. Secondly,
+   * we try to fetch databases from config node if first try is failed and fetchDatabases is true.
+   * Thirdly, we try to trigger auto-create databases if second try is failed and
+   * autoCreateDatabases is true.
    *
    * @param result contains result, failed devices and map
    * @param devicePaths the devices that need to hit
-   * @param tryToFetch whether try to get all database from confignode
-   * @param isAutoCreate whether auto create database when device miss
+   * @param fetchDatabases whether try to get all database from confignode
+   * @param autoCreateDatabases whether auto create database when device miss
    */
   private void getDatabaseCacheResult(
       DatabaseCacheResult<?> result,
       List<String> devicePaths,
-      boolean tryToFetch,
-      boolean isAutoCreate) {
+      boolean fetchDatabases,
+      boolean autoCreateDatabases) {
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
       if (devicePath.contains("*")) {
@@ -312,13 +315,13 @@ public class PartitionCache {
     }
     // first try to hit database in fast-fail way
     getStorageGroupMap(result, devicePaths, true);
-    if (!result.isSuccess() && tryToFetch) {
+    if (!result.isSuccess() && fetchDatabases) {
       try {
         // try to fetch database from config node when miss
         fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit database in fast-fail way
         getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && isAutoCreate) {
+        if (!result.isSuccess() && autoCreateDatabases) {
           // try to auto create database of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit database in fast-fail way
