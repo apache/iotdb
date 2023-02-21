@@ -108,7 +108,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     return allReady;
   }
 
-  /** If the tsBlock is null or has no more data in the tsBlock, return true; else return false; */
+  /** If the tsBlock is null or has no more data in the tsBlock, return true; else return false. */
   protected boolean isEmpty(int index) {
     return inputTsBlocks[index] == null || inputTsBlocks[index].isEmpty();
   }

@@ -52,7 +52,6 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private final long maxRetainedSize;
   private final long childrenRetainedSize;
-  private final long maxReturnSize;
 
   public AggregationOperator(
       OperatorContext operatorContext,

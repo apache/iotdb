@@ -46,7 +46,6 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   private final TsBlockBuilder tsBlockBuilder;
   private final long maxRetainedSize;
   private final long childrenRetainedSize;
-  private final long maxReturnSize;
 
   public TagAggregationOperator(
       OperatorContext operatorContext,
