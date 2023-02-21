@@ -57,7 +57,10 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      return null;
+      for (PlanNode child : node.getChildren()) {
+        child.accept(this, context);
+      }
+      return node;
     }
 
     @Override
