@@ -252,8 +252,8 @@ public class SeriesScanNode extends SeriesSourceNode {
     if (isNull == 1) {
       valueFilter = FilterFactory.deserialize(byteBuffer);
     }
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    long limit = ReadWriteIOUtils.readLong(byteBuffer);
+    long offset = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesScanNode(
         planNodeId, partialPath, scanOrder, timeFilter, valueFilter, limit, offset, null);

@@ -77,7 +77,7 @@ public class LimitNode extends SingleChildProcessNode {
   }
 
   public static LimitNode deserialize(ByteBuffer byteBuffer) {
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
+    long limit = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LimitNode(planNodeId, limit);
   }

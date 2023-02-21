@@ -71,7 +71,7 @@ public class DistributionPlanner {
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       for (PlanOptimizer optimizer : optimizers) {
         rootWithExchange = optimizer.optimize(rootWithExchange, analysis, context);
       }
@@ -87,7 +87,7 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
