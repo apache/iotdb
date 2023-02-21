@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,11 +35,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class ExchangeNode extends SingleChildProcessNode {
-
-  // The remoteSourceNode is used to record the remote source info for current ExchangeNode
-  // It is not the child of current ExchangeNode
-  private MultiChildrenSinkNode remoteSourceNode;
-
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
@@ -70,9 +64,6 @@ public class ExchangeNode extends SingleChildProcessNode {
   @Override
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
-    if (remoteSourceNode != null) {
-      node.setRemoteSourceNode(remoteSourceNode);
-    }
     node.setOutputColumnNames(outputColumnNames);
     node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
     return node;
@@ -157,20 +148,12 @@ public class ExchangeNode extends SingleChildProcessNode {
         getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
-  public MultiChildrenSinkNode getRemoteSourceNode() {
-    return remoteSourceNode;
-  }
-
   public int getIndexOfUpstreamSinkHandle() {
     return indexOfUpstreamSinkHandle;
   }
 
   public void setIndexOfUpstreamSinkHandle(int indexOfUpstreamSinkHandle) {
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
-  }
-
-  public void setRemoteSourceNode(MultiChildrenSinkNode remoteSourceNode) {
-    this.remoteSourceNode = remoteSourceNode;
   }
 
   public TEndPoint getUpstreamEndpoint() {

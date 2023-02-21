@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
@@ -45,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.commons.lang3.Validate;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -191,12 +191,15 @@ public class DistributionPlanner {
       return;
     }
 
-    FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
-    sinkNode.setDownStream(
-        context.getLocalDataBlockEndpoint(),
-        context.getResultNodeContext().getVirtualFragmentInstanceId(),
-        context.getResultNodeContext().getVirtualResultNodeId());
-    sinkNode.setChild(rootInstance.getFragment().getPlanNodeTree());
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(rootInstance.getFragment().getPlanNodeTree()),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    context.getLocalDataBlockEndpoint(),
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId())));
     context
         .getResultNodeContext()
         .setUpStream(
@@ -239,9 +242,6 @@ public class DistributionPlanner {
         sinkNode.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
 
-        // Record the source node info in the ExchangeNode so that we can keep the connection of
-        // these nodes/fragments
-        exchangeNode.setRemoteSourceNode(sinkNode);
         // We cut off the subtree to make the ExchangeNode as the leaf node of current PlanFragment
         exchangeNode.cleanChildren();
 

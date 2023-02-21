@@ -174,7 +174,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -1827,39 +1826,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     context.addExchangeOperator(exchangeOperator);
     return exchangeOperator;
-  }
-
-  @Override
-  public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
-    if (!isSameNode(node.getDownStreamEndpoint())) {
-      context.addExchangeSumNum(1);
-    }
-    Operator child = node.getChild().accept(this, context);
-
-    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
-    FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
-    TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
-
-    checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
-
-    ISinkHandle sinkHandle =
-        isSameNode(downStreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForFragment(
-                localInstanceId.toThrift(),
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId(),
-                context.getInstanceContext())
-            : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
-                localInstanceId.toThrift(),
-                downStreamEndPoint,
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId(),
-                node.getPlanNodeId().getId(),
-                context.getInstanceContext());
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSinkHandle(sinkHandle);
-    return child;
   }
 
   @Override

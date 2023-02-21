@@ -151,7 +151,7 @@ public class IoTDBShuffleSink2IT {
     String[] retArray2 = new String[] {"root.sg.d1,2,2,", "root.sg.d2,1,1,", "root.sg.d3,0,0,"};
 
     resultSetEqualTest(
-        "select count(s1),count(s2) from root.** where s1 <= 4 order by time align by device",
+        "select count(s1),count(s2) from root.sg.** where s1 <= 4 order by time align by device",
         expectedHeader2,
         retArray2);
   }

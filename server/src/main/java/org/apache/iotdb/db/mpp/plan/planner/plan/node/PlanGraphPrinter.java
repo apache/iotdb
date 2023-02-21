@@ -45,7 +45,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -304,14 +303,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Count: %d", node.getLimit()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
-  public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
     return render(node, boxValue, context);
   }
 
