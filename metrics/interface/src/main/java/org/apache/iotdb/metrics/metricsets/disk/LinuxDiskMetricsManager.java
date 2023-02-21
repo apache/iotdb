@@ -192,10 +192,11 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
     Map<String, Double> avgReadTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readCostEntry : incrementReadTimeCostForDisk.entrySet()) {
-      long writeOpsCount =
-          incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L);
+      // use Long.max to avoid NaN
+      long readOpsCount =
+          Long.max(incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L), 1L);
       avgReadTimeCostMap.put(
-          readCostEntry.getKey(), (double) readCostEntry.getValue() / writeOpsCount);
+          readCostEntry.getKey(), (double) readCostEntry.getValue() / readOpsCount);
     }
     return avgReadTimeCostMap;
   }
@@ -204,8 +205,10 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
     Map<String, Double> avgWriteTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeCostEntry : incrementWriteTimeCostForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long writeOpsCount =
-          incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L);
+          Long.max(
+              incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L), 1L);
       avgWriteTimeCostMap.put(
           writeCostEntry.getKey(), (double) writeCostEntry.getValue() / writeOpsCount);
     }
@@ -216,8 +219,11 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgSizeOfEachReadForDisk() {
     Map<String, Double> avgSizeOfReadMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readSectorSizeEntry : incrementReadSectorCountForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long readOpsCount =
-          incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L);
+          Long.max(
+              incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L),
+              1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(readSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfReadMap.put(
@@ -232,8 +238,11 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     Map<String, Double> avgSizeOfWriteMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeSectorSizeEntry :
         incrementWriteSectorCountForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long writeOpsCount =
-          incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L);
+          Long.max(
+              incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L),
+              1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(writeSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfWriteMap.put(

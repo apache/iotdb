@@ -2528,8 +2528,9 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_busy_percentage{instance=~\"$instance\"}/10000",
+          "expr": "disk_io_busy_percentage{instance=~\"$instance\"}",
           "instant": false,
           "interval": "",
           "legendFormat": "{{name}}",
@@ -2896,10 +2897,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_avg_time{instance=~\"$instance\"}/1000000",
+          "expr": "disk_io_avg_time{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3079,7 +3082,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_avg_queue_size{instance=~\"$instance\"}/10000",
+          "expr": "disk_io_avg_queue_size{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}",
           "range": true,
@@ -3345,6 +3348,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7T",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }
