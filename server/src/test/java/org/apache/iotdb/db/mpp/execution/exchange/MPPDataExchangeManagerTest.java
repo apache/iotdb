@@ -23,8 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -36,6 +40,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.Collections;
 import java.util.concurrent.Executors;
 
 public class MPPDataExchangeManagerTest {
@@ -44,6 +49,7 @@ public class MPPDataExchangeManagerTest {
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId("q0", 1, "0");
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
     final String remotePlanNodeId = "exchange_0";
+    final String localPlanNodeId = "shuffleSink_0";
     final FragmentInstanceContext mockFragmentInstanceContext =
         Mockito.mock(FragmentInstanceContext.class);
 
@@ -61,14 +67,22 @@ public class MPPDataExchangeManagerTest {
                 .createClientManager(
                     new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
-    ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandleForFragment(
+    ISinkHandle shuffleSinkHandle =
+        mppDataExchangeManager.createShuffleSinkHandle(
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint(
+                        IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+                        IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort()),
+                    remoteFragmentInstanceId,
+                    remotePlanNodeId)),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
             localFragmentInstanceId,
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
+            localPlanNodeId,
             mockFragmentInstanceContext);
 
-    Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
+    Assert.assertTrue(shuffleSinkHandle instanceof ShuffleSinkHandle);
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
@@ -77,7 +91,7 @@ public class MPPDataExchangeManagerTest {
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
     Assert.assertEquals(
-        ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+        ((LocalSinkHandle) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
   }
 
@@ -85,7 +99,8 @@ public class MPPDataExchangeManagerTest {
   public void testCreateLocalSourceHandle() {
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId("q0", 1, "0");
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
-    final String localPlanNodeId = "exchange_0";
+    final String remotePlanNodeId = "exchange_0";
+    final String localPlanNodeId = "shuffleSink_0";
     final FragmentInstanceContext mockFragmentInstanceContext =
         Mockito.mock(FragmentInstanceContext.class);
 
@@ -105,21 +120,29 @@ public class MPPDataExchangeManagerTest {
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
-            localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, 0, t -> {});
+            remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, 0, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
-    ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandleForFragment(
-            remoteFragmentInstanceId,
+    ISinkHandle shuffleSinkHandle =
+        mppDataExchangeManager.createShuffleSinkHandle(
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint(
+                        IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+                        IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort()),
+                    remoteFragmentInstanceId,
+                    remotePlanNodeId)),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
             localFragmentInstanceId,
             localPlanNodeId,
             mockFragmentInstanceContext);
 
-    Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
+    Assert.assertTrue(shuffleSinkHandle instanceof ShuffleSinkHandle);
 
     Assert.assertEquals(
-        ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+        ((LocalSinkHandle) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
   }
 }

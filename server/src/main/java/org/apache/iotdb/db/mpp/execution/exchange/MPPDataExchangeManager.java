@@ -442,7 +442,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
-  public synchronized ISinkHandle createLocalSinkHandleForFragment(
+  private synchronized ISinkHandle createLocalSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -495,7 +495,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
-  public ISinkHandle createSinkHandle(
+  private ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -568,7 +568,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
-      return createLocalSinkHandleForFragment(
+      return createLocalSinkHandle(
           localFragmentInstanceId,
           downStreamChannelLocation.getRemoteFragmentInstanceId(),
           downStreamChannelLocation.getRemotePlanNodeId(),
