@@ -127,6 +127,14 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     return offset;
   }
 
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
   @Override
   public void open() throws Exception {}
 

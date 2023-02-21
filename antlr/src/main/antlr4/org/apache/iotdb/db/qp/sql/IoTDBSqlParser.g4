@@ -530,13 +530,13 @@ paginationClause
     ;
 
 rowPaginationClause
-    : limitClause offsetClause?
-    | offsetClause? limitClause
+    : limitClause? offsetClause?
+    | offsetClause? limitClause?
     ;
 
 seriesPaginationClause
-    : slimitClause soffsetClause?
-    | soffsetClause? slimitClause
+    : slimitClause? soffsetClause?
+    | soffsetClause? slimitClause?
     ;
 
 limitClause

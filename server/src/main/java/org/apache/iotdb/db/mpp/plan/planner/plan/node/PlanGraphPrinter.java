@@ -95,6 +95,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
     boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+    boxValue.add(String.format("Limit: %s", node.getLimit()));
+    boxValue.add(String.format("Offset: %s", node.getOffset()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -108,6 +110,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+    boxValue.add(String.format("Limit: %s", node.getLimit()));
+    boxValue.add(String.format("Offset: %s", node.getOffset()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }

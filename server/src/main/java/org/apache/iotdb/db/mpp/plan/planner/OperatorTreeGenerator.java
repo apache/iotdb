@@ -282,6 +282,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    seriesScanOptionsBuilder.withLimit(node.getLimit());
+    seriesScanOptionsBuilder.withOffset(node.getOffset());
 
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(

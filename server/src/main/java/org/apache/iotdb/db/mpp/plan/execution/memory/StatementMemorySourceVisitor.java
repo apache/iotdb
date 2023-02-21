@@ -92,8 +92,11 @@ public class StatementMemorySourceVisitor
             .plan(context.getAnalysis());
     DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
     PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
+    PlanNode optimizedRootWithExchange = planner.optimize(rootWithExchange);
+
     List<String> lines =
-        rootWithExchange.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+        optimizedRootWithExchange.accept(
+            new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(

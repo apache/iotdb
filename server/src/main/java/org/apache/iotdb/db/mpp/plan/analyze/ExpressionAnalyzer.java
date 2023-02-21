@@ -1331,4 +1331,37 @@ public class ExpressionAnalyzer {
           "unsupported expression type: " + expression.getExpressionType());
     }
   }
+
+  public static boolean check(Expression expression, Analysis analysis) {
+    if (expression instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) expression;
+      return check(ternaryExpression.getFirstExpression(), analysis)
+          && check(ternaryExpression.getSecondExpression(), analysis)
+          && check(ternaryExpression.getThirdExpression(), analysis);
+    } else if (expression instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) expression;
+      return check(binaryExpression.getLeftExpression(), analysis)
+          && check(binaryExpression.getRightExpression(), analysis);
+    } else if (expression instanceof UnaryExpression) {
+      return check(((UnaryExpression) expression).getExpression(), analysis);
+    } else if (expression instanceof FunctionExpression) {
+      FunctionExpression functionExpression = (FunctionExpression) expression;
+      if (functionExpression.isBuiltInAggregationFunctionExpression()
+          || functionExpression.isMappable(analysis.getExpressionTypes())) {
+        return false;
+      }
+      List<Expression> inputExpressions = functionExpression.getExpressions();
+      for (Expression inputExpression : inputExpressions) {
+        if (!check(inputExpression, analysis)) {
+          return false;
+        }
+      }
+      return true;
+    } else if (expression instanceof LeafOperand) {
+      return true;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
 }
