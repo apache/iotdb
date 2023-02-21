@@ -25,15 +25,11 @@ import org.apache.ratis.metrics.MetricRegistries;
 import org.apache.ratis.metrics.MetricRegistryInfo;
 import org.apache.ratis.metrics.RatisMetricRegistry;
 import org.apache.ratis.util.TimeDuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class MetricRegistryManager extends MetricRegistries {
@@ -56,8 +52,7 @@ public class MetricRegistryManager extends MetricRegistries {
   @Override
   public RatisMetricRegistry create(MetricRegistryInfo metricRegistryInfo) {
     return registries.put(
-        metricRegistryInfo,
-        () -> new IoTDBMetricRegistry(metricRegistryInfo, service));
+        metricRegistryInfo, () -> new IoTDBMetricRegistry(metricRegistryInfo, service));
   }
 
   @Override
