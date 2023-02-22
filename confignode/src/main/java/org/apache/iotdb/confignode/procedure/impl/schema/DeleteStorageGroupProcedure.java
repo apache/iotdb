@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -61,8 +60,6 @@ public class DeleteStorageGroupProcedure
   private static final int RETRY_THRESHOLD = 5;
 
   private TDatabaseSchema deleteSgSchema;
-
-  private transient List<RegionMaintainTask> regionDeleteTaskList = new ArrayList<>();
 
   public DeleteStorageGroupProcedure() {
     super();
@@ -146,7 +143,6 @@ public class DeleteStorageGroupProcedure
           if (!dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList().isEmpty()) {
             // submit async data region delete task
             env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
-            regionDeleteTaskList.addAll(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
           }
 
           // Delete StorageGroupPartitionTable
@@ -186,8 +182,6 @@ public class DeleteStorageGroupProcedure
                   .values()
                   .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
               env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
-              regionDeleteTaskList.addAll(
-                  schemaRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
             }
           }
 
@@ -280,9 +274,5 @@ public class DeleteStorageGroupProcedure
           && thatProc.deleteSgSchema.equals(this.getDeleteSgSchema());
     }
     return false;
-  }
-
-  public List<RegionMaintainTask> getRegionDeleteTaskList() {
-    return regionDeleteTaskList;
   }
 }
