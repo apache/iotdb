@@ -143,9 +143,11 @@ public class DeleteStorageGroupProcedure
                 }
               });
 
-          // submit async data region delete task
-          env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
-          regionDeleteTaskList.addAll(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
+          if (!dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList().isEmpty()) {
+            // submit async data region delete task
+            env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
+            regionDeleteTaskList.addAll(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
+          }
 
           // Delete StorageGroupPartitionTable
           TSStatus deleteConfigResult = env.deleteConfig(deleteSgSchema.getName());
@@ -166,23 +168,28 @@ public class DeleteStorageGroupProcedure
             }
             requestIndex++;
           }
-          AsyncDataNodeClientPool.getInstance()
-              .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
-          for (Map.Entry<Integer, TSStatus> entry :
-              asyncClientHandler.getResponseMap().entrySet()) {
-            if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              schemaRegionDeleteTaskMap.remove(entry.getKey());
+          if (!schemaRegionDeleteTaskMap.isEmpty()) {
+            AsyncDataNodeClientPool.getInstance()
+                .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
+            for (Map.Entry<Integer, TSStatus> entry :
+                asyncClientHandler.getResponseMap().entrySet()) {
+              if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                schemaRegionDeleteTaskMap.remove(entry.getKey());
+              }
+            }
+
+            if (!schemaRegionDeleteTaskMap.isEmpty()) {
+              // submit async schema region delete task for failed sync execution
+              OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
+                  new OfferRegionMaintainTasksPlan();
+              schemaRegionDeleteTaskMap
+                  .values()
+                  .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
+              env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
+              regionDeleteTaskList.addAll(
+                  schemaRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
             }
           }
-
-          // submit async schema region delete task for failed sync execution
-          OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
-              new OfferRegionMaintainTasksPlan();
-          schemaRegionDeleteTaskMap
-              .values()
-              .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
-          env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
-          regionDeleteTaskList.addAll(schemaRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
 
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
