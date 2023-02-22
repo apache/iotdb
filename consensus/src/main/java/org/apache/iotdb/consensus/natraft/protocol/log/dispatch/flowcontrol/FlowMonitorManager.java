@@ -50,22 +50,18 @@ public class FlowMonitorManager {
     monitorMap.clear();
   }
 
-  public void register(Peer peer) {
-    logger.info("Registering flow monitor {}", peer);
-    monitorMap.computeIfAbsent(
-        peer,
-        p -> {
-          try {
-            return new FlowMonitor(p, config);
-          } catch (IOException e) {
-            logger.warn("Cannot register flow monitor for {}", peer, e);
-            return null;
-          }
-        });
-  }
-
   public void report(Peer peer, long val) {
-    FlowMonitor flowMonitor = monitorMap.get(peer);
+    FlowMonitor flowMonitor =
+        monitorMap.computeIfAbsent(
+            peer,
+            p -> {
+              try {
+                return new FlowMonitor(p, config);
+              } catch (IOException e) {
+                logger.warn("Cannot register flow monitor for {}", peer, e);
+                return null;
+              }
+            });
     if (flowMonitor != null) {
       flowMonitor.report(val);
     } else {

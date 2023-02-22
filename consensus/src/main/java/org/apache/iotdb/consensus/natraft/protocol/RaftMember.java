@@ -297,7 +297,6 @@ public class RaftMember {
     catchUpManager.start();
     commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
     if (config.isUseFollowerLoadBalance()) {
-      FlowMonitorManager.INSTANCE.register(thisNode);
       flowBalancer = new FlowBalancer(logDispatcher, this, config);
       flowBalancer.start();
     }
@@ -594,7 +593,9 @@ public class RaftMember {
 
     // assign term and index to the new log and append it
     VotingLog sendLogRequest = logSequencer.sequence(entry);
-    FlowMonitorManager.INSTANCE.report(thisNode, entry.estimateSize());
+    if (config.isUseFollowerLoadBalance()) {
+      FlowMonitorManager.INSTANCE.report(thisNode, entry.estimateSize());
+    }
 
     if (sendLogRequest == null) {
       return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
@@ -621,7 +622,7 @@ public class RaftMember {
     } catch (LogExecutionException e) {
       return handleLogExecutionException(entry, IOUtils.getRootCause(e));
     }
-    return StatusUtils.TIME_OUT;
+    return StatusUtils.getStatus(TSStatusCode.TIME_OUT);
   }
 
   protected void waitApply(Entry entry) throws LogExecutionException {
@@ -678,6 +679,7 @@ public class RaftMember {
 
     // cannot get enough agreements within a certain amount of time
     if (totalAccepted < quorumSize) {
+      logger.info("{} failed because {} < {}", log, totalAccepted, quorumSize);
       return AppendLogResult.TIME_OUT;
     }
 
@@ -716,7 +718,7 @@ public class RaftMember {
     synchronized (log.getEntry()) {
       while (log.getEntry().getCurrLogIndex() == Long.MIN_VALUE
           || (stronglyAccepted < quorumSize
-              && (!(enableWeakAcceptance || (totalAccepted < quorumSize))
+              && (!(enableWeakAcceptance && (totalAccepted >= quorumSize))
                   && alreadyWait < config.getWriteOperationTimeoutMS()
                   && !log.isHasFailed()))) {
         try {
@@ -1133,7 +1135,7 @@ public class RaftMember {
     try {
       return clientManager.borrowClient(node);
     } catch (Exception e) {
-      logger.error("borrow async heartbeat client fail", e);
+      logger.error("borrow async client fail", e);
       return null;
     }
   }

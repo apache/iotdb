@@ -19,11 +19,12 @@ public class DirectorySnapshot extends Snapshot {
   @Override
   public ByteBuffer serialize() {
     byte[] bytes = directory.getAbsolutePath().getBytes();
-    ByteBuffer buffer = ByteBuffer.allocate(bytes.length + Integer.BYTES);
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2 + bytes.length + Integer.BYTES);
     buffer.putLong(lastLogIndex);
     buffer.putLong(lastLogTerm);
     buffer.putInt(bytes.length);
     buffer.put(bytes);
+    buffer.flip();
     return buffer;
   }
 

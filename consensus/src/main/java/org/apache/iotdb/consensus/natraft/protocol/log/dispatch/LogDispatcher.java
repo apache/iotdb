@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
+import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
@@ -78,6 +79,9 @@ public class LogDispatcher {
     this.config = config;
     this.queueOrdered = !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
+    if (!queueOrdered) {
+      maxBatchSize = 1;
+    }
     createQueueAndBindingThreads();
   }
 
@@ -94,7 +98,6 @@ public class LogDispatcher {
         BlockingQueue<VotingLog> logBlockingQueue;
         logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
         nodesLogQueuesMap.put(node, logBlockingQueue);
-        FlowMonitorManager.INSTANCE.register(node);
         nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
       }
     }
@@ -221,16 +224,18 @@ public class LogDispatcher {
     }
 
     private void appendEntriesAsync(
-        List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingLog> currBatch)
-        throws TException {
+        List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingLog> currBatch) {
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       AsyncRaftServiceClient client = member.getClient(receiver.getEndpoint());
+      try {
+        AppendEntryResult appendEntryResult = SyncClientAdaptor.appendEntries(client, request);
+        handler.onComplete(appendEntryResult);
+      } catch (Exception e) {
+        handler.onError(e);
+      }
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
-      }
-      if (client != null) {
-        client.appendEntries(request, handler);
       }
     }
 
@@ -278,7 +283,9 @@ public class LogDispatcher {
         }
 
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
-        FlowMonitorManager.INSTANCE.report(receiver, logSize);
+        if (config.isUseFollowerLoadBalance()) {
+          FlowMonitorManager.INSTANCE.report(receiver, logSize);
+        }
         nodesRateLimiter.get(receiver).acquire((int) logSize);
 
         appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));

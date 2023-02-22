@@ -144,12 +144,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   }
 
   private void onFail(Peer trueReceiver) {
-    synchronized (log) {
+    synchronized (log.getEntry()) {
       log.getFailedNodes().add(trueReceiver);
       if (log.getFailedNodes().size() > quorumSize) {
         // quorum members have failed, there is no need to wait for others
+        logger.warn(
+            "{} failed because too many replicas have failed: {}", log, log.getFailedNodes());
         log.setHasFailed(true);
-        log.notifyAll();
+        log.getEntry().notifyAll();
       }
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.applier;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
@@ -33,9 +34,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class AsyncLogApplier implements LogApplier {
@@ -58,12 +56,7 @@ public class AsyncLogApplier implements LogApplier {
     this.embeddedApplier = embeddedApplier;
     consumerMap = new HashMap<>();
     consumerPool =
-        new ThreadPoolExecutor(
-            CONCURRENT_CONSUMER_NUM,
-            Integer.MAX_VALUE,
-            0,
-            TimeUnit.SECONDS,
-            new SynchronousQueue<>());
+        IoTDBThreadPoolFactory.newFixedThreadPool(CONCURRENT_CONSUMER_NUM, "ApplierThread");
     this.name = name;
     this.config = config;
   }

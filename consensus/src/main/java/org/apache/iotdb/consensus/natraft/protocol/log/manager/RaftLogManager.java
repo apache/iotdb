@@ -382,14 +382,6 @@ public abstract class RaftLogManager {
       return getLastLogIndex();
     }
 
-    Entry firstAppendingEntry = appendingEntries.get(0);
-    Entry lastAppendingEntry = appendingEntries.get(appendingEntries.size() - 1);
-    if (getTerm(firstAppendingEntry.getCurrLogIndex()) == firstAppendingEntry.getCurrLogTerm()
-        && getTerm(lastAppendingEntry.getCurrLogIndex()) == lastAppendingEntry.getCurrLogTerm()) {
-      // skip existing entry
-      return getLastLogIndex();
-    }
-
     long after = appendingEntries.get(0).getCurrLogIndex();
     long len = after - getFirstIndex();
     if (len < 0) {

@@ -38,15 +38,15 @@ public class RaftConfig {
   private int logDeleteCheckIntervalSecond = 1;
   private boolean enableRaftLogPersistence = true;
   private int catchUpTimeoutMS = 60_000;
-  private boolean useFollowerSlidingWindow = false;
+  private boolean useFollowerSlidingWindow = true;
   private int uncommittedRaftLogNumForRejectThreshold = 10000;
   private int heartbeatIntervalMs = 1000;
   private int electionTimeoutMs = 20_000;
   /** max number of clients in a ClientPool of a member for one node. */
-  private int maxClientPerNodePerMember = 1000;
+  private int maxClientPerNode = 2000;
 
   /** max number of idle clients in a ClientPool of a member for one node. */
-  private int maxIdleClientPerNodePerMember = 500;
+  private int maxIdleClientPerNode = 1000;
 
   /**
    * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
@@ -68,9 +68,9 @@ public class RaftConfig {
   private boolean enableUsePersistLogOnDiskToCatchUp;
   private long writeOperationTimeoutMS = 20_000L;
   // TODO-raft: apply to thrift
-  private int thriftMaxFrameSize = 512 * 1024 * 1024;
+  private int thriftMaxFrameSize = 64 * 1024 * 1024;
   private int logNumInBatch = 100;
-  private int dispatcherBindingThreadNum = 1;
+  private int dispatcherBindingThreadNum = 16;
   private int followerLoadBalanceWindowsToUse = 1;
   private double followerLoadBalanceOverestimateFactor = 1.1;
   private int flowMonitorMaxWindowSize = 1000;
@@ -187,20 +187,20 @@ public class RaftConfig {
     this.electionTimeoutMs = electionTimeoutMs;
   }
 
-  public int getMaxClientPerNodePerMember() {
-    return maxClientPerNodePerMember;
+  public int getMaxClientPerNode() {
+    return maxClientPerNode;
   }
 
-  public void setMaxClientPerNodePerMember(int maxClientPerNodePerMember) {
-    this.maxClientPerNodePerMember = maxClientPerNodePerMember;
+  public void setMaxClientPerNode(int maxClientPerNode) {
+    this.maxClientPerNode = maxClientPerNode;
   }
 
-  public int getMaxIdleClientPerNodePerMember() {
-    return maxIdleClientPerNodePerMember;
+  public int getMaxIdleClientPerNode() {
+    return maxIdleClientPerNode;
   }
 
-  public void setMaxIdleClientPerNodePerMember(int maxIdleClientPerNodePerMember) {
-    this.maxIdleClientPerNodePerMember = maxIdleClientPerNodePerMember;
+  public void setMaxIdleClientPerNode(int maxIdleClientPerNode) {
+    this.maxIdleClientPerNode = maxIdleClientPerNode;
   }
 
   public long getWaitClientTimeoutMS() {

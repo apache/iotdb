@@ -9,6 +9,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
+import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.consensus.raft.thrift.ExecuteReq;
 
 import org.apache.thrift.TException;
@@ -70,6 +72,14 @@ public class SyncClientAdaptor {
       }
     }
     return status.get();
+  }
+
+  public static AppendEntryResult appendEntries(
+      AsyncRaftServiceClient client, AppendEntriesRequest request)
+      throws TException, InterruptedException {
+    GenericHandler<AppendEntryResult> matchTermHandler = new GenericHandler<>(client.getEndpoint());
+    client.appendEntries(request, matchTermHandler);
+    return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
   }
 
   public static void setConfig(RaftConfig config) {

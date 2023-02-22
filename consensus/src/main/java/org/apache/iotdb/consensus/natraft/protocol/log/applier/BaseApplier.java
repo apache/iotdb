@@ -62,6 +62,7 @@ public class BaseApplier implements LogApplier {
   }
 
   public TSStatus applyRequest(IConsensusRequest request) {
+    request = stateMachine.deserializeRequest(request);
     return stateMachine.write(request);
   }
 }

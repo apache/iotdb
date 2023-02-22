@@ -240,15 +240,6 @@ public class HeartbeatThread implements Runnable {
       logger.info("{}: Winning the election because the node is the only node.", memberName);
     }
 
-    if (!localMember.getThisNode().equals(localMember.getAllNodes().get(0))) {
-      long electionWait = getElectionRandomWaitMs() + 5000;
-      logger.info(
-          "{}: Sleep {}ms before the first election as this node is not the preferred " + "leader",
-          memberName,
-          electionWait);
-      Thread.sleep(electionWait);
-    }
-
     // the election goes on until this node becomes a follower or a leader
     while (localMember.getRole() == RaftRole.CANDIDATE) {
       startElection();

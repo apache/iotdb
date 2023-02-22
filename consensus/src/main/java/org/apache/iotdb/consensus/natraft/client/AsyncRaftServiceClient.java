@@ -153,4 +153,8 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
       return pooledObject.getObject() != null && pooledObject.getObject().isReady();
     }
   }
+
+  public TEndPoint getEndpoint() {
+    return endpoint;
+  }
 }

@@ -44,7 +44,17 @@ public class ConsensusConfig {
     this.ratisConfig = ratisConfig;
     this.ioTConsensusConfig = ioTConsensusConfig;
     // TODO-Raft: unify rpc config for all protocols
-    this.rpcConfig = RPCConfig.newBuilder().build();
+    this.rpcConfig =
+        RPCConfig.newBuilder()
+            .setSelectorNumOfClientManager(
+                ioTConsensusConfig.getRpc().getSelectorNumOfClientManager())
+            .setRpcSelectorThreadNum(ioTConsensusConfig.getRpc().getRpcSelectorThreadNum())
+            .setRpcMinConcurrentClientNum(
+                ioTConsensusConfig.getRpc().getRpcMinConcurrentClientNum())
+            .setRpcMaxConcurrentClientNum(
+                ioTConsensusConfig.getRpc().getRpcMaxConcurrentClientNum())
+            .setThriftMaxFrameSize(ioTConsensusConfig.getRpc().getThriftMaxFrameSize())
+            .build();
   }
 
   public TEndPoint getThisNodeEndPoint() {
