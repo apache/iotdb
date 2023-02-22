@@ -52,7 +52,7 @@ public class LocalSinkChannel implements ISinkChannel {
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
     this.sinkListener = Validate.notNull(sinkListener);
     this.queue = Validate.notNull(queue);
-    this.queue.setSinkHandle(this);
+    this.queue.setSinkChannel(this);
     blocked = queue.getCanAddTsBlock();
   }
 
@@ -63,7 +63,7 @@ public class LocalSinkChannel implements ISinkChannel {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.sinkListener = Validate.notNull(sinkListener);
     this.queue = Validate.notNull(queue);
-    this.queue.setSinkHandle(this);
+    this.queue.setSinkChannel(this);
     // SinkHandle can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
   }

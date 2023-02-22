@@ -103,7 +103,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   + ".");
         }
         TGetDataBlockResponse resp = new TGetDataBlockResponse();
-        // index of the channel must be a SinkHandle
+        // index of the channel must be a SinkChannel
         SinkChannel sinkChannelHandle =
             (SinkChannel)
                 (shuffleSinkHandles
@@ -146,7 +146,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               e.getSourceFragmentInstanceId());
           return;
         }
-        // index of the channel must be a SinkHandle
+        // index of the channel must be a SinkChannel
         ((SinkChannel)
                 (shuffleSinkHandles.get(e.getSourceFragmentInstanceId()).getChannel(e.getIndex())))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
@@ -634,8 +634,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
+            localFragmentInstanceId,
+            localPlanNodeId,
             queue,
             new SourceHandleListenerImpl(onFailureCallback));
     sourceHandles

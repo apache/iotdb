@@ -69,7 +69,7 @@ public interface IDriver {
    */
   void failed(Throwable t);
 
-  /** @return get SinkHandle of current IDriver */
+  /** @return get Sink of current IDriver */
   ISink getSink();
 
   int getDependencyDriverIndex();

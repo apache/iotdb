@@ -71,7 +71,7 @@ public abstract class Driver implements IDriver {
 
   protected Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
-    checkNotNull(driverContext.getSink(), "SinkHandle should not be null");
+    checkNotNull(driverContext.getSink(), "Sink should not be null");
     this.driverContext = driverContext;
     this.root = root;
     this.sink = driverContext.getSink();

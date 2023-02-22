@@ -78,7 +78,7 @@ public interface IMPPDataExchangeManager {
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
 
-  /** SharedTsBlockQueue must belong to corresponding LocalSinkHandle */
+  /** SharedTsBlockQueue must belong to corresponding LocalSinkChannel */
   ISourceHandle createLocalSourceHandleForPipeline(SharedTsBlockQueue queue, DriverContext context);
 
   /**

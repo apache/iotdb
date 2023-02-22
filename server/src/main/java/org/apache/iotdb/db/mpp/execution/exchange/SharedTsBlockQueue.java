@@ -75,7 +75,7 @@ public class SharedTsBlockQueue {
   private boolean closed = false;
 
   private LocalSourceHandle sourceHandle;
-  private LocalSinkChannel sinkHandle;
+  private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
@@ -128,8 +128,8 @@ public class SharedTsBlockQueue {
     return queue.size();
   }
 
-  public void setSinkHandle(LocalSinkChannel sinkHandle) {
-    this.sinkHandle = sinkHandle;
+  public void setSinkChannel(LocalSinkChannel sinkChannel) {
+    this.sinkChannel = sinkChannel;
   }
 
   public void setSourceHandle(LocalSourceHandle sourceHandle) {
@@ -162,9 +162,9 @@ public class SharedTsBlockQueue {
     }
     TsBlock tsBlock = queue.remove();
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
-    // corresponding LocalSinkHandle.
-    if (sinkHandle != null) {
-      sinkHandle.checkAndInvokeOnFinished();
+    // corresponding LocalSinkChannel.
+    if (sinkChannel != null) {
+      sinkChannel.checkAndInvokeOnFinished();
     }
     localMemoryManager
         .getQueryPool()

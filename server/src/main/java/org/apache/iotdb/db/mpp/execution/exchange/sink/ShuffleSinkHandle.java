@@ -102,8 +102,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
     // It is safe to use currentSinkHandle.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
-    ISink currentSinkHandle = downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
-    return currentSinkHandle.isFull();
+    ISinkChannel currentChannel =
+        downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
+    return currentChannel.isFull();
   }
 
   @Override

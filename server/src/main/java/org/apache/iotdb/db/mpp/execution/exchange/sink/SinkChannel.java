@@ -102,7 +102,7 @@ public class SinkChannel implements ISinkChannel {
 
   private boolean noMoreTsBlocks = false;
 
-  /** max bytes this SinkHandle can reserve. */
+  /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 

@@ -126,7 +126,7 @@ public class FragmentInstanceExecution {
             // help for gc
             sink = null;
             // close the driver after sink is aborted or closed because in driver.close() it
-            // will try to call ISinkHandle.setNoMoreTsBlocks()
+            // will try to call ISink.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
               driver.close();
             }
