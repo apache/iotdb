@@ -135,7 +135,7 @@ public class DistributionPlanner {
               context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).region;
           visitedCount.compute(regionOfChild, (region, count) -> (count == null) ? 0 : count + 1);
           List<PlanNode> planNodeList = nodeGroups.get(regionOfChild);
-          exchangeNode.addChild(planNodeList.get(planNodeList.size() - 1));
+          exchangeNode.setChild(planNodeList.get(planNodeList.size() - 1));
           exchangeNode.setIndexOfUpstreamSinkHandle(visitedCount.get(regionOfChild));
         });
   }

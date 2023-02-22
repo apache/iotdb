@@ -287,11 +287,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     if (context.isAlignByDevice()) {
       // For align by device,
       // if dataRegions of children are the same, we set child's dataRegion to this node,
-      // else we set the maxUseDataRegion to this node
+      // else we set the selected mostlyUsedDataRegion to this node
       dataRegion =
           nodeDistributionIsSame(visitedChildren, context)
               ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).region
-              : context.getMaxUseDataRegion();
+              : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
           newNode.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
