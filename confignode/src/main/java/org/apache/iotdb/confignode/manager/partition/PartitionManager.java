@@ -823,10 +823,6 @@ public class PartitionManager {
             });
   }
 
-  public List<RegionMaintainTask> getExistingRegionMaintainTaskList() {
-    return partitionInfo.getRegionMaintainEntryList();
-  }
-
   public void startRegionCleaner() {
     synchronized (scheduleMonitor) {
       if (currentRegionMaintainerFuture == null) {
