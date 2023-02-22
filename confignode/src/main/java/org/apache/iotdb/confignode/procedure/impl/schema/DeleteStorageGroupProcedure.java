@@ -148,13 +148,16 @@ public class DeleteStorageGroupProcedure
           regionDeleteTaskList =
               new ArrayList<>(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
 
+          // Delete StorageGroupPartitionTable
+          TSStatus deleteConfigResult = env.deleteConfig(deleteSgSchema.getName());
+
           // try sync delete schema region
           AsyncClientHandler<TConsensusGroupId, TSStatus> asyncClientHandler =
               new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
-            asyncClientHandler.putRequest(requestIndex++, schemaRegionReplicaSet.getRegionId());
+            asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
             for (TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
               asyncClientHandler.putDataNodeLocation(requestIndex, dataNodeLocation);
@@ -162,8 +165,8 @@ public class DeleteStorageGroupProcedure
                   requestIndex,
                   new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
             }
+            requestIndex++;
           }
-
           AsyncDataNodeClientPool.getInstance()
               .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
           for (Map.Entry<Integer, TSStatus> entry :
@@ -173,19 +176,16 @@ public class DeleteStorageGroupProcedure
             }
           }
 
+          // submit async schema region delete task for failed sync execution
           OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
               new OfferRegionMaintainTasksPlan();
           schemaRegionDeleteTaskMap
               .values()
               .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
-          // submit async schema region delete task for failed sync execution
-          env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
+          env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
           regionDeleteTaskList.addAll(schemaRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
 
-          // Delete StorageGroupPartitionTable
-          TSStatus status = env.deleteConfig(deleteSgSchema.getName());
-
-          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(new ProcedureException("Delete config info id failed"));
