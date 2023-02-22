@@ -34,24 +34,22 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (config.getCompactionPriority() == CompactionPriority.BALANCE) {
-      return compareWithBalance(o1, o2);
-    } else {
-      return compareWithCrossInnerOrInnerCross(o1, o2, config.getCompactionPriority());
-    }
-  }
-
-  private int compareWithCrossInnerOrInnerCross(
-      AbstractCompactionTask o1, AbstractCompactionTask o2, CompactionPriority compactionPriority) {
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
         || ((o2 instanceof InnerSpaceCompactionTask)
             && (o1 instanceof CrossSpaceCompactionTask)))) {
-      if (compactionPriority == CompactionPriority.CROSS_INNER) {
+      if (config.getCompactionPriority() == CompactionPriority.CROSS_INNER) {
         // priority is CROSS_INNER
         return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
-      } else {
+      } else if (config.getCompactionPriority() == CompactionPriority.INNER_CROSS) {
         // priority is INNER_CROSS
         return o1 instanceof InnerSpaceCompactionTask ? -1 : 1;
+      } else {
+        // priority is BALANCE
+        if (o1.getSerialId() != o2.getSerialId()) {
+          return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
+        } else {
+          return o1 instanceof CrossSpaceCompactionTask ? -1 : 1;
+        }
       }
     } else if (o1 instanceof InnerSpaceCompactionTask) {
       return compareInnerSpaceCompactionTask(
@@ -59,14 +57,6 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     } else {
       return compareCrossSpaceCompactionTask(
           (CrossSpaceCompactionTask) o1, (CrossSpaceCompactionTask) o2);
-    }
-  }
-
-  private int compareWithBalance(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (o1.getSerialId() != o2.getSerialId()) {
-      return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
-    } else {
-      return compareWithCrossInnerOrInnerCross(o1, o2, CompactionPriority.CROSS_INNER);
     }
   }
 
