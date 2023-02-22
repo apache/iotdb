@@ -853,7 +853,8 @@ public class RawDataAggregationOperatorTest {
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
