@@ -46,7 +46,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 @NotThreadSafe
 public class SharedTsBlockQueue {
 
-  private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -138,9 +138,9 @@ public class SharedTsBlockQueue {
 
   /** Notify no more tsblocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
-    logger.debug("[SignalNoMoreTsBlockOnQueue]");
+    LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
-      logger.warn("queue has been destroyed");
+      LOGGER.warn("queue has been destroyed");
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
@@ -186,7 +186,7 @@ public class SharedTsBlockQueue {
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      logger.warn("queue has been destroyed");
+      LOGGER.warn("queue has been destroyed");
       return immediateVoidFuture();
     }
 

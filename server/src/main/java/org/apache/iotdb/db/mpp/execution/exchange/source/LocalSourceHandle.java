@@ -43,7 +43,7 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SOURCE_HA
 
 public class LocalSourceHandle implements ISourceHandle {
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalSourceHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSourceHandle.class);
 
   private TFragmentInstanceId localFragmentInstanceId;
   private String localPlanNodeId;
@@ -112,7 +112,7 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        logger.debug(
+        LOGGER.debug(
             "[GetTsBlockFromQueue] TsBlock:{} size:{}",
             currSequenceId,
             tsBlock.getRetainedSizeInBytes());
@@ -181,7 +181,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.debug("[StartAbortLocalSourceHandle]");
+      LOGGER.debug("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -192,7 +192,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.debug("[EndAbortLocalSourceHandle]");
+      LOGGER.debug("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -202,7 +202,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.debug("[StartAbortLocalSourceHandle]");
+      LOGGER.debug("[StartAbortLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -213,7 +213,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      logger.debug("[EndAbortLocalSourceHandle]");
+      LOGGER.debug("[EndAbortLocalSourceHandle]");
     }
   }
 
@@ -223,7 +223,7 @@ public class LocalSourceHandle implements ISourceHandle {
       return;
     }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      logger.debug("[StartCloseLocalSourceHandle]");
+      LOGGER.debug("[StartCloseLocalSourceHandle]");
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -234,7 +234,7 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      logger.debug("[EndCloseLocalSourceHandle]");
+      LOGGER.debug("[EndCloseLocalSourceHandle]");
     }
   }
 

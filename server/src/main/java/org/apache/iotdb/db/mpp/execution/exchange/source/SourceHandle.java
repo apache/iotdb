@@ -61,7 +61,7 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.ON_ACKNO
 
 public class SourceHandle implements ISourceHandle {
 
-  private static final Logger logger = LoggerFactory.getLogger(SourceHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SourceHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
@@ -174,7 +174,7 @@ public class SourceHandle implements ISourceHandle {
         return null;
       }
       long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
-      logger.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+      LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
       currSequenceId += 1;
       bufferRetainedSizeInBytes -= retainedSize;
       localMemoryManager
@@ -186,7 +186,7 @@ public class SourceHandle implements ISourceHandle {
               retainedSize);
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
-        logger.debug("[WaitForMoreTsBlock]");
+        LOGGER.debug("[WaitForMoreTsBlock]");
         blocked = SettableFuture.create();
       }
       if (isFinished()) {
@@ -283,7 +283,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
-    logger.debug("[ReceiveNoMoreTsBlockEvent]");
+    LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
       blocked.set(null);
@@ -295,7 +295,7 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    logger.debug(
+    LOGGER.debug(
         "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
         startSequenceId,
         startSequenceId + dataBlockSizes.size(),
@@ -470,7 +470,7 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        logger.debug("[StartPullTsBlocksFromRemote] [{}, {}) ", startSequenceId, endSequenceId);
+        LOGGER.debug("[StartPullTsBlocksFromRemote] [{}, {}) ", startSequenceId, endSequenceId);
         TGetDataBlockRequest req =
             new TGetDataBlockRequest(
                 remoteFragmentInstanceId,
@@ -490,7 +490,7 @@ public class SourceHandle implements ISourceHandle {
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
-            logger.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+            LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
             QUERY_METRICS.recordDataBlockNum(GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
@@ -501,7 +501,7 @@ public class SourceHandle implements ISourceHandle {
               for (int i = startSequenceId; i < endSequenceId; i++) {
                 sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
               }
-              logger.debug("[PutTsBlocksIntoBuffer]");
+              LOGGER.debug("[PutTsBlocksIntoBuffer]");
               if (!blocked.isDone()) {
                 blocked.set(null);
               }
@@ -509,7 +509,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
 
-            logger.warn(
+            LOGGER.warn(
                 "failed to get data block [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
@@ -570,7 +570,7 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        logger.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+        LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
             new TAcknowledgeDataBlockEvent(
@@ -586,7 +586,7 @@ public class SourceHandle implements ISourceHandle {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
           } catch (Throwable e) {
-            logger.warn(
+            LOGGER.warn(
                 "failed to send ack data block event [{}, {}), attempt times: {}",
                 startSequenceId,
                 endSequenceId,
