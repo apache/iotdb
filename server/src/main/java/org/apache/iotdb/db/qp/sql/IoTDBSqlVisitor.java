@@ -2127,6 +2127,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return settleOperator;
   }
 
+  // Backup
+
+  @Override
+  public Operator visitBackup(IoTDBSqlParser.BackupContext ctx) {
+    BackupOperator backupOperator = new BackupOperator(SQLConstant.TOK_BACKUP);
+    String outputPath = parseStringLiteral(ctx.outputPath.getText());
+    backupOperator.setOutputPath(outputPath);
+    return backupOperator;
+  }
+
   // Set System To ReadOnly/Writable
 
   @Override
