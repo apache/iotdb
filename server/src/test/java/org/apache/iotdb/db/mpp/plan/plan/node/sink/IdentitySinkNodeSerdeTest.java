@@ -48,13 +48,13 @@ public class IdentitySinkNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     identitySinkNode1.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), identitySinkNode1);
+    assertEquals(identitySinkNode1, PlanNodeDeserializeHelper.deserialize(byteBuffer));
 
     IdentitySinkNode identitySinkNode2 =
         new IdentitySinkNode(new PlanNodeId("testIdentitySinkNode"), Collections.emptyList());
     ByteBuffer byteBuffer2 = ByteBuffer.allocate(1024);
     identitySinkNode2.serialize(byteBuffer2);
     byteBuffer2.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer2), identitySinkNode2);
+    assertEquals(identitySinkNode2, PlanNodeDeserializeHelper.deserialize(byteBuffer2));
   }
 }

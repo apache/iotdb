@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
-public interface ISinkChannel {
+public interface ISinkChannel extends ISink {
 
+  /** Open the channel, should only be called once on each ISinkChannel. */
   void open();
 
+  /** Return true if current channel has no more data. */
   boolean isNoMoreTsBlocks();
 
-  long getRetainedSizeInBytes();
-
+  /** Return the number of TsBlocks the channel has in buffer. */
   int getNumOfBufferedTsBlocks();
 }

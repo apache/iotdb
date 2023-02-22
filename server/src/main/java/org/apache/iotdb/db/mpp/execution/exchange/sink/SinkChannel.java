@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -57,9 +57,9 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HAND
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public class SinkHandle implements ISinkHandle, ISinkChannel {
+public class SinkChannel implements ISinkChannel {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SinkHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SinkChannel.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;
@@ -75,7 +75,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
-  private final SinkHandleListener sinkHandleListener;
+  private final SinkListener sinkListener;
   private final String threadName;
   private long retryIntervalInMs;
 
@@ -102,13 +102,13 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
 
   private boolean noMoreTsBlocks = false;
 
-  /** max bytes this SinkHandle can reserve. */
+  /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
-  public SinkHandle(
+  public SinkChannel(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -117,7 +117,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
       TsBlockSerde serde,
-      SinkHandleListener sinkHandleListener,
+      SinkListener sinkListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
@@ -130,7 +130,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);
-    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.sinkListener = Validate.notNull(sinkListener);
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName =
@@ -220,7 +220,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkHandleListener.onAborted(this);
+    sinkListener.onAborted(this);
     LOGGER.debug("[EndAbortSinkHandle]");
   }
 
@@ -244,7 +244,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkHandleListener.onFinish(this);
+    sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseSinkHandle]");
   }
 
@@ -310,7 +310,7 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
       }
     }
     if (isFinished()) {
-      sinkHandleListener.onFinish(this);
+      sinkListener.onFinish(this);
     }
     // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
     // ack message's freedBytes may be zero
@@ -376,11 +376,6 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
   }
 
   @Override
-  public long getRetainedSizeInBytes() {
-    return bufferRetainedSizeInBytes;
-  }
-
-  @Override
   public int getNumOfBufferedTsBlocks() {
     return sequenceIdToTsBlock.size();
   }
@@ -437,13 +432,13 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
           } catch (Exception e) {
             LOGGER.warn("Failed to send new data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
             try {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
           } finally {
             QUERY_METRICS.recordDataExchangeCost(
@@ -482,22 +477,22 @@ public class SinkHandle implements ISinkHandle, ISinkChannel {
             LOGGER.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               LOGGER.warn("Failed to send end of data block event after all retry", e);
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
               return;
             }
             try {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
           }
         }
         noMoreTsBlocks = true;
         if (isFinished()) {
-          sinkHandleListener.onFinish(SinkHandle.this);
+          sinkListener.onFinish(SinkChannel.this);
         }
-        sinkHandleListener.onEndOfBlocks(SinkHandle.this);
+        sinkListener.onEndOfBlocks(SinkChannel.this);
       }
     }
   }

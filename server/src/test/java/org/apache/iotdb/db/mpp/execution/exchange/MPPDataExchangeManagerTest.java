@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
-import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
@@ -86,12 +86,17 @@ public class MPPDataExchangeManagerTest {
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
-            remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, 0, t -> {});
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localPlanNodeId,
+            localFragmentInstanceId,
+            0,
+            t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
     Assert.assertEquals(
-        ((LocalSinkHandle) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
+        ((LocalSinkChannel) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
   }
 
@@ -120,7 +125,12 @@ public class MPPDataExchangeManagerTest {
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(
-            remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, 0, t -> {});
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localPlanNodeId,
+            localFragmentInstanceId,
+            0,
+            t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
@@ -142,7 +152,7 @@ public class MPPDataExchangeManagerTest {
     Assert.assertTrue(shuffleSinkHandle instanceof ShuffleSinkHandle);
 
     Assert.assertEquals(
-        ((LocalSinkHandle) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
+        ((LocalSinkChannel) shuffleSinkHandle.getChannel(0)).getSharedTsBlockQueue(),
         ((LocalSourceHandle) localSourceHandle).getSharedTsBlockQueue());
   }
 }
