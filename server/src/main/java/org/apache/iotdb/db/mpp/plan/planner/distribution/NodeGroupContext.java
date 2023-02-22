@@ -38,18 +38,18 @@ public class NodeGroupContext {
   protected final MPPQueryContext queryContext;
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
   private final boolean isAlignByDevice;
-  private final TRegionReplicaSet maxUseDataRegion;
+  private final TRegionReplicaSet mostlyUsedDataRegion;
   protected final List<ExchangeNode> exchangeNodes;
 
   public NodeGroupContext(MPPQueryContext queryContext, boolean isAlignByDevice, PlanNode root) {
     this.queryContext = queryContext;
     this.nodeDistributionMap = new HashMap<>();
     this.isAlignByDevice = isAlignByDevice;
-    this.maxUseDataRegion = isAlignByDevice ? getMaxUseDataRegion(root) : null;
+    this.mostlyUsedDataRegion = isAlignByDevice ? getMostlyUsedDataRegion(root) : null;
     this.exchangeNodes = new ArrayList<>();
   }
 
-  private TRegionReplicaSet getMaxUseDataRegion(PlanNode root) {
+  private TRegionReplicaSet getMostlyUsedDataRegion(PlanNode root) {
     Map<TRegionReplicaSet, Long> regionCount = new HashMap<>();
     countRegionOfSourceNodes(root, regionCount);
     return Collections.max(
@@ -81,7 +81,7 @@ public class NodeGroupContext {
     return isAlignByDevice;
   }
 
-  public TRegionReplicaSet getMaxUseDataRegion() {
-    return maxUseDataRegion;
+  public TRegionReplicaSet getMostlyUsedDataRegion() {
+    return mostlyUsedDataRegion;
   }
 }

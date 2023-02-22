@@ -78,10 +78,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
-    this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.sinkListener = Validate.notNull(sinkListener);
     this.channelNum = downStreamChannelList.size();
+    this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
     // open first channel
