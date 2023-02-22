@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
@@ -213,7 +213,7 @@ public class AlignedSeriesScanOperatorTest {
       PlanNodeId planNodeId8 = new PlanNodeId("8");
       driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -343,8 +343,8 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,
@@ -396,7 +396,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(7, 0), new AscTimeComparator())),
               new AscTimeComparator());
       int count = 0;
-      while (timeJoinOperator.hasNext()) {
+      while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
@@ -502,7 +502,7 @@ public class AlignedSeriesScanOperatorTest {
       PlanNodeId planNodeId8 = new PlanNodeId("8");
       driverContext.addOperatorContext(8, planNodeId8, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
+          9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       AlignedSeriesScanOperator seriesScanOperator1 =
           new AlignedSeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -631,8 +631,8 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
               Arrays.asList(
                   seriesScanOperator1,
@@ -685,7 +685,7 @@ public class AlignedSeriesScanOperatorTest {
               new DescTimeComparator());
 
       int count = 499;
-      while (timeJoinOperator.hasNext()) {
+      while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
