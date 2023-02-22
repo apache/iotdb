@@ -62,7 +62,7 @@ public class DeleteStorageGroupProcedure
 
   private TDatabaseSchema deleteSgSchema;
 
-  private transient List<RegionMaintainTask> regionDeleteTaskList;
+  private transient List<RegionMaintainTask> regionDeleteTaskList = new ArrayList<>();
 
   public DeleteStorageGroupProcedure() {
     super();
@@ -145,8 +145,7 @@ public class DeleteStorageGroupProcedure
 
           // submit async data region delete task
           env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
-          regionDeleteTaskList =
-              new ArrayList<>(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
+          regionDeleteTaskList.addAll(dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList());
 
           // Delete StorageGroupPartitionTable
           TSStatus deleteConfigResult = env.deleteConfig(deleteSgSchema.getName());
