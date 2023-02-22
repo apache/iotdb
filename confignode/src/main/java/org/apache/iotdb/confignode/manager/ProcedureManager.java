@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -87,7 +86,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -151,13 +149,11 @@ public class ProcedureManager {
 
   public TSStatus deleteStorageGroups(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
     List<Long> procedureIds = new ArrayList<>();
-    List<DeleteStorageGroupProcedure> deleteStorageGroupProcedureList = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteStorageGroupProcedure deleteStorageGroupProcedure =
           new DeleteStorageGroupProcedure(storageGroupSchema);
       long procedureId = this.executor.submitProcedure(deleteStorageGroupProcedure);
       procedureIds.add(procedureId);
-      deleteStorageGroupProcedureList.add(deleteStorageGroupProcedure);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
     boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
@@ -165,33 +161,6 @@ public class ProcedureManager {
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
     if (isSucceed) {
-      // try wait until time out or finishing clear regions on DataNodes
-      List<RegionMaintainTask> currentRegionDeleteTaskList = new ArrayList<>();
-      for (DeleteStorageGroupProcedure deleteStorageGroupProcedure :
-          deleteStorageGroupProcedureList) {
-        currentRegionDeleteTaskList.addAll(deleteStorageGroupProcedure.getRegionDeleteTaskList());
-      }
-
-      long startTimeForCurrentProcedure = System.currentTimeMillis();
-      while (TimeUnit.MILLISECONDS.toSeconds(
-              System.currentTimeMillis() - startTimeForCurrentProcedure)
-          < PROCEDURE_WAIT_TIME_OUT) {
-        Set<RegionMaintainTask> regionMaintainTaskSet =
-            new HashSet<>(partitionManager.getExistingRegionMaintainTaskList());
-        List<RegionMaintainTask> remainingRegionDeleteTaskList = new ArrayList<>();
-        for (RegionMaintainTask regionDeleteTask : currentRegionDeleteTaskList) {
-          if (regionMaintainTaskSet.contains(regionDeleteTask)) {
-            remainingRegionDeleteTaskList.add(regionDeleteTask);
-          }
-        }
-
-        if (remainingRegionDeleteTaskList.isEmpty()) {
-          break;
-        } else {
-          currentRegionDeleteTaskList = remainingRegionDeleteTaskList;
-          sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
-        }
-      }
       return StatusUtils.OK;
     } else {
       return RpcUtils.getStatus(procedureStatus);
