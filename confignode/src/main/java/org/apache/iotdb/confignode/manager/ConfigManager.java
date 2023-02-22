@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -362,6 +363,22 @@ public class ConfigManager implements IManager {
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
     }
     return dataSet;
+  }
+
+  @Override
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Force updating the target DataNode's status to Unknown
+      getNodeManager()
+          .getNodeCacheMap()
+          .get(dataNodeLocation.getDataNodeId())
+          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      LOGGER.info(
+          "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
+          dataNodeLocation.getDataNodeId());
+    }
+    return status;
   }
 
   @Override
@@ -1098,6 +1115,22 @@ public class ConfigManager implements IManager {
       }
     }
 
+    return status;
+  }
+
+  @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Force updating the target ConfigNode's status to Unknown
+      getNodeManager()
+          .getNodeCacheMap()
+          .get(configNodeLocation.getConfigNodeId())
+          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      LOGGER.info(
+          "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
+          configNodeLocation.getConfigNodeId());
+    }
     return status;
   }
 

@@ -45,7 +45,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
   @Override
   public TRegionReplicaSet generateOptimalRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      Map<Integer, Long> freeDiskSpaceMap,
+      Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
@@ -59,7 +59,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
   private List<TDataNodeLocation> buildWeightList(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      Map<Integer, Long> freeDiskSpaceMap,
+      Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups) {
     // Map<DataNodeId, Region count>
     Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
@@ -75,7 +75,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                             .getAndIncrement()));
 
     /* Construct priority map */
-    Map<TDataNodeLocation, Pair<Integer, Long>> priorityMap = new ConcurrentHashMap<>();
+    Map<TDataNodeLocation, Pair<Integer, Double>> priorityMap = new ConcurrentHashMap<>();
     availableDataNodeMap
         .keySet()
         .forEach(
@@ -84,7 +84,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                     availableDataNodeMap.get(dataNodeId).getLocation(),
                     new Pair<>(
                         regionCounter.getOrDefault(dataNodeId, ZERO).get(),
-                        freeDiskSpaceMap.getOrDefault(dataNodeId, 0L))));
+                        freeDiskSpaceMap.getOrDefault(dataNodeId, 0d))));
 
     return priorityMap.entrySet().stream()
         .sorted(
