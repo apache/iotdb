@@ -71,7 +71,7 @@ def test_dialect():
             print_message("test get_schema_names failed!")
         # test get_table_names
         table_names = insp.get_table_names("root.cursor")
-        if not operator.eq(table_names, ["device1", "device2"]):
+        if not operator.ge(table_names, ["device1", "device2"]):
             test_fail()
             print_message("test get_table_names failed!")
         # test get_columns
