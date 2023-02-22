@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskResource;
@@ -66,6 +67,7 @@ public class MergeUpgradeTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     prepareSeries();
     prepareFiles();
   }

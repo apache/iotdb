@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class AccumulatorFactory {
 
@@ -88,7 +87,12 @@ public class AccumulatorFactory {
     return accumulators;
   }
 
-  private static Function<Long, Boolean> initKeepEvaluator(Expression keepExpression) {
+  @FunctionalInterface
+  public interface KeepEvaluator {
+    boolean apply(long keep);
+  }
+
+  public static KeepEvaluator initKeepEvaluator(Expression keepExpression) {
     // We have check semantic in FE,
     // keep expression must be ConstantOperand or CompareBinaryExpression here
     if (keepExpression instanceof ConstantOperand) {

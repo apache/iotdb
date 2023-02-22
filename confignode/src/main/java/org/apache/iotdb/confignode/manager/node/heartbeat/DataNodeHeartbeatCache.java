@@ -29,7 +29,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics */
   public DataNodeHeartbeatCache() {
     super();
-    this.latestLoadSample = new TLoadSample((short) 0, 0, 0, 0);
+    this.latestLoadSample = new TLoadSample();
   }
 
   @Override
@@ -70,7 +70,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
   }
 
-  public long getFreeDiskSpace() {
+  public double getFreeDiskSpace() {
     return latestLoadSample.getFreeDiskSpace();
   }
 }

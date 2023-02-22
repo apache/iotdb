@@ -554,8 +554,16 @@ SELECT
     : S E L E C T
     ;
 
+SERIES
+    : S E R I E S
+    ;
+
 SERIESSLOTID
     : S E R I E S S L O T I D
+    ;
+
+SESSION
+    : S E S S I O N
     ;
 
 SET

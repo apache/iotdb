@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -165,6 +167,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -245,6 +248,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "ConfigNode RPC Service finished to update DataNode, req: {}, result: {}", req, resp);
     return resp;
+  }
+
+  @Override
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    return configManager.reportDataNodeShutdown(dataNodeLocation);
   }
 
   @Override
@@ -621,17 +629,24 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         .setMessage("remove ConsensusGroup success.");
   }
 
-  /** stop config node */
+  @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
+    return configManager.reportConfigNodeShutdown(configNodeLocation);
+  }
+
+  /** Stop ConfigNode */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             () -> {
               try {
-                ConfigNode.getInstance().stop();
-              } catch (IOException e) {
-                LOGGER.error("Meet error when stop ConfigNode!", e);
+                // Sleep 1s before stop itself
+                TimeUnit.SECONDS.sleep(1);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn(e.getMessage());
               } finally {
-                System.exit(0);
+                ConfigNode.getInstance().stop();
               }
             })
         .start();

@@ -31,30 +31,35 @@ public class GroupByVariationParameter extends GroupByParameter {
 
   double delta;
 
+  boolean ignoringNull;
+
   public GroupByVariationParameter(boolean ignoringNull, double delta) {
-    super(WindowType.EVENT_WINDOW, ignoringNull);
+    super(WindowType.EVENT_WINDOW);
     this.delta = delta;
+    this.ignoringNull = ignoringNull;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(ignoringNull, byteBuffer);
     ReadWriteIOUtils.write(delta, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(ignoringNull, stream);
     ReadWriteIOUtils.write(delta, stream);
-  }
-
-  public void setDelta(double delta) {
-    this.delta = delta;
   }
 
   public double getDelta() {
     return delta;
   }
 
-  public static GroupByParameter deserializeVariation(ByteBuffer buffer) {
+  public boolean isIgnoringNull() {
+    return ignoringNull;
+  }
+
+  public static GroupByParameter deserialize(ByteBuffer buffer) {
     boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
     double delta = ReadWriteIOUtils.readDouble(buffer);
     return new GroupByVariationParameter(ignoringNull, delta);
@@ -71,11 +76,12 @@ public class GroupByVariationParameter extends GroupByParameter {
     if (!super.equals(obj)) {
       return false;
     }
-    return this.delta == ((GroupByVariationParameter) obj).getDelta();
+    return this.delta == ((GroupByVariationParameter) obj).getDelta()
+        && this.ignoringNull == ((GroupByVariationParameter) obj).isIgnoringNull();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), delta);
+    return Objects.hash(super.hashCode(), delta, ignoringNull);
   }
 }
