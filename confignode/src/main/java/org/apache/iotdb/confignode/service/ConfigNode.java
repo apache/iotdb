@@ -232,7 +232,7 @@ public class ConfigNode implements ConfigNodeMBean {
     configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
-  
+
   /** Register Non-seed ConfigNode when first startup */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
