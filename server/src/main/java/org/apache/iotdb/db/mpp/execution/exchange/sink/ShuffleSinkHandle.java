@@ -111,9 +111,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
-      ISink currentSinkHandle = downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
+      ISinkChannel currentChannel =
+          downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
       checkState();
-      currentSinkHandle.send(tsBlock);
+      currentChannel.send(tsBlock);
     } finally {
       switchChannelIfNecessary();
       QUERY_METRICS.recordDataExchangeCost(

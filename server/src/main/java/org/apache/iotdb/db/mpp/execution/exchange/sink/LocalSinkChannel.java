@@ -64,7 +64,7 @@ public class LocalSinkChannel implements ISinkChannel {
     this.sinkListener = Validate.notNull(sinkListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkChannel(this);
-    // SinkHandle can send data after SourceHandle asks it to
+    // SinkChannel can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
   }
 

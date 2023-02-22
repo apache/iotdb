@@ -79,18 +79,20 @@ public class DownStreamChannelLocation {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(remoteEndpoint.getIp(), byteBuffer);
     ReadWriteIOUtils.write(remoteEndpoint.getPort(), byteBuffer);
-    ReadWriteIOUtils.write(remoteFragmentInstanceId.getInstanceId(), byteBuffer);
-    ReadWriteIOUtils.write(remoteFragmentInstanceId.getFragmentId(), byteBuffer);
     ReadWriteIOUtils.write(remoteFragmentInstanceId.getQueryId(), byteBuffer);
+    ReadWriteIOUtils.write(remoteFragmentInstanceId.getFragmentId(), byteBuffer);
+    ReadWriteIOUtils.write(remoteFragmentInstanceId.getInstanceId(), byteBuffer);
+
     ReadWriteIOUtils.write(remotePlanNodeId, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(remoteEndpoint.getIp(), stream);
     ReadWriteIOUtils.write(remoteEndpoint.getPort(), stream);
-    ReadWriteIOUtils.write(remoteFragmentInstanceId.getInstanceId(), stream);
-    ReadWriteIOUtils.write(remoteFragmentInstanceId.getFragmentId(), stream);
     ReadWriteIOUtils.write(remoteFragmentInstanceId.getQueryId(), stream);
+    ReadWriteIOUtils.write(remoteFragmentInstanceId.getFragmentId(), stream);
+    ReadWriteIOUtils.write(remoteFragmentInstanceId.getInstanceId(), stream);
+
     ReadWriteIOUtils.write(remotePlanNodeId, stream);
   }
 

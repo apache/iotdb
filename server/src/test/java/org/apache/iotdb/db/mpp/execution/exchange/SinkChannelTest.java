@@ -99,6 +99,7 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
+    sinkChannel.open();
     Assert.assertTrue(sinkChannel.isFull().isDone());
     Assert.assertFalse(sinkChannel.isFinished());
     Assert.assertFalse(sinkChannel.isAborted());
@@ -246,6 +247,7 @@ public class SinkChannelTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkListener,
             mockClientManager);
+    sinkChannel.open();
     Assert.assertTrue(sinkChannel.isFull().isDone());
     Assert.assertFalse(sinkChannel.isFinished());
     Assert.assertFalse(sinkChannel.isAborted());
@@ -451,6 +453,7 @@ public class SinkChannelTest {
             mockSinkListener,
             mockClientManager);
     sinkChannel.setRetryIntervalInMs(0L);
+    sinkChannel.open();
     Assert.assertTrue(sinkChannel.isFull().isDone());
     Assert.assertFalse(sinkChannel.isFinished());
     Assert.assertFalse(sinkChannel.isAborted());
@@ -560,6 +563,7 @@ public class SinkChannelTest {
             mockSinkListener,
             mockClientManager);
     sinkChannel.setMaxBytesCanReserve(Long.MAX_VALUE);
+    sinkChannel.open();
     Assert.assertTrue(sinkChannel.isFull().isDone());
     Assert.assertFalse(sinkChannel.isFinished());
     Assert.assertFalse(sinkChannel.isAborted());
