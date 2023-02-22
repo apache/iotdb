@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record the global statistics of SchemaEngine in Memory mode */
@@ -36,6 +37,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   protected final AtomicLong memoryUsage = new AtomicLong(0);
 
   private final AtomicLong totalSeriesNumber = new AtomicLong(0);
+
+  private final AtomicInteger schemaRegionNumber = new AtomicInteger(0);
 
   private volatile boolean allowToCreateNewSeries;
 
@@ -89,6 +92,19 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   @Override
   public long getTotalSeriesNumber() {
     return totalSeriesNumber.get();
+  }
+
+  public void addSchemaRegion() {
+    schemaRegionNumber.getAndIncrement();
+  }
+
+  public void deleteSchemaRegion() {
+    schemaRegionNumber.getAndDecrement();
+  }
+
+  @Override
+  public int getSchemaRegionNumber() {
+    return schemaRegionNumber.get();
   }
 
   public void addTimeseries(long addedNum) {

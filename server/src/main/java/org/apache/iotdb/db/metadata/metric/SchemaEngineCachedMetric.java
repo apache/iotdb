@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.metric;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -25,10 +26,10 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.concurrent.TimeUnit;
 
 public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
@@ -38,19 +39,12 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
   private static final String UNPINNED_NUM = "schema_file_unpinned_num";
   private static final String PINNED_MEM = "schema_file_pinned_mem";
   private static final String UNPINNED_MEM = "schema_file_unpinned_mem";
-  private static final String RELEASE_COUNT = "schema_file_release_count";
-  private static final String FLUSH_COUNT = "schema_file_flush_count";
   private static final String RELEASE_TIMER = "schema_file_release_timer";
   private static final String FLUSH_TIMER = "schema_file_flush_timer";
   private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
   private static final String FLUSH_THREAD_NUM = "schema_file_flush_thread_num";
 
   private final CachedSchemaEngineStatistics engineStatistics;
-
-  private Counter releaseCounter;
-  private Counter flushCounter;
-  private Timer releaseTimer;
-  private Timer flushTimer;
 
   private final SchemaEngineMemMetric schemaEngineMemMetric;
 
@@ -79,66 +73,46 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         Tag.NAME.toString(),
         FLUSH_THRESHOLD);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getPinnedMNodeNum,
         Tag.NAME.toString(),
         PINNED_NUM);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getUnpinnedMNodeNum,
         Tag.NAME.toString(),
         UNPINNED_NUM);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getPinnedMemorySize,
         Tag.NAME.toString(),
         PINNED_MEM);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getUnpinnedMemorySize,
         Tag.NAME.toString(),
         UNPINNED_MEM);
-    releaseCounter =
-        metricService.getOrCreateCounter(
-            Metric.SCHEMA_REGION.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            RELEASE_COUNT);
-    flushCounter =
-        metricService.getOrCreateCounter(
-            Metric.SCHEMA_REGION.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            FLUSH_COUNT);
-    releaseTimer =
-        metricService.getOrCreateTimer(
-            Metric.SCHEMA_REGION.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            RELEASE_TIMER);
-    flushTimer =
-        metricService.getOrCreateTimer(
-            Metric.SCHEMA_REGION.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            FLUSH_TIMER);
+    metricService.getOrCreateTimer(
+        Metric.SCHEMA_ENGINE.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), RELEASE_TIMER);
+    metricService.getOrCreateTimer(
+        Metric.SCHEMA_ENGINE.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), FLUSH_TIMER);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         CacheMemoryManager.getInstance(),
         CacheMemoryManager::getReleaseThreadNum,
         Tag.NAME.toString(),
         RELEASE_THREAD_NUM);
     metricService.createAutoGauge(
-        Metric.SCHEMA_REGION.toString(),
+        Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         CacheMemoryManager.getInstance(),
         CacheMemoryManager::getFlushThreadNum,
@@ -162,10 +136,6 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), UNPINNED_MEM);
     metricService.remove(
-        MetricType.COUNTER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_COUNT);
-    metricService.remove(
-        MetricType.COUNTER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), FLUSH_COUNT);
-    metricService.remove(
         MetricType.TIMER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_TIMER);
     metricService.remove(
         MetricType.TIMER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), FLUSH_TIMER);
@@ -182,12 +152,24 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
   }
 
   public void recordFlush(long milliseconds) {
-    flushCounter.inc();
-    flushTimer.updateMillis(milliseconds);
+    MetricService.getInstance()
+        .timer(
+            milliseconds,
+            TimeUnit.MILLISECONDS,
+            Metric.SCHEMA_ENGINE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            FLUSH_TIMER);
   }
 
   public void recordRelease(long milliseconds) {
-    releaseCounter.inc();
-    releaseTimer.updateMillis(milliseconds);
+    MetricService.getInstance()
+        .timer(
+            milliseconds,
+            TimeUnit.MILLISECONDS,
+            Metric.SCHEMA_ENGINE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RELEASE_TIMER);
   }
 }

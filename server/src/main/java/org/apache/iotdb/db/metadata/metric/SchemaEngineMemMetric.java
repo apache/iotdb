@@ -20,8 +20,11 @@ package org.apache.iotdb.db.metadata.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -31,6 +34,10 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   private static final String TIME_SERES_CNT = "timeSeries";
   private static final String TOTAL_MEM_USAGE = "schema_region_total_mem_usage";
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
+  private static final String REGION_NUMBER = "schema_region_number";
+
+  private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
+  private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
 
   private final MemSchemaEngineStatistics engineStatistics;
 
@@ -68,6 +75,26 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         ISchemaEngineStatistics::getMemoryCapacity,
         Tag.NAME.toString(),
         MEM_CAPACITY);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        engineStatistics,
+        ISchemaEngineStatistics::getSchemaRegionNumber,
+        Tag.NAME.toString(),
+        REGION_NUMBER);
+    metricService.gauge(
+        SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+            .getCode(),
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        SCHEMA_ENGINE_MODE);
+    metricService.gauge(
+        getSchemaRegionConsensusProtocol(),
+        Metric.SCHEMA_ENGINE.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        SCHEMA_CONSENSUS);
   }
 
   @Override
@@ -86,5 +113,19 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         TOTAL_MEM_USAGE);
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), MEM_CAPACITY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), REGION_NUMBER);
+  }
+
+  /** Encode SchemaRegionConsensusProtocol to ordinal */
+  private int getSchemaRegionConsensusProtocol() {
+    switch (IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass()) {
+      case ConsensusFactory.RATIS_CONSENSUS:
+        return 0;
+      case ConsensusFactory.SIMPLE_CONSENSUS:
+        return 1;
+      default:
+        throw new IllegalArgumentException();
+    }
   }
 }
