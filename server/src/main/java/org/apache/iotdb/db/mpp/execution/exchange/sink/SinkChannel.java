@@ -203,8 +203,10 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void abort() {
     LOGGER.debug("[StartAbortSinkHandle]");
+    if (aborted) {
+      return;
+    }
     sequenceIdToTsBlock.clear();
-    aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
@@ -221,14 +223,17 @@ public class SinkChannel implements ISinkChannel {
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onAborted(this);
+    aborted = true;
     LOGGER.debug("[EndAbortSinkHandle]");
   }
 
   @Override
   public synchronized void close() {
     LOGGER.debug("[StartCloseSinkHandle]");
+    if (closed) {
+      return;
+    }
     sequenceIdToTsBlock.clear();
-    closed = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
@@ -245,6 +250,7 @@ public class SinkChannel implements ISinkChannel {
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onFinish(this);
+    closed = true;
     LOGGER.debug("[EndCloseSinkHandle]");
   }
 
