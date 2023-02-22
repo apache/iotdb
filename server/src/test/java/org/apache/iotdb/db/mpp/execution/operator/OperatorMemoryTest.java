@@ -46,7 +46,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
@@ -467,42 +466,6 @@ public class OperatorMemoryTest {
     assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
     assertEquals(1024, sortOperator.calculateMaxReturnSize());
     assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
-  }
-
-  @Test
-  public void timeJoinOperatorTest() {
-    List<Operator> children = new ArrayList<>(4);
-    List<TSDataType> dataTypeList = new ArrayList<>(2);
-    dataTypeList.add(TSDataType.INT32);
-    dataTypeList.add(TSDataType.INT32);
-    long expectedMaxReturnSize =
-        Math.min(
-            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-            3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
-    long expectedMaxPeekMemory = 0;
-    long childrenMaxPeekMemory = 0;
-
-    for (int i = 0; i < 4; i++) {
-      Operator child = Mockito.mock(Operator.class);
-      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
-      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
-      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
-      childrenMaxPeekMemory =
-          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
-      expectedMaxPeekMemory += 64 * 1024L;
-      children.add(child);
-    }
-
-    expectedMaxPeekMemory =
-        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
-
-    TimeJoinOperator timeJoinOperator =
-        new TimeJoinOperator(
-            Mockito.mock(OperatorContext.class), children, Ordering.ASC, dataTypeList, null, null);
-
-    assertEquals(expectedMaxPeekMemory, timeJoinOperator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, timeJoinOperator.calculateMaxReturnSize());
-    assertEquals(3 * 64 * 1024L, timeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
