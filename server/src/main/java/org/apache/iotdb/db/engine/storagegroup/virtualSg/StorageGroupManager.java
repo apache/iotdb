@@ -431,6 +431,15 @@ public class StorageGroupManager {
     }
   }
 
+  public void appendAndReadLockFilesForBackup(List<TsFileResource> resources) {
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
+        this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.appendAndReadLockFilesForBackup(resources);
+      }
+    }
+  }
+
   /** push mergeAll operation down to all virtual storage group processors */
   public void mergeAll() {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :

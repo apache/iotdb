@@ -587,6 +587,9 @@ public class IoTDBConfig {
   /** How many threads will be set up to perform settle tasks. */
   private int settleThreadNum = 1;
 
+  /** How many threads will be set up to perform backup tasks. */
+  private int backupThreadNum = 1;
+
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. When < 0, it means time is unbounded. Unit:
@@ -2134,6 +2137,10 @@ public class IoTDBConfig {
 
   public int getSettleThreadNum() {
     return settleThreadNum;
+  }
+
+  public int getBackupThreadNum() {
+    return backupThreadNum;
   }
 
   void setUpgradeThreadNum(int upgradeThreadNum) {

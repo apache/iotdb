@@ -93,6 +93,10 @@ AUTOREGISTER
     : A U T O R E G I S T E R
     ;
 
+BACKUP
+    : B A C K U P
+    ;
+
 BEFORE
     : B E F O R E
     ;

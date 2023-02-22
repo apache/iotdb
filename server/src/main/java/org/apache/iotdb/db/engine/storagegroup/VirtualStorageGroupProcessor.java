@@ -3267,6 +3267,25 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  public void appendAndReadLockFilesForBackup(List<TsFileResource> resources) {
+    tsFileManager.readLock();
+    try {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+        resource.readLock();
+        resources.add(resource);
+      }
+      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+        resource.readLock();
+        resources.add(resource);
+      }
+    } finally {
+      tsFileManager.readUnlock();
+    }
+    tsFileManager.writeLock("backup");
+    syncCloseAllWorkingTsFileProcessors();
+    tsFileManager.writeUnlock();
+  }
+
   public void setCustomCloseFileListeners(List<CloseFileListener> customCloseFileListeners) {
     this.customCloseFileListeners = customCloseFileListeners;
   }
