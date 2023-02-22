@@ -768,10 +768,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
@@ -785,24 +782,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  /**
-   * @param path full path from root to leaf node
-   * @return After delete if the schema region is empty, return its path, otherwise return null
-   */
-  private PartialPath deleteOneTimeseriesUpdateStatistics(PartialPath path)
+  /** @param path full path from root to leaf node */
+  private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-    PartialPath storageGroupPath = pair.left;
 
     regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
-    return storageGroupPath;
   }
   // endregion
 
