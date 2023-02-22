@@ -227,14 +227,14 @@ struct THeartbeatResp {
 
 struct TLoadSample {
   // Percentage of occupied cpu in DataNode
-  1: required i16 cpuUsageRate
+  1: required double cpuUsageRate
   // Percentage of occupied memory space in DataNode
   2: required double memoryUsageRate
   // Percentage of occupied disk space in DataNode
   3: required double diskUsageRate
   // The size of free disk space
   // Unit: Byte
-  4: required i64 freeDiskSpace
+  4: required double freeDiskSpace
 }
 
 struct TRegionRouteReq {

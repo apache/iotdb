@@ -17,33 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.type;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+public class SessionWindowParameter extends WindowParameter {
 
-import java.lang.ref.WeakReference;
-import java.util.function.ToDoubleFunction;
+  private final long timeInterval;
 
-public class DropwizardAutoGauge<T> implements AutoGauge, com.codahale.metrics.Gauge<Double> {
-
-  private final WeakReference<T> refObject;
-  private final ToDoubleFunction<T> mapper;
-
-  public DropwizardAutoGauge(T obj, ToDoubleFunction<T> mapper) {
-    this.refObject = new WeakReference<>(obj);
-    this.mapper = mapper;
+  public SessionWindowParameter(long timeInterval, boolean needOutputEndTime) {
+    super(needOutputEndTime);
+    this.timeInterval = timeInterval;
+    this.windowType = WindowType.SESSION_WINDOW;
   }
 
-  @Override
-  public Double getValue() {
-    if (refObject.get() == null) {
-      return 0d;
-    }
-    return mapper.applyAsDouble(refObject.get());
-  }
-
-  @Override
-  public double value() {
-    return getValue();
+  public long getTimeInterval() {
+    return timeInterval;
   }
 }

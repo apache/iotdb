@@ -23,7 +23,7 @@ import java.util.Map;
 
 public interface AutoGauge extends IMetric {
   /** get value according to the state of obj. */
-  long value();
+  double value();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {

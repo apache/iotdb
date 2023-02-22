@@ -38,7 +38,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
@@ -58,7 +58,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
     DropwizardAutoGauge<T> dropwizardGauge = new DropwizardAutoGauge<>(obj, mapper);
     metricRegistry.register(DropwizardMetricNameTool.toFlatString(metricInfo), dropwizardGauge);
     return dropwizardGauge;

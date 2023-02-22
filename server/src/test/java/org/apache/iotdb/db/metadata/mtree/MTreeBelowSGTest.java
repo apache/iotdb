@@ -174,7 +174,7 @@ public abstract class MTreeBelowSGTest {
       fail(e.getMessage());
     }
     try {
-      storageGroup.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.laptop.d1.s0"));
+      storageGroup.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

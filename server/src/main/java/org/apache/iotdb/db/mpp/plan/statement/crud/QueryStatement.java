@@ -378,6 +378,9 @@ public class QueryStatement extends Statement {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
       }
+      if (groupByComponent != null && isGroupByLevel()) {
+        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
+      }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
       }
