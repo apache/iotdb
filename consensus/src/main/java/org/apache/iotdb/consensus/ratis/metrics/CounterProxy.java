@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.type.Counter;
 /** A Proxy class using IoTDB Counter to replace the dropwizard Counter. */
 public class CounterProxy extends com.codahale.metrics.Counter {
 
-  // IoTDB Counter
+  /** IoTDB Counter */
   private final Counter counter;
 
   CounterProxy(Counter counter) {

@@ -81,8 +81,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public boolean remove(String name) {
+    // Currently MetricService in IoTDB does not support to remove a metric by its name only.
+    // Therefore, we are trying every potential type here util we remove it successfully.
+    // Since metricService.remove will throw an IllegalArgument when type mismatches, so use three
+    // independent try-clauses
     // TODO (szywilliam) we can add an interface like removeTypeless(name)
-
     try {
       metricService.remove(MetricType.COUNTER, getMetricName(name));
     } catch (IllegalArgumentException ignored) {
@@ -112,13 +115,14 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   @Override
   public Gauge gauge(String name, MetricRegistry.MetricSupplier<Gauge> metricSupplier) {
     final String fullName = getMetricName(name);
-    final GaugeProxy gauge = new GaugeProxy(metricSupplier);
-    final GaugeProxy previous = gaugeCache.putIfAbsent(fullName, gauge);
-    if (previous == null) {
-      metricService.createAutoGauge(
-          fullName, MetricLevel.IMPORTANT, gauge, GaugeProxy::getValueAsDouble);
-    }
-    return gauge;
+    return gaugeCache.computeIfAbsent(
+        fullName,
+        gaugeName -> {
+          final GaugeProxy gauge = new GaugeProxy(metricSupplier);
+          metricService.createAutoGauge(
+              gaugeName, MetricLevel.IMPORTANT, gauge, GaugeProxy::getValueAsDouble);
+          return gauge;
+        });
   }
 
   @Override
@@ -178,7 +182,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public void setJmxReporter(JmxReporter jmxReporter) {
-    // Not Implemented: JmxReporter is not used in Ratis Metrics
     throw new UnsupportedOperationException("JmxReporter is not used in Ratis Metrics");
   }
 
@@ -189,7 +192,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public void setConsoleReporter(ConsoleReporter consoleReporter) {
-    // Not Implemented: ConsoleReporter is not used in Ratis Metrics
     throw new UnsupportedOperationException("ConsoleReporter is not used in Ratis Metrics");
   }
 

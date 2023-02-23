@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class MetricRegistryManager extends MetricRegistries {
+  // Using RefCountingMap here because of potential duplicate MetricRegistryInfos
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
   // TODO: enable ratis metrics after verifying its correctness and efficiency
   private final AbstractMetricService service = new DoNothingMetricService();
@@ -83,15 +84,12 @@ public class MetricRegistryManager extends MetricRegistries {
   }
 
   @Override
-  @Deprecated
-  // TODO maybe we could implement it
   public void enableJmxReporter() {
     // We shall disable the JMX reporter since we already have one in MetricService
     throw new UnsupportedOperationException("JMX Reporter is disabled from RatisMetricRegistries");
   }
 
   @Override
-  @Deprecated
   public void enableConsoleReporter(TimeDuration timeDuration) {
     // We shall disable the Console reporter since we already have one in MetricService
     throw new UnsupportedOperationException(
