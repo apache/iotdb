@@ -15426,7 +15426,7 @@
           "refId": "A"
         }
       ],
-      "title": "Time Series Number",
+      "title": "Schema Consensus Protocol",
       "type": "stat"
     },
     {
@@ -16866,6 +16866,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7A",
-  "version": 19,
+  "version": 20,
   "weekStart": ""
 }
