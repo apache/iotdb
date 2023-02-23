@@ -193,6 +193,10 @@ public class WALManager implements IService {
     return totalDiskUsage.get();
   }
 
+  public long getWALNodesNum() {
+    return walNodesManager.getNodesNum();
+  }
+
   public void addTotalDiskUsage(long size) {
     totalDiskUsage.accumulateAndGet(size, Long::sum);
   }

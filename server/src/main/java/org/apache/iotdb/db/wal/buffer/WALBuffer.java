@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.wal.io.WALMetaData;
@@ -60,6 +61,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** whether close method is called */
   private volatile boolean isClosed = false;
@@ -224,7 +226,9 @@ public class WALBuffer extends AbstractWALBuffer {
     private boolean handleInfoEntry(WALEntry walEntry) {
       int size = byteBufferView.position();
       try {
+        long start = System.nanoTime();
         walEntry.serialize(byteBufferView);
+        WRITING_METRICS.recordSerializeWALInfoEntryCost(System.nanoTime() - start);
         size = byteBufferView.position() - size;
       } catch (Exception e) {
         logger.error(
@@ -423,6 +427,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
     @Override
     public void run() {
+      long start = System.nanoTime();
       currentWALFileWriter.updateFileStatus(fileStatus);
 
       if (logger.isDebugEnabled()) {
@@ -484,6 +489,7 @@ public class WALBuffer extends AbstractWALBuffer {
           fsyncListener.succeed();
         }
       }
+      WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - start);
     }
   }
 
