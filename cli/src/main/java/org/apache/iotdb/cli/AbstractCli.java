@@ -210,7 +210,7 @@ public abstract class AbstractCli {
             .hasArg()
             .desc(
                 "The timeout in second. "
-                        + "Using the configuration of server if it's not set (optional)")
+                    + "Using the configuration of server if it's not set (optional)")
             .build();
     options.addOption(queryTimeout);
     return options;
@@ -479,8 +479,6 @@ public abstract class AbstractCli {
     println("Time zone has set to " + values[1].trim());
     return CODE_OK;
   }
-
-
 
   private static int setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
