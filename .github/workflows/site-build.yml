@@ -36,6 +36,8 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Check Apache Header
+        run: mvn apache-rat:check
       - name: Test compile website
         run: mvn -P site -P compile-site -P compile-site-1.0 -P compile-site-0.13 -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile -pl site
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -157,6 +158,11 @@ public class TagSchemaRegion implements ISchemaRegion {
 
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
     throw new UnsupportedOperationException();
   }
 

@@ -74,4 +74,9 @@ public class PlainCacheManager extends CacheManager {
   protected void clearNodeCache() {
     nodeCache.clear();
   }
+
+  @Override
+  public long getCacheNodeNum() {
+    return nodeCache.size();
+  }
 }

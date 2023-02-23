@@ -70,6 +70,9 @@ public class MetadataConstant {
   public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
   public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
+  public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
+  public static final String SCHEMA_ENGINE_METRIC_NAME = "schema_file";
+
   public static String getMNodeTypeName(byte type) {
     switch (type) {
       case INTERNAL_MNODE_TYPE:

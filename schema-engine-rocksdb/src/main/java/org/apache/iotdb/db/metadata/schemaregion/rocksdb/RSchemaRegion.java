@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -192,6 +193,11 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
     throw new UnsupportedOperationException();
   }
 
