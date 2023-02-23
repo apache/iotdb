@@ -39,8 +39,8 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
   private static final String UNPINNED_NODE_NUM = "schema_file_unpinned_num";
   private static final String PINNED_MEM_SIZE = "schema_file_pinned_mem";
   private static final String UNPINNED_MEM_SIZE = "schema_file_unpinned_mem";
-  private static final String RELEASE_TIMER = "schema_file_release_timer";
-  private static final String FLUSH_TIMER = "schema_file_flush_timer";
+  private static final String RELEASE_TIMER = "schema_file_release";
+  private static final String FLUSH_TIMER = "schema_file_flush";
   private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
   private static final String FLUSH_THREAD_NUM = "schema_file_flush_thread_num";
 
