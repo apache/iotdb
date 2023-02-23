@@ -1894,13 +1894,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
     ILastCacheValue cacheValue = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+    if (cacheValue == null) { // last value is not cached
+      return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
+    }
     if (cacheValue.isNull()) {
+      // last value is cached, we know it has no data.
       return null;
     }
     TimeValuePair timeValuePair = cacheValue.getTimeValuePair();
-    if (timeValuePair == null) { // last value is not cached
-      return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
-    } else if (!LastQueryUtil.satisfyFilter(
+    if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
 
@@ -1988,14 +1990,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
       ILastCacheValue cacheValue = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      if (cacheValue == null) {
+        unCachedMeasurementIndexes.add(i);
+        continue;
+      }
       if (cacheValue.isNull()) {
         // current series is cached, and we know its cache value is null.
         continue;
       }
+      // TimeValuePair is always not null
       TimeValuePair timeValuePair = cacheValue.getTimeValuePair();
-      if (timeValuePair == null) { // last value is not cached
-        unCachedMeasurementIndexes.add(i);
-      } else if (!LastQueryUtil.satisfyFilter(
+      if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
           timeValuePair)) { // cached last value is not satisfied
 
