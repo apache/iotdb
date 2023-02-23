@@ -56,6 +56,14 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return v == null ? null : v.getStatistics();
   }
 
+  public List<Statistics> getValueStatisticsList() {
+    List<Statistics> valueStatisticsList = new ArrayList<>();
+    for (TimeseriesMetadata v : valueTimeseriesMetadataList) {
+      valueStatisticsList.add(v == null ? null : v.getStatistics());
+    }
+    return valueStatisticsList;
+  }
+
   public Statistics getTimeStatistics() {
     return timeseriesMetadata.getStatistics();
   }

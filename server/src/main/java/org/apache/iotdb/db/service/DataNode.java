@@ -564,7 +564,7 @@ public class DataNode implements DataNodeMBean {
     DataNodeMetricsHelper.bind();
   }
 
-  private TDataNodeLocation generateDataNodeLocation() {
+  public static TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));

@@ -17,8 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
-import org.apache.iotdb.db.mpp.execution.operator.AbstractOperator;
+interface ICacheSizeComputer<FK, SK, V> {
 
-public abstract class AbstractProcessOperator extends AbstractOperator implements ProcessOperator {}
+  int computeFirstKeySize(FK firstKey);
+
+  int computeSecondKeySize(SK secondKey);
+
+  int computeValueSize(V value);
+}

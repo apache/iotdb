@@ -37,6 +37,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -592,16 +594,18 @@ public class SeriesAggregationScanOperatorTest {
               operatorContext.setMaxRunTime(TEST_TIME_SLICE);
             });
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             planNodeId,
             measurementPath,
-            allSensors,
+            ascending ? Ordering.ASC : Ordering.DESC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
-            timeFilter,
-            ascending,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(

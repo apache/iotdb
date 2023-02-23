@@ -31,10 +31,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,14 +40,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class AlignedPageReader implements IPageReader, IAlignedPageReader {
+import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
-  private static final Logger logger = LoggerFactory.getLogger(AlignedPageReader.class);
+public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
+
   private Filter filter;
+  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
+
   private boolean isModified;
   private TsBlockBuilder builder;
 
@@ -113,9 +114,39 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return pageData.flip();
   }
 
+  private boolean pageSatisfy() {
+    if (filter != null) {
+      // TODO accept valueStatisticsList to filter
+      return filter.satisfy(getStatistics());
+    } else {
+      // For aligned series, When we only query some measurements under an aligned device, if the
+      // values of these queried measurements at a timestamp are all null, the timestamp will not be
+      // selected.
+      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
+      // this check here.
+      long rowCount = getTimeStatistics().getCount();
+      for (Statistics statistics : getValueStatisticsList()) {
+        if (statistics == null || statistics.hasNullValue(rowCount)) {
+          return true;
+        }
+      }
+      // When the number of points in all value pages is the same as that in the time page, it means
+      // that there is no null value, and all timestamps will be selected.
+      if (paginationController.hasCurOffset(rowCount)) {
+        paginationController.consumeOffset(rowCount);
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     builder.reset();
+    if (!pageSatisfy()) {
+      return builder.build();
+    }
+
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
     // if all the sub sensors' value are null in current row, just discard it
@@ -168,10 +199,23 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
 
     // construct time column
+    int readEndIndex = timeBatch.length;
     for (int i = 0; i < timeBatch.length; i++) {
-      if (keepCurrentRow[i]) {
+      if (!keepCurrentRow[i]) {
+        continue;
+      }
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+        keepCurrentRow[i] = false;
+        continue;
+      }
+      if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
         builder.declarePosition();
+        paginationController.consumeLimit();
+      } else {
+        readEndIndex = i;
+        break;
       }
     }
 
@@ -180,9 +224,9 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
         pageReader.writeColumnBuilderWithNextBatch(
-            timeBatch, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
+            readEndIndex, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
       } else {
-        for (int j = 0; j < timeBatch.length; j++) {
+        for (int j = 0; j < readEndIndex; j++) {
           if (keepCurrentRow[j]) {
             builder.getColumnBuilder(i).appendNull();
           }
@@ -218,6 +262,14 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return timePageReader.getStatistics();
   }
 
+  private List<Statistics> getValueStatisticsList() {
+    List<Statistics> valueStatisticsList = new ArrayList<>();
+    for (ValuePageReader v : valuePageReaderList) {
+      valueStatisticsList.add(v == null ? null : v.getStatistics());
+    }
+    return valueStatisticsList;
+  }
+
   @Override
   public void setFilter(Filter filter) {
     if (this.filter == null) {
@@ -225,6 +277,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     } else {
       this.filter = new AndFilter(this.filter, filter);
     }
+  }
+
+  @Override
+  public void setLimitOffset(PaginationController paginationController) {
+    this.paginationController = paginationController;
   }
 
   @Override

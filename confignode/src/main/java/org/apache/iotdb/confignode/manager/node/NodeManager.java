@@ -911,10 +911,10 @@ public class NodeManager {
    * @param dataNodeId The index of the specified DataNode
    * @return The free disk space that sample through heartbeat, 0 if no heartbeat received
    */
-  public long getFreeDiskSpace(int dataNodeId) {
+  public double getFreeDiskSpace(int dataNodeId) {
     DataNodeHeartbeatCache dataNodeHeartbeatCache =
         (DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId);
-    return dataNodeHeartbeatCache == null ? 0 : dataNodeHeartbeatCache.getFreeDiskSpace();
+    return dataNodeHeartbeatCache == null ? 0d : dataNodeHeartbeatCache.getFreeDiskSpace();
   }
 
   /**

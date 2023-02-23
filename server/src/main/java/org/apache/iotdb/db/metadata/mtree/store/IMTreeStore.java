@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -34,6 +35,13 @@ import java.util.Map;
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
 public interface IMTreeStore {
+
+  /**
+   * Generate the ancestor nodes of storageGroupNode
+   *
+   * @return root node
+   */
+  IMNode generatePrefix(PartialPath storageGroupPath);
 
   IMNode getRoot();
 

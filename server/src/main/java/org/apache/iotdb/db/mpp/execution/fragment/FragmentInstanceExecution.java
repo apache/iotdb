@@ -130,6 +130,7 @@ public class FragmentInstanceExecution {
             for (IDriver driver : drivers) {
               driver.close();
             }
+            context.releaseResource();
             // help for gc
             drivers = null;
             if (newState.isFailed()) {
