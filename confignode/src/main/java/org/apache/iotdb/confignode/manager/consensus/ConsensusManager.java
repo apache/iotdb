@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -256,18 +257,18 @@ public class ConsensusManager {
   /**
    * Remove a ConfigNode Peer out of ConfigNodeRegion
    *
-   * @param tConfigNodeLocation config node location
+   * @param configNodeLocation config node location
    * @return True if successfully removePeer. False if another ConfigNode is being removed to the
    *     ConfigNodeRegion
    */
-  public boolean removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
+  public boolean removeConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     return consensusImpl
         .removePeer(
             consensusGroupId,
             new Peer(
                 consensusGroupId,
-                tConfigNodeLocation.getConfigNodeId(),
-                tConfigNodeLocation.getConsensusEndPoint()))
+                configNodeLocation.getConfigNodeId(),
+                configNodeLocation.getConsensusEndPoint()))
         .isSuccess();
   }
 
@@ -306,6 +307,7 @@ public class ConsensusManager {
         TimeUnit.MILLISECONDS.sleep(100);
       } catch (InterruptedException e) {
         LOGGER.warn("ConsensusManager getLeader been interrupted, ", e);
+        Thread.currentThread().interrupt();
       }
     }
     return null;

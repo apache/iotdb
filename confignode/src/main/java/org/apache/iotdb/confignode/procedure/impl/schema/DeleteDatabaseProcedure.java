@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DeleteDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
@@ -278,5 +279,10 @@ public class DeleteDatabaseProcedure
           && thatProc.deleteSgSchema.equals(this.getDeleteSgSchema());
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deleteSgSchema);
   }
 }
