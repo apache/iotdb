@@ -1028,12 +1028,12 @@ Different configuration parameters take effect in the following three ways:
 
 * candidate\_compaction\_task\_queue\_size
 
-|Name| candidate\_compaction\_task\_queue\_size      |
-|:---:|:----------------------------------------------|
-|Description| The number of candidate compaction task queue |
-|Type| Int32                                         |
-|Default| 50                                             |
-|Effective| After restart system                          |
+|Name| candidate\_compaction\_task\_queue\_size    |
+|:---:|:--------------------------------------------|
+|Description| The size of candidate compaction task queue |
+|Type| Int32                                       |
+|Default| 50                                          |
+|Effective| After restart system                        |
 
 ### Write Ahead Log Configuration
 

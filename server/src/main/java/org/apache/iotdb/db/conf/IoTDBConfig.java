@@ -488,7 +488,7 @@ public class IoTDBConfig {
 
   private boolean enableCompactionValidation = true;
 
-  /** The number of candidate compaction task queue. */
+  /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
