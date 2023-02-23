@@ -96,7 +96,6 @@ public class PartitionCache {
 
   /** The lock of cache. */
   private final ReentrantReadWriteLock databaseCacheLock = new ReentrantReadWriteLock();
-
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
@@ -117,7 +116,7 @@ public class PartitionCache {
   /**
    * get database to device map.
    *
-   * @param devicePaths the devices that need to hit
+   * @param devicePaths the target devices
    * @param fetchDatabases whether try to get all database from config node
    * @param autoCreateDatabases whether auto create database when cache miss
    */
@@ -297,10 +296,10 @@ public class PartitionCache {
    * Thirdly, we try to trigger auto-create databases if second try is failed and
    * autoCreateDatabases is true.
    *
-   * @param result contains result, failed devices and map
-   * @param devicePaths the devices that need to hit
-   * @param fetchDatabases whether try to get all database from confignode
-   * @param autoCreateDatabases whether auto create database when device miss
+   * @param result contains hit result, missed devices and result map
+   * @param devicePaths the target devices
+   * @param fetchDatabases whether try to get all database from config node
+   * @param autoCreateDatabases whether auto create database when cache miss
    */
   private void getDatabaseCacheResult(
       DatabaseCacheResult<?> result,
