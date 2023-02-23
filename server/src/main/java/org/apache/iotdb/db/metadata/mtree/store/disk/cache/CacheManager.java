@@ -291,6 +291,8 @@ public abstract class CacheManager implements ICacheManager {
 
     if (bufferIterator.hasNext()) {
       nodesToPersist.add(node);
+    } else {
+      addToNodeCache(getCacheEntry(node), node);
     }
 
     IMNode child;
@@ -306,11 +308,10 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   private void removeOne(CacheEntry cacheEntry, IMNode node) {
-    if (cacheEntry.isVolatile()) {
+    if (!node.isMeasurement()) {
       nodeBuffer.remove(cacheEntry);
-    } else {
-      removeFromNodeCache(cacheEntry);
     }
+    removeFromNodeCache(cacheEntry);
 
     node.setCacheEntry(null);
 
