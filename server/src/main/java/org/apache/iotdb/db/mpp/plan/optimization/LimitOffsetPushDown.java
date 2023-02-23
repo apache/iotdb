@@ -39,6 +39,18 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
+/**
+ * <b>Optimization phase:</b> Distributed plan planning
+ *
+ * <p><b>Rule:</b> The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the
+ * following conditions are met:
+ * <li>Time series query (not aggregation query).
+ * <li>The query expressions are all scalar expression.
+ * <li>Functions that need to be calculated based on before or after values are not used, such as
+ *     trend functions, FILL(previous), FILL(linear).
+ * <li>Only one scan node is included in the distributed plan. That is, only one single series or a
+ *     group of series under an aligned device is queried, and all queried data is in one region.
+ */
 public class LimitOffsetPushDown implements PlanOptimizer {
 
   @Override
@@ -117,6 +129,9 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
+      // Value filtering push-down occurs during the logical planning phase. If there is still a
+      // FilterNode here, it means that there are query filter conditions that cannot be pushed
+      // down.
       context.setEnablePushDown(false);
       return node;
     }
