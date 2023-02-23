@@ -58,7 +58,7 @@ public class PartitionCacheTest {
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
 
-  private static final Set<String> storageGroups = new HashSet<>();
+  private static final Set<String> databases = new HashSet<>();
   private static final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>>
       schemaPartitionTable = new HashMap<>();
   private static final Map<
@@ -81,7 +81,7 @@ public class PartitionCacheTest {
         storageGroupNumber++) {
       // init each database
       String storageGroupName = getStorageGroupName(storageGroupNumber);
-      storageGroups.add(storageGroupName);
+      databases.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
         schemaPartitionTable.put(storageGroupName, new HashMap<>());
       }
@@ -143,7 +143,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateStorageCache(storageGroups);
+    partitionCache.updateDatabaseCache(databases);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);

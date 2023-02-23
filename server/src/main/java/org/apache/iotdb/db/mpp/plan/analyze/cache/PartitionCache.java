@@ -174,35 +174,6 @@ public class PartitionCache {
   }
 
   /**
-   * get all databases from config node and update database cache.
-   *
-   * @param result contains hit result, missed devices and result map
-   * @param devicePaths the target devices
-   * @throws ClientManagerException failed when borrow client
-   * @throws TException failed when fetch databases
-   */
-  private void fetchDatabaseAndUpdateCache(DatabaseCacheResult<?> result, List<String> devicePaths)
-      throws ClientManagerException, TException {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      databaseCacheLock.writeLock().lock();
-      // try to check whether hit in write lock
-      getDatabaseMap(result, devicePaths, true);
-      if (!result.isSuccess()) {
-        TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
-        if (storageGroupSchemaResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
-          // update all database into cache
-          updateStorageCache(storageGroupNames);
-        }
-      }
-    } finally {
-      databaseCacheLock.writeLock().unlock();
-    }
-  }
-
-  /**
    * get database map from database cache.
    *
    * @param result contains hit result, missed devices and result map
@@ -278,7 +249,8 @@ public class PartitionCache {
             if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               Set<String> storageGroupNames =
                   storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
-              updateStorageCache(storageGroupNames);
+              databaseCache.clear();
+              databaseCache.addAll(storageGroupNames);
             } else {
               logger.error("Failed to fetch databases from config node");
               throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -323,14 +295,14 @@ public class PartitionCache {
                   successFullyCreatedDatabase.add(databaseName);
                 } else {
                   // try to update cache by databases successfully created
-                  updateStorageCache(successFullyCreatedDatabase);
+                  databaseCache.addAll(successFullyCreatedDatabase);
                   logger.warn(
                       "[{} Cache] failed to create database {}", DATABASE_CACHE_NAME, databaseName);
                   throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
                 }
               }
               // try to update database cache when all databases have already been created
-              updateStorageCache(databaseNamesNeedCreated);
+              databaseCache.addAll(databaseNamesNeedCreated);
             }
           } finally {
             databaseCacheLock.writeLock().unlock();
@@ -349,14 +321,14 @@ public class PartitionCache {
   }
 
   /**
-   * update database cache
+   * update database cache.
    *
-   * @param storageGroupNames the database names that need to update
+   * @param databaseNames the database names that need to update
    */
-  public void updateStorageCache(Set<String> storageGroupNames) {
+  public void updateDatabaseCache(Set<String> databaseNames) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(storageGroupNames);
+      databaseCache.addAll(databaseNames);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -365,20 +337,18 @@ public class PartitionCache {
   /**
    * invalidate database cache
    *
-   * @param storageGroupNames the databases that need to invalid
+   * @param databaseNames the databases that need to invalid
    */
-  public void removeFromStorageGroupCache(List<String> storageGroupNames) {
+  public void removeFromDatabaseCache(List<String> databaseNames) {
     databaseCacheLock.writeLock().lock();
     try {
-      for (String storageGroupName : storageGroupNames) {
-        databaseCache.remove(storageGroupName);
-      }
+      databaseNames.forEach(databaseCache::remove);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
   }
 
-  /** invalidate all database cache */
+  /** invalidate all database cache. */
   public void removeFromStorageGroupCache() {
     databaseCacheLock.writeLock().lock();
     try {
