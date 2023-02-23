@@ -16,21 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.metric;
 
-package org.apache.iotdb.db.metadata.schemaregion;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-public enum SchemaEngineMode {
-  Memory(0),
-  Schema_File(1),
-  Rocksdb_based(2);
-
-  private final int code;
-
-  SchemaEngineMode(int code) {
-    this.code = code;
-  }
-
-  public int getCode() {
-    return code;
-  }
-}
+public interface ISchemaRegionMetric extends IMetricSet {}
