@@ -202,7 +202,7 @@ public class SinkChannel implements ISinkChannel {
 
   @Override
   public synchronized void abort() {
-    LOGGER.debug("[StartAbortSinkHandle]");
+    LOGGER.debug("[StartAbortSinkChannel]");
     if (aborted) {
       return;
     }
@@ -224,12 +224,12 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onAborted(this);
     aborted = true;
-    LOGGER.debug("[EndAbortSinkHandle]");
+    LOGGER.debug("[EndAbortSinkChannel]");
   }
 
   @Override
   public synchronized void close() {
-    LOGGER.debug("[StartCloseSinkHandle]");
+    LOGGER.debug("[StartCloseSinkChannel]");
     if (closed) {
       return;
     }
@@ -251,7 +251,7 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
     sinkListener.onFinish(this);
     closed = true;
-    LOGGER.debug("[EndCloseSinkHandle]");
+    LOGGER.debug("[EndCloseSinkChannel]");
   }
 
   @Override
@@ -276,10 +276,10 @@ public class SinkChannel implements ISinkChannel {
   public synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
     if (aborted || closed) {
       LOGGER.warn(
-          "SinkHandle still receive getting TsBlock request after being aborted={} or closed={}",
+          "SinkChannel still receive getting TsBlock request after being aborted={} or closed={}",
           aborted,
           closed);
-      throw new IllegalStateException("Sink handle is aborted or closed. ");
+      throw new IllegalStateException("SinkChannel is aborted or closed. ");
     }
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
@@ -344,7 +344,7 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public String toString() {
     return String.format(
-        "Query[%s]-[%s-%s-SinkHandle]:",
+        "Query[%s]-[%s-%s-SinkChannel]:",
         localFragmentInstanceId.queryId,
         localFragmentInstanceId.fragmentId,
         localFragmentInstanceId.instanceId);
@@ -352,16 +352,16 @@ public class SinkChannel implements ISinkChannel {
 
   private void checkState() {
     if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
+      throw new IllegalStateException("SinkChannel is aborted.");
     } else if (closed) {
-      throw new IllegalStateException("SinkHandle is closed.");
+      throw new IllegalStateException("SinkChannel is closed.");
     }
   }
 
   // region ============ ISinkChannel related ============
 
   public void open() {
-    // SinkHandle is opened when ShuffleSinkHandle choose it as the next channel
+    // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
     this.blocked =
         localMemoryManager
             .getQueryPool()
@@ -372,7 +372,7 @@ public class SinkChannel implements ISinkChannel {
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
             // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
-            // at first this SinkHandle has not reserved memory.
+            // at first this SinkChannel has not reserved memory.
             .left;
   }
 
@@ -417,7 +417,7 @@ public class SinkChannel implements ISinkChannel {
 
     @Override
     public void run() {
-      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
+      try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
         LOGGER.debug(
             "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
         int attempt = 0;
@@ -464,7 +464,7 @@ public class SinkChannel implements ISinkChannel {
 
     @Override
     public void run() {
-      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
+      try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
         LOGGER.debug("[NotifyNoMoreTsBlock]");
         int attempt = 0;
         TEndOfDataBlockEvent endOfDataBlockEvent =

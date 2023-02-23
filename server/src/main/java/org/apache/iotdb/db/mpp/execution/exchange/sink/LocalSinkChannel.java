@@ -153,7 +153,7 @@ public class LocalSinkChannel implements ISinkChannel {
 
   @Override
   public void abort() {
-    LOGGER.debug("[StartAbortLocalSinkHandle]");
+    LOGGER.debug("[StartAbortLocalSinkChannel]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -168,12 +168,12 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     }
-    LOGGER.debug("[EndAbortLocalSinkHandle]");
+    LOGGER.debug("[EndAbortLocalSinkChannel]");
   }
 
   @Override
   public void close() {
-    LOGGER.debug("[StartCloseLocalSinkHandle]");
+    LOGGER.debug("[StartCloseLocalSinkChannel]");
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -184,7 +184,7 @@ public class LocalSinkChannel implements ISinkChannel {
         sinkListener.onFinish(this);
       }
     }
-    LOGGER.debug("[EndCloseLocalSinkHandle]");
+    LOGGER.debug("[EndCloseLocalSinkChannel]");
   }
 
   public SharedTsBlockQueue getSharedTsBlockQueue() {
@@ -193,9 +193,9 @@ public class LocalSinkChannel implements ISinkChannel {
 
   private void checkState() {
     if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
+      throw new IllegalStateException("LocalSinkChannel is aborted.");
     } else if (closed) {
-      throw new IllegalStateException("Sink Handle is closed.");
+      throw new IllegalStateException("LocalSinkChannel is closed.");
     }
   }
 
