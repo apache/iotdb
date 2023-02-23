@@ -184,7 +184,8 @@ public class HorizontallyConcatOperatorTest {
                   TSDataType.INT32));
 
       int count = 0;
-      while (horizontallyConcatOperator.hasNext()) {
+      while (horizontallyConcatOperator.isBlocked().isDone()
+          && horizontallyConcatOperator.hasNext()) {
         TsBlock tsBlock = horizontallyConcatOperator.next();
         assertEquals(6, tsBlock.getValueColumnCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
