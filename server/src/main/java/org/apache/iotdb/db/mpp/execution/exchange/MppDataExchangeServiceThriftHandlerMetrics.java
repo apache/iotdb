@@ -42,7 +42,7 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
     MetricService.getInstance()
         .createAutoGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             thriftConnectionNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
