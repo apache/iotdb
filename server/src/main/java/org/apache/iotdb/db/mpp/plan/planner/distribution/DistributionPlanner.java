@@ -147,6 +147,7 @@ public class DistributionPlanner {
       QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
     return nodeGroupContext.isAlignByDevice()
+        && orderByComponent != null
         && !(orderByComponent.getSortItemList().isEmpty()
             || orderByComponent.getSortItemList().get(0).getSortKey().equals(SortKey.DEVICE));
   }
