@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -167,6 +169,16 @@ public class TestPlanBuilder {
             false,
             ZonedDateTime.now().getOffset(),
             Ordering.ASC);
+    return this;
+  }
+
+  public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
+    IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
+    intoPathDescriptor.specifyTargetPath(sourcePath.toString(), intoPath);
+    intoPathDescriptor.specifyDeviceAlignment(intoPath.getDevice(), false);
+    intoPathDescriptor.recordSourceColumnDataType(
+        sourcePath.toString(), sourcePath.getSeriesType());
+    this.root = new IntoNode(new PlanNodeId(id), getRoot(), intoPathDescriptor);
     return this;
   }
 }

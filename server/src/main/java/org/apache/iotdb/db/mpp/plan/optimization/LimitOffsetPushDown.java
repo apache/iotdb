@@ -71,6 +71,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       for (PlanNode child : node.getChildren()) {
+        context.setParent(node);
         child.accept(this, context);
       }
       return node;
@@ -78,42 +79,39 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitLimit(LimitNode node, RewriterContext context) {
-      PlanNode child = node.getChild();
       PlanNode parent = context.getParent();
 
       context.setParent(node);
       context.setLimit(node.getLimit());
-      child.accept(this, context);
+      node.getChild().accept(this, context);
 
       if (context.isEnablePushDown()) {
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(child);
-          return parent;
-        } else {
-          return node.getChild();
-        }
+        return concatParentWithChild(parent, node.getChild());
       }
       return node;
     }
 
     @Override
     public PlanNode visitOffset(OffsetNode node, RewriterContext context) {
-      PlanNode child = node.getChild();
       PlanNode parent = context.getParent();
 
       context.setParent(node);
       context.setOffset(node.getOffset());
-      child.accept(this, context);
+      node.getChild().accept(this, context);
 
       if (context.isEnablePushDown()) {
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(child);
-          return parent;
-        } else {
-          return node.getChild();
-        }
+        return concatParentWithChild(parent, node.getChild());
       }
       return node;
+    }
+
+    private PlanNode concatParentWithChild(PlanNode parent, PlanNode child) {
+      if (parent != null) {
+        ((SingleChildProcessNode) parent).setChild(child);
+        return parent;
+      } else {
+        return child;
+      }
     }
 
     @Override

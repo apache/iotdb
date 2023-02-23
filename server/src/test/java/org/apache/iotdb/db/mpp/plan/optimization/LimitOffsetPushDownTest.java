@@ -63,6 +63,8 @@ public class LimitOffsetPushDownTest {
     try {
       schemaMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
       schemaMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE));
+      schemaMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
+      schemaMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE));
 
       MeasurementPath aS1 = new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32);
       MeasurementPath aS2 = new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE);
@@ -182,6 +184,22 @@ public class LimitOffsetPushDownTest {
   }
 
   @Test
+  public void testPushDownWithInto() {
+    checkPushDown(
+        "select s1 into root.sg.d2(s1) from root.sg.d1 limit 100 offset 100;",
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"))
+            .offset("1", 100)
+            .limit("2", 100)
+            .into("3", schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d2.s1"))
+            .getRoot(),
+        new TestPlanBuilder()
+            .scan("0", schemaMap.get("root.sg.d1.s1"), 100, 100)
+            .into("3", schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d2.s1"))
+            .getRoot());
+  }
+
+  @Test
   public void testCannotPushDown() {
     checkCannotPushDown(
         "select s1, s2 from root.sg.d1 limit 100;",
@@ -257,9 +275,10 @@ public class LimitOffsetPushDownTest {
 
     LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
     PlanNode actualPlan = planner.plan(analysis).getRootNode();
-
     Assert.assertEquals(rawPlan, actualPlan);
-    Assert.assertEquals(optPlan, new LimitOffsetPushDown().optimize(actualPlan, analysis, context));
+
+    PlanNode actualOptPlan = new LimitOffsetPushDown().optimize(actualPlan, analysis, context);
+    Assert.assertEquals(optPlan, actualOptPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
