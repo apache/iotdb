@@ -53,7 +53,7 @@ public abstract class DatabaseCacheResult<V> {
     return resultMap;
   }
 
-  public void clear() {
+  public void reset() {
     this.success = true;
     this.missedDevices = new ArrayList<>();
     this.resultMap = new HashMap<>();

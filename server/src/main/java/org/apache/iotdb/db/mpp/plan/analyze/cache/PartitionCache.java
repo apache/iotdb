@@ -96,6 +96,7 @@ public class PartitionCache {
 
   /** The lock of cache. */
   private final ReentrantReadWriteLock databaseCacheLock = new ReentrantReadWriteLock();
+
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
@@ -136,7 +137,7 @@ public class PartitionCache {
   }
 
   /**
-   * get device to database map
+   * get device to database map.
    *
    * @param devicePaths the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
@@ -156,12 +157,12 @@ public class PartitionCache {
   }
 
   /**
-   * get database of device
+   * get database of device.
    *
    * @param devicePath the path of device
    * @return database name, return null if cache miss
    */
-  private String getStorageGroupName(String devicePath) {
+  private String getDatabaseName(String devicePath) {
     synchronized (databaseCache) {
       for (String storageGroupName : databaseCache) {
         if (PathUtils.isStartWith(devicePath, storageGroupName)) {
@@ -173,19 +174,20 @@ public class PartitionCache {
   }
 
   /**
-   * get all database from confignode and update database cache
+   * get all databases from config node and update database cache.
    *
-   * @param result the result of get database cache
-   * @param devicePaths the devices that need to hit
+   * @param result contains hit result, missed devices and result map
+   * @param devicePaths the target devices
+   * @throws ClientManagerException failed when borrow client
+   * @throws TException failed when fetch databases
    */
-  private void fetchStorageGroupAndUpdateCache(
-      DatabaseCacheResult<?> result, List<String> devicePaths)
+  private void fetchDatabaseAndUpdateCache(DatabaseCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       databaseCacheLock.writeLock().lock();
-      result.clear();
-      getStorageGroupMap(result, devicePaths, true);
+      // try to check whether hit in write lock
+      getDatabaseMap(result, devicePaths, true);
       if (!result.isSuccess()) {
         TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
@@ -201,105 +203,47 @@ public class PartitionCache {
   }
 
   /**
-   * create not existed database and update database cache
+   * get database map from database cache.
    *
-   * @param result the result of get database cache
-   * @param devicePaths the devices that need to hit
-   * @throws RuntimeException if failed to create database
+   * @param result contains hit result, missed devices and result map
+   * @param devicePaths the target devices
+   * @param failFast If true, return when failed. If false, return when all devices check
    */
-  private void createStorageGroupAndUpdateCache(
-      DatabaseCacheResult<?> result, List<String> devicePaths)
-      throws ClientManagerException, MetadataException, TException {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
-      databaseCacheLock.writeLock().lock();
-      // try to check whether database need to be created
-      result.clear();
-      // try to hit database with all missed devices
-      getStorageGroupMap(result, devicePaths, false);
-      if (!result.isSuccess()) {
-        // try to get database needed to be created from missed device
-        Set<String> storageGroupNamesNeedCreated = new HashSet<>();
-        for (String devicePath : result.getMissedDevices()) {
-          PartialPath storageGroupNameNeedCreated =
-              MetaUtils.getStorageGroupPathByLevel(
-                  new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-          storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
-        }
-
-        // try to create databases one by one until done or one database fail
-        Set<String> successFullyCreatedStorageGroup = new HashSet<>();
-        for (String storageGroupName : storageGroupNamesNeedCreated) {
-          TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
-          storageGroupSchema.setName(storageGroupName);
-          TSStatus tsStatus = client.setDatabase(storageGroupSchema);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
-            successFullyCreatedStorageGroup.add(storageGroupName);
-          } else {
-            // try to update cache by databases successfully created
-            updateStorageCache(successFullyCreatedStorageGroup);
-            logger.warn(
-                "[{} Cache] failed to create database {}", DATABASE_CACHE_NAME, storageGroupName);
-            throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
-          }
-        }
-        // try to update database cache when all databases has already been created
-        updateStorageCache(storageGroupNamesNeedCreated);
-      }
-    } finally {
-      databaseCacheLock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * get database map in one try
-   *
-   * @param result contains result(boolean), failed devices and the map
-   * @param devicePaths the devices that need to hit
-   * @param failFast if true, return when failed. if false, return when all devices hit
-   */
-  private void getStorageGroupMap(
+  private void getDatabaseMap(
       DatabaseCacheResult<?> result, List<String> devicePaths, boolean failFast) {
     try {
       databaseCacheLock.readLock().lock();
-      // reset result before try
-      result.clear();
-      boolean status = true;
+      result.reset();
       for (String devicePath : devicePaths) {
-        String storageGroupName = getStorageGroupName(devicePath);
-        if (null == storageGroupName) {
+        String databaseName = getDatabaseName(devicePath);
+        if (null == databaseName) {
           logger.debug("[{} Cache] miss when search device {}", DATABASE_CACHE_NAME, devicePath);
-          status = false;
           if (failFast) {
+            result.setFailed();
             break;
           } else {
             result.addMissedDevice(devicePath);
           }
         } else {
-          result.put(devicePath, storageGroupName);
+          result.put(devicePath, databaseName);
         }
       }
-      // setFailed the result when miss
-      if (!status) {
-        result.setFailed();
-      }
       logger.debug("[{} Cache] hit when search device {}", DATABASE_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(status, DATABASE_CACHE_NAME);
+      CacheMetricsRecorder.record(result.isSuccess(), DATABASE_CACHE_NAME);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
   }
 
   /**
-   * get map from device to database in three trys. Firstly, we generate result locally. Secondly,
-   * we try to fetch databases from config node if first try is failed and fetchDatabases is true.
-   * Thirdly, we try to trigger auto-create databases if second try is failed and
-   * autoCreateDatabases is true.
+   * get map from device to database in five trys.
    *
    * @param result contains hit result, missed devices and result map
    * @param devicePaths the target devices
    * @param fetchDatabases whether try to get all database from config node
    * @param autoCreateDatabases whether auto create database when cache miss
+   * @throws StatementAnalyzeException failed when borrow clients failed, metadata failed or rpc
+   *     failed
    */
   private void getDatabaseCacheResult(
       DatabaseCacheResult<?> result,
@@ -312,22 +256,90 @@ public class PartitionCache {
         return;
       }
     }
-    // first try to hit database in fast-fail way
-    getStorageGroupMap(result, devicePaths, true);
+    // firstly, we try to hit devices from cache in fail fast way
+    getDatabaseMap(result, devicePaths, true);
     if (!result.isSuccess() && fetchDatabases) {
+      // if failed in first try and enable fetch databases from config node
       try {
-        // try to fetch database from config node when miss
-        fetchStorageGroupAndUpdateCache(result, devicePaths);
-        // second try to hit database in fast-fail way
-        getStorageGroupMap(result, devicePaths, true);
-        if (!result.isSuccess() && autoCreateDatabases) {
-          // try to auto create database of failed device
-          createStorageGroupAndUpdateCache(result, devicePaths);
-          // third try to hit database in fast-fail way
-          getStorageGroupMap(result, devicePaths, true);
-          if (!result.isSuccess()) {
-            throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
+        try {
+          databaseCacheLock.writeLock().lock();
+          // secondly, we try to hit devices from cache in fail fast way in write lock
+          getDatabaseMap(result, devicePaths, true);
+          if (result.isSuccess()) {
+            // if success, then return
+            return;
           }
+          // if failed, then try to fetch all databases from config node
+          try (ConfigNodeClient client =
+              configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+            TDatabaseSchemaResp storageGroupSchemaResp =
+                client.getMatchedDatabaseSchemas(ROOT_PATH);
+            TSStatus tsStatus = storageGroupSchemaResp.getStatus();
+            if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              Set<String> storageGroupNames =
+                  storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
+              updateStorageCache(storageGroupNames);
+            } else {
+              logger.error("Failed to fetch databases from config node");
+              throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+            }
+          }
+        } finally {
+          databaseCacheLock.writeLock().unlock();
+        }
+        // thirdly, we try to hit devices from cache in fail fast way after fetching
+        getDatabaseMap(result, devicePaths, true);
+        if (result.isSuccess()) {
+          // if success, then return
+          return;
+        }
+        if (autoCreateDatabases) {
+          // if failed and enable auto create database
+          try {
+            databaseCacheLock.writeLock().lock();
+            // fourthly, we try to hit database with all missed devices in write lock
+            getDatabaseMap(result, devicePaths, false);
+            if (result.isSuccess()) {
+              // if success, then return
+              return;
+            }
+            try (ConfigNodeClient client =
+                configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+              // try to get database needed to be created from missed device
+              Set<String> databaseNamesNeedCreated = new HashSet<>();
+              for (String devicePath : result.getMissedDevices()) {
+                PartialPath databaseNameNeedCreated =
+                    MetaUtils.getStorageGroupPathByLevel(
+                        new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+                databaseNamesNeedCreated.add(databaseNameNeedCreated.getFullPath());
+              }
+              // try to create databases one by one until done or one database fail
+              Set<String> successFullyCreatedDatabase = new HashSet<>();
+              for (String databaseName : databaseNamesNeedCreated) {
+                TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
+                storageGroupSchema.setName(databaseName);
+                TSStatus tsStatus = client.setDatabase(storageGroupSchema);
+                if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+                  successFullyCreatedDatabase.add(databaseName);
+                } else {
+                  // try to update cache by databases successfully created
+                  updateStorageCache(successFullyCreatedDatabase);
+                  logger.warn(
+                      "[{} Cache] failed to create database {}", DATABASE_CACHE_NAME, databaseName);
+                  throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+                }
+              }
+              // try to update database cache when all databases have already been created
+              updateStorageCache(databaseNamesNeedCreated);
+            }
+          } finally {
+            databaseCacheLock.writeLock().unlock();
+          }
+        }
+        // fifthly, we try to hit database in fail fast way after auto create database
+        getDatabaseMap(result, devicePaths, true);
+        if (!result.isSuccess()) {
+          throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
         }
       } catch (TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
