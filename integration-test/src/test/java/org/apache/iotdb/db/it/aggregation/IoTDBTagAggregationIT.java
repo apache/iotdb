@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBTagAggregationIT {
-  private static final String[] DATASET =
+  protected static final String[] DATASET =
       new String[] {
         "CREATE DATABASE root.sg.a;",
         "CREATE DATABASE root.sg.b;",
@@ -75,7 +75,7 @@ public class IoTDBTagAggregationIT {
         "insert into root.sg.a.d7(time, t) values(10, 8.7);"
       };
 
-  private static final double DELTA = 0.001D;
+  protected static final double DELTA = 0.001D;
 
   @BeforeClass
   public static void setUp() throws Exception {

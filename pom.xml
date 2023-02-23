@@ -793,6 +793,9 @@
                             <exclude>**/yarn.lock</exclude>
                             <!-- site-->
                             <exclude>**/redirects</exclude>
+                            <exclude>**/.eslintignore</exclude>
+                            <exclude>**/palette.styl</exclude>
+                            <exclude>**/RightMenu.vue</exclude>
                         </excludes>
                     </configuration>
                 </plugin>

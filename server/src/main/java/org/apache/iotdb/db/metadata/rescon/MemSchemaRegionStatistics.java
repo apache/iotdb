@@ -23,13 +23,15 @@ import java.util.concurrent.atomic.AtomicLong;
 /** This class is used to record statistics within the SchemaRegion in Memory mode */
 public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
-  protected MemSchemaEngineStatistics schemaEngineStatistics =
-      SchemaEngineStatisticsHolder.getSchemaEngineStatistics().getAsMemSchemaEngineStatistics();
+  protected MemSchemaEngineStatistics schemaEngineStatistics;
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong seriesNumber = new AtomicLong(0);
 
-  public MemSchemaRegionStatistics(int schemaRegionId) {
+  private long mLogLength = 0;
+
+  public MemSchemaRegionStatistics(int schemaRegionId, ISchemaEngineStatistics engineStatistics) {
+    this.schemaEngineStatistics = engineStatistics.getAsMemSchemaEngineStatistics();
     this.schemaRegionId = schemaRegionId;
   }
 
@@ -71,6 +73,14 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public int getSchemaRegionId() {
     return schemaRegionId;
+  }
+
+  public void setMLogLength(long mLogLength) {
+    this.mLogLength = mLogLength;
+  }
+
+  public long getMLogLength() {
+    return mLogLength;
   }
 
   @Override
