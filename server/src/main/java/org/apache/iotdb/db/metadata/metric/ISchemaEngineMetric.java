@@ -16,26 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.rescon;
+package org.apache.iotdb.db.metadata.metric;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-// TODO: SchemaEngineStatistics should not be singleton later
-public class SchemaEngineStatisticsHolder {
-  private static MemSchemaEngineStatistics schemaEngineStatistics;
-
-  public static void initSchemaEngineStatisticsInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
-      schemaEngineStatistics = new MemSchemaEngineStatistics();
-    } else {
-      schemaEngineStatistics = new CachedSchemaEngineStatistics();
-    }
-    schemaEngineStatistics.init();
-  }
-
-  public static ISchemaEngineStatistics getSchemaEngineStatistics() {
-    return schemaEngineStatistics;
-  }
-
-  private SchemaEngineStatisticsHolder() {}
-}
+public interface ISchemaEngineMetric extends IMetricSet {}
