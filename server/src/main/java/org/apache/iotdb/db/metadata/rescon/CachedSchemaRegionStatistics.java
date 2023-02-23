@@ -39,8 +39,9 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 
   private final CachedSchemaEngineStatistics cachedEngineStatistics;
 
-  public CachedSchemaRegionStatistics(int schemaRegionId) {
-    super(schemaRegionId);
+  public CachedSchemaRegionStatistics(
+      int schemaRegionId, ISchemaEngineStatistics engineStatistics) {
+    super(schemaRegionId, engineStatistics);
     cachedEngineStatistics = schemaEngineStatistics.getAsCachedSchemaEngineStatistics();
   }
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
-import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 
 import java.util.Map;
@@ -34,17 +34,12 @@ public class SchemaMetricManager {
 
   private SchemaMetricManager() {}
 
-  public void init() {
+  public void init(ISchemaEngineStatistics engineStatistics) {
     if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
-      engineMetric =
-          new SchemaEngineMemMetric(
-              SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
-                  .getAsMemSchemaEngineStatistics());
+      engineMetric = new SchemaEngineMemMetric(engineStatistics.getAsMemSchemaEngineStatistics());
     } else {
       SchemaEngineCachedMetric schemaEngineCachedMetric =
-          new SchemaEngineCachedMetric(
-              SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
-                  .getAsCachedSchemaEngineStatistics());
+          new SchemaEngineCachedMetric(engineStatistics.getAsCachedSchemaEngineStatistics());
       engineMetric = schemaEngineCachedMetric;
       CacheMemoryManager.getInstance().setEngineMetric(schemaEngineCachedMetric);
     }

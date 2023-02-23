@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.rescon;
 
 public interface ISchemaEngineStatistics {
-  void init();
 
   boolean isAllowToCreateNewSeries();
 

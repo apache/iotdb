@@ -27,13 +27,12 @@ public class SchemaResourceManager {
 
   private SchemaResourceManager() {}
 
-  public static void initSchemaResource() {
-    SchemaEngineStatisticsHolder.initSchemaEngineStatisticsInstance();
+  public static void initSchemaResource(ISchemaEngineStatistics engineStatistics) {
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {
-      initSchemaFileModeResource();
+      initSchemaFileModeResource(engineStatistics);
     }
   }
 
@@ -46,8 +45,8 @@ public class SchemaResourceManager {
     }
   }
 
-  private static void initSchemaFileModeResource() {
-    CacheMemoryManager.getInstance().init();
+  private static void initSchemaFileModeResource(ISchemaEngineStatistics engineStatistics) {
+    CacheMemoryManager.getInstance().init(engineStatistics);
   }
 
   private static void clearSchemaFileModeResource() {

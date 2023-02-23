@@ -42,7 +42,6 @@ import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
-import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -71,6 +70,7 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -155,6 +155,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public SchemaRegionSchemaFileImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
+      ISchemaEngineStatistics engineStatistics,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
@@ -165,8 +166,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new CachedSchemaRegionStatistics(schemaRegionId.getId());
-    SchemaMetricManager.getInstance().createSchemaRegionMetric(this);
+    this.regionStatistics =
+        new CachedSchemaRegionStatistics(schemaRegionId.getId(), engineStatistics);
     init();
   }
 
@@ -440,9 +441,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
-
-    // delete metric
-    SchemaMetricManager.getInstance().deleteSchemaRegionMetric(schemaRegionId.getId());
   }
 
   @Override

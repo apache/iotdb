@@ -29,7 +29,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategyNumBasedImpl;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 
 import org.slf4j.Logger;
@@ -87,16 +87,14 @@ public class CacheMemoryManager {
     }
   }
 
-  public void init() {
+  public void init(ISchemaEngineStatistics engineStatistics) {
     flushSemaphore = new FiniteSemaphore(2, 0);
     releaseSemaphore = new FiniteSemaphore(2, 0);
-    engineStatistics =
-        SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
-            .getAsCachedSchemaEngineStatistics();
+    this.engineStatistics = engineStatistics.getAsCachedSchemaEngineStatistics();
     if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(engineStatistics);
+      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(this.engineStatistics);
     } else {
-      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(engineStatistics);
+      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(this.engineStatistics);
     }
     flushTaskMonitor =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_FLUSH_MONITOR.getName());

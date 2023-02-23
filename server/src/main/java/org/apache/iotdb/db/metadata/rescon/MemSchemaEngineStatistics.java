@@ -32,21 +32,14 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
   /** Total size of schema region */
-  private long memoryCapacity;
+  private final long memoryCapacity =
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
 
   protected final AtomicLong memoryUsage = new AtomicLong(0);
 
   private final AtomicLong totalSeriesNumber = new AtomicLong(0);
 
-  private volatile boolean allowToCreateNewSeries;
-
-  @Override
-  public void init() {
-    memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
-    memoryUsage.getAndSet(0);
-    totalSeriesNumber.getAndSet(0);
-    allowToCreateNewSeries = true;
-  }
+  private volatile boolean allowToCreateNewSeries = true;
 
   @Override
   public boolean isAllowToCreateNewSeries() {
