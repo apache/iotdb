@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -45,18 +46,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class DeleteStorageGroupProcedure
+public class DeleteDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
-  private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DeleteDatabaseProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
   private TDatabaseSchema deleteSgSchema;
 
-  public DeleteStorageGroupProcedure() {
+  public DeleteDatabaseProcedure() {
     super();
   }
 
-  public DeleteStorageGroupProcedure(TDatabaseSchema deleteSgSchema) {
+  public DeleteDatabaseProcedure(TDatabaseSchema deleteSgSchema) {
     super();
     this.deleteSgSchema = deleteSgSchema;
   }
@@ -123,8 +124,11 @@ public class DeleteStorageGroupProcedure
               });
           env.getConfigManager().getConsensusManager().write(offerPlan);
 
-          // Delete StorageGroupPartitionTable
+          // Delete DatabasePartitionTable
           TSStatus status = env.deleteConfig(deleteSgSchema.getName());
+
+          // Delete Database metrics
+          PartitionMetrics.unbindDatabasePartitionMetrics(deleteSgSchema.getName());
 
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
@@ -208,8 +212,8 @@ public class DeleteStorageGroupProcedure
 
   @Override
   public boolean equals(Object that) {
-    if (that instanceof DeleteStorageGroupProcedure) {
-      DeleteStorageGroupProcedure thatProc = (DeleteStorageGroupProcedure) that;
+    if (that instanceof DeleteDatabaseProcedure) {
+      DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
           && thatProc.deleteSgSchema.equals(this.getDeleteSgSchema());

@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -256,14 +257,15 @@ public class NodeManager {
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+    int dataNodeId = nodeInfo.generateNextNodeId();
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
     // Register new DataNode
-    registerDataNodePlan
-        .getDataNodeConfiguration()
-        .getLocation()
-        .setDataNodeId(nodeInfo.generateNextNodeId());
+    registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
     getConsensusManager().write(registerDataNodePlan);
+
+    // Bind DataNode metrics
+    PartitionMetrics.bindDataNodePartitionMetrics(configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();

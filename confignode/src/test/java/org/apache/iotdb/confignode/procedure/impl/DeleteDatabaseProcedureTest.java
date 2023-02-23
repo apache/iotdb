@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -32,23 +32,22 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class DeleteStorageGroupProcedureTest {
+public class DeleteDatabaseProcedureTest {
 
   @Test
   public void serializeDeserializeTest() {
 
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    DeleteStorageGroupProcedure p1 =
-        new DeleteStorageGroupProcedure(new TDatabaseSchema("root.sg"));
+    DeleteDatabaseProcedure p1 = new DeleteDatabaseProcedure(new TDatabaseSchema("root.sg"));
 
     try {
       p1.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
-      DeleteStorageGroupProcedure p2 =
-          (DeleteStorageGroupProcedure) ProcedureFactory.getInstance().create(buffer);
+      DeleteDatabaseProcedure p2 =
+          (DeleteDatabaseProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
 
     } catch (Exception e) {

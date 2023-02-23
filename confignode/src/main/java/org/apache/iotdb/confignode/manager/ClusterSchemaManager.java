@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -127,6 +128,7 @@ public class ClusterSchemaManager {
       return RpcUtils.getStatus(
           illegalPathException.getErrorCode(), illegalPathException.getMessage());
     }
+
     try {
       clusterSchemaInfo.checkContainsStorageGroup(databaseSchemaPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
@@ -140,10 +142,14 @@ public class ClusterSchemaManager {
       return result;
     }
 
-    // Cache StorageGroupSchema
+    // Cache DatabaseSchema
     result = getConsensusManager().write(databaseSchemaPlan).getStatus();
 
-    // Adjust the maximum RegionGroup number of each StorageGroup
+    // Bind Database metrics
+    PartitionMetrics.bindDatabasePartitionMetrics(
+        configManager, databaseSchemaPlan.getSchema().getName());
+
+    // Adjust the maximum RegionGroup number of each Database
     adjustMaxRegionGroupNum();
 
     return result;
