@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.client.async;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -143,6 +144,12 @@ public class AsyncDataNodeClientPool {
         case CREATE_DATA_REGION:
           client.createDataRegion(
               (TCreateDataRegionReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case DELETE_REGION:
+          client.deleteRegion(
+              (TConsensusGroupId) clientHandler.getRequest(requestId),
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

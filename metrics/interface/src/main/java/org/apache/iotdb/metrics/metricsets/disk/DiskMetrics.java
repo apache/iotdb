@@ -48,9 +48,10 @@ public class DiskMetrics implements IMetricSet {
   private static final String DISK_IO_OPS = "disk_io_ops";
   private static final String DISK_IO_TIME = "disk_io_time";
   private static final String DISK_IO_AVG_TIME = "disk_io_avg_time";
-  private static final String DISK_IO_SECTOR_NUM = "disk_io_sector_num";
+  private static final String DISK_IO_AVG_SIZE = "disk_io_avg_size";
   private static final String DISK_IO_BUSY_PERCENTAGE = "disk_io_busy_percentage";
-  private static final String DISK_IO_QUEUE_SIZE = "disk_io_queue_size";
+  private static final String DISK_IO_QUEUE_SIZE = "disk_io_avg_queue_size";
+
   private static final String PROCESS_IO_OPS = "process_io_ops";
   private static final String PROCESS_IO_SIZE = "process_io_size";
 
@@ -67,7 +68,7 @@ public class DiskMetrics implements IMetricSet {
           DISK_IO_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getReadDataSizeForDisk().getOrDefault(diskID, 0L),
+          x -> x.getReadDataSizeForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           READ,
           NAME,
@@ -76,7 +77,7 @@ public class DiskMetrics implements IMetricSet {
           DISK_IO_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getWriteDataSizeForDisk().getOrDefault(diskID, 0L),
+          x -> x.getWriteDataSizeForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           WRITE,
           NAME,
@@ -139,7 +140,7 @@ public class DiskMetrics implements IMetricSet {
           DISK_IO_AVG_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgReadCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgReadCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           READ,
           NAME,
@@ -148,25 +149,25 @@ public class DiskMetrics implements IMetricSet {
           DISK_IO_AVG_TIME,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgWriteCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgWriteCostTimeOfEachOpsForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           WRITE,
           NAME,
           diskID);
       metricService.createAutoGauge(
-          DISK_IO_SECTOR_NUM,
+          DISK_IO_AVG_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgSectorCountOfEachReadForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgSizeOfEachReadForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           READ,
           NAME,
           diskID);
       metricService.createAutoGauge(
-          DISK_IO_SECTOR_NUM,
+          DISK_IO_AVG_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getAvgSectorCountOfEachWriteForDisk().getOrDefault(diskID, 0.0).longValue(),
+          x -> x.getAvgSizeOfEachWriteForDisk().getOrDefault(diskID, 0.0),
           TYPE,
           WRITE,
           NAME,
@@ -175,14 +176,14 @@ public class DiskMetrics implements IMetricSet {
           DISK_IO_BUSY_PERCENTAGE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getIoUtilsPercentage().getOrDefault(diskID, 0L),
+          x -> x.getIoUtilsPercentage().getOrDefault(diskID, 0.0),
           NAME,
           diskID);
       metricService.createAutoGauge(
           DISK_IO_QUEUE_SIZE,
           MetricLevel.IMPORTANT,
           diskMetricsManager,
-          x -> x.getQueueSizeForDisk().getOrDefault(diskID, 0L),
+          x -> x.getQueueSizeForDisk().getOrDefault(diskID, 0.0),
           NAME,
           diskID);
     }
@@ -257,8 +258,8 @@ public class DiskMetrics implements IMetricSet {
       metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, WRITE, NAME, diskID);
       metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_READ, NAME, diskID);
       metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_TIME, NAME, AVG_WRITE, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SECTOR_NUM, NAME, READ, NAME, diskID);
-      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_SECTOR_NUM, NAME, WRITE, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, NAME, READ, NAME, diskID);
+      metricService.remove(MetricType.AUTO_GAUGE, DISK_IO_AVG_SIZE, NAME, WRITE, NAME, diskID);
     }
 
     // metrics for datanode and config node

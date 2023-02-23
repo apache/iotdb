@@ -106,7 +106,7 @@ public class RegionBalancer {
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
         Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
-        Map<Integer, Long> freeDiskSpaceMap = new ConcurrentHashMap<>();
+        Map<Integer, Double> freeDiskSpaceMap = new ConcurrentHashMap<>();
         targetDataNodes.forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();

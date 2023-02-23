@@ -58,11 +58,6 @@ public class MetricConfigDescriptor {
               .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
         // restart metric service
         reloadLevel = ReloadLevel.RESTART_METRIC;
-      } else if (!metricConfig
-          .getInternalReportType()
-          .equals(newMetricConfig.getInternalReportType())) {
-        // restart internal reporter
-        reloadLevel = ReloadLevel.RESTART_INTERNAL_REPORTER;
       } else {
         // restart reporters
         reloadLevel = ReloadLevel.RESTART_REPORTER;
@@ -143,7 +138,7 @@ public class MetricConfigDescriptor {
                 "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
-
+    // test only
     loadConfig.setInternalReportType(
         InternalReporterType.valueOf(
             properties.getProperty(

@@ -17,8 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.execution.operator.AbstractOperator;
+public class SessionWindowParameter extends WindowParameter {
 
-public abstract class AbstractProcessOperator extends AbstractOperator implements ProcessOperator {}
+  private final long timeInterval;
+
+  public SessionWindowParameter(long timeInterval, boolean needOutputEndTime) {
+    super(needOutputEndTime);
+    this.timeInterval = timeInterval;
+    this.windowType = WindowType.SESSION_WINDOW;
+  }
+
+  public long getTimeInterval() {
+    return timeInterval;
+  }
+}

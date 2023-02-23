@@ -9,13 +9,13 @@
       "pluginName": "Prometheus"
     }
   ],
-  "__elements": [],
+  "__elements": {},
   "__requires": [
     {
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "8.4.2"
+      "version": "9.3.6"
     },
     {
       "type": "datasource",
@@ -63,7 +63,6 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1676553459309,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -71,7 +70,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -348,7 +347,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -360,7 +359,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -1090,7 +1089,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -1102,7 +1101,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -1816,7 +1815,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -1828,7 +1827,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -5207,7 +5206,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -5219,7 +5218,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -9039,7 +9038,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -9051,7 +9050,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -10786,7 +10785,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -10798,7 +10797,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -12158,7 +12157,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -12170,7 +12169,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "lfuOmw1Vk"
       },
       "gridPos": {
         "h": 1,
@@ -13931,7 +13930,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "lfuOmw1Vk"
           },
           "refId": "A"
         }
@@ -13941,6 +13940,10 @@
     },
     {
       "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lfuOmw1Vk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -13949,16 +13952,31 @@
       },
       "id": 177,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lfuOmw1Vk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Disk Status",
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMax": 1,
@@ -13989,6 +14007,7 @@
             }
           },
           "mappings": [],
+          "max": 1,
           "thresholds": {
             "mode": "percentage",
             "steps": [
@@ -14024,7 +14043,8 @@
             "last"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -14037,10 +14057,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_busy_percentage{instance=~\"$instance\"}/10000",
+          "expr": "disk_io_busy_percentage{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -14048,12 +14070,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14109,7 +14137,8 @@
             "last"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "none",
@@ -14133,12 +14162,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14195,6 +14230,7 @@
           ],
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "sortBy": "Mean",
           "sortDesc": true
         },
@@ -14220,12 +14256,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14278,7 +14320,8 @@
         "legend": {
           "calcs": [],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -14302,12 +14345,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14365,6 +14414,7 @@
           ],
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "sortBy": "Mean",
           "sortDesc": true
         },
@@ -14379,10 +14429,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_avg_time{instance=~\"$instance\"}/1000000",
+          "expr": "disk_io_avg_time{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -14390,12 +14442,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14433,7 +14491,7 @@
               }
             ]
           },
-          "unit": "deckbytes"
+          "unit": "bytes"
         },
         "overrides": []
       },
@@ -14451,8 +14509,9 @@
           ],
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "sortBy": "Mean",
-          "sortDesc": true
+          "sortDesc": false
         },
         "tooltip": {
           "mode": "multi",
@@ -14466,7 +14525,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "disk_io_sector_num{instance=~\"$instance\"}*512/1024",
+          "expr": "disk_io_avg_size{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}-{{type}}",
           "refId": "A"
@@ -14476,12 +14535,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14536,6 +14601,7 @@
           ],
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "sortBy": "Mean",
           "sortDesc": true
         },
@@ -14550,23 +14616,31 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "disk_io_queue_size{instance=~\"$instance\"}",
+          "expr": "disk_io_avg_queue_size{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Disk I/O Queue Size",
+      "title": "Disk I/O Avg Queue Size",
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14599,8 +14673,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -14621,7 +14694,8 @@
             "mean"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -14634,10 +14708,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
+          "editorMode": "code",
           "exemplar": true,
           "expr": "rate(process_io_ops{instance=~\"$instance\"}[1m])",
           "interval": "",
           "legendFormat": "{{from}}-{{name}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -14645,12 +14721,18 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -14683,8 +14765,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -14705,7 +14786,8 @@
             "mean"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -14729,8 +14811,8 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "15s",
-  "schemaVersion": 35,
+  "refresh": false,
+  "schemaVersion": 37,
   "style": "dark",
   "tags": [
     "Apache-IoTDB",
@@ -14786,8 +14868,8 @@
     ]
   },
   "time": {
-    "from": "2023-02-15T02:53:41.626Z",
-    "to": "2023-02-15T07:39:53.174Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -14802,6 +14884,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB DataNode Dashboard",
   "uid": "TbEVYRw7A",
-  "version": 8,
+  "version": 3,
   "weekStart": ""
 }

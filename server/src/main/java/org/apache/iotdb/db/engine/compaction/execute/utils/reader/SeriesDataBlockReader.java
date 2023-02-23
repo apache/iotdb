@@ -27,8 +27,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanUtil;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.collect.Sets;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -46,16 +49,26 @@ public class SeriesDataBlockReader implements IDataBlockReader {
   public SeriesDataBlockReader(
       PartialPath seriesPath,
       Set<String> allSensors,
-      TSDataType dataType,
       FragmentInstanceContext context,
       QueryDataSource dataSource,
       boolean ascending) {
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+
     if (seriesPath instanceof AlignedPath) {
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
+          new AlignedSeriesScanUtil(
+              seriesPath,
+              ascending ? Ordering.ASC : Ordering.DESC,
+              scanOptionsBuilder.build(),
+              context);
     } else if (seriesPath instanceof MeasurementPath) {
       this.seriesScanUtil =
-          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
+          new SeriesScanUtil(
+              seriesPath,
+              ascending ? Ordering.ASC : Ordering.DESC,
+              scanOptionsBuilder.build(),
+              context);
     } else {
       throw new IllegalArgumentException("Should call exact sub class!");
     }
@@ -65,21 +78,32 @@ public class SeriesDataBlockReader implements IDataBlockReader {
   @TestOnly
   public SeriesDataBlockReader(
       PartialPath seriesPath,
-      TSDataType dataType,
       FragmentInstanceContext context,
       List<TsFileResource> seqFileResource,
       List<TsFileResource> unseqFileResource,
       boolean ascending) {
-    Set<String> allSensors = new HashSet<>();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     if (seriesPath instanceof AlignedPath) {
+      scanOptionsBuilder.withAllSensors(
+          new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
+          new AlignedSeriesScanUtil(
+              seriesPath,
+              ascending ? Ordering.ASC : Ordering.DESC,
+              scanOptionsBuilder.build(),
+              context);
     } else {
-      allSensors.add(seriesPath.getMeasurement());
+      scanOptionsBuilder.withAllSensors(Sets.newHashSet(seriesPath.getMeasurement()));
       this.seriesScanUtil =
-          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
+          new SeriesScanUtil(
+              seriesPath,
+              ascending ? Ordering.ASC : Ordering.DESC,
+              scanOptionsBuilder.build(),
+              context);
     }
-    seriesScanUtil.initQueryDataSource(seqFileResource, unseqFileResource);
+
+    QueryDataSource queryDataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    seriesScanUtil.initQueryDataSource(queryDataSource);
   }
 
   @Override
