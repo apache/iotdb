@@ -587,7 +587,9 @@ As this feature is still under development, some queries have not been completed
 ## Aggregation By Variation
 IoTDB supports grouping by continuous stable values through the `GROUP BY VARIATION` statement.
 
-If the data remains stable in a range of given threshold over a period of time, the data point will be grouped together and execute aggregation query. The groups won't overlap and there is no fixed start time and end time.
+Group-By-Variation wil set the first point in group as the base point,  
+then if the difference between the new data and base point is small than or equal to delta, 
+the data point will be grouped together and execute aggregation query (The calculation of difference and the meaning of delte are introduced below). The groups won't overlap and there is no fixed start time and end time.
 The syntax of clause is as follows:
 ```sql
 group by variation(controlExpression[,delta][,ignoreNull=true/false])
@@ -595,20 +597,23 @@ group by variation(controlExpression[,delta][,ignoreNull=true/false])
 The different parameters mean:
 * controlExpression
 
-The value that is used when grouping data. It can be any columns or the expression of them.
+The value that is used to calculate difference. It can be any columns or the expression of them.
 * delta
 
-The threshold that is used when grouping. The difference of expression between the first data point and new data point should less than or equal to delta. When delta is zero, all the continuous data points with equal expression value will be grouped into the same group.
+The threshold that is used when grouping. The difference of controlExpression between the first data point and new data point should less than or equal to delta. 
+When delta is zero, all the continuous data with equal expression value will be grouped into the same group.
 * ignoreNull
 
 Used to specify how to deal with the data when the value of controlExpression is null. When ignoreNull is false, null will be treated as a new value and when ignoreNull is true, the data point will be directly skipped.
 
 The supported return types of controlExpression and how to deal with null value when ignoreNull is false are shown in the following table:
 
-| delta    | supported return type of controlExpression | the handling of null when ignoreNull is false                                                                                                                                                                             |
+| delta    | Return Type Supported By controlExpression | The Handling of null when ignoreNull is False                                                                                                                                                                             |
 |----------|--------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | delta!=0 | INT32、INT64、FLOAT、DOUBLE                   | If the processing group doesn't contains null, null value should be treated as infinity/infinitesimal and will end current group.<br/>Continuous null values are treated as stable values and assigned to the same group. | 
 | delta=0  | TEXT、BINARY、INT32、INT64、FLOAT、DOUBLE       | Null is treated as a new value in a new group and continuous nulls belong to the same group.                                                                                                                              |            
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
 
 ### Precautions for Use
 1. The result of controlExpression should be a unique value. If multiple columns appear after using wildcard stitching, an error will be reported.
@@ -785,7 +790,7 @@ A given interval threshold to create a new group of data when the difference bet
 
 The figure below is a grouping diagram under `GROUP BY SESSION`.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/SessionGroup.jpg" alt="groupBySession">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
 
 ### Precautions for Use
 1. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
