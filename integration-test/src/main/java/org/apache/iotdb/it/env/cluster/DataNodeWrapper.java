@@ -64,6 +64,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
     mutableNodeProperties.put("dn_join_cluster_retry_interval_ms", "1000");
     mutableNodeProperties.put("dn_connection_timeout_ms", "30000");
+    mutableNodeProperties.put("dn_metric_internal_reporter_type", "MEMORY");
 
     // initialize immutable properties
     // Override mqtt properties of super class

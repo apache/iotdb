@@ -388,6 +388,10 @@ public abstract class Statistics<T extends Serializable> {
     return timeFilter == null || timeFilter.containStartEndTime(getStartTime(), getEndTime());
   }
 
+  public boolean hasNullValue(long timeRowCount) {
+    return getCount() != timeRowCount;
+  }
+
   @Override
   public String toString() {
     return "startTime: " + startTime + " endTime: " + endTime + " count: " + count;

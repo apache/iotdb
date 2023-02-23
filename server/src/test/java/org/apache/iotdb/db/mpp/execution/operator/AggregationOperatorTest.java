@@ -41,6 +41,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -320,18 +322,21 @@ public class AggregationOperatorTest {
             Collections.emptyMap(),
             true)
         .forEach(o -> aggregators.add(new Aggregator(o, AggregationStep.PARTIAL)));
+
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
     SeriesAggregationScanOperator seriesAggregationScanOperator1 =
         new SeriesAggregationScanOperator(
             planNodeId1,
             measurementPath1,
-            Collections.singleton("sensor0"),
+            Ordering.ASC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
-            null,
-            true,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
     List<TsFileResource> seqResources1 = new ArrayList<>();
     List<TsFileResource> unSeqResources1 = new ArrayList<>();
     seqResources1.add(seqResources.get(0));
@@ -348,14 +353,14 @@ public class AggregationOperatorTest {
         new SeriesAggregationScanOperator(
             planNodeId2,
             measurementPath1,
-            Collections.singleton("sensor0"),
-            driverContext.getOperatorContexts().get(1),
+            Ordering.ASC,
+            scanOptionsBuilder.build(),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
-            null,
-            true,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+
     List<TsFileResource> seqResources2 = new ArrayList<>();
     List<TsFileResource> unSeqResources2 = new ArrayList<>();
     seqResources2.add(seqResources.get(2));

@@ -55,7 +55,7 @@ public class MetricConfig {
   private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
 
   /** The type of internal reporter. */
-  private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
+  private InternalReporterType internalReporterType = InternalReporterType.IOTDB;
 
   /** The address of iotdb instance that is monitored. */
   private String rpcAddress = "0.0.0.0";
