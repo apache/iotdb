@@ -57,15 +57,57 @@ def debug_dataset():
 
 
     # dataset = iotdb.ml.get_dataset
+
+    # dataset = iotdb.ml.get_dataset
     train_dataset = WindowDataset_OFL(session, sql['train'], seq_len=configs.seq_len, pred_len=configs.pred_len, label_len=configs.label_len)
+    val_dataset = WindowDataset_OFL(session, sql['val'], seq_len=configs.seq_len, pred_len=configs.pred_len, label_len=configs.label_len)
+    test_dataset = WindowDataset_OFL(session, sql['test'], seq_len=configs.seq_len, pred_len=configs.pred_len, label_len=configs.label_len)
     configs.enc_in=train_dataset.get_variable_num()
     configs.dec_in=train_dataset.get_variable_num()
     configs.c_out=train_dataset.get_variable_num()
+    print('train samples: ', len(train_dataset))
+    print('val samples: ', len(val_dataset))
+    print('test samples: ', len(test_dataset))
     train_loader = DataLoader(
         train_dataset,
         batch_size=configs.batch_size,
         shuffle=True,
         num_workers=configs.num_workers,
         drop_last=True)
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=configs.batch_size,
+        shuffle=False,
+        num_workers=configs.num_workers,
+        drop_last=True)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=configs.batch_size,
+        shuffle=False,
+        num_workers=configs.num_workers,
+        drop_last=True)
+    
+    return train_dataset, train_loader, val_dataset, val_loader
 
-    return train_dataset, train_loader
+def debug_inference_data():
+    ip = '127.0.0.1'
+    port = '6667'
+    username = 'root'
+    password = 'root'
+    session = Session(ip, port, username, password, fetch_size=1024, zone_id='UTC+8')
+    session.open(False)
+
+    # configs = iotdb.ml.sql_config
+    
+    configs = default_configs()
+
+
+    # see from Grafana
+    sql = {
+        'test': 'SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01'
+    }
+    result = session.execute_query_statement(sql["test"])
+    assert result # return None if fail to fetch
+    df_raw = result.todf()
+    
+    return df_raw

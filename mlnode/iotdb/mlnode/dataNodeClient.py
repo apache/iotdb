@@ -15,15 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+import time
+
 from thrift.protocol import TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from log import logger
-from utils.thrift.mlnode import IMLNodeRPCService
-from utils.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq, TForecastReq
+from utils.thrift.datanode import IDataNodeRPCService
+from utils.thrift.datanode.ttypes import TFetchTimeseriesReq, TFetchWindowBatchReq, TGroupByTimeParameter, TRecordModelMetricsReq, TDeleteModelMetricsReq
 
-
-class MLNodeClient(object):
+class DataNodeClient(object):
     def __init__(self, host, port):
         self.__host = host
         self.__port = port
@@ -38,23 +40,17 @@ class MLNodeClient(object):
                 logger.exception("TTransportException!", exc_info=e)
 
         protocol = TCompactProtocol.TCompactProtocol(transport)
-        self.__client = IMLNodeRPCService.Client(protocol)
+        self.__client = IDataNodeRPCService.Client(protocol)
     
-    def create_training_task(self):
-        req = TCreateTrainingTaskReq()
-        return self.__client.createTrainingTask(req)
-    
-    def create_forecast_task(self):
-        req = TForecastReq()
-        return self.__client.forecast(req)
+    def record_model_metrics(self, modelID, trialID, metrics, values):
+        t = time.time()
+        req = TRecordModelMetricsReq(modelId=modelID, trialId=trialID, metrics=metrics, timestamp=t, values=values)
+        return self.__client.recordModelMetrics(req)
 
-    def delete_model(self, model_path: str):
-        req = TDeleteModelReq(model_path)
-        return self.__client.deleteModel(req)
+
 
 
 if __name__ == "__main__":
     # test rpc service
-    client = MLNodeClient(host="127.0.0.1", port=10810)
-    print(client.create_forecast_task())
-    
+    client = DataNodeClient(host="127.0.0.1", port=10810)
+    print(client.record_model_metrics(1,1,"MSE",1.1))

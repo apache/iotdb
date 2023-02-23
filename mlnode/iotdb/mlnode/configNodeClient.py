@@ -19,11 +19,11 @@ from thrift.protocol import TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from log import logger
-from utils.thrift.mlnode import IMLNodeRPCService
-from utils.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq, TForecastReq
+from utils.thrift.confignode import IConfigNodeRPCService
+from utils.thrift.confignode.ttypes import TCreateModelReq, TDropModelReq, TShowModelReq, TShowTrailReq, TUpdateModelInfoReq
 
 
-class MLNodeClient(object):
+class ConfigNodeClient(object):
     def __init__(self, host, port):
         self.__host = host
         self.__port = port
@@ -38,23 +38,14 @@ class MLNodeClient(object):
                 logger.exception("TTransportException!", exc_info=e)
 
         protocol = TCompactProtocol.TCompactProtocol(transport)
-        self.__client = IMLNodeRPCService.Client(protocol)
+        self.__client = IConfigNodeRPCService.Client(protocol)
     
-    def create_training_task(self):
-        req = TCreateTrainingTaskReq()
-        return self.__client.createTrainingTask(req)
-    
-    def create_forecast_task(self):
-        req = TForecastReq()
-        return self.__client.forecast(req)
+    def update_model_info(self, req: TUpdateModelInfoReq):
+        return self.__client.updateModelInfo(req)
 
-    def delete_model(self, model_path: str):
-        req = TDeleteModelReq(model_path)
-        return self.__client.deleteModel(req)
 
 
 if __name__ == "__main__":
     # test rpc service
-    client = MLNodeClient(host="127.0.0.1", port=10810)
-    print(client.create_forecast_task())
-    
+    client = ConfigNodeClient(host="127.0.0.1", port=10810)
+    print(client.create_training_task())

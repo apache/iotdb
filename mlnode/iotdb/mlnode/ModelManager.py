@@ -1,4 +1,6 @@
 import torchvision
+import os
+
 from ModelInfo import ModelInfo
 from ThreadWithReturn import ThreadWithReturn
 
@@ -6,6 +8,8 @@ from ThreadWithReturn import ThreadWithReturn
 class ModelManger(object):
     def __init__(self, root_path='ModelData'):
         self.root_path = root_path
+        if not os.path.exists(root_path):
+            os.mkdir(root_path)
         self.ModelMap = {}
         self.lastModelID = None
         self.lastModel = None
@@ -40,6 +44,7 @@ class ModelManger(object):
         modelinfo.saveModel(model, trail_id, updateBestTrail)
 
 
+modelManager = ModelManger()
 
 if __name__ == '__main__':
     mm = ModelManger()

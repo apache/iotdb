@@ -1,7 +1,7 @@
 import multiprocessing as mp
 
 from subprocess import call
-from task import ForecastingTrainingTask
+from trial import ForecastingTrainingTrial, ForecastingInferenceTrial
 from data_provider.build_dataset_debug import *
 
 import psutil
@@ -19,13 +19,13 @@ class Objective:
         configs = self.configs
         configs.learning_rate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
         configs.d_model = trial.suggest_categorical("d_model", [32, 64, 128, 256, 512, 768])
-        task = ForecastingTrainingTask(configs)
+        task = ForecastingTrainingTrial(configs)
         loss = task.start()
         return loss
 
 def _create_training_task(configs, task_map, task_id):
-    task = ForecastingTrainingTask(configs)
-    task.start() 
+    trial = ForecastingTrainingTrial(configs)
+    trial.start() 
     pid = os.getpid()
     task_map[task_id][pid] = 'finished'
 
@@ -35,6 +35,9 @@ def _create_tunning_task(configs, task_map, task_id):
     pid = os.getpid()
     task_map[task_id][pid] = 'finished'
 
+def _create_inference_task(configs, task_map, task_id):
+    trial = ForecastingInferenceTrial(configs, debug_inference_data())
+    trial.start()
 
 class Manager(object):
     def __init__(self, pool_num):
@@ -57,6 +60,12 @@ class Manager(object):
     def createTuneTrainingTask_Pool(self, configs):
         task_id = self.generate_taskid()
         self.pool.apply_async(_create_tunning_task, args=(configs, self.task_map, task_id, ))
+        self.task_map[task_id] = self.resource_manager.dict()
+        return task_id
+    
+    def createInferenceTask_Pool(self, configs):
+        task_id = self.generate_taskid()
+        self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id, ))
         self.task_map[task_id] = self.resource_manager.dict()
         return task_id
 
@@ -88,7 +97,6 @@ class Manager(object):
         print(self.task_map[task_id])
         return task_id
 
-    
     def kill_process(self, pid):
         if sys.platform == 'win32':
             try:

@@ -51,10 +51,10 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         config = default_configs()
         self.taskManager.createSingleTrainingTask_Pool(config)
-        print(id(self.taskManager))
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def forecast(self, req: TForecastReq):
         status = get_status(TSStatusCode.SUCCESS_STATUS, "")
         forecast_result = b'forecast result'
+        self.taskManager.createInferenceTask_Pool(default_configs())
         return TForecastResp(status, forecast_result)

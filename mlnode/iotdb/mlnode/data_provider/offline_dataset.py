@@ -23,7 +23,6 @@ class TimeSeriesDataset_OFL(Dataset):
         result = self.session.execute_query_statement(self.sql)
         assert result # return None if fail to fetch
         df_raw = result.todf()
-
         cols_data = df_raw.columns[1:]
         self.data = df_raw[cols_data].values
         
@@ -75,3 +74,21 @@ class WindowDataset_OFL(TimeSeriesDataset_OFL):
         return len(self.data) - self.seq_len - self.pred_len + 1
 
 
+def data_transform(data_raw: pd.DataFrame, freq='h'):
+    """
+    data: dataframe, column 0 is the time stamp
+    """
+    columns = data_raw.columns
+    data = data_raw[columns[1:]]
+    data_stamp = data_raw[columns[0]]
+    return data.values, data_stamp
+
+def timestamp_transform(timestamp_raw: pd.DataFrame, freq='h'):
+    """
+    """
+    timestamp = pd.to_datetime(timestamp_raw.values.squeeze(), unit='ms', utc=True).tz_convert('Asia/Shanghai')
+    timestamp = time_features(timestamp, freq=freq)
+    timestamp = timestamp.transpose(1, 0)
+    return timestamp
+
+    
