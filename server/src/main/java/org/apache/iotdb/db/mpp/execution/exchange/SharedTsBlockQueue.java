@@ -28,11 +28,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import javax.annotation.concurrent.NotThreadSafe;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -162,7 +161,6 @@ public class SharedTsBlockQueue {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
-    logger.info("PlanNode{} remove one TsBlock", localPlanNodeId);
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
     // corresponding LocalSinkHandle.
     if (sinkHandle != null) {
@@ -208,10 +206,6 @@ public class SharedTsBlockQueue {
 
     // reserve memory failed, we should wait until there is enough memory
     if (!pair.right) {
-      logger.info(
-          "PlanNode{} add one TsBlock failed because of full memory. Current size of queue is {}.",
-          localPlanNodeId,
-          queue.size());
       blockedOnMemory.addListener(
           () -> {
             synchronized (this) {
@@ -224,7 +218,6 @@ public class SharedTsBlockQueue {
           directExecutor());
     } else { // reserve memory succeeded, add the TsBlock directly
       queue.add(tsBlock);
-      logger.info("PlanNode{} add one TsBlock successfully", localPlanNodeId);
       if (!blocked.isDone()) {
         blocked.set(null);
       }
