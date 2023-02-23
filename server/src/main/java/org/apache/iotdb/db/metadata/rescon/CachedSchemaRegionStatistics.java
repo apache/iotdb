@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -30,10 +32,16 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   private final AtomicLong pinnedMemorySize = new AtomicLong(0);
   private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
   private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
+
+  private long mLogCheckPoint = 0;
+
+  private ICacheManager cacheManager;
+
   private final CachedSchemaEngineStatistics cachedEngineStatistics;
 
-  public CachedSchemaRegionStatistics(int schemaRegionId) {
-    super(schemaRegionId);
+  public CachedSchemaRegionStatistics(
+      int schemaRegionId, ISchemaEngineStatistics engineStatistics) {
+    super(schemaRegionId, engineStatistics);
     cachedEngineStatistics = schemaEngineStatistics.getAsCachedSchemaEngineStatistics();
   }
 
@@ -57,7 +65,15 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics.updateUnpinnedMemorySize(delta);
   }
 
-  public long getCachedMemorySize() {
+  public void setMLogCheckPoint(long mLogCheckPoint) {
+    this.mLogCheckPoint = mLogCheckPoint;
+  }
+
+  public void setCacheManager(ICacheManager cacheManager) {
+    this.cacheManager = cacheManager;
+  }
+
+  public long getUnpinnedMemorySize() {
     return unpinnedMemorySize.get();
   }
 
@@ -65,12 +81,24 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     return pinnedMemorySize.get();
   }
 
-  public long getCachedMNodeNum() {
+  public long getUnpinnedMNodeNum() {
     return unpinnedMNodeNum.get();
   }
 
   public long getPinnedMNodeNum() {
     return pinnedMNodeNum.get();
+  }
+
+  public long getMLogCheckPoint() {
+    return mLogCheckPoint;
+  }
+
+  public long getBufferNodeNum() {
+    return cacheManager == null ? 0 : cacheManager.getBufferNodeNum();
+  }
+
+  public long getCacheNodeNum() {
+    return cacheManager == null ? 0 : cacheManager.getCacheNodeNum();
   }
 
   @Override

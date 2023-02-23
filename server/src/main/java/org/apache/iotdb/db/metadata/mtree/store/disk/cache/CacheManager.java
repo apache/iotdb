@@ -499,6 +499,11 @@ public abstract class CacheManager implements ICacheManager {
     return node.getCacheEntry();
   }
 
+  @Override
+  public long getBufferNodeNum() {
+    return nodeBuffer.getBufferNodeNum();
+  }
+
   protected void initCacheEntryForNode(IMNode node) {
     node.setCacheEntry(new CacheEntry());
   }
@@ -554,6 +559,14 @@ public abstract class CacheManager implements ICacheManager {
           action.accept(node);
         }
       }
+    }
+
+    long getBufferNodeNum() {
+      long res = updatedStorageGroupMNode == null ? 0 : 1;
+      for (int i = 0; i < MAP_NUM; i++) {
+        res += maps[i].size();
+      }
+      return res;
     }
 
     void clear() {

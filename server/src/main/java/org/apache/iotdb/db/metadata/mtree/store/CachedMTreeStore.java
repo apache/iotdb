@@ -83,6 +83,7 @@ public class CachedMTreeStore implements IMTreeStore {
     this.flushCallback = flushCallback;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
+    regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
   }
 
@@ -452,6 +453,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public void clear() {
     lock.writeLock();
     try {
+      regionStatistics.setCacheManager(null);
       cacheManager.clear(root);
       root = null;
       if (file != null) {
@@ -505,6 +507,7 @@ public class CachedMTreeStore implements IMTreeStore {
     this.flushCallback = flushCallback;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
+    regionStatistics.setCacheManager(cacheManager);
     ensureMemoryStatus();
   }
 
@@ -516,14 +519,17 @@ public class CachedMTreeStore implements IMTreeStore {
     return lock;
   }
 
+  public CachedSchemaRegionStatistics getRegionStatistics() {
+    return regionStatistics;
+  }
+
   /**
-   * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
-   * no node could be evicted. Update the memory status after evicting each node.
+   * Fetching evictable nodes from cacheManager. Update the memory status after evicting each node.
    *
    * @return should not continue releasing
    */
   public boolean executeMemoryRelease() {
-    if (regionStatistics.getCachedMemorySize() != 0) {
+    if (regionStatistics.getUnpinnedMemorySize() != 0) {
       return !cacheManager.evict();
     } else {
       return true;

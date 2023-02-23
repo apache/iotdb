@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -43,7 +49,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DeleteStorageGroupProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
@@ -98,19 +107,13 @@ public class DeleteStorageGroupProcedure
           LOG.info("Delete config info of {}", deleteSgSchema.getName());
 
           // Submit RegionDeleteTasks
-          OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+          OfferRegionMaintainTasksPlan dataRegionDeleteTaskOfferPlan =
+              new OfferRegionMaintainTasksPlan();
           List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteSgSchema.getName());
+          List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
           regionReplicaSets.forEach(
               regionReplicaSet -> {
-                regionReplicaSet
-                    .getDataNodeLocations()
-                    .forEach(
-                        targetDataNode ->
-                            offerPlan.appendRegionMaintainTask(
-                                new RegionDeleteTask(
-                                    targetDataNode, regionReplicaSet.getRegionId())));
-
                 // Clear heartbeat cache along the way
                 env.getConfigManager()
                     .getPartitionManager()
@@ -120,13 +123,69 @@ public class DeleteStorageGroupProcedure
                     .getRouteBalancer()
                     .getRegionRouteMap()
                     .removeRegionRouteCache(regionReplicaSet.getRegionId());
+
+                if (regionReplicaSet
+                    .getRegionId()
+                    .getType()
+                    .equals(TConsensusGroupType.SchemaRegion)) {
+                  schemaRegionReplicaSets.add(regionReplicaSet);
+                } else {
+                  regionReplicaSet
+                      .getDataNodeLocations()
+                      .forEach(
+                          targetDataNode ->
+                              dataRegionDeleteTaskOfferPlan.appendRegionMaintainTask(
+                                  new RegionDeleteTask(
+                                      targetDataNode, regionReplicaSet.getRegionId())));
+                }
               });
-          env.getConfigManager().getConsensusManager().write(offerPlan);
+
+          if (!dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList().isEmpty()) {
+            // submit async data region delete task
+            env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
+          }
 
           // Delete StorageGroupPartitionTable
-          TSStatus status = env.deleteConfig(deleteSgSchema.getName());
+          TSStatus deleteConfigResult = env.deleteConfig(deleteSgSchema.getName());
 
-          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // try sync delete schema region
+          AsyncClientHandler<TConsensusGroupId, TSStatus> asyncClientHandler =
+              new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
+          Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
+          int requestIndex = 0;
+          for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
+            asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
+            for (TDataNodeLocation dataNodeLocation :
+                schemaRegionReplicaSet.getDataNodeLocations()) {
+              asyncClientHandler.putDataNodeLocation(requestIndex, dataNodeLocation);
+              schemaRegionDeleteTaskMap.put(
+                  requestIndex,
+                  new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
+            }
+            requestIndex++;
+          }
+          if (!schemaRegionDeleteTaskMap.isEmpty()) {
+            AsyncDataNodeClientPool.getInstance()
+                .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
+            for (Map.Entry<Integer, TSStatus> entry :
+                asyncClientHandler.getResponseMap().entrySet()) {
+              if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                schemaRegionDeleteTaskMap.remove(entry.getKey());
+              }
+            }
+
+            if (!schemaRegionDeleteTaskMap.isEmpty()) {
+              // submit async schema region delete task for failed sync execution
+              OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
+                  new OfferRegionMaintainTasksPlan();
+              schemaRegionDeleteTaskMap
+                  .values()
+                  .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
+              env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
+            }
+          }
+
+          if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(new ProcedureException("Delete config info id failed"));

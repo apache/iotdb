@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
@@ -109,7 +109,7 @@ public class OffsetOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), OffsetOperator.class.getSimpleName());
       driverContext.addOperatorContext(5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
@@ -142,8 +142,8 @@ public class OffsetOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
@@ -159,7 +159,7 @@ public class OffsetOperatorTest {
       LimitOperator limitOperator =
           new LimitOperator(driverContext.getOperatorContexts().get(4), 250, offsetOperator);
       int count = 100;
-      while (limitOperator.hasNext()) {
+      while (limitOperator.isBlocked().isDone() && limitOperator.hasNext()) {
         TsBlock tsBlock = limitOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
@@ -214,7 +214,7 @@ public class OffsetOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), OffsetOperator.class.getSimpleName());
       driverContext.addOperatorContext(5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
@@ -247,8 +247,8 @@ public class OffsetOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
@@ -262,7 +262,7 @@ public class OffsetOperatorTest {
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 0, timeJoinOperator);
 
       int count = 0;
-      while (offsetOperator.hasNext()) {
+      while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
         TsBlock tsBlock = offsetOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
@@ -316,7 +316,7 @@ public class OffsetOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), OffsetOperator.class.getSimpleName());
       driverContext.addOperatorContext(5, new PlanNodeId("5"), LimitOperator.class.getSimpleName());
@@ -349,8 +349,8 @@ public class OffsetOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      TimeJoinOperator timeJoinOperator =
-          new TimeJoinOperator(
+      RowBasedTimeJoinOperator timeJoinOperator =
+          new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
@@ -363,7 +363,7 @@ public class OffsetOperatorTest {
       OffsetOperator offsetOperator =
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 500, timeJoinOperator);
 
-      while (offsetOperator.hasNext()) {
+      while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
         TsBlock tsBlock = offsetOperator.next();
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);

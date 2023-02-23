@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.metric;
 
-package org.apache.iotdb.db.mpp.execution.operator.process;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
-import org.apache.iotdb.db.mpp.execution.operator.AbstractOperator;
-
-public abstract class AbstractProcessOperator extends AbstractOperator implements ProcessOperator {}
+public interface ISchemaEngineMetric extends IMetricSet {}
