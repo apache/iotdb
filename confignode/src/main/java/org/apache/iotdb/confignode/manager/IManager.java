@@ -223,6 +223,15 @@ public interface IManager {
   DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
+   * Report that the specified DataNode will be shutdown.
+   *
+   * <p>The ConfigNode-leader will mark it as Unknown
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
+
+  /**
    * DataNode report region migrate result to ConfigNode when remove DataNode
    *
    * @param req TRegionMigrateResultReportReq
@@ -373,6 +382,14 @@ public interface IManager {
    * @return status
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
+
+  /**
+   * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
+   * Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
 
   TSStatus createFunction(TCreateFunctionReq req);
 

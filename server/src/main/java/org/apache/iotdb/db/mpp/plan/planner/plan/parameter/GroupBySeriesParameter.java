@@ -31,19 +31,23 @@ import java.util.Objects;
 public class GroupBySeriesParameter extends GroupByParameter {
 
   private final Expression keepExpression;
+  private boolean ignoringNull;
 
   public GroupBySeriesParameter(boolean ignoringNull, Expression keepExpression) {
-    super(WindowType.SERIES_WINDOW, ignoringNull);
+    super(WindowType.SERIES_WINDOW);
     this.keepExpression = keepExpression;
+    this.ignoringNull = ignoringNull;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(ignoringNull, byteBuffer);
     Expression.serialize(keepExpression, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(ignoringNull, stream);
     Expression.serialize(keepExpression, stream);
   }
 
@@ -57,6 +61,10 @@ public class GroupBySeriesParameter extends GroupByParameter {
     return keepExpression;
   }
 
+  public boolean isIgnoringNull() {
+    return ignoringNull;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -68,11 +76,12 @@ public class GroupBySeriesParameter extends GroupByParameter {
     if (!super.equals(obj)) {
       return false;
     }
-    return this.keepExpression == ((GroupBySeriesParameter) obj).getKeepExpression();
+    return this.keepExpression == ((GroupBySeriesParameter) obj).getKeepExpression()
+        && this.ignoringNull == ((GroupBySeriesParameter) obj).ignoringNull;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), keepExpression);
+    return Objects.hash(super.hashCode(), keepExpression, ignoringNull);
   }
 }

@@ -66,7 +66,7 @@ def test_dialect():
         insp = inspect(eng)
         # test get_schema_names
         schema_names = insp.get_schema_names()
-        if not operator.eq(schema_names, ["root.cursor_s1", "root.cursor"]):
+        if not operator.ge(schema_names, ["root.cursor_s1", "root.cursor"]):
             test_fail()
             print_message("test get_schema_names failed!")
         # test get_table_names

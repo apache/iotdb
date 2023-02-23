@@ -482,6 +482,7 @@ groupByAttributeClause
     | TAGS LR_BRACKET identifier (COMMA identifier)* RR_BRACKET
     | VARIATION LR_BRACKET expression (COMMA delta=number)? (COMMA attributePair)? RR_BRACKET
     | SERIES LR_BRACKET expression (COMMA expression)? (COMMA attributePair)? RR_BRACKET
+    | SESSION LR_BRACKET timeInterval=DURATION_LITERAL RR_BRACKET
     ;
 
 number

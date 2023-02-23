@@ -511,8 +511,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @param path Format: root.node(.node)+
    */
   @Override
-  public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
-      PartialPath path) throws MetadataException {
+  public IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0) {
       throw new IllegalPathException(path.getFullPath());
@@ -525,17 +524,17 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.deleteAliasChild(deletedNode.getAlias());
     }
-    return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
+    deleteAndUnpinEmptyInternalMNode(parent);
+    return deletedNode;
   }
 
   /**
-   * Used when delete timeseries or deactivate template
+   * Used when delete timeseries or deactivate template. The last survived ancestor will be
+   * unpinned.
    *
    * @param entityMNode delete empty InternalMNode from entityMNode to storageGroupMNode
-   * @return After delete if MTree is empty, return SG path, otherwise return null
    */
-  private PartialPath deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode)
-      throws MetadataException {
+  private void deleteAndUnpinEmptyInternalMNode(IEntityMNode entityMNode) throws MetadataException {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -568,13 +567,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     while (isEmptyInternalMNode(curNode)) {
       // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
-        return curNode.getPartialPath();
+        return;
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
     unPinMNode(curNode);
-    return null;
   }
 
   @Override
@@ -913,12 +911,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
     }
     for (PartialPath path : resultTemplateSetInfo.keySet()) {
-      IMNode node = getNodeByPath(path);
-      try {
-        deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node.getAsEntityMNode());
-      } finally {
-        unPinMNode(node);
-      }
+      deleteAndUnpinEmptyInternalMNode(getNodeByPath(path).getAsEntityMNode());
     }
     return resultTemplateSetInfo;
   }
