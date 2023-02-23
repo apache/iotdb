@@ -637,7 +637,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 ```
 当指定ignoreNull为false时，会将s6为null的数据也考虑进来
 ```sql
-select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6，ignoreNull=false)
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, ignoreNull=false)
 ```
 得到如下的结果
 ```
@@ -656,7 +656,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 ### delta!=0时的差值事件分段
 使用如下sql语句
 ```sql
-select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6+, 4)
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, 4)
 ```
 得到如下的查询结果
 ```
@@ -702,10 +702,11 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 用于指定遇到predict为null的数据行时的处理方式，为true则跳过该行，为false则结束当前分组。
 
 ### 使用注意事项
-1. keep条件在查询中是必需的，但可以省略掉'keep'字符串给出一个常数，默认为`keep=该常数`的等于条件。
+1. keep条件在查询中是必需的，但可以省略掉keep字符串给出一个常数，默认为`keep=该常数`的等于条件。
 2. `ignoreNull`默认为true。
 3. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 4. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
+5. 当前暂不支持与`GROUP BY LEVEL`搭配使用。
 
 
 对于如下原始数据,下面会给出几个查询样例:
@@ -764,11 +765,12 @@ group by session(timeInterval)
 
 下图为`group by session`下的一个分组示意图
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/SessionGroup.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/SessionGroup.jpg" alt="groupBySession">
 
 ### 使用注意事项
 1. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 2. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
+3. 当前暂不支持与`GROUP BY LEVEL`搭配使用。
 
 对于下面的原始数据，给出几个查询样例。
 ```
@@ -815,7 +817,7 @@ select __endTime,count(*) from root.** group by session(1d)
 ```
 也可以和`HAVING`、`ALIGN BY DEVICE`共同使用
 ```sql
-select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) align by device
+select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) having sum(hardware)>0 align by device
 ```
 得到如下结果，其中排除了`sum(hardware)`为0的部分
 ```
