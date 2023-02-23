@@ -37,6 +37,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
@@ -96,9 +98,9 @@ public class DistributionPlanner {
       return;
     }
 
-    final boolean isOrderByTime =
+    final boolean needShuffleSinkNode =
         analysis.getStatement() instanceof QueryStatement
-            && ((QueryStatement) analysis.getStatement()).isOrderByTime();
+            && needShuffleSinkNode((QueryStatement) analysis.getStatement(), context);
 
     // step1: group children of ExchangeNodes
     Map<TRegionReplicaSet, List<PlanNode>> nodeGroups = new HashMap<>();
@@ -116,7 +118,7 @@ public class DistributionPlanner {
         .forEach(
             planNodeList -> {
               MultiChildrenSinkNode parent =
-                  isOrderByTime
+                  needShuffleSinkNode
                       ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
                       : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
               parent.addChildren(planNodeList);
@@ -138,6 +140,15 @@ public class DistributionPlanner {
           exchangeNode.setChild(planNodeList.get(planNodeList.size() - 1));
           exchangeNode.setIndexOfUpstreamSinkHandle(visitedCount.get(regionOfChild));
         });
+  }
+
+  /** Return true if we need to use ShuffleSinkNode instead of IdentitySinkNode. */
+  private boolean needShuffleSinkNode(
+      QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
+    OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
+    return nodeGroupContext.isAlignByDevice()
+        && !(orderByComponent.getSortItemList().isEmpty()
+            || orderByComponent.getSortItemList().get(0).getSortKey().equals(SortKey.DEVICE));
   }
 
   public SubPlan splitFragment(PlanNode root) {
