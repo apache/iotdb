@@ -27,6 +27,31 @@ import org.apache.iotdb.pipe.api.event.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
 
+/**
+ * PipeProcessor
+ *
+ * <p>PipeProcessor is used to filter and transform the Event formed by the PipeCollector.
+ *
+ * <p>The lifecycle of a PipeProcessor is as follows:
+ *
+ * <ul>
+ *   <li>Before the sync task starts, the KV pair of `WITH PROCESSOR` clause in SQL is parsed and
+ *       the validate method {@link PipeProcessor#validate(PipeValidator)}is called to validate the
+ *       parameters.
+ *   <li>When the sync task starts, load and initialize the PipeProcessor instance, and then call
+ *       the beforeStart method {@link PipeProcessor#beforeStart(PipeParameters,
+ *       ProcessorRuntimeConfiguration)}
+ *   <li>while the sync task is in progress
+ *       <ul>
+ *         <li>PipeCollector capture the writes and deletes events and generates three types of
+ *             Event
+ *         <li>the Event is delivered to the corresponding process method in PipeProcessor
+ *         <li>the Event is delivered to the PipeConnector after processing is completed
+ *       </ul>
+ *   <li>When the sync task is cancelled(When `DROP PIPE` is executed), the PipeProcessor calls the
+ *       autoClose method.
+ * </ul>
+ */
 public interface PipeProcessor extends AutoCloseable {
 
   /**

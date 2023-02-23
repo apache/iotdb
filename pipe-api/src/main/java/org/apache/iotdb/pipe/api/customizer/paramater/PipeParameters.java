@@ -23,9 +23,7 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.config.ProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.type.Type;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,40 +32,19 @@ import java.util.Map;
  *
  * <p>This class is used to parse the parameters in WITH PROCESSOR and WITH CONNECTOR when creating
  * a pipe.
+ *
+ * <p>The input parameters is the key-value pair attributes for customization.
  */
 public class PipeParameters {
 
-  private final List<String> childExpressions;
-  private final List<Type> childExpressionDataTypes;
   private final Map<String, String> attributes;
 
-  public PipeParameters(
-      List<String> childExpressions,
-      List<Type> childExpressionDataTypes,
-      Map<String, String> attributes) {
-    this.childExpressions = childExpressions;
-    this.childExpressionDataTypes = childExpressionDataTypes;
+  public PipeParameters(Map<String, String> attributes) {
     this.attributes = attributes;
-  }
-
-  public List<String> getChildExpressions() {
-    return childExpressions;
   }
 
   public Map<String, String> getAttribute() {
     return attributes;
-  }
-
-  public List<Type> getDataTypes() {
-    return childExpressionDataTypes;
-  }
-
-  public Type getDataType(int index) {
-    return childExpressionDataTypes.get(index);
-  }
-
-  public int getChildExpressionsSize() {
-    return childExpressions.size();
   }
 
   public boolean hasAttribute(String key) {

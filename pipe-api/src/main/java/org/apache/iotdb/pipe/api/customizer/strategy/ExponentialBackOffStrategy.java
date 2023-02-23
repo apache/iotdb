@@ -19,6 +19,27 @@
 
 package org.apache.iotdb.pipe.api.customizer.strategy;
 
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+
+/**
+ * Used in {@link PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
+ * <p>
+ * When the PipeConnector fails to connect to the server, it will retry to connect to the server by the specified strategy.
+ * <p>
+ *   when PipeConnector is set to the ExponentialBackOffStrategy, the interval of waiting for retrying to connect increases exponentially.
+ * Sample code:
+ * <pre>{@code
+ * @Override
+ * public void beforeStart(PipeParameters params, ConnectorRuntimeConfiguration configurations) {
+ *   configurations
+ *       .setRetryStrategy(new ExponentialBackOffStrategy());
+ * }</pre>
+ *
+ * @see PipeConnector
+ * @see ConnectorRuntimeConfiguration
+ */
 public class ExponentialBackOffStrategy implements RetryStrategy {
 
   private final int maxRetryTimes;

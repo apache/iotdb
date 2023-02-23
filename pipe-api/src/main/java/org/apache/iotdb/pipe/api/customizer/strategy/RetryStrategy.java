@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.pipe.api.customizer.strategy;
 
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+
+/**
+ * Used to customize the strategy for retrying to connect servers in {@link
+ * PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
+ */
 public interface RetryStrategy {
   enum RetryStrategyType {
 

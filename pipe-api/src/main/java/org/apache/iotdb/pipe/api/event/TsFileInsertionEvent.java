@@ -21,9 +21,25 @@ package org.apache.iotdb.pipe.api.event;
 
 import java.util.List;
 
+/**
+ * TsFileInsertionEvent is used to define the event of writing TsFile. Event data stores in disks,
+ * which is compressed and encoded, and requires IO cost for computational processing.
+ */
 public abstract class TsFileInsertionEvent implements Event {
-  public abstract List<TsFileInsertionEvent> toTabletInsertionEvents();
 
+  /**
+   * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
+   *
+   * @return the list of TsFileInsertionEvent
+   */
+  public abstract List<TabletInsertionEvent> toTabletInsertionEvents();
+
+  /**
+   * The method is used to compact several TabletInsertionEvents into one TsFileInsertionEvent , in
+   * order to store data in TsFile format.
+   *
+   * @return TsFileInsertionEvent
+   */
   public abstract TsFileInsertionEvent toTsFileInsertionEvent(
       Iterable<TabletInsertionEvent> iterable);
 }

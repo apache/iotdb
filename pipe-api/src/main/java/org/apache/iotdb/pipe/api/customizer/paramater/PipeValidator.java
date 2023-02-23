@@ -20,12 +20,7 @@
 package org.apache.iotdb.pipe.api.customizer.paramater;
 
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.pipe.api.exception.PipeInputSeriesIndexNotValidException;
-import org.apache.iotdb.pipe.api.exception.PipeInputSeriesNumberNotValidException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.pipe.api.type.Type;
 
 public class PipeValidator {
 
@@ -50,93 +45,6 @@ public class PipeValidator {
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       throw new PipeAttributeNotProvidedException(key);
-    }
-    return this;
-  }
-
-  /**
-   * Validates whether the data type of the input series at the specified column is as expected.
-   *
-   * @param index index of the specified column
-   * @param expectedDataType the expected data type
-   * @throws PipeInputSeriesIndexNotValidException if the index of the specified column is out of
-   *     bound
-   * @throws PipeInputSeriesDataTypeNotValidException if the data type of the input series at the
-   *     specified column is not as expected
-   */
-  public PipeValidator validateInputSeriesDataType(int index, Type expectedDataType)
-      throws PipeException {
-    validateInputSeriesIndex(index);
-
-    Type actualDataType;
-    actualDataType = parameters.getDataType(index);
-
-    if (!expectedDataType.equals(actualDataType)) {
-      throw new PipeInputSeriesDataTypeNotValidException(index, actualDataType, expectedDataType);
-    }
-    return this;
-  }
-
-  /**
-   * Validates whether the data type of the input series at the specified column is as expected.
-   *
-   * @param index index of the specified column
-   * @param expectedDataTypes the expected data types
-   * @throws PipeInputSeriesIndexNotValidException if the index of the specified column is out of
-   *     bound
-   * @throws PipeInputSeriesDataTypeNotValidException if the data type of the input series at the
-   *     specified column is not as expected
-   */
-  public PipeValidator validateInputSeriesDataType(int index, Type... expectedDataTypes)
-      throws PipeException {
-    validateInputSeriesIndex(index);
-
-    Type actualDataType;
-    actualDataType = parameters.getDataType(index);
-
-    for (Type expectedDataType : expectedDataTypes) {
-      if (expectedDataType.equals(actualDataType)) {
-        return this;
-      }
-    }
-
-    throw new PipeInputSeriesDataTypeNotValidException(index, actualDataType, expectedDataTypes);
-  }
-
-  /**
-   * Validates whether the number of the input series is as expected.
-   *
-   * @param expectedSeriesNumber the expected number of the input series
-   * @throws PipeInputSeriesNumberNotValidException if the number of the input series is not as
-   *     expected
-   */
-  public PipeValidator validateInputSeriesNumber(int expectedSeriesNumber)
-      throws PipeInputSeriesNumberNotValidException {
-    int actualSeriesNumber = parameters.getChildExpressionsSize();
-    if (actualSeriesNumber != expectedSeriesNumber) {
-      throw new PipeInputSeriesNumberNotValidException(actualSeriesNumber, expectedSeriesNumber);
-    }
-    return this;
-  }
-
-  /**
-   * Validates whether the number of the input series is as expected.
-   *
-   * @param expectedSeriesNumberLowerBound the number of the input series must be greater than or
-   *     equal to the expectedSeriesNumberLowerBound
-   * @param expectedSeriesNumberUpperBound the number of the input series must be less than or equal
-   *     to the expectedSeriesNumberUpperBound
-   * @throws PipeInputSeriesNumberNotValidException if the number of the input series is not as
-   *     expected
-   */
-  public PipeValidator validateInputSeriesNumber(
-      int expectedSeriesNumberLowerBound, int expectedSeriesNumberUpperBound)
-      throws PipeInputSeriesNumberNotValidException {
-    int actualSeriesNumber = parameters.getChildExpressionsSize();
-    if (actualSeriesNumber < expectedSeriesNumberLowerBound
-        || expectedSeriesNumberUpperBound < actualSeriesNumber) {
-      throw new PipeInputSeriesNumberNotValidException(
-          actualSeriesNumber, expectedSeriesNumberLowerBound, expectedSeriesNumberUpperBound);
     }
     return this;
   }
@@ -187,20 +95,5 @@ public class PipeValidator {
   public interface MultipleObjectsValidationRule {
 
     boolean validate(Object... args);
-  }
-
-  /**
-   * Validates whether the index of the specified column is out of bound. bound: [0,
-   * parameters.getPaths().size())
-   *
-   * @param index the index of the specified column
-   * @throws PipeInputSeriesIndexNotValidException if the index of the specified column is out of
-   *     bound
-   */
-  private void validateInputSeriesIndex(int index) throws PipeInputSeriesIndexNotValidException {
-    int actualSeriesNumber = parameters.getChildExpressionsSize();
-    if (index < 0 || actualSeriesNumber <= index) {
-      throw new PipeInputSeriesIndexNotValidException(index, actualSeriesNumber);
-    }
   }
 }

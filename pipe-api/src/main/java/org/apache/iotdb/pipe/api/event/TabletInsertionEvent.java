@@ -26,11 +26,31 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
+/**
+ * TabletInsertionEvent is used to define the event of writing data. Event data stores in memory,
+ * which is not compressed or encoded, and can be processed directly for computation.
+ */
 public abstract class TabletInsertionEvent implements Event {
+
+  /**
+   * The consumer consumes the Tablet by rows, and collects the data by RowCollector.
+   *
+   * @return TabletInsertionEvent
+   */
   public abstract TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
+  /**
+   * The method provides Iterator to access data, and collects the data by RowCollector..
+   *
+   * @return TabletInsertionEvent
+   */
   public abstract TabletInsertionEvent processByIterator(
       BiConsumer<Iterator<Row>, RowCollector> consumer);
 
+  /**
+   * The consumer consumes the Tablet directly, and collects the data by RowCollector.
+   *
+   * @return TabletInsertionEvent
+   */
   public abstract TabletInsertionEvent process(BiConsumer<Tablet, RowCollector> consumer);
 }

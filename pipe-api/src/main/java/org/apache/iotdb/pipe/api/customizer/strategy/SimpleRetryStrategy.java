@@ -19,6 +19,28 @@
 
 package org.apache.iotdb.pipe.api.customizer.strategy;
 
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+
+/**
+ * Used in {@link PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
+ * <p>
+ * When the PipeConnector fails to connect to the server, it will retry to connect to the server by the specified strategy.
+ * <p>
+ *   The default strategy is {@link SimpleRetryStrategy}. PipeConnector will retry to connect to the server every fixed interval.
+ * <p>
+ * Sample code:
+ * <pre>{@code
+ * @Override
+ * public void beforeStart(PipeParameters params, ConnectorRuntimeConfiguration configurations) {
+ *   configurations
+ *       .setRetryStrategy(new SimpleRetryStrategy());
+ * }</pre>
+ *
+ * @see PipeConnector
+ * @see ConnectorRuntimeConfiguration
+ */
 public class SimpleRetryStrategy implements RetryStrategy {
 
   private final int maxRetryTimes;

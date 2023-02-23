@@ -19,4 +19,5 @@
 
 package org.apache.iotdb.pipe.api.event;
 
+/** This interface is used to define the abstraction of operational events in the sync task. */
 public interface Event {}
