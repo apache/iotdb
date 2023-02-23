@@ -16,26 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+/** This interface defines the threshold strategy for release and flush task */
+public interface IReleaseFlushStrategy {
+  /** Check if exceed release threshold */
+  boolean isExceedReleaseThreshold();
 
-public class MemManagerHolder {
-
-  private static IMemManager memManagerInstance;
-
-  public static void initMemManagerInstance() {
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      memManagerInstance = new MemManagerNodeNumBasedImpl();
-    } else {
-      memManagerInstance = new MemManagerNodeEstimatedSizeBasedImpl();
-    }
-  }
-
-  public static IMemManager getMemManagerInstance() {
-    return memManagerInstance;
-  }
-
-  private MemManagerHolder() {}
+  /** Check if exceed flush threshold */
+  boolean isExceedFlushThreshold();
 }

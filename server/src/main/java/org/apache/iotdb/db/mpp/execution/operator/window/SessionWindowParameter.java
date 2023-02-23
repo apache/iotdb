@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,37 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import java.util.List;
+public class SessionWindowParameter extends WindowParameter {
 
-public interface IMemManager {
+  private final long timeInterval;
 
-  void init();
+  public SessionWindowParameter(long timeInterval, boolean needOutputEndTime) {
+    super(needOutputEndTime);
+    this.timeInterval = timeInterval;
+    this.windowType = WindowType.SESSION_WINDOW;
+  }
 
-  boolean isEmpty();
-
-  boolean isExceedReleaseThreshold();
-
-  boolean isExceedFlushThreshold();
-
-  void requestPinnedMemResource(IMNode node);
-
-  void upgradeMemResource(IMNode node);
-
-  void releasePinnedMemResource(IMNode node);
-
-  void releaseMemResource(IMNode node);
-
-  void releaseMemResource(List<IMNode> evictedNodes);
-
-  void updatePinnedSize(int deltaSize);
-
-  void clear();
-
-  long getPinnedSize();
-
-  long getCachedSize();
+  public long getTimeInterval() {
+    return timeInterval;
+  }
 }

@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -187,72 +188,62 @@ public class MergeSortOperatorTest {
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
       MeasurementPath measurementPath5 =
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
+
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
@@ -615,95 +606,80 @@ public class MergeSortOperatorTest {
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath6));
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator6
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath7));
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator7
           .getOperatorContext()
@@ -1079,95 +1055,80 @@ public class MergeSortOperatorTest {
               driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath3));
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath4));
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath5));
       seriesScanOperator5.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator5
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
-              Collections.singleton("sensor0"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath6));
       seriesScanOperator6.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator6
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
-              Collections.singleton("sensor1"),
-              TSDataType.INT32,
-              null,
-              null,
-              timeOrdering == Ordering.ASC);
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath7));
       seriesScanOperator7.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator7
           .getOperatorContext()

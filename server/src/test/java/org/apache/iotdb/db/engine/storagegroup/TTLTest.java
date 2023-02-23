@@ -202,7 +202,6 @@ public class TTLTest {
     IDataBlockReader reader =
         new SeriesDataBlockReader(
             path,
-            TSDataType.INT64,
             FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID),
             seqResource,
             unseqResource,

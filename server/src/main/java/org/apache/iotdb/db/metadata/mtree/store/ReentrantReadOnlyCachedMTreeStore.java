@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -35,6 +36,11 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
   public ReentrantReadOnlyCachedMTreeStore(CachedMTreeStore store) {
     this.store = store;
     this.readLockStamp = store.stampedReadLock();
+  }
+
+  @Override
+  public IMNode generatePrefix(PartialPath storageGroupPath) {
+    throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override

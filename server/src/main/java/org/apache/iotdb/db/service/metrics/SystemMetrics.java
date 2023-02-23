@@ -101,7 +101,7 @@ public class SystemMetrics implements IMetricSet {
         Metric.SYS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         osMxBean,
-        a -> (long) (osMxBean.getSystemCpuLoad() * 100),
+        a -> osMxBean.getSystemCpuLoad() * 100,
         Tag.NAME.toString(),
         "system");
 

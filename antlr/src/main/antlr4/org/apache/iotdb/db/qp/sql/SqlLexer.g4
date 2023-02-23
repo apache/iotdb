@@ -562,6 +562,10 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SESSION
+    : S E S S I O N
+    ;
+
 SET
     : S E T
     ;
