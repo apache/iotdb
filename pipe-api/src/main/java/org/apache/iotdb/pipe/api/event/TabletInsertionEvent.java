@@ -29,7 +29,8 @@ import java.util.function.BiConsumer;
 public abstract class TabletInsertionEvent implements Event {
   public abstract TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
-  public abstract TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer);
+  public abstract TabletInsertionEvent processByIterator(
+      BiConsumer<Iterator<Row>, RowCollector> consumer);
 
   public abstract TabletInsertionEvent process(BiConsumer<Tablet, RowCollector> consumer);
 }

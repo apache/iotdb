@@ -24,5 +24,6 @@ import java.util.List;
 public abstract class TsFileInsertionEvent implements Event {
   public abstract List<TsFileInsertionEvent> toTabletInsertionEvents();
 
-  public abstract TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
+  public abstract TsFileInsertionEvent toTsFileInsertionEvent(
+      Iterable<TabletInsertionEvent> iterable);
 }
