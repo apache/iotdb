@@ -35,10 +35,10 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
   private static final String RELEASE_THRESHOLD = "schema_file_release_threshold";
   private static final String FLUSH_THRESHOLD = "schema_file_flush_threshold";
-  private static final String PINNED_NUM = "schema_file_pinned_num";
-  private static final String UNPINNED_NUM = "schema_file_unpinned_num";
-  private static final String PINNED_MEM = "schema_file_pinned_mem";
-  private static final String UNPINNED_MEM = "schema_file_unpinned_mem";
+  private static final String PINNED_NODE_NUM = "schema_file_pinned_num";
+  private static final String UNPINNED_NODE_NUM = "schema_file_unpinned_num";
+  private static final String PINNED_MEM_SIZE = "schema_file_pinned_mem";
+  private static final String UNPINNED_MEM_SIZE = "schema_file_unpinned_mem";
   private static final String RELEASE_TIMER = "schema_file_release_timer";
   private static final String FLUSH_TIMER = "schema_file_flush_timer";
   private static final String RELEASE_THREAD_NUM = "schema_file_release_thread_num";
@@ -78,28 +78,28 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
         engineStatistics,
         CachedSchemaEngineStatistics::getPinnedMNodeNum,
         Tag.NAME.toString(),
-        PINNED_NUM);
+        PINNED_NODE_NUM);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getUnpinnedMNodeNum,
         Tag.NAME.toString(),
-        UNPINNED_NUM);
+        UNPINNED_NODE_NUM);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getPinnedMemorySize,
         Tag.NAME.toString(),
-        PINNED_MEM);
+        PINNED_MEM_SIZE);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         CachedSchemaEngineStatistics::getUnpinnedMemorySize,
         Tag.NAME.toString(),
-        UNPINNED_MEM);
+        UNPINNED_MEM_SIZE);
     metricService.getOrCreateTimer(
         Metric.SCHEMA_ENGINE.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), RELEASE_TIMER);
     metricService.getOrCreateTimer(
@@ -128,13 +128,25 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     metricService.remove(
         MetricType.GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), FLUSH_THRESHOLD);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), PINNED_NUM);
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        PINNED_NODE_NUM);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), UNPINNED_NUM);
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        UNPINNED_NODE_NUM);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), PINNED_MEM);
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        PINNED_MEM_SIZE);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), UNPINNED_MEM);
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_ENGINE.toString(),
+        Tag.NAME.toString(),
+        UNPINNED_MEM_SIZE);
     metricService.remove(
         MetricType.TIMER, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), RELEASE_TIMER);
     metricService.remove(

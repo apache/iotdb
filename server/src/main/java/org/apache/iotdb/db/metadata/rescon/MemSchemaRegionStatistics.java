@@ -33,7 +33,6 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   public MemSchemaRegionStatistics(int schemaRegionId) {
     this.schemaRegionId = schemaRegionId;
-    schemaEngineStatistics.addSchemaRegion();
   }
 
   @Override
@@ -64,10 +63,6 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   public void deleteTimeseries(long deletedNum) {
     seriesNumber.addAndGet(-deletedNum);
     schemaEngineStatistics.deleteTimeseries(deletedNum);
-  }
-
-  public void deleteSchemaRegion() {
-    schemaEngineStatistics.deleteSchemaRegion();
   }
 
   @Override

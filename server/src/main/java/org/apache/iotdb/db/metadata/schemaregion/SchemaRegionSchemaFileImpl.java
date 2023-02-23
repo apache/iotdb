@@ -436,7 +436,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     // clear all the components and release all the file handlers
-    regionStatistics.deleteSchemaRegion();
     clear();
 
     // delete all the schema region files

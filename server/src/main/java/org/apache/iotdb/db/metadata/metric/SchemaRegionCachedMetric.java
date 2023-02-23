@@ -27,12 +27,12 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
 
-  private static final String PINNED_NUM = "schema_file_pinned_num";
-  private static final String UNPINNED_NUM = "schema_file_unpinned_num";
-  private static final String PINNED_MEM = "schema_file_pinned_mem";
-  private static final String UNPINNED_MEM = "schema_file_unpinned_mem";
-  private static final String BUFFER_NUM = "schema_file_buffer_node_num";
-  private static final String CACHE_NUM = "schema_file_cache_node_num";
+  private static final String PINNED_NODE_NUM = "schema_file_pinned_num";
+  private static final String UNPINNED_NODE_NUM = "schema_file_unpinned_num";
+  private static final String PINNED_MEM_SIZE = "schema_file_pinned_mem";
+  private static final String UNPINNED_MEM_SIZE = "schema_file_unpinned_mem";
+  private static final String BUFFER_NODE_NUM = "schema_file_buffer_node_num";
+  private static final String CACHE_NODE_NUM = "schema_file_cache_node_num";
   private static final String MLOG_LENGTH = "schema_file_mlog_length";
   private static final String MLOG_CHECKPOINT = "schema_file_mlog_checkpoint";
 
@@ -57,7 +57,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getPinnedMNodeNum,
         Tag.NAME.toString(),
-        PINNED_NUM,
+        PINNED_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -66,7 +66,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getUnpinnedMNodeNum,
         Tag.NAME.toString(),
-        UNPINNED_NUM,
+        UNPINNED_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -75,7 +75,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getPinnedMemorySize,
         Tag.NAME.toString(),
-        PINNED_MEM,
+        PINNED_MEM_SIZE,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -84,7 +84,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getUnpinnedMemorySize,
         Tag.NAME.toString(),
-        UNPINNED_MEM,
+        UNPINNED_MEM_SIZE,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -93,7 +93,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getBufferNodeNum,
         Tag.NAME.toString(),
-        BUFFER_NUM,
+        BUFFER_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -102,7 +102,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         regionStatistics,
         CachedSchemaRegionStatistics::getCacheNodeNum,
         Tag.NAME.toString(),
-        CACHE_NUM,
+        CACHE_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.createAutoGauge(
@@ -132,42 +132,42 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        PINNED_NUM,
+        PINNED_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        UNPINNED_NUM,
+        UNPINNED_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        PINNED_MEM,
+        PINNED_MEM_SIZE,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        UNPINNED_MEM,
+        UNPINNED_MEM_SIZE,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        BUFFER_NUM,
+        BUFFER_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
-        CACHE_NUM,
+        CACHE_NODE_NUM,
         Tag.REGION.toString(),
         regionTagValue);
     metricService.remove(
