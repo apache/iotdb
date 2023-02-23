@@ -271,12 +271,12 @@ public class SessionManager implements SessionManagerMBean {
       currSessionIdleTime.set(System.nanoTime());
     } else {
       MetricService.getInstance()
-          .getOrCreateTimer(
+          .getOrCreateHistogram(
               Metric.SESSION_IDLE_TIME.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
               String.valueOf(clientSession.getId()))
-          .updateNanos(System.nanoTime() - idleTime);
+          .update(System.nanoTime() - idleTime);
     }
     return clientSession;
   }

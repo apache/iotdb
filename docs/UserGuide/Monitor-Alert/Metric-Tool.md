@@ -133,7 +133,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | The number of thrift active internal connections in DataNode   |
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | The number of thrift active internal connections in MPP        |
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
-| session_idle_time     | name = "sessionId"                 | Timer     | The distribution of idle time of different sessions            |
+| session_idle_time     | name = "sessionId"                 | Histogram | The distribution of idle time of different sessions            |
 
 #### 4.1.3. Node Statistics
 | Metric   | Tags                                  | Type      | Description                               |
