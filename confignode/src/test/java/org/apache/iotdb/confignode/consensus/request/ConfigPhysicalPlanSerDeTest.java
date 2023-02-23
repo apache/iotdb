@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
@@ -1334,5 +1335,21 @@ public class ConfigPhysicalPlanSerDeTest {
         (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
     Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void PollSpecificRegionMaintainTaskPlanTest() throws IOException {
+    Set<TConsensusGroupId> regionIdSet =
+        new HashSet<>(
+            Arrays.asList(
+                new TConsensusGroupId(SchemaRegion, 1),
+                new TConsensusGroupId(DataRegion, 2),
+                new TConsensusGroupId(DataRegion, 3)));
+    PollSpecificRegionMaintainTaskPlan plan = new PollSpecificRegionMaintainTaskPlan(regionIdSet);
+
+    PollSpecificRegionMaintainTaskPlan deserializedPlan =
+        (PollSpecificRegionMaintainTaskPlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(deserializedPlan.getRegionIdSet(), regionIdSet);
   }
 }
