@@ -774,23 +774,29 @@ public class PartitionManager {
                 }
 
                 while (!regionMaintainTaskMap.isEmpty()) {
-
                   // select same type task from each region group
                   List<RegionMaintainTask> selectedRegionMaintainTask = new ArrayList<>();
                   RegionMaintainType currentType = null;
                   for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry :
                       regionMaintainTaskMap.entrySet()) {
                     RegionMaintainTask regionMaintainTask = entry.getValue().peek();
-                    if (regionMaintainTask != null) {
-                      if (currentType == null
-                          || regionMaintainTask.getType().equals(RegionMaintainType.DELETE)
-                          || entry
-                              .getKey()
-                              .getType()
-                              .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                        selectedRegionMaintainTask.add(entry.getValue().peek());
-                        currentType = regionMaintainTask.getType();
-                      }
+                    if (regionMaintainTask == null) {
+                      continue;
+                    }
+
+                    if (currentType == null) {
+                      currentType = regionMaintainTask.getType();
+                    } else if (!currentType.equals(regionMaintainTask.getType())) {
+                      continue;
+                    }
+
+                    if (regionMaintainTask.getType().equals(RegionMaintainType.DELETE)
+                        || entry
+                            .getKey()
+                            .getType()
+                            .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
+                      // delete or same create task
+                      selectedRegionMaintainTask.add(entry.getValue().peek());
                     }
                   }
 
@@ -801,8 +807,10 @@ public class PartitionManager {
                   Set<TConsensusGroupId> successfulTask = new HashSet<>();
                   switch (currentType) {
                     case CREATE:
+                      // create region
                       switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
                         case SchemaRegion:
+                          // create SchemaRegion
                           AsyncClientHandler<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
                                   new AsyncClientHandler<>(
@@ -838,6 +846,7 @@ public class PartitionManager {
                           }
                           break;
                         case DataRegion:
+                          // create DataRegion
                           AsyncClientHandler<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
                                   new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
@@ -875,6 +884,7 @@ public class PartitionManager {
                       }
                       break;
                     case DELETE:
+                      // delete region
                       AsyncClientHandler<TConsensusGroupId, TSStatus> deleteRegionHandler =
                           new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
@@ -893,8 +903,12 @@ public class PartitionManager {
                             regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
                       }
 
+                      long startTime = System.currentTimeMillis();
                       AsyncDataNodeClientPool.getInstance()
                           .sendAsyncRequestToDataNodeWithRetry(deleteRegionHandler);
+
+                      LOGGER.info(
+                          "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));
 
                       for (Map.Entry<Integer, TSStatus> entry :
                           deleteRegionHandler.getResponseMap().entrySet()) {

@@ -206,14 +206,17 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public TSStatus pollSpecificRegionMaintainTask(PollSpecificRegionMaintainTaskPlan plan) {
     synchronized (regionMaintainTaskList) {
-      Set<TConsensusGroupId> remainingRegionIdSet = new HashSet<>(plan.getRegionIdSet());
+      Set<TConsensusGroupId> removingRegionIdSet = new HashSet<>(plan.getRegionIdSet());
       TConsensusGroupId regionId;
       for (int i = 0; i < regionMaintainTaskList.size(); i++) {
         regionId = regionMaintainTaskList.get(i).getRegionId();
-        if (remainingRegionIdSet.contains(regionId)) {
+        if (removingRegionIdSet.contains(regionId)) {
           regionMaintainTaskList.remove(i);
-          remainingRegionIdSet.remove(regionId);
+          removingRegionIdSet.remove(regionId);
           i--;
+        }
+        if (removingRegionIdSet.isEmpty()) {
+          break;
         }
       }
       return RpcUtils.SUCCESS_STATUS;
