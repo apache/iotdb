@@ -111,7 +111,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
-| session_idle_time     | name = "sessionId"                 | Timer     | 不同 Session 的空闲时间分布情况     |
+| session_idle_time     | name = "sessionId"                 | Histogram | 不同 Session 的空闲时间分布情况     |
 
 #### 4.1.3. 节点统计
 | Metric   | Tags                                  | Type      | Description                 |
