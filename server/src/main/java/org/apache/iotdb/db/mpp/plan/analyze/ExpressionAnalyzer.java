@@ -1346,8 +1346,9 @@ public class ExpressionAnalyzer {
       return checkIsScalarExpression(((UnaryExpression) expression).getExpression(), analysis);
     } else if (expression instanceof FunctionExpression) {
       FunctionExpression functionExpression = (FunctionExpression) expression;
-      if (functionExpression.isBuiltInAggregationFunctionExpression()
-          || functionExpression.isMappable(analysis.getExpressionTypes())) {
+      if (!functionExpression.isMappable(analysis.getExpressionTypes())
+          || BuiltinFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              functionExpression.getFunctionName())) {
         return false;
       }
       List<Expression> inputExpressions = functionExpression.getExpressions();

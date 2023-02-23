@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
@@ -143,6 +144,16 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
       context.setEnablePushDown(false);
       return node;
+    }
+
+    @Override
+    public PlanNode visitDeviceView(DeviceViewNode node, RewriterContext context) {
+      if (node.getChildren().size() == 1) {
+        node.getChildren().get(0).accept(this, context);
+        return node;
+      } else {
+        return visitMultiChildProcess(node, context);
+      }
     }
 
     @Override
