@@ -422,7 +422,7 @@ public class IoTDBConfig {
       InnerUnsequenceCompactionSelector.SIZE_TIERED;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
-      InnerUnseqCompactionPerformer.READ_POINT;
+      InnerUnseqCompactionPerformer.FAST;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
@@ -430,7 +430,7 @@ public class IoTDBConfig {
    */
   private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
 
-  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
+  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.FAST;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -477,6 +477,12 @@ public class IoTDBConfig {
 
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
+
+  /**
+   * Only the unseq files whose level of inner space compaction reaches this value can be selected
+   * to participate in the cross space compaction.
+   */
+  private int minCrossCompactionUnseqFileLevel = 1;
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -2864,6 +2870,14 @@ public class IoTDBConfig {
 
   public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
     this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
+  public int getMinCrossCompactionUnseqFileLevel() {
+    return minCrossCompactionUnseqFileLevel;
+  }
+
+  public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
+    this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
   }
 
   public long getCompactionSubmissionIntervalInMs() {

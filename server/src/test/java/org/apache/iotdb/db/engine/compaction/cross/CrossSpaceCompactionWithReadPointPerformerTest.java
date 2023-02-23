@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -96,6 +97,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
 
   @Before
   public void setUp() throws MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
