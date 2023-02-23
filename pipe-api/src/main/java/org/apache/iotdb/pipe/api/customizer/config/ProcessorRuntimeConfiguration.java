@@ -25,8 +25,10 @@ import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
 /**
  * Used in {@link PipeProcessor#beforeStart(PipeParameters, ProcessorRuntimeConfiguration)}.
  *
- * <p>Supports calling methods in a chain.
- *
+ * <p>
+ * Supports calling methods in a chain.
  * <p>
  */
-public class ProcessorRuntimeConfiguration {}
+public class ProcessorRuntimeConfiguration {
+
+}

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.pipe.api.access;
 
-import org.apache.iotdb.udf.api.type.Binary;
-import org.apache.iotdb.udf.api.type.Type;
+import org.apache.iotdb.pipe.api.type.Binary;
+import org.apache.iotdb.pipe.api.type.Type;
 
 import java.io.IOException;
 

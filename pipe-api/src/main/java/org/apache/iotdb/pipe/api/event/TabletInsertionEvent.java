@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.pipe.api.event;
 
+import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
-import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-public class TabletInsertionEvent implements Event {
-  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    return this;
-  }
+public abstract class TabletInsertionEvent implements Event {
+  public abstract TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
-  public TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer) {
-    return this;
-  }
+  public abstract TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer);
+
+  public abstract TabletInsertionEvent process(BiConsumer<Tablet, RowCollector> consumer);
 }

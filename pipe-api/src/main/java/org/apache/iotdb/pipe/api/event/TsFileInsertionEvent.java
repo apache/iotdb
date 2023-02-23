@@ -21,9 +21,8 @@ package org.apache.iotdb.pipe.api.event;
 
 import java.util.List;
 
-public class TsFileInsertionEvent implements Event {
+public abstract class TsFileInsertionEvent implements Event {
+  public abstract List<TsFileInsertionEvent> toTabletInsertionEvents();
 
-  public List<TsFileInsertionEvent> toTabletInsertionEvent() {
-    return null;
-  }
+  public abstract TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
 }
