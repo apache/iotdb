@@ -786,17 +786,20 @@ public class PartitionManager {
 
                     if (currentType == null) {
                       currentType = regionMaintainTask.getType();
-                    } else if (!currentType.equals(regionMaintainTask.getType())) {
-                      continue;
-                    }
-
-                    if (regionMaintainTask.getType().equals(RegionMaintainType.DELETE)
-                        || entry
-                            .getKey()
-                            .getType()
-                            .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                      // delete or same create task
                       selectedRegionMaintainTask.add(entry.getValue().peek());
+                    } else {
+                      if (!currentType.equals(regionMaintainTask.getType())) {
+                        continue;
+                      }
+
+                      if (currentType.equals(RegionMaintainType.DELETE)
+                          || entry
+                              .getKey()
+                              .getType()
+                              .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
+                        // delete or same create task
+                        selectedRegionMaintainTask.add(entry.getValue().peek());
+                      }
                     }
                   }
 

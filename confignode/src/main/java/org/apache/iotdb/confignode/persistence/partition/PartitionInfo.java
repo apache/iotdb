@@ -204,6 +204,13 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Poll the head of RegionMaintainTasks of target regions from regionMaintainTaskList after they
+   * are executed successfully. Tasks of each region group are treated as single independent queue.
+   *
+   * @param plan provides target region ids
+   * @return SUCCESS_STATUS
+   */
   public TSStatus pollSpecificRegionMaintainTask(PollSpecificRegionMaintainTaskPlan plan) {
     synchronized (regionMaintainTaskList) {
       Set<TConsensusGroupId> removingRegionIdSet = new HashSet<>(plan.getRegionIdSet());
