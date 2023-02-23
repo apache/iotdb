@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -66,6 +68,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -147,6 +150,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
+      ISchemaEngineStatistics engineStatistics,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
@@ -169,8 +173,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId());
-
+    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId(), engineStatistics);
     init();
   }
 
@@ -275,6 +278,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    return new SchemaRegionMemMetric(regionStatistics);
   }
 
   /**
