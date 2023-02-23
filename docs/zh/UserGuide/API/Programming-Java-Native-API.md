@@ -50,7 +50,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 
 ## 语法说明
 
- - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Syntax-Conventions/Literal-Values.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
  - 对于其他接口： 
    - 经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，此处均需要进行转义。 
    - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，均可以不用进行转义。

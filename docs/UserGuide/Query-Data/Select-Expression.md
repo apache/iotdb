@@ -85,8 +85,7 @@ See the documentation [Operators and Functions](../Operators-Functions/Overview.
 
 #### User-Defined time series generation function
 
-IoTDB supports function extension through [User-Defined Function](./User-Defined-Function.md) capability.
-
+IoTDB supports function extension through User Defined Function (click for [User-Defined Function](../Operators-Functions/User-Defined-Function.md)) capability.
 ## Nested Expressions
 
 IoTDB supports the calculation of arbitrary nested expressions. Since time series query and aggregation query can not be used in a query statement at the same time, we divide nested expressions into two types, which are nested expressions with time series query and nested expressions with aggregation query. 
