@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Objects;
 
-/** Monitoring cluster Nodes Metrics */
+/** Monitoring cluster Nodes Metrics. */
 public class NodeMetrics implements IMetricSet {
 
   private final NodeManager nodeManager;

@@ -153,7 +153,7 @@ public class LoadManager {
   }
 
   /**
-   * Get the number of RegionGroup-leaders in the specified DataNode
+   * Get the number of RegionGroup-leaders in the specified DataNode.
    *
    * @param dataNodeId The specified DataNode
    * @param type SchemaRegion or DataRegion

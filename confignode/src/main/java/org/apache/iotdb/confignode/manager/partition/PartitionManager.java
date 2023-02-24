@@ -1066,7 +1066,7 @@ public class PartitionManager {
   }
 
   /**
-   * Safely get RegionStatus
+   * Safely get RegionStatus.
    *
    * @param consensusGroupId Specified RegionGroupId
    * @param dataNodeId Specified RegionReplicaId
@@ -1079,7 +1079,7 @@ public class PartitionManager {
   }
 
   /**
-   * Safely get RegionGroupStatus
+   * Safely get RegionGroupStatus.
    *
    * @param consensusGroupId Specified RegionGroupId
    * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
@@ -1090,7 +1090,7 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched. */
   public void initRegionGroupHeartbeatCache() {
     regionGroupCacheMap.clear();
     getAllReplicaSets()

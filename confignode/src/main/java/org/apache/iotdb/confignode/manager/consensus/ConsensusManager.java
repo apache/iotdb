@@ -55,7 +55,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
-/** ConsensusManager maintains consensus class, request will redirect to consensus layer */
+/** ConsensusManager maintains consensus class, request will redirect to consensus layer. */
 public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
@@ -77,7 +77,7 @@ public class ConsensusManager {
     consensusImpl.stop();
   }
 
-  /** ConsensusLayer local implementation */
+  /** ConsensusLayer local implementation. */
   private void setConsensusLayer(ConfigNodeRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new ConfigNodeRegionId(CONF.getConfigNodeRegionId());
@@ -214,7 +214,7 @@ public class ConsensusManager {
   }
 
   /**
-   * Create peer in new node to build consensus group
+   * Create peer in new node to build consensus group.
    *
    * @param configNodeLocations All registered ConfigNodes
    */
@@ -233,7 +233,7 @@ public class ConsensusManager {
   }
 
   /**
-   * Add a new ConfigNode Peer into ConfigNodeRegion
+   * Add a new ConfigNode Peer into ConfigNodeRegion.
    *
    * @param configNodeLocation The new ConfigNode
    * @throws AddPeerException When addPeer doesn't success
@@ -255,7 +255,7 @@ public class ConsensusManager {
   }
 
   /**
-   * Remove a ConfigNode Peer out of ConfigNodeRegion
+   * Remove a ConfigNode Peer out of ConfigNodeRegion.
    *
    * @param configNodeLocation config node location
    * @return True if successfully removePeer. False if another ConfigNode is being removed to the
@@ -314,7 +314,7 @@ public class ConsensusManager {
   }
 
   /**
-   * Confirm the current ConfigNode's leadership
+   * Confirm the current ConfigNode's leadership.
    *
    * @return SUCCESS_STATUS if the current ConfigNode is leader, NEED_REDIRECTION otherwise
    */
