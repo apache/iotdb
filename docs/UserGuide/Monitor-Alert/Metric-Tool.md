@@ -124,11 +124,11 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.1.2. Interface
 
 | Metric                | Tags                               | Type      | Description                                                    |
-| --------------------- | ---------------------------------- | --------- | -------------------------------------------------------------- |
+| --------------------- |------------------------------------| --------- | -------------------------------------------------------------- |
 | thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | The number of thrift internal connections in ConfigNode        |
-| thrift_connections    | name="Internal"                    | AutoGauge | The number of thrift internal connections in DataNode          |
-| thrift_connections    | name="MPPDataExchange"             | AutoGauge | The number of thrift internal connections in MPP               |
-| thrift_connections    | name="RPC"                         | AutoGauge | The number of thrift connections of Client                     |
+| thrift_connections    | name="InternalRPC"                 | AutoGauge | The number of thrift internal connections in DataNode          |
+| thrift_connections    | name="MPPDataExchangeRPC"          | AutoGauge | The number of thrift internal connections in MPP               |
+| thrift_connections    | name="ClientRPC"                   | AutoGauge | The number of thrift connections of Client                     |
 | thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | The number of thrift active internal connections in ConfigNode |
 | thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | The number of thrift active internal connections in DataNode   |
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | The number of thrift active internal connections in MPP        |

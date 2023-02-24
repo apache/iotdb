@@ -41,13 +41,16 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
         thriftConnectionNumber,
         AtomicLong::get,
         Tag.NAME.toString(),
-        "RPC");
+        "ClientRPC");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.THRIFT_CONNECTIONS.toString(), Tag.NAME.toString(), "RPC");
+        MetricType.AUTO_GAUGE,
+        Metric.THRIFT_CONNECTIONS.toString(),
+        Tag.NAME.toString(),
+        "ClientRPC");
   }
 
   @Override

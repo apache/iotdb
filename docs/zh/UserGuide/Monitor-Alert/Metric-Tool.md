@@ -102,11 +102,11 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 #### 4.1.2. 接口层统计
 
 | Metric                | Tags                               | Type      | Description                         |
-| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
+| --------------------- |------------------------------------| --------- | ----------------------------------- |
 | thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
-| thrift_connections    | name="Internal"                    | AutoGauge | DataNode 的内部 Thrift 连接数       |
-| thrift_connections    | name="MPPDataExchange"             | AutoGauge | MPP 框架的内部 Thrift 连接数        |
-| thrift_connections    | name="RPC"                         | AutoGauge | Client 建立的 Thrift 连接数         |
+| thrift_connections    | name="InternalRPC"                 | AutoGauge | DataNode 的内部 Thrift 连接数       |
+| thrift_connections    | name="MPPDataExchangeRPC"          | AutoGauge | MPP 框架的内部 Thrift 连接数        |
+| thrift_connections    | name="ClientRPC"                   | AutoGauge | Client 建立的 Thrift 连接数         |
 | thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
 | thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
