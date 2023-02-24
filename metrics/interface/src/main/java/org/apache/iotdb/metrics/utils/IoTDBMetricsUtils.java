@@ -36,7 +36,7 @@ public class IoTDBMetricsUtils {
 
   /** Generate the path of metric with tags array. */
   public static String generatePath(String name, String... tags) {
-    StringBuilder stringBuilder = generateMetric(name);
+    StringBuilder stringBuilder = generateMetric(name, false);
     for (int i = 0; i < tags.length; i += 2) {
       stringBuilder
           .append(".")
@@ -51,7 +51,7 @@ public class IoTDBMetricsUtils {
 
   /** Generate the path of metric with tags map. */
   public static String generatePath(String name, Map<String, String> tags) {
-    StringBuilder stringBuilder = generateMetric(name);
+    StringBuilder stringBuilder = generateMetric(name, false);
     for (Map.Entry<String, String> entry : tags.entrySet()) {
       stringBuilder
           .append(".")
@@ -65,21 +65,26 @@ public class IoTDBMetricsUtils {
   }
 
   /** Generate the path of metric. */
-  private static StringBuilder generateMetric(String name) {
+  private static StringBuilder generateMetric(String name, boolean internalReport) {
+    // TODO @spricoder optimze the implementation
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
         .append(DATABASE)
         .append(".")
         .append(METRIC_CONFIG.getIotdbReporterConfig().getLocation())
         .append(".`")
-        .append(METRIC_CONFIG.getRpcAddress())
-        .append(":")
-        .append(METRIC_CONFIG.getRpcPort())
-        .append("`")
-        .append(".")
-        .append("`")
-        .append(name)
-        .append("`");
+        .append(METRIC_CONFIG.getClusterName())
+        .append("`.")
+        .append(METRIC_CONFIG.getNodeType().toString());
+    if (!internalReport) {
+      stringBuilder
+          .append(".`")
+          .append(METRIC_CONFIG.getRpcAddress())
+          .append(":")
+          .append(METRIC_CONFIG.getRpcPort())
+          .append("`");
+    }
+    stringBuilder.append(".").append("`").append(name).append("`");
     return stringBuilder;
   }
 }

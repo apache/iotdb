@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.config;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.metrics.utils.SystemType;
 
@@ -63,8 +64,12 @@ public class MetricConfig {
   private Integer rpcPort = 6667;
   /** The pid of iotdb instance. */
   private String pid = "";
-  /** The running system of iotdb instance */
+  /** The running system of iotdb instance. */
   private final SystemType systemType = SystemType.getSystemType();
+  /** The type of monitored node */
+  private NodeType nodeType = NodeType.CONFIGNODE;
+  /** The name of iotdb cluster. */
+  private String clusterName = "iotdb-cluster";
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -148,10 +153,21 @@ public class MetricConfig {
     return systemType;
   }
 
+  public NodeType getNodeType() {
+    return nodeType;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
   /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(String rpcAddress, int rpcPort) {
+  public void updateRpcInstance(
+      String clusterName, String rpcAddress, int rpcPort, NodeType nodeType) {
+    this.clusterName = clusterName;
     this.rpcAddress = rpcAddress;
     this.rpcPort = rpcPort;
+    this.nodeType = nodeType;
   }
 
   /** Copy properties from another metric config. */
