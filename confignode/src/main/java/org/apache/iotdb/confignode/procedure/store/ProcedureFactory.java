@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
@@ -60,7 +60,7 @@ public class ProcedureFactory implements IProcedureFactory {
     Procedure procedure;
     switch (procedureType) {
       case DELETE_STORAGE_GROUP_PROCEDURE:
-        procedure = new DeleteStorageGroupProcedure();
+        procedure = new DeleteDatabaseProcedure();
         break;
       case ADD_CONFIG_NODE_PROCEDURE:
         procedure = new AddConfigNodeProcedure();
@@ -118,7 +118,7 @@ public class ProcedureFactory implements IProcedureFactory {
   }
 
   public static ProcedureType getProcedureType(Procedure procedure) {
-    if (procedure instanceof DeleteStorageGroupProcedure) {
+    if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE;
     } else if (procedure instanceof AddConfigNodeProcedure) {
       return ProcedureType.ADD_CONFIG_NODE_PROCEDURE;

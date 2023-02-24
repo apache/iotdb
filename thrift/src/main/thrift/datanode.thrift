@@ -63,6 +63,8 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TGetDataBlockResponse {
@@ -73,6 +75,8 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TNewDataBlockEvent {

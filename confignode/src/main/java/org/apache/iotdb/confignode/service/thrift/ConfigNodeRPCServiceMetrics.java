@@ -29,7 +29,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class ConfigNodeRPCServiceMetrics implements IMetricSet {
-  private AbstractThriftServiceThread thriftServiceThread;
+
+  private final AbstractThriftServiceThread thriftServiceThread;
 
   public ConfigNodeRPCServiceMetrics(AbstractThriftServiceThread thriftServiceThread) {
     this.thriftServiceThread = thriftServiceThread;

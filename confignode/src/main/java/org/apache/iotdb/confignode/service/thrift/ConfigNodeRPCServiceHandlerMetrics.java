@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
-  private AtomicLong thriftConnectionNumber;
+  private final AtomicLong thriftConnectionNumber;
 
   public ConfigNodeRPCServiceHandlerMetrics(AtomicLong thriftConnectionNumber) {
     this.thriftConnectionNumber = thriftConnectionNumber;

@@ -570,29 +570,36 @@ SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS
 > 5. 暂不支持聚合函数内部包含表达式，例如 `count(s+1)`。
 > 6. 不支持值过滤条件聚合，和分层聚合查询行为保持一致。
 
-## 事件分段聚合
-IoTDB支持通过`GROUP BY VARIATION`语句根据连续稳定值进行分组。时间序列数据在一段时间内如果保持在某个值的上下范围内浮动，在这个阈值内，将值大致相同的连续数据点归为一组。该分组方式不会重叠，且没有固定的开始结束事件。其子句语法如下：
+## 差值分段聚合
+IoTDB支持通过`GROUP BY VARIATION`语句来根据差值进行分组。`GROUP BY VARIATION`会将第一个点作为一个组的**基准点**，每个新的数据在按照给定规则与基准点进行差值运算后，
+如果差值小于给定的阈值则将该新点归于同一组，否则结束当前分组，以这个新的数据为新的基准点开启新的分组。
+该分组方式不会重叠，且没有固定的开始结束时间。其子句语法如下：
 ```sql
 group by variation(controlExpression[,delta][,ignoreNull=true/false])
 ```
 不同的参数含义如下 
 * controlExpression
 
-分组所参照的值，可以是查询数据中的某一列或是多列的表达式。 
+分组所参照的值，**可以是查询数据中的某一列或是多列的表达式
+（多列表达式计算后仍为一个值，使用多列表达式时指定的列必须都为数值列）**， 差值便是根据数据的controlExpression的差值运算。
 * delta
 
-分组所使用的阈值，同一分组中每条数据expression对应的值与第一个的差值都小于`delta`。当`delta=0`时，相当于一个等值分组，所有连续且expression值相同的数据将被分到一组。
+分组所使用的阈值，同一分组中**每个点的controlExpression对应的值与该组中基准点对应值的差值都小于`delta`**。当`delta=0`时，相当于一个等值分组，所有连续且expression值相同的数据将被分到一组。
 
 * ignoreNull
 
-用于指定`controlExpression`的计算返回值为null时对数据的处理方式，当`ignoreNull`为false时，null值会被视为新的值，`ignoreNull`为true时，则直接跳过对应的数据。
+用于指定`controlExpression`的值为null时对数据的处理方式，当`ignoreNull`为false时，该null值会被视为新的值，`ignoreNull`为true时，则直接跳过对应的点。
 
 在`delta`取不同值时，`controlExpression`支持的返回数据类型以及当`ignoreNull`为false时对于null值的处理方式可以见下表：
 
-| delta    | 支持的controlExpression的返回类型            | ignoreNull=false时对于Null值的处理                                     |
+| delta    | controlExpression支持的返回类型             | ignoreNull=false时对于Null值的处理                                     |
 |----------|--------------------------------------|-----------------------------------------------------------------|
-| delta!=0 | INT32、INT64、FLOAT、DOUBLE             | 若正在维护分组的值不为null,null视为无穷大/无穷小，结束当前分组。连续的null视为相等稳定的值，会被分配在同一个分组 |
+| delta!=0 | INT32、INT64、FLOAT、DOUBLE             | 若正在维护分组的值不为null,null视为无穷大/无穷小，结束当前分组。连续的null视为差值相等的值，会被分配在同一个分组 |
 | delta=0  | TEXT、BINARY、INT32、INT64、FLOAT、DOUBLE | null被视为新分组中的新值，连续的null属于相同的分组                                   |
+
+下图为差值分段的一个分段方式示意图，与组中第一个数据的控制列值的差值在delta内的控制列对应的点属于相同的分组。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
 
 ### 使用注意事项
 1. `controlExpression`的结果应该为唯一值，如果使用通配符拼接后出现多列，则报错。
@@ -637,7 +644,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 ```
 当指定ignoreNull为false时，会将s6为null的数据也考虑进来
 ```sql
-select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6，ignoreNull=false)
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, ignoreNull=false)
 ```
 得到如下的结果
 ```
@@ -656,7 +663,7 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 ### delta!=0时的差值事件分段
 使用如下sql语句
 ```sql
-select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6+, 4)
+select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(s6, 4)
 ```
 得到如下的查询结果
 ```
@@ -684,11 +691,11 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 |1970-01-01T08:00:00.090+08:00|      150|             80.5|                  2|            180.0|
 +-----------------------------+---------+-----------------+-------------------+-----------------+
 ```
-## 事件条件分段聚合
-当需要根据指定条件对数据行进行筛选，并将连续的数据分为一组进行聚合运算时，可以使用`GROUP BY SERIES`的分段方式；不满足的给定条件的行因为不属于任何分组会被直接简单忽略。
+## 条件分段聚合
+当需要根据指定条件对数据进行筛选，并将连续的符合条件的行分为一组进行聚合运算时，可以使用`GROUP BY CONDITION`的分段方式；不满足给定条件的行因为不属于任何分组会被直接简单忽略。
 其语法定义如下：
 ```sql
-group by series(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
+group by condition(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
 ```
 * predict
 
@@ -702,10 +709,11 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 用于指定遇到predict为null的数据行时的处理方式，为true则跳过该行，为false则结束当前分组。
 
 ### 使用注意事项
-1. keep条件在查询中是必需的，但可以省略掉'keep'字符串给出一个常数，默认为`keep=该常数`的等于条件。
+1. keep条件在查询中是必需的，但可以省略掉keep字符串给出一个常数，默认为`keep=该常数`的等于条件。
 2. `ignoreNull`默认为true。
 3. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 4. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
+5. 当前暂不支持与`GROUP BY LEVEL`搭配使用。
 
 
 对于如下原始数据,下面会给出几个查询样例:
@@ -727,7 +735,7 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 ```
 查询至少连续两行以上的charging_status=1的数据，sql语句如下:
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by series(charging_status=1,KEEP>=2,ignoringNull=true)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=true)
 ```
 得到结果如下：
 ```
@@ -740,7 +748,7 @@ select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc)
 ```
 当设置`ignoreNull`为false时，遇到null值为将其视为一个不满足条件的行，会结束正在计算的分组。
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by series(charging_status=1,KEEP>=2,ignoringNull=false)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=false)
 ```
 得到如下结果，原先的分组被含null的行拆分:
 ```
@@ -764,11 +772,12 @@ group by session(timeInterval)
 
 下图为`group by session`下的一个分组示意图
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/SessionGroup.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/Process-Data/GroupBy/groupBySession.jpeg" alt="groupBySession">
 
 ### 使用注意事项
 1. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 2. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
+3. 当前暂不支持与`GROUP BY LEVEL`搭配使用。
 
 对于下面的原始数据，给出几个查询样例。
 ```
@@ -815,7 +824,7 @@ select __endTime,count(*) from root.** group by session(1d)
 ```
 也可以和`HAVING`、`ALIGN BY DEVICE`共同使用
 ```sql
-select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) align by device
+select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) having sum(hardware)>0 align by device
 ```
 得到如下结果，其中排除了`sum(hardware)`为0的部分
 ```
