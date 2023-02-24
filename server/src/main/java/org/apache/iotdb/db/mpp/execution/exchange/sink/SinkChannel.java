@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -57,9 +57,9 @@ import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HAND
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public class SinkHandle implements ISinkHandle {
+public class SinkChannel implements ISinkChannel {
 
-  private static final Logger logger = LoggerFactory.getLogger(SinkHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SinkChannel.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;
@@ -75,12 +75,12 @@ public class SinkHandle implements ISinkHandle {
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
-  private final SinkHandleListener sinkHandleListener;
+  private final SinkListener sinkListener;
   private final String threadName;
   private long retryIntervalInMs;
 
   // Use LinkedHashMap to meet 2 needs,
-  //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
+  //   1. Predictable iteration order so that removing buffered TsBlocks can be efficient.
   //   2. Fast lookup.
   private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
       new LinkedHashMap<>();
@@ -102,13 +102,13 @@ public class SinkHandle implements ISinkHandle {
 
   private boolean noMoreTsBlocks = false;
 
-  /** max bytes this SourceHandle can reserve. */
+  /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
-  public SinkHandle(
+  public SinkChannel(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -117,7 +117,7 @@ public class SinkHandle implements ISinkHandle {
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
       TsBlockSerde serde,
-      SinkHandleListener sinkHandleListener,
+      SinkListener sinkListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
@@ -130,7 +130,7 @@ public class SinkHandle implements ISinkHandle {
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
     this.serde = Validate.notNull(serde);
-    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.sinkListener = Validate.notNull(sinkListener);
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName =
@@ -138,18 +138,6 @@ public class SinkHandle implements ISinkHandle {
             localFragmentInstanceId.queryId,
             localFragmentInstanceId.fragmentId,
             localFragmentInstanceId.instanceId);
-    this.blocked =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
-            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
-            // at first this SinkHandle has not reserved memory.
-            .left;
     this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
@@ -204,13 +192,8 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void send(int partition, List<TsBlock> tsBlocks) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.debug("[StartSetNoMoreTsBlocks]");
+    LOGGER.debug("[StartSetNoMoreTsBlocks]");
     if (aborted || closed) {
       return;
     }
@@ -219,9 +202,11 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void abort() {
-    logger.debug("[StartAbortSinkHandle]");
+    LOGGER.debug("[StartAbortSinkChannel]");
+    if (aborted) {
+      return;
+    }
     sequenceIdToTsBlock.clear();
-    aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
@@ -237,15 +222,18 @@ public class SinkHandle implements ISinkHandle {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkHandleListener.onAborted(this);
-    logger.debug("[EndAbortSinkHandle]");
+    sinkListener.onAborted(this);
+    aborted = true;
+    LOGGER.debug("[EndAbortSinkChannel]");
   }
 
   @Override
   public synchronized void close() {
-    logger.debug("[StartCloseSinkHandle]");
+    LOGGER.debug("[StartCloseSinkChannel]");
+    if (closed) {
+      return;
+    }
     sequenceIdToTsBlock.clear();
-    closed = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
@@ -261,8 +249,9 @@ public class SinkHandle implements ISinkHandle {
         .getQueryPool()
         .clearMemoryReservationMap(
             localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
-    sinkHandleListener.onFinish(this);
-    logger.debug("[EndCloseSinkHandle]");
+    sinkListener.onFinish(this);
+    closed = true;
+    LOGGER.debug("[EndCloseSinkChannel]");
   }
 
   @Override
@@ -280,25 +269,21 @@ public class SinkHandle implements ISinkHandle {
     return bufferRetainedSizeInBytes;
   }
 
-  public int getNumOfBufferedTsBlocks() {
-    return sequenceIdToTsBlock.size();
-  }
-
-  ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
+  public ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {
     throw new UnsupportedOperationException();
   }
 
-  synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
+  public synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
     if (aborted || closed) {
-      logger.warn(
-          "SinkHandle still receive getting TsBlock request after being aborted={} or closed={}",
+      LOGGER.warn(
+          "SinkChannel still receive getting TsBlock request after being aborted={} or closed={}",
           aborted,
           closed);
-      throw new IllegalStateException("Sink handle is aborted or closed. ");
+      throw new IllegalStateException("SinkChannel is aborted or closed. ");
     }
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
-      logger.error(
+      LOGGER.warn(
           "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}",
           sequenceId,
           sequenceIdToTsBlock.entrySet());
@@ -307,7 +292,7 @@ public class SinkHandle implements ISinkHandle {
     return serde.serialize(pair.left);
   }
 
-  void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
+  public void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
     long freedBytes = 0L;
     synchronized (this) {
       if (aborted || closed) {
@@ -327,11 +312,11 @@ public class SinkHandle implements ISinkHandle {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
-        logger.debug("[ACKTsBlock] {}.", entry.getKey());
+        LOGGER.debug("[ACKTsBlock] {}.", entry.getKey());
       }
     }
     if (isFinished()) {
-      sinkHandleListener.onFinish(this);
+      sinkListener.onFinish(this);
     }
     // there may exist duplicate ack message in network caused by caller retrying, if so duplicate
     // ack message's freedBytes may be zero
@@ -346,18 +331,7 @@ public class SinkHandle implements ISinkHandle {
     }
   }
 
-  public TEndPoint getRemoteEndpoint() {
-    return remoteEndpoint;
-  }
-
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
-  }
-
-  public String getRemotePlanNodeId() {
-    return remotePlanNodeId;
-  }
-
+  @Override
   public TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
   }
@@ -370,7 +344,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public String toString() {
     return String.format(
-        "Query[%s]-[%s-%s-SinkHandle]:",
+        "Query[%s]-[%s-%s-SinkChannel]:",
         localFragmentInstanceId.queryId,
         localFragmentInstanceId.fragmentId,
         localFragmentInstanceId.instanceId);
@@ -378,17 +352,50 @@ public class SinkHandle implements ISinkHandle {
 
   private void checkState() {
     if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
+      throw new IllegalStateException("SinkChannel is aborted.");
     } else if (closed) {
-      throw new IllegalStateException("SinkHandle is closed.");
+      throw new IllegalStateException("SinkChannel is closed.");
     }
   }
 
+  // region ============ ISinkChannel related ============
+
+  public void open() {
+    // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
+    this.blocked =
+        localMemoryManager
+            .getQueryPool()
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+                maxBytesCanReserve) // actually we only know maxBytesCanReserve after
+            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
+            // at first this SinkChannel has not reserved memory.
+            .left;
+  }
+
+  @Override
+  public boolean isNoMoreTsBlocks() {
+    return noMoreTsBlocks;
+  }
+
+  @Override
+  public int getNumOfBufferedTsBlocks() {
+    return sequenceIdToTsBlock.size();
+  }
+
+  // endregion
+
+  // region ============ TestOnly ============
   @TestOnly
   public void setRetryIntervalInMs(long retryIntervalInMs) {
     this.retryIntervalInMs = retryIntervalInMs;
   }
+  // endregion
 
+  // region ============ inner class ============
   /**
    * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
    * instance.
@@ -410,8 +417,8 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
-        logger.debug(
+      try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
+        LOGGER.debug(
             "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
         int attempt = 0;
         TNewDataBlockEvent newDataBlockEvent =
@@ -429,15 +436,15 @@ public class SinkHandle implements ISinkHandle {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Exception e) {
-            logger.warn("Failed to send new data block event, attempt times: {}", attempt, e);
+            LOGGER.warn("Failed to send new data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
             try {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
           } finally {
             QUERY_METRICS.recordDataExchangeCost(
@@ -457,8 +464,8 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      try (SetThreadName sinkHandleName = new SetThreadName(threadName)) {
-        logger.debug("[NotifyNoMoreTsBlock]");
+      try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
+        LOGGER.debug("[NotifyNoMoreTsBlock]");
         int attempt = 0;
         TEndOfDataBlockEvent endOfDataBlockEvent =
             new TEndOfDataBlockEvent(
@@ -473,26 +480,28 @@ public class SinkHandle implements ISinkHandle {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
           } catch (Exception e) {
-            logger.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
+            LOGGER.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
-              logger.warn("Failed to send end of data block event after all retry", e);
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              LOGGER.warn("Failed to send end of data block event after all retry", e);
+              sinkListener.onFailure(SinkChannel.this, e);
               return;
             }
             try {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
-              sinkHandleListener.onFailure(SinkHandle.this, e);
+              sinkListener.onFailure(SinkChannel.this, e);
             }
           }
         }
         noMoreTsBlocks = true;
         if (isFinished()) {
-          sinkHandleListener.onFinish(SinkHandle.this);
+          sinkListener.onFinish(SinkChannel.this);
         }
-        sinkHandleListener.onEndOfBlocks(SinkHandle.this);
+        sinkListener.onEndOfBlocks(SinkChannel.this);
       }
     }
   }
+  // endregion
+
 }

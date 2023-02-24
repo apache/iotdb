@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -29,7 +30,7 @@ import java.util.List;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
-public class StubSinkHandle implements ISinkHandle {
+public class StubSink implements ISink {
 
   private final ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
@@ -39,7 +40,7 @@ public class StubSinkHandle implements ISinkHandle {
 
   private boolean closed = false;
 
-  public StubSinkHandle(FragmentInstanceContext instanceContext) {
+  public StubSink(FragmentInstanceContext instanceContext) {
     this.instanceContext = instanceContext;
   }
 
@@ -61,11 +62,6 @@ public class StubSinkHandle implements ISinkHandle {
   @Override
   public void send(TsBlock tsBlock) {
     this.tsBlocks.add(tsBlock);
-  }
-
-  @Override
-  public void send(int partition, List<TsBlock> tsBlocks) {
-    this.tsBlocks.addAll(tsBlocks);
   }
 
   @Override
