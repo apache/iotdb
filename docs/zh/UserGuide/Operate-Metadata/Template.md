@@ -51,7 +51,7 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 元数据模板在创建后，需执行挂载操作，方可用于相应路径下的序列创建与数据写入。
 
-**挂载模板前，需确保存相关储组已经创建。**
+**挂载模板前，需确保相关数据库已经创建。**
 
 **推荐将模板挂载在 database 节点上，不建议将模板挂载到 database 上层的节点上。**
 

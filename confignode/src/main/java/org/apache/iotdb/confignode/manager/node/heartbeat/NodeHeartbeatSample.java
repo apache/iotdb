@@ -28,8 +28,8 @@ public class NodeHeartbeatSample {
   private final long sendTimestamp;
   private final long receiveTimestamp;
 
-  private NodeStatus status;
-  private String statusReason;
+  private final NodeStatus status;
+  private final String statusReason;
 
   private TLoadSample loadSample = null;
 
@@ -37,6 +37,8 @@ public class NodeHeartbeatSample {
   public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
+    this.status = NodeStatus.Running;
+    this.statusReason = null;
   }
 
   /** Constructor for DataNode sample */
@@ -74,5 +76,19 @@ public class NodeHeartbeatSample {
 
   public TLoadSample getLoadSample() {
     return loadSample;
+  }
+
+  /**
+   * Generate a default NodeHeartbeatSample.
+   *
+   * <p>i.e. Only contain timestamp and NodeStatus
+   *
+   * @param status The NodeStatus in default NodeSample
+   * @return A NodeHeartbeatSample that only contain timestamp and NodeStatus
+   */
+  public static NodeHeartbeatSample generateDefaultSample(NodeStatus status) {
+    long currentTime = System.currentTimeMillis();
+    return new NodeHeartbeatSample(
+        new THeartbeatResp(currentTime, status.getStatus()).setStatusReason(null), currentTime);
   }
 }

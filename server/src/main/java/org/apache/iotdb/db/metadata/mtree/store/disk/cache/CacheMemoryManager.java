@@ -20,14 +20,16 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategyNumBasedImpl;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaEngineStatisticsHolder;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 
 import org.slf4j.Logger;
@@ -50,6 +52,7 @@ public class CacheMemoryManager {
   private final List<CachedMTreeStore> storeList = new ArrayList<>();
 
   private CachedSchemaEngineStatistics engineStatistics;
+  private SchemaEngineCachedMetric engineMetric;
 
   private static final int CONCURRENT_NUM = 10;
 
@@ -62,10 +65,8 @@ public class CacheMemoryManager {
   private FiniteSemaphore releaseSemaphore;
 
   private volatile boolean hasFlushTask;
-  private int flushCount = 0;
 
   private volatile boolean hasReleaseTask;
-  private int releaseCount = 0;
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
@@ -86,16 +87,14 @@ public class CacheMemoryManager {
     }
   }
 
-  public void init() {
+  public void init(ISchemaEngineStatistics engineStatistics) {
     flushSemaphore = new FiniteSemaphore(2, 0);
     releaseSemaphore = new FiniteSemaphore(2, 0);
-    engineStatistics =
-        SchemaEngineStatisticsHolder.getSchemaEngineStatistics()
-            .getAsCachedSchemaEngineStatistics();
+    this.engineStatistics = engineStatistics.getAsCachedSchemaEngineStatistics();
     if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
-      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(engineStatistics);
+      releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(this.engineStatistics);
     } else {
-      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(engineStatistics);
+      releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(this.engineStatistics);
     }
     flushTaskMonitor =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.SCHEMA_FLUSH_MONITOR.getName());
@@ -149,6 +148,10 @@ public class CacheMemoryManager {
         });
   }
 
+  public void setEngineMetric(SchemaEngineCachedMetric engineMetric) {
+    this.engineMetric = engineMetric;
+  }
+
   public boolean isExceedReleaseThreshold() {
     return releaseFlushStrategy.isExceedReleaseThreshold();
   }
@@ -197,6 +200,7 @@ public class CacheMemoryManager {
    */
   private void tryExecuteMemoryRelease() {
     synchronized (storeList) {
+      long startTime = System.currentTimeMillis();
       CompletableFuture.allOf(
               storeList.stream()
                   .map(
@@ -213,7 +217,9 @@ public class CacheMemoryManager {
                               releaseTaskProcessor))
                   .toArray(CompletableFuture[]::new))
           .join();
-      releaseCount++;
+      if (engineMetric != null) {
+        engineMetric.recordRelease(System.currentTimeMillis() - startTime);
+      }
       synchronized (blockObject) {
         hasReleaseTask = false;
         if (isExceedFlushThreshold()) {
@@ -225,6 +231,10 @@ public class CacheMemoryManager {
     }
   }
 
+  /**
+   * Keep fetching evictable nodes from cacheManager until the memory status is under safe mode or
+   * no node could be evicted. Update the memory status after evicting each node.
+   */
   private void executeMemoryRelease(CachedMTreeStore store) {
     while (isExceedReleaseThreshold()) {
       // store try to release memory if not exceed release threshold
@@ -242,6 +252,7 @@ public class CacheMemoryManager {
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void tryFlushVolatileNodes() {
     synchronized (storeList) {
+      long startTime = System.currentTimeMillis();
       CompletableFuture.allOf(
               storeList.stream()
                   .map(
@@ -259,7 +270,9 @@ public class CacheMemoryManager {
                               flushTaskProcessor))
                   .toArray(CompletableFuture[]::new))
           .join();
-      flushCount++;
+      if (engineMetric != null) {
+        engineMetric.recordFlush(System.currentTimeMillis() - startTime);
+      }
       synchronized (blockObject) {
         hasFlushTask = false;
         blockObject.notifyAll();
@@ -302,6 +315,15 @@ public class CacheMemoryManager {
     engineStatistics = null;
     releaseSemaphore = null;
     flushSemaphore = null;
+    engineMetric = null;
+  }
+
+  public int getReleaseThreadNum() {
+    return ((WrappedThreadPoolExecutor) releaseTaskProcessor).getActiveCount();
+  }
+
+  public int getFlushThreadNum() {
+    return ((WrappedThreadPoolExecutor) flushTaskProcessor).getActiveCount();
   }
 
   private CacheMemoryManager() {}
