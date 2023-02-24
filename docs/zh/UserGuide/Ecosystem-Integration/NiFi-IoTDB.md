@@ -59,6 +59,7 @@ Apache NiFi 包含以下功能：
 | Username      | IoTDB 的用户名                                                                                                                                                    | null   | true     |
 | Password      | IoTDB 的密码                                                                                                                                                     | null   | true     |
 | Prefix        | 将被写入IoTDB的数据的tsName前缀 以root. 开头 <br /> 可以使用Nifi expression language做动态替换.                                                                        | null          | true      |
+| Time          | 时间字段名                                                                                        | null          | true      |
 | Record Reader | 指定一个 Record Reader controller service 来解析数据，并且推断数据格式。                                                                                                         | null   | true     |
 | Schema        | IoTDB 需要的 schema 不能很好的被 NiFi 支持，因此你可以在这里自定义 schema。<br />除此之外，你可以通过这个方式设置编码和压缩类型。如果你没有设置这个配置，就会使用 Record Reader 推断的 schema。<br />这个配置可以通过 Attributes 的表达式来更新。 | null   | false    |
 | Aligned       | 是否使用 aligned 接口？<br />这个配置可以通过 Attributes 的表达式来更新。                                                                                                            | false  | false    |
@@ -69,7 +70,7 @@ Apache NiFi 包含以下功能：
 如果要使用推断类型，需要注意以下几点：
 
 1. 输入的 flowfile 需要能被 `Record Reader` 读取。
-2. flowfile的 schema 中必须包含 `Time` 列，而且 `Time` 列必须是第一列。
+2. flowfile的 schema 中必须包含以时间字段名属性命名的字段
 3. `Time`的数据类型只能是 `STRING`  或者  `LONG `。
 4. 除`Time` 以外的列必须以 `root.` 开头。
 5. 支持的数据类型有： `INT`，`LONG`， `FLOAT`， `DOUBLE`， `BOOLEAN`， `TEXT`。
@@ -82,7 +83,6 @@ Apache NiFi 包含以下功能：
 
 ```json
 {
-   "timeType": "LONG",
    "fields": [{
       "tsName": "s1",
       "dataType": "INT32",
