@@ -99,7 +99,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized ListenableFuture<?> isFull() {
-    // It is safe to use currentSinkHandle.isFull() to judge whether we can send a TsBlock only when
+    // It is safe to use currentChannel.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
     ISinkChannel currentChannel =

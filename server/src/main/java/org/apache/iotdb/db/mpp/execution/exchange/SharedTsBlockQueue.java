@@ -113,6 +113,13 @@ public class SharedTsBlockQueue {
     return maxBytesCanReserve;
   }
 
+  /** Allow adding data to queue manually. */
+  public void allowAddingTsBlock() {
+    if (!canAddTsBlock.isDone()) {
+      canAddTsBlock.set(null);
+    }
+  }
+
   public ListenableFuture<Void> isBlocked() {
     if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
