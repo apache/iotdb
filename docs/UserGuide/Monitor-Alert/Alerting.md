@@ -39,7 +39,7 @@ The data sink then forwards the alert to the external terminal.
     * It is Suitable for scenarios where the original data needs to be down-sampled and persisted.
     * Since the timing query hardly affects the writing of the original time series, it is suitable for scenarios that are sensitive to the performance of the original data writing performance.
 
-With the introduction of the  [Trigger](../Triggers/Triggers.md) into IoTDB,
+With the introduction of the  [Trigger](../Trigger/Instructions.md) into IoTDB,
 at present, users can use these two modules with `AlertManager` to realize the writing triggered alerting mode.
 
 
@@ -248,7 +248,7 @@ or `/alertmanager/api/v2/alerts`.
 ### Writing the trigger class
 
 The user defines a trigger by creating a Java class and writing the logic in the hook.
-Please refer to [Triggers](Triggers.md) for the specific configuration process.
+Please refer to [Triggers](../Trigger/Implement-Trigger.md) for the specific configuration process.
 
 The following example creates the `org.apache.iotdb.trigger.ClusterAlertingExample` class,
 Its alertManagerHandler member variables can send alerts to the AlertManager instance 

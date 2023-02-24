@@ -1049,6 +1049,7 @@ var config = {
 							['Reference/Common-Config-Manual','Common Config Manual'],
 							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
 							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
+							['Reference/SQL-Reference','SQL Reference'],
 							['Reference/Status-Codes','Status Codes'],
 							['Reference/Keywords','Keywords'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
@@ -2257,6 +2258,7 @@ var config = {
 							['Reference/Common-Config-Manual','公共配置参数'],
 							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
 							['Reference/DataNode-Config-Manual','DataNode配置参数'],
+							['Reference/SQL-Reference','SQL参考文档'],
 							['Reference/Status-Codes','状态码'],
 							['Reference/Keywords','关键字'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']

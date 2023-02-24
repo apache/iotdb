@@ -47,7 +47,7 @@ In root directory:
 
 ## Syntax Convention
 
-- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Syntax-Conventions/Literal-Values.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
   - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
