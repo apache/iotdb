@@ -156,7 +156,6 @@ public class SeriesWindowManager implements IWindowManager {
       for (Aggregator aggregator : aggregators) aggregator.reset();
       return;
     }
-    seriesWindow.setKeep(0);
     // Use the start time of eventWindow as default output time.
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     timeColumnBuilder.writeLong(seriesWindow.getStartTime());
@@ -174,7 +173,6 @@ public class SeriesWindowManager implements IWindowManager {
         columnBuilder[1] = columnBuilders[columnIndex++];
       }
       aggregator.outputResult(columnBuilder);
-      aggregator.reset();
     }
     resultTsBlockBuilder.declarePosition();
   }

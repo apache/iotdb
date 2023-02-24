@@ -105,7 +105,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         if (windowManager.notInitedLastTimeWindow()) {
           initWindowAndAggregators();
         }
-        break;
+        if (windowManager.isCurWindowInit()) break;
+        return false;
       }
     }
 
