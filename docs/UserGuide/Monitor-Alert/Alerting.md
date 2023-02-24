@@ -248,7 +248,7 @@ or `/alertmanager/api/v2/alerts`.
 ### Writing the trigger class
 
 The user defines a trigger by creating a Java class and writing the logic in the hook.
-Please refer to [Triggers](Triggers.md) for the specific configuration process.
+Please refer to [Trigger](../Trigger/Implement-Trigger.md) for the specific configuration process.
 
 The following example creates the `org.apache.iotdb.trigger.ClusterAlertingExample` class,
 Its alertManagerHandler member variables can send alerts to the AlertManager instance 
