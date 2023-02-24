@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
@@ -149,7 +150,10 @@ public class CompactionScheduler {
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
             tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
-    List<Long> memoryCost = crossSpaceCompactionSelector.getCompactionMemoryCost();
+    List<Long> memoryCost =
+        taskList.stream()
+            .map(CrossCompactionTaskResource::getTotalMemoryCost)
+            .collect(Collectors.toList());
     for (int i = 0, size = taskList.size(); i < size; ++i) {
       CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(

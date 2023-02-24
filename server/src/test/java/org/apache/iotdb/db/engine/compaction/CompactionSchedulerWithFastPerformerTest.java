@@ -58,7 +58,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CompactionSchedulerWithFastPerformerTest {
-  private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(CompactionSchedulerWithFastPerformerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";
   static final long MAX_WAITING_TIME = 60_000;
   static final long SCHEDULE_AGAIN_TIME = 30_000;
@@ -86,7 +87,8 @@ public class CompactionSchedulerWithFastPerformerTest {
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
+
+    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.BALANCE);
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
@@ -112,13 +114,13 @@ public class CompactionSchedulerWithFastPerformerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    CompactionTaskManager.getInstance().stop();
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     CompactionClearUtils.deleteEmptyDir(new File("target"));
-    CompactionTaskManager.getInstance().stop();
   }
 
   /**
