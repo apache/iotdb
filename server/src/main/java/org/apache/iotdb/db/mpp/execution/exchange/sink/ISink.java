@@ -16,71 +16,68 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.exchange;
+package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.List;
+/**
+ * Base interface of {@link ISinkChannel} and {@link ISinkHandle}. This interface defines the
+ * functions we need to transfer data to ISourceHandle.
+ */
+public interface ISink {
 
-public interface ISinkHandle {
-
-  /** Get the local fragment instance ID that this sink handle belongs to. */
+  /** Get the local fragment instance ID that this ISink belongs to. */
   TFragmentInstanceId getLocalFragmentInstanceId();
 
-  /** Get the total amount of memory used by buffered tsblocks. */
+  /** Get the total amount of memory used by buffered TsBlocks. */
   long getBufferRetainedSizeInBytes();
 
   /** Get a future that will be completed when the output buffer is not full. */
   ListenableFuture<?> isFull();
 
   /**
-   * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,
+   * Send a {@link TsBlock} to an un-partitioned output buffer. If no-more-TsBlocks has been set,
    * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
    * will be thrown if any exception happened during the data transmission.
    */
   void send(TsBlock tsBlock);
 
   /**
-   * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send
-   * tsblock call is ignored. This can happen with limit queries. A {@link RuntimeException} will be
-   * thrown if any exception happened * during the data transmission.
-   */
-  void send(int partition, List<TsBlock> tsBlocks);
-
-  /**
-   * Notify the handle that there are no more tsblocks. Any future calls to send a tsblock should be
+   * Notify the ISink that there are no more TsBlocks. Any future calls to send a TsBlock should be
    * ignored.
    */
   void setNoMoreTsBlocks();
 
-  /** If the handle is aborted. */
+  /** If the ISink is aborted. */
   boolean isAborted();
 
   /**
-   * If there are no more tsblocks to be sent and all the tsblocks have been fetched by downstream
+   * If there are no more TsBlocks to be sent and all the TsBlocks have been fetched by downstream
    * fragment instances.
    */
   boolean isFinished();
 
   /**
-   * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
-   * the future returned by {@link #isFull()}.
+   * Abort the ISink. If this is an ISinkHandle, we should abort all its channels. If this is an
+   * ISinkChannel, we discard all TsBlocks which may still be in the memory buffer and cancel the
+   * future returned by {@link #isFull()}.
    *
    * <p>Should only be called in abnormal case
    */
   void abort();
 
   /**
-   * Close the sink handle. Discard all tsblocks which may still be in the memory buffer and
-   * complete the future returned by {@link #isFull()}.
+   * Close the ISink. If this is an ISinkHandle, we should close all its channels. If this is an
+   * ISinkChannel, we discard all TsBlocks which may still be in the memory buffer and complete the
+   * future returned by {@link #isFull()}.
    *
    * <p>Should only be called in normal case.
    */
   void close();
 
-  /** Set max bytes this handle can reserve from memory pool */
+  /** Set max bytes this ISink can reserve from memory pool */
   void setMaxBytesCanReserve(long maxBytesCanReserve);
 }

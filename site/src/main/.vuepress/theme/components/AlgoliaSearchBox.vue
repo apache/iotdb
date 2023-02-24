@@ -31,8 +31,11 @@
 <script>
 export default {
   props: ['options'],
-
+  data: () => ({
+    docVersion: 'master',
+  }),
   mounted() {
+    this.docVersion = this.getBranch('master', this.$page.relativePath);
     this.initialize(this.options, this.$lang);
   },
 
@@ -49,7 +52,7 @@ export default {
           ...userOptions,
           inputSelector: '#algolia-search-input',
           // #697 Make docsearch work well at i18n mode.
-          algoliaOptions: { facetFilters: [`lang:${lang}`].concat(algoliaOptions.facetFilters || []), ...algoliaOptions },
+          algoliaOptions: { facetFilters: [`lang:${lang}`, `version:${this.docVersion}`].concat(algoliaOptions.facetFilters || []), ...algoliaOptions },
         });
       });
     },
@@ -58,7 +61,17 @@ export default {
       this.$el.innerHTML = '<input id="algolia-search-input" class="search-query">';
       this.initialize(options, lang);
     },
-
+    getBranch(branch = 'master', path = '') {
+      if (path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
+        return branch;
+      }
+      const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
+      if (branchRex.test(path)) {
+        const tag = branchRex.exec(path)[1];
+        return `rel/${tag.replace('.x', '')}`;
+      }
+      return branch;
+    },
   },
 
   watch: {
@@ -66,6 +79,13 @@ export default {
       this.update(this.options, newValue);
     },
 
+    $page(newValue) {
+      const newVersion = this.getBranch('master', newValue.relativePath);
+      if (newVersion !== this.docVersion) {
+        this.docVersion = newVersion;
+        this.update(this.options, this.$lang);
+      }
+    },
     options(newValue) {
       this.update(newValue, this.$lang);
     },
