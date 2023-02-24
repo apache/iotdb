@@ -52,7 +52,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
+import java.util.function.ToDoubleFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
@@ -224,7 +224,7 @@ public abstract class AbstractMetricService {
   }
 
   public <T> AutoGauge createAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
     return metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
   }
 
@@ -279,7 +279,7 @@ public abstract class AbstractMetricService {
 
   /** GetOrCreateAutoGauge with internal report. */
   public <T> AutoGauge createAutoGaugeWithInternalReport(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String metric, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
     AutoGauge gauge = metricManager.createAutoGauge(metric, metricLevel, obj, mapper, tags);
     internalReporter.addAutoGauge(gauge, metric, tags);
     return gauge;

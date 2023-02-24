@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
@@ -199,6 +200,32 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
       regionMaintainTaskList.remove(0);
+      return RpcUtils.SUCCESS_STATUS;
+    }
+  }
+
+  /**
+   * Poll the head of RegionMaintainTasks of target regions from regionMaintainTaskList after they
+   * are executed successfully. Tasks of each region group are treated as single independent queue.
+   *
+   * @param plan provides target region ids
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus pollSpecificRegionMaintainTask(PollSpecificRegionMaintainTaskPlan plan) {
+    synchronized (regionMaintainTaskList) {
+      Set<TConsensusGroupId> removingRegionIdSet = new HashSet<>(plan.getRegionIdSet());
+      TConsensusGroupId regionId;
+      for (int i = 0; i < regionMaintainTaskList.size(); i++) {
+        regionId = regionMaintainTaskList.get(i).getRegionId();
+        if (removingRegionIdSet.contains(regionId)) {
+          regionMaintainTaskList.remove(i);
+          removingRegionIdSet.remove(regionId);
+          i--;
+        }
+        if (removingRegionIdSet.isEmpty()) {
+          break;
+        }
+      }
       return RpcUtils.SUCCESS_STATUS;
     }
   }

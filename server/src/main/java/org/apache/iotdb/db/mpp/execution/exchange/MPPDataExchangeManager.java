@@ -474,6 +474,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
             planNodeId,
             localMemoryManager);
+    queue.allowAddingTsBlock();
     return new LocalSinkHandle(
         queue,
         new PipelineSinkHandleListenerImpl(
