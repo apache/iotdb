@@ -53,20 +53,21 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       return;
     }
 
-    long lastSendTime = 0;
+    NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
       if (!slidingWindow.isEmpty()) {
-        lastSendTime = slidingWindow.getLast().getSendTimestamp();
+        lastSample = slidingWindow.getLast();
       }
     }
+    long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
 
     // Update Node status
-    NodeStatus status;
+    NodeStatus status = null;
     // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
-    } else {
-      status = NodeStatus.Running;
+    } else if (lastSample != null) {
+      status = lastSample.getStatus();
     }
 
     /* Update loadScore */

@@ -49,6 +49,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
  * <p>The form of tsBlocks from input operators should be the same strictly, which is transferred by
  * DeviceViewOperator.
  */
+@Deprecated
 public class DeviceMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;

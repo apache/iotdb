@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -80,11 +81,15 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManage
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.NodeMetrics;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -362,6 +367,22 @@ public class ConfigManager implements IManager {
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
     }
     return dataSet;
+  }
+
+  @Override
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Force updating the target DataNode's status to Unknown
+      getNodeManager()
+          .getNodeCacheMap()
+          .get(dataNodeLocation.getDataNodeId())
+          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      LOGGER.info(
+          "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
+          dataNodeLocation.getDataNodeId());
+    }
+    return status;
   }
 
   @Override
@@ -1102,6 +1123,22 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Force updating the target ConfigNode's status to Unknown
+      getNodeManager()
+          .getNodeCacheMap()
+          .get(configNodeLocation.getConfigNodeId())
+          .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      LOGGER.info(
+          "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
+          configNodeLocation.getConfigNodeId());
+    }
+    return status;
+  }
+
+  @Override
   public TSStatus createFunction(TCreateFunctionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1347,7 +1384,8 @@ public class ConfigManager implements IManager {
 
   @Override
   public void addMetrics() {
-    partitionManager.addMetrics();
+    MetricService.getInstance().addMetricSet(new NodeMetrics(getNodeManager()));
+    MetricService.getInstance().addMetricSet(new PartitionMetrics(this));
   }
 
   @Override

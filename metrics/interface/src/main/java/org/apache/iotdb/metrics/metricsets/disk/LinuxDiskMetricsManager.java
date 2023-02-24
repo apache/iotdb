@@ -74,10 +74,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final int DISK_IO_TOTAL_TIME_OFFSET = 13;
   private static final int DISK_TIME_IN_QUEUE_OFFSET = 14;
   private static final int DEFAULT_SECTOR_SIZE = 512;
-  private static final int BYTES_PER_KB = 1024;
+  private static final double BYTES_PER_KB = 1024.0;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
-  private static final double AMPLIFICATION_FACTOR = 10000.0;
-  private static final double MS_TO_NS_FACTOR = 1000_000.0;
   private Set<String> diskIdSet;
   private final Map<String, Integer> diskSectorSizeMap;
   private long lastUpdateTime = 0L;
@@ -139,9 +137,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getReadDataSizeForDisk() {
+  public Map<String, Double> getReadDataSizeForDisk() {
     checkUpdate();
-    Map<String, Long> readDataMap = new HashMap<>(diskIdSet.size());
+    Map<String, Double> readDataMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : lastReadSectorCountForDisk.entrySet()) {
       int sectorSize = diskSectorSizeMap.getOrDefault(entry.getKey(), DEFAULT_SECTOR_SIZE);
       readDataMap.put(entry.getKey(), entry.getValue() * sectorSize / BYTES_PER_KB);
@@ -150,9 +148,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getWriteDataSizeForDisk() {
+  public Map<String, Double> getWriteDataSizeForDisk() {
     checkUpdate();
-    Map<String, Long> writeDataMap = new HashMap<>(diskIdSet.size());
+    Map<String, Double> writeDataMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : lastWriteSectorCountForDisk.entrySet()) {
       int sectorSize = diskSectorSizeMap.getOrDefault(entry.getKey(), DEFAULT_SECTOR_SIZE);
       writeDataMap.put(entry.getKey(), entry.getValue() * sectorSize / BYTES_PER_KB);
@@ -182,13 +180,10 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getIoUtilsPercentage() {
-    Map<String, Long> utilsMap = new HashMap<>(diskIdSet.size());
+  public Map<String, Double> getIoUtilsPercentage() {
+    Map<String, Double> utilsMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementIoBusyTimeForDisk.entrySet()) {
-      // The result is multiplied by an amplification factor to avoid loss of precision when
-      // converted to long
-      utilsMap.put(
-          entry.getKey(), (long) (entry.getValue() * AMPLIFICATION_FACTOR / updateInterval));
+      utilsMap.put(entry.getKey(), ((double) entry.getValue()) / updateInterval);
     }
     return utilsMap;
   }
@@ -197,12 +192,11 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgReadCostTimeOfEachOpsForDisk() {
     Map<String, Double> avgReadTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readCostEntry : incrementReadTimeCostForDisk.entrySet()) {
-      long writeOpsCount =
-          incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L);
-      // convert to nanosecond
+      // use Long.max to avoid NaN
+      long readOpsCount =
+          Long.max(incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L), 1L);
       avgReadTimeCostMap.put(
-          readCostEntry.getKey(),
-          (double) readCostEntry.getValue() / writeOpsCount * MS_TO_NS_FACTOR);
+          readCostEntry.getKey(), (double) readCostEntry.getValue() / readOpsCount);
     }
     return avgReadTimeCostMap;
   }
@@ -211,12 +205,12 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgWriteCostTimeOfEachOpsForDisk() {
     Map<String, Double> avgWriteTimeCostMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeCostEntry : incrementWriteTimeCostForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long writeOpsCount =
-          incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L);
-      // convert to nanosecond
+          Long.max(
+              incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L), 1L);
       avgWriteTimeCostMap.put(
-          writeCostEntry.getKey(),
-          (double) writeCostEntry.getValue() / writeOpsCount * MS_TO_NS_FACTOR);
+          writeCostEntry.getKey(), (double) writeCostEntry.getValue() / writeOpsCount);
     }
     return avgWriteTimeCostMap;
   }
@@ -225,13 +219,16 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   public Map<String, Double> getAvgSizeOfEachReadForDisk() {
     Map<String, Double> avgSizeOfReadMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> readSectorSizeEntry : incrementReadSectorCountForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long readOpsCount =
-          incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L);
+          Long.max(
+              incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L),
+              1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(readSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfReadMap.put(
           readSectorSizeEntry.getKey(),
-          ((double) readSectorSizeEntry.getValue()) * sectorSize / readOpsCount);
+          ((double) readSectorSizeEntry.getValue()) / readOpsCount * sectorSize);
     }
     return avgSizeOfReadMap;
   }
@@ -241,13 +238,16 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     Map<String, Double> avgSizeOfWriteMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> writeSectorSizeEntry :
         incrementWriteSectorCountForDisk.entrySet()) {
+      // use Long.max to avoid NaN
       long writeOpsCount =
-          incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L);
+          Long.max(
+              incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L),
+              1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(writeSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
       avgSizeOfWriteMap.put(
           writeSectorSizeEntry.getKey(),
-          ((double) writeSectorSizeEntry.getValue()) * sectorSize / writeOpsCount);
+          ((double) writeSectorSizeEntry.getValue()) / writeOpsCount * sectorSize);
     }
     return avgSizeOfWriteMap;
   }
@@ -263,25 +263,21 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public Map<String, Long> getQueueSizeForDisk() {
-    Map<String, Long> avgQueueSizeMap = new HashMap<>(diskIdSet.size());
+  public Map<String, Double> getQueueSizeForDisk() {
+    Map<String, Double> avgQueueSizeMap = new HashMap<>(diskIdSet.size());
     for (Map.Entry<String, Long> entry : incrementTimeInQueueForDisk.entrySet()) {
-      // The result is multiplied by an amplification factor to avoid loss of precision when
-      // converted to long
-      avgQueueSizeMap.put(
-          entry.getKey(),
-          (long) (((double) entry.getValue()) * AMPLIFICATION_FACTOR / updateInterval));
+      avgQueueSizeMap.put(entry.getKey(), (((double) entry.getValue()) / updateInterval));
     }
     return avgQueueSizeMap;
   }
 
   @Override
-  public long getActualReadDataSizeForProcess() {
+  public double getActualReadDataSizeForProcess() {
     return lastReallyReadSizeForProcess / BYTES_PER_KB;
   }
 
   @Override
-  public long getActualWriteDataSizeForProcess() {
+  public double getActualWriteDataSizeForProcess() {
     return lastReallyWriteSizeForProcess / BYTES_PER_KB;
   }
 
@@ -296,13 +292,13 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   @Override
-  public long getAttemptReadSizeForProcess() {
-    return (long) ((double) (lastAttemptReadSizeForProcess) / BYTES_PER_KB);
+  public double getAttemptReadSizeForProcess() {
+    return lastAttemptReadSizeForProcess / BYTES_PER_KB;
   }
 
   @Override
-  public long getAttemptWriteSizeForProcess() {
-    return (long) (((double) lastAttemptWriteSizeForProcess) / BYTES_PER_KB);
+  public double getAttemptWriteSizeForProcess() {
+    return lastAttemptWriteSizeForProcess / BYTES_PER_KB;
   }
 
   @Override

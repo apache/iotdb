@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,11 +35,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class ExchangeNode extends SingleChildProcessNode {
-
-  // The remoteSourceNode is used to record the remote source info for current ExchangeNode
-  // It is not the child of current ExchangeNode
-  private FragmentSinkNode remoteSourceNode;
-
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
@@ -48,7 +42,10 @@ public class ExchangeNode extends SingleChildProcessNode {
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
-  private List<String> outputColumnNames;
+  private List<String> outputColumnNames = new ArrayList<>();
+
+  /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
+  private int indexOfUpstreamSinkHandle = 0;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -67,11 +64,8 @@ public class ExchangeNode extends SingleChildProcessNode {
   @Override
   public PlanNode clone() {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
-    if (remoteSourceNode != null) {
-      FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
-      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getPlanNodeId());
-      node.setRemoteSourceNode(remoteSourceNode);
-    }
+    node.setOutputColumnNames(outputColumnNames);
+    node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
     return node;
   }
 
@@ -102,10 +96,12 @@ public class ExchangeNode extends SingleChildProcessNode {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       outputColumnNamesSize--;
     }
+    int index = ReadWriteIOUtils.readInt(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
+    exchangeNode.setIndexOfUpstreamSinkHandle(index);
     return exchangeNode;
   }
 
@@ -120,6 +116,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
+    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, byteBuffer);
   }
 
   @Override
@@ -133,6 +130,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, stream);
     }
+    ReadWriteIOUtils.write(indexOfUpstreamSinkHandle, stream);
   }
 
   @Override
@@ -150,13 +148,12 @@ public class ExchangeNode extends SingleChildProcessNode {
         getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
-  public FragmentSinkNode getRemoteSourceNode() {
-    return remoteSourceNode;
+  public int getIndexOfUpstreamSinkHandle() {
+    return indexOfUpstreamSinkHandle;
   }
 
-  public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
-    this.remoteSourceNode = remoteSourceNode;
-    this.setOutputColumnNames(remoteSourceNode.getOutputColumnNames());
+  public void setIndexOfUpstreamSinkHandle(int indexOfUpstreamSinkHandle) {
+    this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
   }
 
   public TEndPoint getUpstreamEndpoint() {

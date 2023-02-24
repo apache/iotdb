@@ -110,6 +110,9 @@ public class IndexController {
 
   private void persist() {
     long flushIndex = currentIndex;
+    if (flushIndex == lastFlushedIndex) {
+      return;
+    }
     File oldFile = new File(storageDir, prefix + lastFlushedIndex);
     File newFile = new File(storageDir, prefix + flushIndex);
     try {

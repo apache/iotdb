@@ -49,7 +49,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
@@ -150,9 +150,9 @@ public class ProcedureManager {
   public TSStatus deleteStorageGroups(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
     List<Long> procedureIds = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
-      DeleteStorageGroupProcedure deleteStorageGroupProcedure =
-          new DeleteStorageGroupProcedure(storageGroupSchema);
-      long procedureId = this.executor.submitProcedure(deleteStorageGroupProcedure);
+      DeleteDatabaseProcedure deleteDatabaseProcedure =
+          new DeleteDatabaseProcedure(storageGroupSchema);
+      long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
       procedureIds.add(procedureId);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
