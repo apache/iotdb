@@ -300,15 +300,14 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.2.5. Memory
 
-| Metric | Tags                                 | Type      | Description                                                        |
-| ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
-| mem    | name="database_{{name}}"             | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
-| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"                  | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
-| mem    | name="IoTConsensusQueue"             | AutoGauge | The memory usage of IoTConsensus Queue, Unit: byte                 |
-| mem    | name="IoTConsensusSync"              | AutoGauge | The memory usage of IoTConsensus SyncStatus, Unit: byte            |
-| mem    | name="schema_region_total_usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
-| mem    | name="schema_region_total_remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
+| Metric | Tags                             | Type      | Description                                                  |
+| ------ | -------------------------------- | --------- | ------------------------------------------------------------ |
+| mem    | name="database_{{name}}"         | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte       |
+| mem    | name="chunkMetaData_{{name}}"    | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
+| mem    | name="IoTConsensus"              | AutoGauge | The memory usage of IoTConsensus, Unit: byte                 |
+| mem    | name="IoTConsensusQueue"         | AutoGauge | The memory usage of IoTConsensus Queue, Unit: byte           |
+| mem    | name="IoTConsensusSync"          | AutoGauge | The memory usage of IoTConsensus SyncStatus, Unit: byte      |
+| mem    | name="schema_region_total_usage" | AutoGauge | The memory usage of all SchemaRegion, Unit: byte             |
 
 #### 4.2.6. Compaction
 
@@ -415,6 +414,18 @@ carefully evaluated. The current Core-level metrics are as follows:
 | series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | The time-consuming of initializing ChunkReader (constructing PageReader)                |
 | series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | The time-consuming of constructing Tsblock from PageReader                              |
 | series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | The time-consuming of constructing Tsblock from MergeReader (handling overlapping data) |
+
+#### 4.2.16 Schema Engine
+
+| Metric        | Tags                                                         | Type      | Description                            |
+| ------------- | ------------------------------------------------------------ | --------- | -------------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | Memory usgae for all SchemaRegion      |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | Memory capacity for all SchemaRegion   |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | Mode of SchemaEngine                   |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | Consensus protocol of SchemaRegion     |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | Number of SchemaRegion                 |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | Memory usgae for each SchemaRegion     |
+| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Timeseries count for each SchemaRegion |
 
 ### 4.3. Normal level Metrics
 
