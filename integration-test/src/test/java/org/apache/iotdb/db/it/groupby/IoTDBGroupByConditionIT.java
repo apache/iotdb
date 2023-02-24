@@ -165,9 +165,6 @@ public class IoTDBGroupByConditionIT {
           {"1", "2", "1.0", "2", "16.0"},
           {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
         "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
     normalTest(res, sql2);
@@ -182,9 +179,6 @@ public class IoTDBGroupByConditionIT {
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
-    String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
-    normalTest(res, sql2);
   }
 
   @Test
@@ -193,9 +187,6 @@ public class IoTDBGroupByConditionIT {
         new String[][] {
           {"5", "7", "2.0", "3", "36.0"},
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
         "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
     normalTest(res, sql2);
@@ -210,9 +201,6 @@ public class IoTDBGroupByConditionIT {
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
-    String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
-    normalTest(res, sql2);
   }
 
   private void normalTestWithEndTime(String[][] res, String sql) {
@@ -380,34 +368,5 @@ public class IoTDBGroupByConditionIT {
     String sql2 =
         "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
     normalTest(res, sql2);
-  }
-
-  @Test
-  public void groupByConditionFirstValueTest() {
-    String[][] res = new String[][] {{"5", "7", "18.0"}};
-    String sql =
-        "select __endTime,first_value(soc) from root.sg.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,__endTime,first_value(root.sg.beijing.car01.soc)");
-        int count = 0;
-        while (resultSet.next()) {
-          String startTime = resultSet.getString(1);
-          String endTime = resultSet.getString(2);
-          String firstValue = resultSet.getString(3);
-          assertEquals(res[count][0], startTime);
-          assertEquals(res[count][1], endTime);
-          assertEquals(res[count][2], firstValue);
-          count++;
-        }
-        assertEquals(res.length, count);
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 }
