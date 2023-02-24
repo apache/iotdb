@@ -258,6 +258,10 @@ FILE
     : F I L E
     ;
 
+FILTER
+    : F I L T E R
+    ;
+
 FLUSH
     : F L U S H
     ;
@@ -552,10 +556,6 @@ SCHEMA
 
 SELECT
     : S E L E C T
-    ;
-
-SERIES
-    : S E R I E S
     ;
 
 SERIESSLOTID

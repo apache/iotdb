@@ -84,6 +84,7 @@ keyWords
     | EXPLAIN
     | FILL
     | FILE
+    | FILTER
     | FLUSH
     | FOR
     | FROM
@@ -154,7 +155,6 @@ keyWords
     | RUNNING
     | SCHEMA
     | SELECT
-    | SERIES
     | SERIESSLOTID
     | SESSION
     | SET
