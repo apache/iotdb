@@ -77,7 +77,7 @@ public class QueryStatement extends Statement {
   private WhereCondition whereCondition;
   private HavingCondition havingCondition;
 
-  // row limit and offset for result set. The default value is 0, which means no limit
+  // row limit for result set. The default value is 0, which means no limit
   private int rowLimit = 0;
   // row offset for result set. The default value is 0
   private int rowOffset = 0;
@@ -377,6 +377,9 @@ public class QueryStatement extends Statement {
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+      }
+      if (groupByComponent != null && isGroupByLevel()) {
+        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY LEVEL does not support align by device now.");

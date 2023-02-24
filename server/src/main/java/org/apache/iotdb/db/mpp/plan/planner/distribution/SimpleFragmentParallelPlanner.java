@@ -36,7 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -201,24 +201,30 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void calculateNodeTopologyBetweenInstance() {
     for (FragmentInstance instance : fragmentInstanceList) {
       PlanNode rootNode = instance.getFragment().getPlanNodeTree();
-      if (rootNode instanceof FragmentSinkNode) {
-        // Set target Endpoint for FragmentSinkNode
-        FragmentSinkNode sinkNode = (FragmentSinkNode) rootNode;
-        PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
-        FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
-        sinkNode.setDownStream(
-            downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint(),
-            downStreamInstance.getId(),
-            downStreamNodeId);
+      if (rootNode instanceof MultiChildrenSinkNode) {
+        MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) rootNode;
+        sinkNode
+            .getDownStreamChannelLocationList()
+            .forEach(
+                downStreamChannelLocation -> {
+                  // Set target Endpoint for FragmentSinkNode
+                  PlanNodeId downStreamNodeId =
+                      new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
+                  FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
+                  downStreamChannelLocation.setRemoteEndpoint(
+                      downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
+                  downStreamChannelLocation.setRemoteFragmentInstanceId(
+                      downStreamInstance.getId().toThrift());
 
-        // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
-        PlanNode downStreamExchangeNode =
-            downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
-        ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(
-                instance.getHostDataNode().getMPPDataExchangeEndPoint(),
-                instance.getId(),
-                sinkNode.getPlanNodeId());
+                  // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
+                  PlanNode downStreamExchangeNode =
+                      downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
+                  ((ExchangeNode) downStreamExchangeNode)
+                      .setUpstream(
+                          instance.getHostDataNode().getMPPDataExchangeEndPoint(),
+                          instance.getId(),
+                          sinkNode.getPlanNodeId());
+                });
       }
     }
   }

@@ -1065,21 +1065,30 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * sub\_compaction\_thread\_count
 
-|名字| sub\_compaction\_thread\_count |
-|:---:|:--|
-|描述| 每个跨空间合并任务的子任务线程数 |
-|类型| Int32 |
-|默认值| 4 |
-|改后生效方式| 重启服务生效|
+|名字| sub\_compaction\_thread\_count  |
+|:---:|:--------------------------------|
+|描述| 每个合并任务的子任务线程数，只对跨空间合并和乱序空间内合并生效 |
+|类型| int32                           |
+|默认值| 4                               |
+|改后生效方式| 重启服务生效                          |
 
 * enable\_compaction\_validation
 
 |名字| enable\_compaction\_validation |
-|:---:|:--|
-|描述| 开启合并结束后对顺序文件时间范围的检查 |
-|类型| Boolean |
-|默认值| true |
-|改后生效方式| 重启服务生效|
+|:---:|:-------------------------------|
+|描述| 开启合并结束后对顺序文件时间范围的检查            |
+|类型| Boolean                        |
+|默认值| true                           |
+|改后生效方式| 重启服务生效                         |
+
+* candidate\_compaction\_task\_queue\_size
+
+|名字| candidate\_compaction\_task\_queue\_size |
+|:---:|:-----------------------------------------|
+|描述| 合并任务优先级队列的大小                             |
+|类型| int32                                    |
+|默认值| 50                                       |
+|改后生效方式| 重启服务生效                                   |
 
 ### 写前日志配置
 

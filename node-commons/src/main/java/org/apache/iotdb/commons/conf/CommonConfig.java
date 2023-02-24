@@ -315,11 +315,6 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatusToShutdown() {
-    logger.info("System will reject write operations when shutting down.");
-    this.status = NodeStatus.ReadOnly;
-  }
-
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
@@ -327,9 +322,7 @@ public class CommonConfig {
 
     switch (newStatus) {
       case ReadOnly:
-        logger.error(
-            "Change system status to ReadOnly! Only query statements are permitted!",
-            new RuntimeException("System mode is set to READ_ONLY"));
+        logger.warn("Change system status to ReadOnly! Only query statements are permitted!");
         break;
       case Removing:
         logger.info(

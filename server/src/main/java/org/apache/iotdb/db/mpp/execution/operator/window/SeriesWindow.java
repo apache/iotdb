@@ -99,6 +99,10 @@ public class SeriesWindow implements IWindow {
     this.endTime = endTime;
   }
 
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
   public void setTimeInitialized(boolean timeInitialized) {
     this.timeInitialized = timeInitialized;
   }
