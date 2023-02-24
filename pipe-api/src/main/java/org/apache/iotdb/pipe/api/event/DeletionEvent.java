@@ -22,19 +22,19 @@ package org.apache.iotdb.pipe.api.event;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 /** DeletionEvent is used to define the event of deleting data. */
-public abstract class DeletionEvent implements Event {
+public interface DeletionEvent extends Event {
 
   /**
    * The method is used to get the path of the deleted data.
    *
    * @return String
    */
-  public abstract String getPath();
+  String getPath();
 
   /**
    * The method is used to get the time range of the deleted data.
    *
    * @return TimeRange
    */
-  public abstract TimeRange getTimeRange();
+  TimeRange getTimeRange();
 }
