@@ -562,7 +562,7 @@ public class IoTDBGroupByVariationIT {
         int count = 0;
         while (resultSet.next()) {
           String actualTime = resultSet.getString(1);
-          Double actualFirst = resultSet.getDouble(2);
+          double actualFirst = resultSet.getDouble(2);
 
           assertEquals(res[count][0], actualTime);
           assertEquals(Double.parseDouble(res[count][1]), actualFirst, 0.00001);
