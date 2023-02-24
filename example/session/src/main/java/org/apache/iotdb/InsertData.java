@@ -38,13 +38,13 @@ public class InsertData {
   private static final String DEVICE = "root.sg";
 
   private static final long TIME_PARTITION_INTERVAL = 10000 * 200;
-  private static final long FILE_NUM = 20;
+//  private static final long FILE_NUM = 20;
+//
+//  private static final long RECORD_NUM = 100;
 
-  private static final long RECORD_NUM = 100;
+    private static final long FILE_NUM = 200;
 
-  //  private static final long FILE_NUM = 200;
-  //
-  //  private static final long RECORD_NUM = 10000;
+    private static final long RECORD_NUM = 10000;
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
