@@ -125,6 +125,7 @@ public class IoTDBGroupByConditionIT {
         .setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
+    prepareData(SQLs2);
   }
 
   @AfterClass
@@ -393,13 +394,7 @@ public class IoTDBGroupByConditionIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "Time,__endTime,first_value(root.sg.beijing.car01.soc)");
         int count = 0;
-        int rowNum = res.length;
-        String device = "root.sg.beijing.car01";
         while (resultSet.next()) {
-          if (count == rowNum) {
-            count = 0;
-            device = "root.sg.beijing.car02";
-          }
           String startTime = resultSet.getString(1);
           String endTime = resultSet.getString(2);
           String firstValue = resultSet.getString(3);
