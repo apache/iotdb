@@ -243,7 +243,7 @@ inhibit_rules:
 ### 编写 trigger 类
 
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
-具体配置流程参见 [Triggers](Triggers.md)。
+具体配置流程参见 [Trigger](../Trigger/Implement-Trigger.md)。
 
 下面的示例创建了 `org.apache.iotdb.trigger.ClusterAlertingExample` 类，
 其 `alertManagerHandler` 
