@@ -45,7 +45,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -306,14 +307,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
   public List<String> visitTransform(TransformNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Transform-%s", node.getPlanNodeId().getId()));
@@ -416,7 +409,21 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   @Override
   public List<String> visitHorizontallyConcat(HorizontallyConcatNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("VerticallyConcat-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("HorizontallyConcat-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitIdentitySink(IdentitySinkNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("IdentitySink-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitShuffleSink(ShuffleSinkNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ShuffleSink-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 

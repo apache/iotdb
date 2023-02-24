@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkChannel;
+import org.apache.iotdb.db.mpp.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -44,7 +46,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 @NotThreadSafe
 public class SharedTsBlockQueue {
 
-  private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -73,7 +75,7 @@ public class SharedTsBlockQueue {
   private boolean closed = false;
 
   private LocalSourceHandle sourceHandle;
-  private LocalSinkHandle sinkHandle;
+  private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
@@ -129,8 +131,12 @@ public class SharedTsBlockQueue {
     return queue.isEmpty();
   }
 
-  public void setSinkHandle(LocalSinkHandle sinkHandle) {
-    this.sinkHandle = sinkHandle;
+  public int getNumOfBufferedTsBlocks() {
+    return queue.size();
+  }
+
+  public void setSinkChannel(LocalSinkChannel sinkChannel) {
+    this.sinkChannel = sinkChannel;
   }
 
   public void setSourceHandle(LocalSourceHandle sourceHandle) {
@@ -139,9 +145,9 @@ public class SharedTsBlockQueue {
 
   /** Notify no more tsblocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
-    logger.debug("[SignalNoMoreTsBlockOnQueue]");
+    LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
-      logger.warn("queue has been destroyed");
+      LOGGER.warn("queue has been destroyed");
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
@@ -163,9 +169,9 @@ public class SharedTsBlockQueue {
     }
     TsBlock tsBlock = queue.remove();
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
-    // corresponding LocalSinkHandle.
-    if (sinkHandle != null) {
-      sinkHandle.checkAndInvokeOnFinished();
+    // corresponding LocalSinkChannel.
+    if (sinkChannel != null) {
+      sinkChannel.checkAndInvokeOnFinished();
     }
     localMemoryManager
         .getQueryPool()
@@ -187,7 +193,7 @@ public class SharedTsBlockQueue {
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
     if (closed) {
-      logger.warn("queue has been destroyed");
+      LOGGER.warn("queue has been destroyed");
       return immediateVoidFuture();
     }
 
