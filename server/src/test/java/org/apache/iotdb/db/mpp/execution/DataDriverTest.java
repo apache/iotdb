@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.StubSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.StubSink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
@@ -174,8 +174,8 @@ public class DataDriverTest {
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
-      StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
-      driverContext.setSinkHandle(sinkHandle);
+      StubSink stubSink = new StubSink(fragmentInstanceContext);
+      driverContext.setSink(stubSink);
       IDriver dataDriver = null;
       try {
         dataDriver = new DataDriver(limitOperator, driverContext);
@@ -192,7 +192,7 @@ public class DataDriverTest {
 
         assertEquals(FragmentInstanceState.FLUSHING, stateMachine.getState());
 
-        List<TsBlock> result = sinkHandle.getTsBlocks();
+        List<TsBlock> result = stubSink.getTsBlocks();
 
         int row = 0;
         for (TsBlock tsBlock : result) {
