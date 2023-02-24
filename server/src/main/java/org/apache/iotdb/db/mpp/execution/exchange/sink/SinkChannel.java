@@ -370,7 +370,7 @@ public class SinkChannel implements ISinkChannel {
                 fullFragmentInstanceId,
                 localPlanNodeId,
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-                DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) // actually we only know maxBytesCanReserve after
+                maxBytesCanReserve) // actually we only know maxBytesCanReserve after
             // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
             // at first this SinkChannel has not reserved memory.
             .left;
