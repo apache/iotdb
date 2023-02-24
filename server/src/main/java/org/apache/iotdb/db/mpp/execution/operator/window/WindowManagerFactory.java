@@ -25,18 +25,21 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 public class WindowManagerFactory {
 
   public static IWindowManager genWindowManager(
-      WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator) {
+      WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator, boolean ascending) {
     switch (windowParameter.getWindowType()) {
       case TIME_WINDOW:
         return new TimeWindowManager(timeRangeIterator, (TimeWindowParameter) windowParameter);
       case EVENT_WINDOW:
         return ((EventWindowParameter) windowParameter).getDelta() == 0
-            ? genEqualEventWindowManager(
-                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending())
-            : genVariationEventWindowManager(
-                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
+            ? genEqualEventWindowManager((EventWindowParameter) windowParameter, ascending)
+            : genVariationEventWindowManager((EventWindowParameter) windowParameter, ascending);
       case SERIES_WINDOW:
         return new SeriesWindowManager((SeriesWindowParameter) windowParameter);
+      case SESSION_WINDOW:
+        return new SessionWindowManager(
+            windowParameter.isNeedOutputEndTime(),
+            ((SessionWindowParameter) windowParameter).getTimeInterval(),
+            ascending);
       default:
         throw new IllegalArgumentException(
             "Not support this type of aggregation window :"

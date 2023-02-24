@@ -766,6 +766,14 @@ service IConfigNodeRPCService {
   TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req)
 
   /**
+   * Report that the specified DataNode will be shutdown.
+   * The ConfigNode-leader will mark it as Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  common.TSStatus reportDataNodeShutdown(common.TDataNodeLocation dataNodeLocation)
+
+  /**
    * Get one or more DataNodes' configuration
    *
    * @param dataNodeId, the specific DataNode's index
@@ -979,6 +987,14 @@ service IConfigNodeRPCService {
    *                                  or Ratis internal failure
    */
   common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
+
+  /**
+   * Report that the specified ConfigNode will be shutdown.
+   * The ConfigNode-leader will mark it as Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
 
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)

@@ -217,6 +217,12 @@ public class IoTDBCountIfIT {
         expectedHeader,
         retArray);
 
+    expectedHeader = new String[] {"Count_if(root.db.*.s1 = 0 & root.db.*.s2 = 0, keep >= 3)"};
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, keep>=3) from root.db.* group by level = 1",
+        expectedHeader,
+        retArray);
+
     expectedHeader =
         new String[] {
           "Count_if(root.*.d1.s1 = 0 & root.*.d1.s2 = 0, 3)",
@@ -227,6 +233,18 @@ public class IoTDBCountIfIT {
     retArray = new String[] {"2,0,1,1,"};
     resultSetEqualTest(
         "select Count_if(s1=0 & s2=0, 3) from root.db.* group by level = 2",
+        expectedHeader,
+        retArray);
+
+    expectedHeader =
+        new String[] {
+          "Count_if(root.*.d1.s1 = 0 & root.*.d1.s2 = 0, keep >= 3)",
+          "Count_if(root.*.d1.s1 = 0 & root.*.d2.s2 = 0, keep >= 3)",
+          "Count_if(root.*.d2.s1 = 0 & root.*.d1.s2 = 0, keep >= 3)",
+          "Count_if(root.*.d2.s1 = 0 & root.*.d2.s2 = 0, keep >= 3)"
+        };
+    resultSetEqualTest(
+        "select Count_if(s1=0 & s2=0, keep>=3) from root.db.* group by level = 2",
         expectedHeader,
         retArray);
   }

@@ -18,10 +18,12 @@
  */
 <template>
   <main class="page">
-    <slot name="top"/>
-
-    <Content class="content" />
-
+    <slot name="top"></slot>
+    <div class="content-wrapper" :class="{ 'have-rightmenu': showRightMenu }">
+      <RightMenu v-if="showRightMenu" />
+      <Content class="content" />
+    </div>
+    <span id="doc-version" style="display: none;">{{ docVersion }}</span>
     <!-- <footer class="page-edit">
       <blockquote>
         <p>
@@ -40,7 +42,7 @@
           <span class="prefix">{{ lastUpdatedText }}: </span>
           <span class="time">{{ lastUpdated }}</span>
         </small>
-        
+
       </blockquote>
     </footer> -->
 
@@ -74,7 +76,7 @@
         </span>
       </p>
     </div>
-    
+
     <p style="text-align: center; color: #909399; font-size: 16px; margin: 0 30px;">
       <a
         :href="editLink"
@@ -94,164 +96,177 @@
 </template>
 
 <script>
-import { resolvePage, outboundRE, endingSlashRE } from '../util'
+import RightMenu from './RightMenu.vue';
+import { resolvePage, outboundRE, endingSlashRE } from '../util';
 
 export default {
   props: ['sidebarItems'],
-
+  components: { RightMenu },
   computed: {
-    lastUpdated () {
-      return this.$page.lastUpdated
+    showRightMenu() {
+      const { $frontmatter, $themeConfig, $page } = this;
+      const { sidebar } = $frontmatter;
+      return (
+        $themeConfig.rightMenuBar !== false
+        && $page.headers
+        && ($frontmatter && sidebar && sidebar !== false) !== false
+      );
+    },
+    lastUpdated() {
+      return this.$page.lastUpdated;
     },
 
-    lastUpdatedText () {
+    lastUpdatedText() {
       if (typeof this.$themeLocaleConfig.lastUpdated === 'string') {
-        return this.$themeLocaleConfig.lastUpdated
+        return this.$themeLocaleConfig.lastUpdated;
       }
       if (typeof this.$site.themeConfig.lastUpdated === 'string') {
-        return this.$site.themeConfig.lastUpdated
+        return this.$site.themeConfig.lastUpdated;
       }
-      return 'Last Updated'
+      return 'Last Updated';
     },
 
-    prev () {
-      const prev = this.$page.frontmatter.prev
+    prev() {
+      const { prev } = this.$page.frontmatter;
       if (prev === false) {
-        return
+
       } else if (prev) {
-        return resolvePage(this.$site.pages, prev, this.$route.path)
+        return resolvePage(this.$site.pages, prev, this.$route.path);
       } else {
-        return resolvePrev(this.$page, this.sidebarItems)
+        return resolvePrev(this.$page, this.sidebarItems);
       }
     },
 
-    next () {
-      const next = this.$page.frontmatter.next
+    next() {
+      const { next } = this.$page.frontmatter;
       if (next === false) {
-        return
+
       } else if (next) {
-        return resolvePage(this.$site.pages, next, this.$route.path)
+        return resolvePage(this.$site.pages, next, this.$route.path);
       } else {
-        return resolveNext(this.$page, this.sidebarItems)
+        return resolveNext(this.$page, this.sidebarItems);
       }
     },
 
-    editLink () {
+    editLink() {
       if (this.$page.frontmatter.editLink === false) {
-        return
+        return;
       }
       const {
         repo,
         editLinks,
         docsDir = '',
         docsBranch = 'master',
-        docsRepo = repo
-      } = this.$site.themeConfig
+        docsRepo = repo,
+      } = this.$site.themeConfig;
 
       if (docsRepo && editLinks && this.$page.relativePath) {
-        return this.createEditLink(repo, docsRepo, docsDir, docsBranch, this.$page.relativePath)
+        return this.createEditLink(repo, docsRepo, docsDir, docsBranch, this.$page.relativePath);
       }
     },
 
-    commentLink () {
+    commentLink() {
       const {
         repo,
-        docsRepo = repo
-      } = this.$site.themeConfig
+        docsRepo = repo,
+      } = this.$site.themeConfig;
 
-      return (outboundRE.test(docsRepo)
+      return `${outboundRE.test(docsRepo)
         ? docsRepo
-        : `https://github.com/${docsRepo}`) +
-        `/issues/new?title=Comment: ${this.$page.title} (${this.$page.relativePath})`
+        : `https://github.com/${docsRepo}`
+      }/issues/new?title=Comment: ${this.$page.title} (${this.$page.relativePath})`;
     },
 
-    editLinkText () {
+    editLinkText() {
       return (
         this.$themeLocaleConfig.editLinkText
         || this.$site.themeConfig.editLinkText
-        || `Edit this page`
-      )
-    }
+        || 'Edit this page'
+      );
+    },
+    docVersion() {
+      return this.getBranch('master', this.$page.relativePath);
+    },
   },
 
   methods: {
-    getBranch(branch='master', path) {
-      if(path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
+    getBranch(branch = 'master', path) {
+      if (path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
         return branch;
       }
       const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
-      if(branchRex.test(path)){
+      if (branchRex.test(path)) {
         const tag = branchRex.exec(path)[1];
-        return `rel/${tag.replace('.x','')}`;
+        return `rel/${tag.replace('.x', '')}`;
       }
       return branch;
     },
     getPath(path) {
-      if(path.indexOf('UserGuide/Master') > -1) {
+      if (path.indexOf('UserGuide/Master') > -1) {
         return path.replace('UserGuide/Master', 'UserGuide');
       }
       const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
-      if(branchRex.test(path)){
+      if (branchRex.test(path)) {
         const tag = branchRex.exec(path)[1];
         return path.replace(`UserGuide/V${tag}`, 'UserGuide');
       }
       return path;
     },
-    createEditLink (repo, docsRepo, docsDir, docsBranch, path) {
-      const bitbucket = /bitbucket.org/
+    createEditLink(repo, docsRepo, docsDir, docsBranch, path) {
+      const bitbucket = /bitbucket.org/;
       if (bitbucket.test(repo)) {
         const base = outboundRE.test(docsRepo)
           ? docsRepo
-          : repo
+          : repo;
         return (
-          base.replace(endingSlashRE, '')
-           + `/src`
-           + `/${docsBranch}/`
-           + (docsDir ? docsDir.replace(endingSlashRE, '') + '/' : '')
-           + path
-           + `?mode=edit&spa=0&at=${docsBranch}&fileviewer=file-view-default`
-        )
+          `${base.replace(endingSlashRE, '')
+          }/src`
+           + `/${docsBranch}/${
+             docsDir ? `${docsDir.replace(endingSlashRE, '')}/` : ''
+           }${path
+           }?mode=edit&spa=0&at=${docsBranch}&fileviewer=file-view-default`
+        );
       }
 
       const base = outboundRE.test(docsRepo)
         ? docsRepo
-        : `https://github.com/${docsRepo}`
+        : `https://github.com/${docsRepo}`;
       return (
-        base.replace(endingSlashRE, '')
-        + `/edit`
-        + `/${this.getBranch(docsBranch, path)}/`
-        + (docsDir ? docsDir.replace(endingSlashRE, '') + '/' : '')
-        + this.getPath(path)
-      )
-    }
-  }
+        `${base.replace(endingSlashRE, '')
+        }/edit`
+        + `/${this.getBranch(docsBranch, path)}/${
+          docsDir ? `${docsDir.replace(endingSlashRE, '')}/` : ''
+        }${this.getPath(path)}`
+      );
+    },
+  },
+};
+
+function resolvePrev(page, items) {
+  return find(page, items, -1);
 }
 
-function resolvePrev (page, items) {
-  return find(page, items, -1)
+function resolveNext(page, items) {
+  return find(page, items, 1);
 }
 
-function resolveNext (page, items) {
-  return find(page, items, 1)
-}
-
-function find (page, items, offset) {
-  const res = []
-  flatten(items, res)
+function find(page, items, offset) {
+  const res = [];
+  flatten(items, res);
   for (let i = 0; i < res.length; i++) {
-    const cur = res[i]
+    const cur = res[i];
     if (cur.type === 'page' && cur.path === decodeURIComponent(page.path)) {
-      return res[i + offset]
+      return res[i + offset];
     }
   }
 }
 
-function flatten (items, res) {
+function flatten(items, res) {
   for (let i = 0, l = items.length; i < l; i++) {
     if (items[i].type === 'group') {
-      flatten(items[i].children || [], res)
+      flatten(items[i].children || [], res);
     } else {
-      res.push(items[i])
+      res.push(items[i]);
     }
   }
 }
@@ -306,5 +321,18 @@ function flatten (items, res) {
       font-size .8em
       float none
       text-align left
+.page:not(.have-rightmenu)
+  .content
+    margin-right auto
+.page:has(.have-rightmenu)
+  .content
+    margin-right 230px
+  @media (max-width 1100px)
+    .content
+      margin-right auto
+@media (max-width 1100px)
+  .have-rightmenu
+    .right-menu-wrapper
+      display none
 
 </style>

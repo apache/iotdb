@@ -89,7 +89,9 @@ public enum Metric {
   WAL_COST,
   FLUSH_COST,
   FLUSH_SUB_TASK_COST,
-  FLUSHING_MEM_TABLE_STATUS;
+  FLUSHING_MEM_TABLE_STATUS,
+  SCHEMA_REGION,
+  SCHEMA_ENGINE;
 
   @Override
   public String toString() {

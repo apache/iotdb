@@ -120,6 +120,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SeriesWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
@@ -184,6 +185,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDes
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -1451,7 +1453,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // groupByParameter and groupByTimeParameter
       if (groupByParameter != null) {
         WindowType windowType = groupByParameter.getWindowType();
-        WindowParameter windowParameter = null;
+
+        WindowParameter windowParameter;
         switch (windowType) {
           case EVENT_WINDOW:
             String controlColumn = node.getGroupByExpression().getExpressionString();
@@ -1461,19 +1464,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     controlColumnType,
                     layout.get(controlColumn).get(0).getValueColumnIndex(),
                     node.isOutputEndTime(),
-                    groupByParameter.isIgnoringNull(),
+                    ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
                     ((GroupByVariationParameter) groupByParameter).getDelta());
             break;
           case SERIES_WINDOW:
             windowParameter =
                 new SeriesWindowParameter(
                     node.isOutputEndTime(),
-                    groupByParameter.isIgnoringNull(),
+                    ((GroupBySeriesParameter) groupByParameter).isIgnoringNull(),
                     layout
                         .get(node.getGroupByExpression().getExpressionString())
                         .get(0)
                         .getValueColumnIndex(),
                     ((GroupBySeriesParameter) groupByParameter).getKeepExpression());
+            break;
+          case SESSION_WINDOW:
+            windowParameter =
+                new SessionWindowParameter(
+                    ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
+                    node.isOutputEndTime());
             break;
           default:
             throw new IllegalArgumentException("Unsupported window type");

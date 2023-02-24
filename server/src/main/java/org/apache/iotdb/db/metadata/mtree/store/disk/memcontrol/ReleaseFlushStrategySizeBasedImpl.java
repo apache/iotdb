@@ -29,8 +29,8 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
   private final long releaseThreshold;
   private final long flushThreshold;
 
-  private static final double RELEASE_THRESHOLD_RATIO = 0.6;
-  private static final double FLUSH_THRESHOLD_RATION = 0.75;
+  public static final double RELEASE_THRESHOLD_RATIO = 0.6;
+  public static final double FLUSH_THRESHOLD_RATION = 0.75;
 
   public ReleaseFlushStrategySizeBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
