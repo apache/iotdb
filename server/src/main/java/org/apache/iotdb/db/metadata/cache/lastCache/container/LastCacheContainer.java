@@ -54,16 +54,23 @@ public class LastCacheContainer implements ILastCacheContainer {
       return;
     }
 
+    // update the lastCacheValue if current lastCacheValue is null
     if (lastCacheValue == null) {
       // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
-    } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
-        || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
-      lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
-      lastCacheValue.setValue(timeValuePair.getValue());
+      return;
+    }
+
+    // update the lastCacheValue if current lastCacheValue is a NullLastCacheValue or current Time
+    // is latest
+    if (lastCacheValue.isNull()
+        || (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
+            || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp()
+                && highPriorityUpdate))) {
+      lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
     }
   }
 

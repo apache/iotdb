@@ -19,12 +19,19 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class InsertData {
   private static Session session;
@@ -33,20 +40,21 @@ public class InsertData {
   private static final long TIME_PARTITION_INTERVAL = 10000 * 200;
   private static final long FILE_NUM = 20;
 
- private static final long RECORD_NUM = 100;
+  private static final long RECORD_NUM = 100;
 
-//  private static final long FILE_NUM = 200;
-//
-//  private static final long RECORD_NUM = 10000;
+  //  private static final long FILE_NUM = 200;
+  //
+  //  private static final long RECORD_NUM = 10000;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
-
+    // session.executeNonQueryStatement("create database root.template;");
     // set session fetchSize
     session.setFetchSize(10000);
 
+    // createTemplate();
     writeTargetData();
     writeTestData();
   }
@@ -86,6 +94,46 @@ public class InsertData {
         }
         session.executeNonQueryStatement("flush");
       }
+    }
+  }
+
+  private static void createTemplate()
+      throws IoTDBConnectionException, IOException, StatementExecutionException {
+    String[] names = new String[] {"`27`"};
+    boolean isAligned = true;
+    Map<String, Object[]> structureInfo = new LinkedHashMap<>(6);
+    structureInfo.put(
+        "s_boolean", new Object[] {TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY});
+    structureInfo.put(
+        "s_int", new Object[] {TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY});
+    structureInfo.put(
+        "s_long", new Object[] {TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY});
+    structureInfo.put(
+        "s_float", new Object[] {TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY});
+    structureInfo.put(
+        "s_double", new Object[] {TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY});
+    structureInfo.put(
+        "s_text", new Object[] {TSDataType.TEXT, TSEncoding.DICTIONARY, CompressionType.SNAPPY});
+    for (String templateName : names) {
+      String loadNode = "root.template.aligned." + templateName;
+      Template template = new Template(templateName, isAligned);
+
+      structureInfo.forEach(
+          (key, value) -> {
+            MeasurementNode mNode =
+                new MeasurementNode(
+                    key, (TSDataType) value[0], (TSEncoding) value[1], (CompressionType) value[2]);
+            try {
+              template.addToTemplate(mNode);
+            } catch (StatementExecutionException e) {
+              throw new RuntimeException(e);
+            }
+          });
+
+      session.createSchemaTemplate(template);
+      //  IOTDB-5437 StatementExecutionException: 300: COUNT_MEASUREMENTShas not been supported.
+      //        assert 6 == session.countMeasurementsInTemplate(templateName) : "查看模版中sensor数目";
+      session.setSchemaTemplate(templateName, loadNode);
     }
   }
 }

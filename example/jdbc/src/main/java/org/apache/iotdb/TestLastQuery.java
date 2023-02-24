@@ -37,7 +37,7 @@ public class TestLastQuery {
 
       // set JDBC fetchSize
       statement.setFetchSize(10000);
-      int loop = 20;
+      int loop = 3;
       long maxRunTime = Long.MIN_VALUE;
       long minRunTime = Long.MAX_VALUE;
       long totalRunTime = 0;
