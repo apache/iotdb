@@ -118,8 +118,6 @@ public class CacheMemoryManager {
                 }
               } catch (Throwable throwable) {
                 logger.error("Something wrong happened during MTree release.", throwable);
-                throwable.printStackTrace();
-                throw throwable;
               }
             }
           } catch (InterruptedException e) {
@@ -138,8 +136,6 @@ public class CacheMemoryManager {
                 }
               } catch (Throwable throwable) {
                 logger.error("Something wrong happened during MTree flush.", throwable);
-                throwable.printStackTrace();
-                throw throwable;
               }
             }
           } catch (InterruptedException e) {
