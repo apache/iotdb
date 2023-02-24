@@ -35,20 +35,20 @@ import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
  * <p>The lifecycle of a PipeConnector is as follows:
  *
  * <ul>
- *   <li>Before the sync task starts, the KV pair of `WITH CONNECTOR` clause in SQL is parsed and
- *       the validate method {@link PipeConnector#validate(PipeValidator)}is called to validate the
- *       parameters.
- *   <li>When the sync task starts, load and initialize the PipeConnector instance, and then call
- *       the beforeStart method {@link PipeConnector#beforeStart(PipeParameters,
+ *   <li>Before the collaboration task starts, the KV pair of `WITH CONNECTOR` clause in SQL is
+ *       parsed and the validate method {@link PipeConnector#validate(PipeValidator)}is called to
+ *       validate the parameters.
+ *   <li>When the collaboration task starts, load and initialize the PipeConnector instance, and
+ *       then call the beforeStart method {@link PipeConnector#beforeStart(PipeParameters,
  *       ConnectorRuntimeConfiguration)}
- *   <li>while the sync task is in progress
+ *   <li>while the collaboration task is in progress
  *       <ul>
  *         <li>PipeConnector calls the handshake method to establish connections between servers
  *         <li>PipeConnector calls the transfer method to transfer data
  *         <li>PipeConnector provides heartbeat detection method
  *       </ul>
- *   <li>When the sync task is stopped, the PipeConnector stops transferring data.
- *   <li>When the sync task is cancelled, the PipeConnector calls the autoClose method.
+ *   <li>When the collaboration task is stopped, the PipeConnector stops transferring data.
+ *   <li>When the collaboration task is cancelled, the PipeConnector calls the autoClose method.
  * </ul>
  */
 public interface PipeConnector extends AutoCloseable {
@@ -90,14 +90,14 @@ public interface PipeConnector extends AutoCloseable {
   void handshake() throws Exception;
 
   /**
-   * This method is called to check whether the PipeConnector is connected to the servers.
+   * This method is used to check whether the PipeConnector is connected to the servers.
    *
    * @throws Exception the user can throw errors if necessary
    */
   void heartbeat() throws Exception;
 
   /**
-   * This method is called to transfer the TabletInsertionEvent.
+   * This method is used to transfer the TabletInsertionEvent.
    *
    * @param te the insertion event of Tablet
    * @throws Exception the user can throw errors if necessary
@@ -105,7 +105,7 @@ public interface PipeConnector extends AutoCloseable {
   default void transfer(TabletInsertionEvent te) throws Exception {}
 
   /**
-   * This method is called to transfer the TsFileInsertionEvent.
+   * This method is used to transfer the TsFileInsertionEvent.
    *
    * @param te the insertion event of TsFile
    * @throws Exception the user can throw errors if necessary
@@ -113,7 +113,7 @@ public interface PipeConnector extends AutoCloseable {
   default void transfer(TsFileInsertionEvent te) throws Exception {}
 
   /**
-   * This method is called to transfer the DeletionEvent.
+   * This method is used to transfer the DeletionEvent.
    *
    * @param de the insertion event of Deletion
    * @throws Exception the user can throw errors if necessary

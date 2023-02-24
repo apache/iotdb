@@ -43,7 +43,6 @@ public class ConnectorRuntimeConfiguration {
 
   private boolean allowReuse;
   private boolean allowParallel;
-  private int retryNum;
   private RetryStrategy retryStrategy;
 
   /**
@@ -75,21 +74,6 @@ public class ConnectorRuntimeConfiguration {
 
   public boolean isAllowParallel() {
     return allowParallel;
-  }
-
-  /**
-   * Used to specify the number of retries when the connector fails to transfer data.
-   *
-   * @param retryNum the specified number of retries.
-   * @return this
-   */
-  public ConnectorRuntimeConfiguration setRetryNum(int retryNum) {
-    this.retryNum = retryNum;
-    return this;
-  }
-
-  public int getRetryNum() {
-    return retryNum;
   }
 
   /**

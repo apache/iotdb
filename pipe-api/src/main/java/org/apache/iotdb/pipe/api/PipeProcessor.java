@@ -35,21 +35,21 @@ import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
  * <p>The lifecycle of a PipeProcessor is as follows:
  *
  * <ul>
- *   <li>Before the sync task starts, the KV pair of `WITH PROCESSOR` clause in SQL is parsed and
- *       the validate method {@link PipeProcessor#validate(PipeValidator)}is called to validate the
- *       parameters.
- *   <li>When the sync task starts, load and initialize the PipeProcessor instance, and then call
- *       the beforeStart method {@link PipeProcessor#beforeStart(PipeParameters,
+ *   <li>Before the collaboration task starts, the KV pair of `WITH PROCESSOR` clause in SQL is
+ *       parsed and the validate method {@link PipeProcessor#validate(PipeValidator)}is called to
+ *       validate the parameters.
+ *   <li>When the collaboration task starts, load and initialize the PipeProcessor instance, and
+ *       then call the beforeStart method {@link PipeProcessor#beforeStart(PipeParameters,
  *       ProcessorRuntimeConfiguration)}
- *   <li>while the sync task is in progress
+ *   <li>while the collaboration task is in progress
  *       <ul>
  *         <li>PipeCollector capture the writes and deletes events and generates three types of
  *             Event
  *         <li>the Event is delivered to the corresponding process method in PipeProcessor
  *         <li>the Event is delivered to the PipeConnector after processing is completed
  *       </ul>
- *   <li>When the sync task is cancelled(When `DROP PIPE` is executed), the PipeProcessor calls the
- *       autoClose method.
+ *   <li>When the collaboration task is cancelled(When `DROP PIPE` is executed), the PipeProcessor
+ *       calls the autoClose method.
  * </ul>
  */
 public interface PipeProcessor extends AutoCloseable {
