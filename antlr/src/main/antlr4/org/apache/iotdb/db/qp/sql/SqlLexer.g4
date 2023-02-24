@@ -129,6 +129,10 @@ CONCAT
     : C O N C A T
     ;
 
+CONDITION
+    : C O N D I T I O N
+    ;
+
 CONFIGNODES
     : C O N F I G N O D E S
     ;
@@ -256,10 +260,6 @@ FILL
 
 FILE
     : F I L E
-    ;
-
-FILTER
-    : F I L T E R
     ;
 
 FLUSH

@@ -53,6 +53,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONDITION
     | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
@@ -84,7 +85,6 @@ keyWords
     | EXPLAIN
     | FILL
     | FILE
-    | FILTER
     | FLUSH
     | FOR
     | FROM

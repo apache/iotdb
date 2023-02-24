@@ -26,7 +26,7 @@
 Aggregation by level statement is used to group the query result whose name is the same at the given level. 
 
 - Keyword `LEVEL` is used to specify the level that need to be grouped.  By convention, `level=0` represents *root* level. 
-- All aggregation functions are supported. When using five aggregations: sum, avg, min_value, max_value and extreme, please make sure all the aggregated filter have exactly the same data type. Otherwise, it will generate a syntax error.
+- All aggregation functions are supported. When using five aggregations: sum, avg, min_value, max_value and extreme, please make sure all the aggregated series have exactly the same data type. Otherwise, it will generate a syntax error.
 
 **Example 1:** there are multiple series named `status` under different databases， like "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", and "root.sgcc.wf03.wt01.status". If you need to count the number of data points of the `status` sequence under different databases, use the following query:
 
@@ -707,12 +707,12 @@ Get the result below:
 +-----------------------------+---------+-----------------+-------------------+-----------------+
 ```
 
-## Aggregation By Filter
+## Aggregation By Condition
 When you need to filter the data according to a specific condition and group the continuous ones for an aggregation query.
-`GROUP BY FILTER` is suitable for you.The rows which don't meet the given condition will be simply ignored because they don't belong to any group.
+`GROUP BY CONDITION` is suitable for you.The rows which don't meet the given condition will be simply ignored because they don't belong to any group.
 Its syntax is defined below:
 ```sql
-group by filter(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
+group by condition(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
 ```
 * predict
 
@@ -730,7 +730,7 @@ Used to specify how to handle data rows that encounter null predict, skip the ro
 2. IgnoreNull defaults to true.
 3. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
 4. Each device is grouped separately when used with `ALIGN BY DEVICE`.
-5. Currently `GROUP BY FILTER` is not supported with `GROUP BY LEVEL`.
+5. Currently `GROUP BY CONDITION` is not supported with `GROUP BY LEVEL`.
 
 For the following raw data, several query examples are given below:
 ```
@@ -751,7 +751,7 @@ For the following raw data, several query examples are given below:
 ```
 The sql statement to query data with at least two continuous row shown below: 
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by filter(charging_status=1,KEEP>=2,ignoringNull=true)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=true)
 ```
 Get the result below:
 ```
@@ -764,7 +764,7 @@ Get the result below:
 ```
 When ignoreNull is false, the null value will be treated as a row that doesn't meet the condition.
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by filter(charging_status=1,KEEP>=2,ignoringNull=false)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=false)
 ```
 Get the result below, the original group is split.
 ```

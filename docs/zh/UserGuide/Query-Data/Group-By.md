@@ -692,10 +692,10 @@ select __endTime, avg(s1), count(s2), sum(s3) from root.sg.d group by variation(
 +-----------------------------+---------+-----------------+-------------------+-----------------+
 ```
 ## 条件分段聚合
-当需要根据指定条件对数据进行筛选，并将连续的符合条件的行分为一组进行聚合运算时，可以使用`GROUP BY FILTER`的分段方式；不满足给定条件的行因为不属于任何分组会被直接简单忽略。
+当需要根据指定条件对数据进行筛选，并将连续的符合条件的行分为一组进行聚合运算时，可以使用`GROUP BY CONDITION`的分段方式；不满足给定条件的行因为不属于任何分组会被直接简单忽略。
 其语法定义如下：
 ```sql
-group by filter(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
+group by condition(predict,[keep>/>=/=/<=/<]threshold,[,ignoreNull=true/false])
 ```
 * predict
 
@@ -735,7 +735,7 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 ```
 查询至少连续两行以上的charging_status=1的数据，sql语句如下:
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by filter(charging_status=1,KEEP>=2,ignoringNull=true)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=true)
 ```
 得到结果如下：
 ```
@@ -748,7 +748,7 @@ select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc)
 ```
 当设置`ignoreNull`为false时，遇到null值为将其视为一个不满足条件的行，会结束正在计算的分组。
 ```sql
-select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by filter(charging_status=1,KEEP>=2,ignoringNull=false)
+select __endTime,max_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoringNull=false)
 ```
 得到如下结果，原先的分组被含null的行拆分:
 ```

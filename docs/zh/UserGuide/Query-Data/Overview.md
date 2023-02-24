@@ -35,7 +35,7 @@ SELECT [LAST] selectExpr [, selectExpr] ...
         LEVEL = levelNum [, levelNum] ... |
         TAGS(tagKey [, tagKey] ... |
         VARIATION(expression[,delta][,ignoreNull=true/false])|
-        FILTER(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])|
+        CONDITION(expression,[keep>/>=/=/</<=]threshold[,ignoreNull=true/false])|
         SESSION(timeInterval)
     }]
     [HAVING havingCondition]
