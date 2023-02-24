@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.cluster;
 
 public enum NodeType {
@@ -34,7 +35,7 @@ public enum NodeType {
 
   public static NodeType parse(String type) {
     for (NodeType nodeType : NodeType.values()) {
-      if (nodeType.nodeType.equals(type)) {
+      if (type.equals(nodeType.getNodeType())) {
         return nodeType;
       }
     }
