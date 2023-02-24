@@ -278,15 +278,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
 
 #### 4.2.5. 内存统计
-| Metric | Tags                                 | Type      | Description                                       |
-| ------ | ------------------------------------ | --------- | ------------------------------------------------- |
-| mem    | name="database_{{name}}"             | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
-| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
-| mem    | name="IoTConsensusQueue"             | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte             |
-| mem    | name="IoTConsensusSync"              | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte             |
-| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
-| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
+| Metric | Tags                             | Type      | Description                                       |
+| ------ | -------------------------------- | --------- | ------------------------------------------------- |
+| mem    | name="database_{{name}}"         | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{{name}}"    | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="IoTConsensus"              | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="IoTConsensusQueue"         | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte         |
+| mem    | name="IoTConsensusSync"          | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
+| mem    | name="schema_region_total_usage" | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
 
 #### 4.2.6. 合并统计
 
@@ -393,6 +392,18 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | 初始化 ChunkReader（构造 PageReader） 耗时     |
 | series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | 从 PageReader 构造 Tsblock 耗时                |
 | series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | 从 MergeReader 构造 Tsblock （解乱序数据）耗时 |
+
+#### 4.2.16 元数据引擎统计
+
+| Metric        | Tags                                                         | Type      | Description                                    |
+| ------------- | ------------------------------------------------------------ | --------- | ---------------------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | SchemaRegion 全局内存使用量                    |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | SchemaRegion 全局可用内存                      |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | SchemaEngine 模式                              |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | 元数据管理引擎共识协议                         |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | SchemaRegion 个数                              |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的内存使用量             |
+| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数             |
 
 ### 4.3. Normal 级别监控指标
 
