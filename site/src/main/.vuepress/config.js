@@ -1235,6 +1235,7 @@ const config = {
               title: '端云协同',
               children: [
                 ['Edge-Cloud-Collaboration/Sync-Tool', 'TsFile 同步工具'],
+                ['Edge-Cloud-Collaboration/Customized-Pipe-Plugins', '自定义管道插件'],
               ],
             },
             {
@@ -1472,6 +1473,7 @@ const config = {
               title: '端云协同',
               children: [
                 ['Edge-Cloud-Collaboration/Sync-Tool', 'TsFile 同步工具'],
+                ['Edge-Cloud-Collaboration/Customized-Pipe-Plugins', '自定义管道插件'],
               ],
             },
             {
