@@ -519,6 +519,7 @@ const config = {
               title: 'Collaboration of Edge and Cloud',
               children: [
                 ['Edge-Cloud-Collaboration/Sync-Tool', 'TsFile Sync Tool'],
+                ['Edge-Cloud-Collaboration/Customized-Pipe-Plugins', 'Customized Pipe Plugins'],
               ],
             },
             {
@@ -756,6 +757,7 @@ const config = {
               title: 'Collaboration of Edge and Cloud',
               children: [
                 ['Edge-Cloud-Collaboration/Sync-Tool', 'TsFile Sync Tool'],
+                ['Edge-Cloud-Collaboration/Customized-Pipe-Plugins', 'Customized Pipe Plugins'],
               ],
             },
             {
