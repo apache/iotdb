@@ -165,6 +165,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       for (int i = 0; i < tsBlockSize; i++) {
         if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
           needSkip.mark(i);
+          lastIndexToProcess = i;
           continue;
         }
         if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
