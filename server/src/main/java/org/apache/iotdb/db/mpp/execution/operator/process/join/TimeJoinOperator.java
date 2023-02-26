@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
+import org.apache.iotdb.db.mpp.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AbstractProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -39,7 +39,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 @Deprecated
-public class TimeJoinOperator extends AbstractProcessOperator {
+public class TimeJoinOperator extends AbstractOperator {
 
   private final List<Operator> children;
 

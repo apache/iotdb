@@ -51,5 +51,9 @@ public interface ICacheManager {
 
   boolean unPinMNode(IMNode node);
 
+  long getBufferNodeNum();
+
+  long getCacheNodeNum();
+
   void clear(IMNode root);
 }

@@ -46,8 +46,8 @@ public class SchemaSourceFactory {
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       String key,
       String value,
       boolean isContains,
@@ -62,7 +62,7 @@ public class SchemaSourceFactory {
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, int limit, int offset, boolean hasSgCol) {
+      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
     return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol);
   }
 

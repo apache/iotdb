@@ -486,6 +486,9 @@ public class IoTDBConfig {
 
   private boolean enableCompactionValidation = true;
 
+  /** The size of candidate compaction task queue. */
+  private int candidateCompactionTaskQueueSize = 50;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -985,8 +988,8 @@ public class IoTDBConfig {
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
 
-  private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
-  private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long dataRatisConsensusLogAppenderBufferSizeMax = 16 * 1024 * 1024L;
+  private long schemaRatisConsensusLogAppenderBufferSizeMax = 16 * 1024 * 1024L;
 
   private long dataRatisConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRatisConsensusSnapshotTriggerThreshold = 400000L;
@@ -3584,6 +3587,14 @@ public class IoTDBConfig {
 
   public void setEnableCompactionValidation(boolean enableCompactionValidation) {
     this.enableCompactionValidation = enableCompactionValidation;
+  }
+
+  public int getCandidateCompactionTaskQueueSize() {
+    return candidateCompactionTaskQueueSize;
+  }
+
+  public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
+    this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
   public boolean isEnableAuditLog() {

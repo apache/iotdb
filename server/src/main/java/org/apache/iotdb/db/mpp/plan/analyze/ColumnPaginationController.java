@@ -27,10 +27,10 @@ public class ColumnPaginationController {
 
   private final boolean hasLimit;
 
-  private int curLimit;
-  private int curOffset;
+  private long curLimit;
+  private long curOffset;
 
-  public ColumnPaginationController(int seriesLimit, int seriesOffset, boolean isDisabled) {
+  public ColumnPaginationController(long seriesLimit, long seriesOffset, boolean isDisabled) {
     this.isDisabled = isDisabled;
 
     // for series limit, the default value is 0, which means no limit
