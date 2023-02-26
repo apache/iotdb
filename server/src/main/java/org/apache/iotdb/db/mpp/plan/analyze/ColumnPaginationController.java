@@ -34,7 +34,7 @@ public class ColumnPaginationController {
     this.isDisabled = isDisabled;
 
     // for series limit, the default value is 0, which means no limit
-    this.hasLimit = seriesLimit == 0;
+    this.hasLimit = seriesLimit > 0;
     this.curLimit = seriesLimit;
 
     // series offset for result set. The default value is 0
