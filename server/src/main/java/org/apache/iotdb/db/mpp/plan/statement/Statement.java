@@ -55,7 +55,7 @@ public abstract class Statement extends StatementNode {
   }
 
   public boolean isQuery() {
-    return statementType == StatementType.QUERY;
+    return false;
   }
 
   public boolean isAuthenticationRequired() {
