@@ -142,8 +142,7 @@ class RatisConsensus implements IConsensus {
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
 
-    this.ratisMetricSet = new RatisMetricSet();
-    ratisMetricSet.setConsensusGroupType(config.getConsensusGroupType());
+    this.ratisMetricSet = new RatisMetricSet(config.getConsensusGroupType());
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()

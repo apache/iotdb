@@ -26,7 +26,12 @@ import org.apache.ratis.metrics.MetricRegistries;
 
 public class RatisMetricSet implements IMetricSet {
   private MetricRegistries manager;
-  private String consensusGroupType;
+  private final String consensusGroupType;
+
+  public RatisMetricSet(TConsensusGroupType consensusGroupType) {
+    super();
+    this.consensusGroupType = consensusGroupType.toString();
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -39,15 +44,5 @@ public class RatisMetricSet implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     manager.clear();
-  }
-
-  public void setConsensusGroupType(TConsensusGroupType consensusGroupType) {
-    if (consensusGroupType == TConsensusGroupType.ConfigNodeRegion) {
-      this.consensusGroupType = "confignode";
-    } else if (consensusGroupType == TConsensusGroupType.DataRegion) {
-      this.consensusGroupType = "data_region";
-    } else {
-      this.consensusGroupType = "schema_region";
-    }
   }
 }
