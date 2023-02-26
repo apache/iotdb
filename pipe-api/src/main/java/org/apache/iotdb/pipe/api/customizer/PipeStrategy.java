@@ -17,28 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.customizer;
 
-import java.util.List;
+import org.apache.iotdb.pipe.api.exception.PipeStrategyNotValidException;
 
-/**
- * TsFileInsertionEvent is used to define the event of writing TsFile. Event data stores in disks,
- * which is compressed and encoded, and requires IO cost for computational processing.
- */
-public interface TsFileInsertionEvent extends Event {
+public interface PipeStrategy {
 
   /**
-   * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
-   *
-   * @return the list of TsFileInsertionEvent
+   * @throws PipeStrategyNotValidException if invalid strategy is set
    */
-  List<TabletInsertionEvent> toTabletInsertionEvents();
-
-  /**
-   * The method is used to compact several TabletInsertionEvents into one TsFileInsertionEvent , in
-   * order to store data in TsFile format.
-   *
-   * @return TsFileInsertionEvent
-   */
-  TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
+  void check() throws PipeStrategyNotValidException;
 }

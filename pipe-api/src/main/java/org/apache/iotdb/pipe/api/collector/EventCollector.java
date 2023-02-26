@@ -20,9 +20,9 @@
 package org.apache.iotdb.pipe.api.collector;
 
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.event.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 
 import java.io.IOException;
 
@@ -34,29 +34,29 @@ import java.io.IOException;
 public interface EventCollector {
 
   /**
-   * Collect an insertion event of Tablet.
+   * Collects an insertion event in form of TabletInsertionEvent.
    *
-   * @param event TabletInsertionEvent value to collect
+   * @param event TabletInsertionEvent to be collected
    * @throws IOException if any I/O errors occur
    * @see TabletInsertionEvent
    */
-  void putTabletInsertionEvent(TabletInsertionEvent event) throws IOException;
+  void collectTabletInsertionEvent(TabletInsertionEvent event) throws IOException;
 
   /**
-   * Collect an insertion event of TsFile.
+   * Collects an insertion event in form of TsFileInsertionEvent.
    *
-   * @param event TsFileInsertionEvent value to collect
+   * @param event TsFileInsertionEvent to be collected
    * @throws IOException if any I/O errors occur
    * @see TsFileInsertionEvent
    */
-  void putTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException;
+  void collectTsFileInsertionEvent(TsFileInsertionEvent event) throws IOException;
 
   /**
-   * Collect a deletion event.
+   * Collects a deletion event.
    *
-   * @param event DeletionEvent value to collect
+   * @param event DeletionEvent to be collected
    * @throws IOException if any I/O errors occur
    * @see DeletionEvent
    */
-  void putDeletionEvent(DeletionEvent event) throws IOException;
+  void collectDeletionEvent(DeletionEvent event) throws IOException;
 }

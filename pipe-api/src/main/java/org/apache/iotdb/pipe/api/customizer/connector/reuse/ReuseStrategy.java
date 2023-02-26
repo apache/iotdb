@@ -17,7 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.customizer.connector.reuse;
 
-/** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
+
+public interface ReuseStrategy extends PipeStrategy {}

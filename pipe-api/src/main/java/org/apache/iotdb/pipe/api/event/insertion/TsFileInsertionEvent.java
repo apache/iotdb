@@ -17,37 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.strategy;
+package org.apache.iotdb.pipe.api.event.insertion;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * Used to customize the strategy for retrying to connect servers in {@link
- * PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
+ * TsFileInsertionEvent is used to define the event of writing TsFile. Event data stores in disks,
+ * which is compressed and encoded, and requires IO cost for computational processing.
  */
-public interface RetryStrategy {
-  enum RetryStrategyType {
-
-    /** @see SimpleRetryStrategy */
-    SIMPLE,
-
-    /** @see ExponentialBackOffStrategy */
-    EXPONENTIAL_BACK_OFF
-  }
+public interface TsFileInsertionEvent extends Event {
 
   /**
-   * Used by the system to check the retry strategy.
+   * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
    *
-   * @throws RuntimeException if invalid strategy is set
+   * @return the list of TsFileInsertionEvent
    */
-  void check();
+  Iterable<TabletInsertionEvent> toTabletInsertionEvents();
 
   /**
-   * Returns the actual retry strategy type.
+   * The method is used to compact several TabletInsertionEvents into one TsFileInsertionEvent. The
+   * underlying data in TabletInsertionEvents will be stored into a TsFile.
    *
-   * @return the actual retry strategy type
+   * @return TsFileInsertionEvent
    */
-  RetryStrategyType getRetryStrategyType();
+  TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
 }

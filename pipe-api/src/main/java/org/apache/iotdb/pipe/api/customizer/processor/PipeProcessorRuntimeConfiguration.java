@@ -17,7 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.customizer.processor;
 
-/** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+/**
+ * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
+ * customize the runtime behavior of the PipeProcessor.
+ */
+public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
+
+  @Override
+  public void check() throws PipeException {}
+}

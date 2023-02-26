@@ -17,7 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
-/** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+
+/**
+ * Used to customize the strategy for reconnecting to sinks in {@link
+ * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ *
+ * <p>When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
+ * strategy.
+ */
+public interface RetryStrategy extends PipeStrategy {}

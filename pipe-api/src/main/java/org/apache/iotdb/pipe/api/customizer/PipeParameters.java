@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.paramater;
+package org.apache.iotdb.pipe.api.customizer;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.config.ProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
 
 import java.util.Map;
 
 /**
- * Used in {@link PipeProcessor#beforeStart(PipeParameters, ProcessorRuntimeConfiguration)} and
- * {@link PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
+ * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} and
+ * {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
  *
  * <p>This class is used to parse the parameters in WITH PROCESSOR and WITH CONNECTOR when creating
  * a pipe.

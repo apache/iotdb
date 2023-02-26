@@ -17,39 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.event.insertion;
 
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-/**
- * TabletInsertionEvent is used to define the event of writing data. Event data stores in memory,
- * which is not compressed or encoded, and can be processed directly for computation.
- */
+/** TabletInsertionEvent is used to define the event of data insertion. */
 public interface TabletInsertionEvent extends Event {
 
   /**
-   * The consumer consumes the Tablet by rows, and collects the data by RowCollector.
+   * The consumer processes the data row by row and collects the results by RowCollector.
    *
-   * @return TabletInsertionEvent
+   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
+   *     RowCollector
    */
   TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
   /**
-   * The method provides Iterator to access data, and collects the data by RowCollector..
+   * The consumer processes the data by the Iterator and collects the results by RowCollector.
    *
-   * @return TabletInsertionEvent
+   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
+   *     RowCollector
    */
   TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer);
 
   /**
-   * The consumer consumes the Tablet directly, and collects the data by RowCollector.
+   * The consumer processes the Tablet directly and collects the results by RowCollector.
    *
-   * @return TabletInsertionEvent
+   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
+   *     RowCollector
    */
-  TabletInsertionEvent process(BiConsumer<Tablet, RowCollector> consumer);
+  TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer);
 }

@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.pipe.api.access;
 
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.type.Type;
+import org.apache.iotdb.tsfile.read.common.Path;
+
 import java.io.IOException;
+import java.util.List;
 
 public interface RowIterator {
 
@@ -44,4 +49,27 @@ public interface RowIterator {
 
   /** Resets the iteration. */
   void reset();
+
+  /**
+   * Returns the actual column index of the given column name.
+   *
+   * @param columnName the column name in Path form
+   * @throws PipeParameterNotValidException if the given column name is not existed
+   * @return the actual column index of the given column name
+   */
+  int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
+
+  /**
+   * Returns the column names
+   *
+   * @return the column names
+   */
+  List<Path> getColumnNames();
+
+  /**
+   * Returns the column data types
+   *
+   * @return the column data types
+   */
+  List<Type> getColumnTypes();
 }

@@ -17,24 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+public class PipeStrategyNotValidException extends PipeException {
 
-/** DeletionEvent is used to define the event of deleting data. */
-public interface DeletionEvent extends Event {
-
-  /**
-   * The method is used to get the path of the deleted data.
-   *
-   * @return String
-   */
-  String getPath();
-
-  /**
-   * The method is used to get the time range of the deleted data.
-   *
-   * @return TimeRange
-   */
-  TimeRange getTimeRange();
+  public PipeStrategyNotValidException(String message) {
+    super(message);
+  }
 }

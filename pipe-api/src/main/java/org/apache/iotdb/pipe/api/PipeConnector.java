@@ -19,48 +19,59 @@
 
 package org.apache.iotdb.pipe.api;
 
-import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeValidator;
-import org.apache.iotdb.pipe.api.event.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 
 /**
  * PipeConnector
  *
- * <p>PipeConnector as the network layer, supports access to multiple transport protocols such as
- * ThriftRPC, HTTP, TCP, etc. for transferring data.
+ * <p>PipeConnector is responsible for sending events to sinks.
+ *
+ * <p>Various network protocols can be supported by implementing different PipeConnector classes.
  *
  * <p>The lifecycle of a PipeConnector is as follows:
  *
  * <ul>
- *   <li>Before the collaboration task starts, the KV pair of `WITH CONNECTOR` clause in SQL is
- *       parsed and the validate method {@link PipeConnector#validate(PipeValidator)}is called to
- *       validate the parameters.
- *   <li>When the collaboration task starts, load and initialize the PipeConnector instance, and
- *       then call the beforeStart method {@link PipeConnector#beforeStart(PipeParameters,
- *       ConnectorRuntimeConfiguration)}
- *   <li>while the collaboration task is in progress
+ *   <li>When a collaboration task is created, the KV pairs of `WITH CONNECTOR` clause in SQL are
+ *       parsed and the validation method {@link PipeConnector#validate(PipeParameterValidator)}
+ *       will be called to validate the parameters.
+ *   <li>Before the collaboration task starts, the method {@link
+ *       PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)} will be called
+ *       to config the runtime behavior of the PipeConnector and the method {@link
+ *       PipeConnector#handshake()} will be called to create a connection with sink.
+ *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>PipeConnector calls the handshake method to establish connections between servers
- *         <li>PipeConnector calls the transfer method to transfer data
- *         <li>PipeConnector provides heartbeat detection method
+ *         <li>PipeCollector captures the events and wraps them into three types of Event instances.
+ *         <li>PipeProcessor processes the event them pass them to the PipeConnector.
+ *         <li>PipeConnector serializes the events into binaries and send them to sinks. The
+ *             following 3 methods will be called: {@link
+ *             PipeConnector#transfer(TabletInsertionEvent)}, {@link
+ *             PipeConnector#transfer(TsFileInsertionEvent)} and {@link
+ *             PipeConnector#transfer(DeletionEvent)}.
  *       </ul>
- *   <li>When the collaboration task is stopped, the PipeConnector stops transferring data.
- *   <li>When the collaboration task is cancelled, the PipeConnector calls the autoClose method.
+ *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
+ *       PipeConnector#close() } method will be called.
  * </ul>
+ *
+ * <p>In addition, the method {@link PipeConnector#heartbeat()} will be called periodically to check
+ * whether the connection with sink is still alive. The method {@link PipeConnector#handshake()}
+ * will be called to create a new connection with the sink when the method {@link
+ * PipeConnector#heartbeat()} throws exceptions.
  */
 public interface PipeConnector extends AutoCloseable {
 
   /**
    * This method is mainly used to validate {@link PipeParameters} and it is executed before {@link
-   * PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)} is called.
+   * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)} is called.
    *
    * @param validator the validator used to validate {@link PipeParameters}
    * @throws Exception if any parameter is not valid
    */
-  void validate(PipeValidator validator) throws Exception;
+  void validate(PipeParameterValidator validator) throws Exception;
 
   /**
    * This method is mainly used to customize PipeConnector. In this method, the user can do the
@@ -68,55 +79,57 @@ public interface PipeConnector extends AutoCloseable {
    *
    * <ul>
    *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in ConnectorRuntimeConfiguration.
+   *   <li>Set the running configurations in PipeConnectorRuntimeConfiguration.
    * </ul>
    *
-   * <p>This method is called after the PipeConnector is instantiated and before the beginning of
-   * the server connection.
+   * <p>This method is called after the method {@link
+   * PipeConnector#validate(PipeParameterValidator)} is called and before the method {@link
+   * PipeConnector#handshake()} is called.
    *
    * @param params used to parse the input parameters entered by the user
    * @param config used to set the required properties of the running PipeConnector
    * @throws Exception the user can throw errors if necessary
    */
-  void beforeStart(PipeParameters params, ConnectorRuntimeConfiguration config) throws Exception;
+  void customize(PipeParameters params, PipeConnectorRuntimeConfiguration config) throws Exception;
 
   /**
-   * PipeConnector use PipeParameters which set in the method {@link
-   * PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)} to establish the
-   * handshake connection between servers.
+   * This method is used to create a connection with sink. This method will be called after the
+   * method {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)} is
+   * called or will be called when the method {@link PipeConnector#heartbeat()} throws exceptions.
    *
-   * @throws Exception the user can throw errors if necessary
+   * @throws Exception if the connection is failed to be created
    */
   void handshake() throws Exception;
 
   /**
-   * This method is used to check whether the PipeConnector is connected to the servers.
+   * This method will be called periodically to check whether the connection with sink is still
+   * alive.
    *
-   * @throws Exception the user can throw errors if necessary
+   * @throws Exception if the connection dies
    */
   void heartbeat() throws Exception;
 
   /**
    * This method is used to transfer the TabletInsertionEvent.
    *
-   * @param te the insertion event of Tablet
+   * @param tabletInsertionEvent TabletInsertionEvent to be transferred
    * @throws Exception the user can throw errors if necessary
    */
-  default void transfer(TabletInsertionEvent te) throws Exception {}
+  void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception;
 
   /**
    * This method is used to transfer the TsFileInsertionEvent.
    *
-   * @param te the insertion event of TsFile
+   * @param tsFileInsertionEvent TsFileInsertionEvent to be transferred
    * @throws Exception the user can throw errors if necessary
    */
-  default void transfer(TsFileInsertionEvent te) throws Exception {}
+  void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception;
 
   /**
    * This method is used to transfer the DeletionEvent.
    *
-   * @param de the insertion event of Deletion
+   * @param deletionEvent DeletionEvent to be transferred
    * @throws Exception the user can throw errors if necessary
    */
-  default void transfer(DeletionEvent de) throws Exception {}
+  void transfer(DeletionEvent deletionEvent) throws Exception;
 }

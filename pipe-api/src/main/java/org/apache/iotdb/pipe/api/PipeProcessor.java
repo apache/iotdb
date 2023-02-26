@@ -20,12 +20,12 @@
 package org.apache.iotdb.pipe.api;
 
 import org.apache.iotdb.pipe.api.collector.EventCollector;
-import org.apache.iotdb.pipe.api.customizer.config.ProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeValidator;
-import org.apache.iotdb.pipe.api.event.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
 
 /**
  * PipeProcessor
@@ -35,33 +35,35 @@ import org.apache.iotdb.pipe.api.event.TsFileInsertionEvent;
  * <p>The lifecycle of a PipeProcessor is as follows:
  *
  * <ul>
- *   <li>Before the collaboration task starts, the KV pair of `WITH PROCESSOR` clause in SQL is
- *       parsed and the validate method {@link PipeProcessor#validate(PipeValidator)}is called to
- *       validate the parameters.
- *   <li>When the collaboration task starts, load and initialize the PipeProcessor instance, and
- *       then call the beforeStart method {@link PipeProcessor#beforeStart(PipeParameters,
- *       ProcessorRuntimeConfiguration)}
- *   <li>while the collaboration task is in progress
+ *   <li>When a collaboration task is created, the KV pairs of `WITH PROCESSOR` clause in SQL are
+ *       parsed and the validation method {@link PipeProcessor#validate(PipeParameterValidator)}
+ *       will be called to validate the parameters.
+ *   <li>Before the collaboration task starts, the method {@link
+ *       PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} will be called
+ *       to config the runtime behavior of the PipeProcessor.
+ *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>PipeCollector capture the writes and deletes events and generates three types of
- *             Event
- *         <li>the Event is delivered to the corresponding process method in PipeProcessor
- *         <li>the Event is delivered to the PipeConnector after processing is completed
+ *         <li>PipeCollector captures the events and wraps them into three types of Event instances.
+ *         <li>PipeProcessor processes the event them pass them to the PipeConnector. The following
+ *             3 methods will be called: {@link PipeProcessor#process(TabletInsertionEvent,
+ *             EventCollector)}, {@link PipeProcessor#process(TsFileInsertionEvent, EventCollector)}
+ *             and {@link PipeProcessor#process(DeletionEvent, EventCollector)}.
+ *         <li>PipeConnector serializes the events into binaries and send them to sinks.
  *       </ul>
- *   <li>When the collaboration task is cancelled(When `DROP PIPE` is executed), the PipeProcessor
- *       calls the autoClose method.
+ *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
+ *       PipeProcessor#close() } method will be called.
  * </ul>
  */
 public interface PipeProcessor extends AutoCloseable {
 
   /**
    * This method is mainly used to validate {@link PipeParameters} and it is executed before {@link
-   * PipeProcessor#beforeStart(PipeParameters, ProcessorRuntimeConfiguration)} is called.
+   * PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} is called.
    *
    * @param validator the validator used to validate {@link PipeParameters}
    * @throws Exception if any parameter is not valid
    */
-  void validate(PipeValidator validator) throws Exception;
+  void validate(PipeParameterValidator validator) throws Exception;
 
   /**
    * This method is mainly used to customize PipeProcessor. In this method, the user can do the
@@ -69,42 +71,46 @@ public interface PipeProcessor extends AutoCloseable {
    *
    * <ul>
    *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in ProcessorRuntimeConfiguration.
+   *   <li>Set the running configurations in PipeProcessorRuntimeConfiguration.
    * </ul>
    *
-   * <p>This method is called after the PipeProcessor is instantiated and before the beginning of
-   * the data processing.
+   * <p>This method is called after the method {@link
+   * PipeProcessor#validate(PipeParameterValidator)} is called and before the beginning of the
+   * events processing.
    *
-   * @param params used to parse the input parameters entered by the user
-   * @param configs used to set the required properties of the running PipeProcessor
+   * @param parameters used to parse the input parameters entered by the user
+   * @param configuration used to set the required properties of the running PipeProcessor
    * @throws Exception the user can throw errors if necessary
    */
-  void beforeStart(PipeParameters params, ProcessorRuntimeConfiguration configs) throws Exception;
+  void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+      throws Exception;
 
   /**
    * This method is called to process the TabletInsertionEvent.
    *
-   * @param te the insertion event of Tablet
-   * @param ec used to collect output data events
+   * @param tabletInsertionEvent TabletInsertionEvent to be processed
+   * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
-  void process(TabletInsertionEvent te, EventCollector ec) throws Exception;
+  void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+      throws Exception;
 
   /**
    * This method is called to process the TsFileInsertionEvent.
    *
-   * @param te the insertion event of TsFile
-   * @param ec used to collect output data events
+   * @param tsFileInsertionEvent TsFileInsertionEvent to be processed
+   * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
-  void process(TsFileInsertionEvent te, EventCollector ec) throws Exception;
+  void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws Exception;
 
   /**
    * This method is called to process the DeletionEvent.
    *
-   * @param de the event of Deletion
-   * @param ec used to collect output data events
+   * @param deletionEvent DeletionEvent to be processed
+   * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
-  void process(DeletionEvent de, EventCollector ec) throws Exception;
+  void process(DeletionEvent deletionEvent, EventCollector eventCollector) throws Exception;
 }

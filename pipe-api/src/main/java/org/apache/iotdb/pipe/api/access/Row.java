@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.pipe.api.access;
 
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface Row {
 
@@ -36,7 +39,7 @@ public interface Row {
   /**
    * Returns the int value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT32}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.INT32}.
    *
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
@@ -46,7 +49,7 @@ public interface Row {
   /**
    * Returns the long value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.INT64}.
    *
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
@@ -56,7 +59,7 @@ public interface Row {
   /**
    * Returns the float value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.FLOAT}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.FLOAT}.
    *
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
@@ -66,8 +69,7 @@ public interface Row {
   /**
    * Returns the double value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code
-   * TSDataType.DOUBLE}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.DOUBLE}.
    *
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
@@ -77,8 +79,7 @@ public interface Row {
   /**
    * Returns the boolean value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code
-   * TSDataType.BOOLEAN}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.BOOLEAN}.
    *
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
@@ -88,7 +89,7 @@ public interface Row {
   /**
    * Returns the Binary value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.TEXT}.
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
@@ -98,7 +99,7 @@ public interface Row {
   /**
    * Returns the String value at the specified column in this row.
    *
-   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   * <p>Users need to ensure that the data type of the specified column is {@code Type.TEXT}.
    *
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
@@ -127,4 +128,27 @@ public interface Row {
    * @return the number of columns
    */
   int size();
+
+  /**
+   * Returns the actual column index of the given column name.
+   *
+   * @param columnName the column name in Path form
+   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
+   * @return the actual column index of the given column name
+   */
+  int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
+
+  /**
+   * Returns the column names in the Row
+   *
+   * @return the column names in the Row
+   */
+  List<Path> getColumnNames();
+
+  /**
+   * Returns the column data types in the Row
+   *
+   * @return the column data types in the Row
+   */
+  List<Type> getColumnTypes();
 }

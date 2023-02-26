@@ -17,16 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.config;
+package org.apache.iotdb.pipe.api.customizer.connector.parallel;
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
 
-/**
- * Used in {@link PipeProcessor#beforeStart(PipeParameters, ProcessorRuntimeConfiguration)}.
- *
- * <p>Supports calling methods in a chain.
- *
- * <p>
- */
-public class ProcessorRuntimeConfiguration {}
+public interface ParallelStrategy extends PipeStrategy {}

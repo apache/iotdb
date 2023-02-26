@@ -17,30 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.strategy;
+package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 
 /**
- * Used in {@link PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
- * <p>
- * When the PipeConnector fails to connect to the server, it will retry to connect to the server by the specified strategy.
- * <p>
- *   when PipeConnector is set to the ExponentialBackOffStrategy, the interval of waiting for retrying to connect increases exponentially.
- * Sample code:
- * <pre>{@code
- * @Override
- * public void beforeStart(PipeParameters params, ConnectorRuntimeConfiguration configurations) {
- *   configurations
- *       .setRetryStrategy(new ExponentialBackOffStrategy());
- * }</pre>
+ * Used in {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ * When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
+ * strategy.
+ *
+ * <p>When PipeConnector is set to {@link ExponentialRetryIntervalStrategy}, the interval of waiting
+ * time for retrying will be increased exponentially each time.
  *
  * @see PipeConnector
- * @see ConnectorRuntimeConfiguration
+ * @see PipeConnectorRuntimeConfiguration
  */
-public class ExponentialBackOffStrategy implements RetryStrategy {
+public class ExponentialRetryIntervalStrategy implements RetryStrategy {
 
   private final int maxRetryTimes;
   private final long initInterval;
@@ -51,7 +45,8 @@ public class ExponentialBackOffStrategy implements RetryStrategy {
    * @param initInterval retryInterval > 0
    * @param backOffFactor backOffFactor > 0
    */
-  public ExponentialBackOffStrategy(int maxRetryTimes, long initInterval, double backOffFactor) {
+  public ExponentialRetryIntervalStrategy(
+      int maxRetryTimes, long initInterval, double backOffFactor) {
     this.maxRetryTimes = maxRetryTimes;
     this.initInterval = initInterval;
     this.backOffFactor = backOffFactor;
@@ -69,12 +64,7 @@ public class ExponentialBackOffStrategy implements RetryStrategy {
     }
     if (backOffFactor <= 0) {
       throw new RuntimeException(
-          String.format("Parameter backOffFactor(%d) should be greater than zero.", backOffFactor));
+          String.format("Parameter backOffFactor(%f) should be greater than zero.", backOffFactor));
     }
-  }
-
-  @Override
-  public RetryStrategyType getRetryStrategyType() {
-    return RetryStrategyType.EXPONENTIAL_BACK_OFF;
   }
 }

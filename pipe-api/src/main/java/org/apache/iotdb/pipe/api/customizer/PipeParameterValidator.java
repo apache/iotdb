@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.paramater;
+package org.apache.iotdb.pipe.api.customizer;
 
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
-public class PipeValidator {
+public class PipeParameterValidator {
 
   private final PipeParameters parameters;
 
-  public PipeValidator(PipeParameters parameters) {
+  public PipeParameterValidator(PipeParameters parameters) {
     this.parameters = parameters;
   }
 
@@ -41,7 +41,7 @@ public class PipeValidator {
    * @param key key of the attribute
    * @throws PipeAttributeNotProvidedException if the attribute is not provided
    */
-  public PipeValidator validateRequiredAttribute(String key)
+  public PipeParameterValidator validateRequiredAttribute(String key)
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       throw new PipeAttributeNotProvidedException(key);
@@ -57,8 +57,8 @@ public class PipeValidator {
    * @param argument the given argument
    * @throws PipeParameterNotValidException if the given argument is not valid
    */
-  public PipeValidator validate(
-      PipeValidator.SingleObjectValidationRule validationRule,
+  public PipeParameterValidator validate(
+      PipeParameterValidator.SingleObjectValidationRule validationRule,
       String messageToThrow,
       Object argument)
       throws PipeParameterNotValidException {
@@ -81,8 +81,8 @@ public class PipeValidator {
    * @param arguments the given arguments
    * @throws PipeParameterNotValidException if the given arguments are not valid
    */
-  public PipeValidator validate(
-      PipeValidator.MultipleObjectsValidationRule validationRule,
+  public PipeParameterValidator validate(
+      PipeParameterValidator.MultipleObjectsValidationRule validationRule,
       String messageToThrow,
       Object... arguments)
       throws PipeParameterNotValidException {

@@ -17,7 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.event.deletion;
 
-/** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+
+/** DeletionEvent is used to define the event of deletion. */
+public interface DeletionEvent extends Event {
+
+  /**
+   * The method is used to get the path pattern of the deleted data.
+   *
+   * @return String
+   */
+  Path getPath();
+
+  /**
+   * The method is used to get the time range of the deleted data.
+   *
+   * @return TimeRange
+   */
+  TimeRange getTimeRange();
+}

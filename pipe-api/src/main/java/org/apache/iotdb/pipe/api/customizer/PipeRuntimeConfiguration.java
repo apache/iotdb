@@ -17,7 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.event;
+package org.apache.iotdb.pipe.api.customizer;
 
-/** This interface is used to abstract events in collaboration tasks. */
-public interface Event {}
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+public interface PipeRuntimeConfiguration {
+
+  /**
+   * @throws PipeException if invalid runtime configuration is set
+   */
+  void check() throws PipeException;
+}

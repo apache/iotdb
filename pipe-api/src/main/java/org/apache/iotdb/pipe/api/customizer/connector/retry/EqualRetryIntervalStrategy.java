@@ -17,31 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.strategy;
+package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.config.ConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.paramater.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeStrategyNotValidException;
 
 /**
- * Used in {@link PipeConnector#beforeStart(PipeParameters, ConnectorRuntimeConfiguration)}.
- * <p>
- * When the PipeConnector fails to connect to the server, it will retry to connect to the server by the specified strategy.
- * <p>
- *   The default strategy is {@link SimpleRetryStrategy}. PipeConnector will retry to connect to the server every fixed interval.
- * <p>
- * Sample code:
- * <pre>{@code
- * @Override
- * public void beforeStart(PipeParameters params, ConnectorRuntimeConfiguration configurations) {
- *   configurations
- *       .setRetryStrategy(new SimpleRetryStrategy());
- * }</pre>
+ * Used in {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ * When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
+ * strategy.
+ *
+ * <p>When PipeConnector is set to {@link EqualRetryIntervalStrategy}, the interval of waiting time
+ * for retrying will be the same.
  *
  * @see PipeConnector
- * @see ConnectorRuntimeConfiguration
+ * @see PipeConnectorRuntimeConfiguration
  */
-public class SimpleRetryStrategy implements RetryStrategy {
+public class EqualRetryIntervalStrategy implements RetryStrategy {
 
   private final int maxRetryTimes;
   private final long retryInterval;
@@ -50,7 +44,7 @@ public class SimpleRetryStrategy implements RetryStrategy {
    * @param maxRetryTimes maxRetryTimes > 0
    * @param retryInterval retryInterval > 0
    */
-  public SimpleRetryStrategy(int maxRetryTimes, long retryInterval) {
+  public EqualRetryIntervalStrategy(int maxRetryTimes, long retryInterval) {
     this.maxRetryTimes = maxRetryTimes;
     this.retryInterval = retryInterval;
   }
@@ -58,17 +52,12 @@ public class SimpleRetryStrategy implements RetryStrategy {
   @Override
   public void check() {
     if (maxRetryTimes <= 0) {
-      throw new RuntimeException(
+      throw new PipeStrategyNotValidException(
           String.format("Parameter maxRetryTimes(%d) should be greater than zero.", maxRetryTimes));
     }
     if (retryInterval <= 0) {
-      throw new RuntimeException(
+      throw new PipeStrategyNotValidException(
           String.format("Parameter retryInterval(%d) should be greater than zero.", retryInterval));
     }
-  }
-
-  @Override
-  public RetryStrategyType getRetryStrategyType() {
-    return RetryStrategyType.SIMPLE;
   }
 }
