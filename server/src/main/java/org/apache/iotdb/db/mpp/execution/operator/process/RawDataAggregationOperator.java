@@ -105,7 +105,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         if (windowManager.notInitedLastTimeWindow()) {
           initWindowAndAggregators();
         }
-        break;
+        // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()
+        // but if it's skipping the last window, just break and keep skipping.
+        if (needSkip || windowManager.isCurWindowInit()) break;
+        return false;
       }
     }
 

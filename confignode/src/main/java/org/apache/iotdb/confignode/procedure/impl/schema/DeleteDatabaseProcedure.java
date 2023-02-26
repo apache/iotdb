@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -53,19 +54,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-public class DeleteStorageGroupProcedure
+public class DeleteDatabaseProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
-  private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DeleteDatabaseProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
   private TDatabaseSchema deleteSgSchema;
 
-  public DeleteStorageGroupProcedure() {
+  public DeleteDatabaseProcedure() {
     super();
   }
 
-  public DeleteStorageGroupProcedure(TDatabaseSchema deleteSgSchema) {
+  public DeleteDatabaseProcedure(TDatabaseSchema deleteSgSchema) {
     super();
     this.deleteSgSchema = deleteSgSchema;
   }
@@ -145,8 +147,11 @@ public class DeleteStorageGroupProcedure
             env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
           }
 
-          // Delete StorageGroupPartitionTable
+          // Delete DatabasePartitionTable
           TSStatus deleteConfigResult = env.deleteConfig(deleteSgSchema.getName());
+
+          // Delete Database metrics
+          PartitionMetrics.unbindDatabasePartitionMetrics(deleteSgSchema.getName());
 
           // try sync delete schema region
           AsyncClientHandler<TConsensusGroupId, TSStatus> asyncClientHandler =
@@ -267,12 +272,17 @@ public class DeleteStorageGroupProcedure
 
   @Override
   public boolean equals(Object that) {
-    if (that instanceof DeleteStorageGroupProcedure) {
-      DeleteStorageGroupProcedure thatProc = (DeleteStorageGroupProcedure) that;
+    if (that instanceof DeleteDatabaseProcedure) {
+      DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
           && thatProc.deleteSgSchema.equals(this.getDeleteSgSchema());
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deleteSgSchema);
   }
 }

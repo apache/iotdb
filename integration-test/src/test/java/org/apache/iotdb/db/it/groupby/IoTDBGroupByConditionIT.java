@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBGroupBySeriesIT {
+public class IoTDBGroupByConditionIT {
   // the data can be viewed in
   // https://docs.google.com/spreadsheets/d/1vsSmb41pdmK-BdBR1STwr8olg1Qc8baKVEWnfJB4mAg/edit#gid=0
   private static final String[] SQLs =
@@ -125,6 +125,7 @@ public class IoTDBGroupBySeriesIT {
         .setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
+    prepareData(SQLs2);
   }
 
   @AfterClass
@@ -140,7 +141,7 @@ public class IoTDBGroupBySeriesIT {
   }
 
   @Test
-  public void groupBySeriesTest1() {
+  public void groupByConditionTest1() {
     String[][] res =
         new String[][] {
           {"1", "2", "1.0", "2", "16.0"},
@@ -150,54 +151,56 @@ public class IoTDBGroupBySeriesIT {
           {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=false)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
     normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=false)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false)";
     normalTest(res, sql2);
   }
 
   @Test
-  public void groupBySeriesTest2() {
+  public void groupByConditionTest2() {
     String[][] res =
         new String[][] {
           {"1", "2", "1.0", "2", "16.0"},
           {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=true)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=true)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
     normalTest(res, sql2);
   }
 
   @Test
-  public void groupBySeriesTest3() {
+  public void groupByConditionTest3() {
     String[][] res =
         new String[][] {
           {"5", "2500000000", "2499999995.0", "9", "100.0"},
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=3,ignoreNull=true)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
-    String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=3,ignoreNull=true)";
-    normalTest(res, sql2);
   }
 
   @Test
-  public void groupBySeriesTest4() {
+  public void groupByConditionTest4() {
     String[][] res =
         new String[][] {
           {"5", "7", "2.0", "3", "36.0"},
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=3,ignoreNull=false)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=3,ignoreNull=false)";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
     normalTest(res, sql2);
+  }
+
+  @Test
+  public void groupByConditionTest5() {
+    String[][] res =
+        new String[][] {
+          {"3", "4", "1.0", "2", "16.0"},
+        };
+    String sql =
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
+    normalTestWithEndTime(res, sql);
   }
 
   private void normalTestWithEndTime(String[][] res, String sql) {
@@ -337,22 +340,22 @@ public class IoTDBGroupBySeriesIT {
   }
 
   @Test
-  public void groupBySeriesTestAlignByDevice() {
+  public void groupByConditionTestAlignByDevice() {
     String[][] res =
         new String[][] {
           {"1", "2", "1.0", "2", "16.0"},
           {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by series(charging_status=1,KEEP>=2,ignoreNull=true) align by device";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoreNull=true) align by device";
     normalTestWithEndTimeAlignByDevice(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by series(charging_status=1,KEEP>=2,ignoreNull=true) align by device";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.** group by condition(charging_status=1,KEEP>=2,ignoreNull=true) align by device";
     normalTestAlignByDevice(res, sql2);
   }
 
   @Test
-  public void groupBySeriesTestWithHaving() {
+  public void groupByConditionTestWithHaving() {
     String[][] res =
         new String[][] {
           {"9", "10", "1.0", "2", "60.0"},
@@ -360,37 +363,29 @@ public class IoTDBGroupBySeriesIT {
           {"2400000000", "2500000000", "100000000.0", "2", "100.0"}
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
     normalTestWithEndTime(res, sql);
     String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by series(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
+        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=false) having last_value(soc)>50";
     normalTest(res, sql2);
   }
 
   @Test
-  public void groupBySeriesFirstValueTest() {
+  public void groupByConditionFirstValueTest() {
     String[][] res = new String[][] {{"5", "7", "18.0"}};
     String sql =
-        "select __endTime,first_value(soc) from root.sg.beijing.car01 group by series(charging_status!=0,KEEP>2,ignoreNull=false)";
+        "select first_value(soc) from root.sg.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,__endTime,first_value(root.sg.beijing.car01.soc)");
+        checkHeader(resultSetMetaData, "Time,first_value(root.sg.beijing.car01.soc)");
         int count = 0;
-        int rowNum = res.length;
-        String device = "root.sg.beijing.car01";
         while (resultSet.next()) {
-          if (count == rowNum) {
-            count = 0;
-            device = "root.sg.beijing.car02";
-          }
           String startTime = resultSet.getString(1);
-          String endTime = resultSet.getString(2);
-          String firstValue = resultSet.getString(3);
+          String firstValue = resultSet.getString(2);
           assertEquals(res[count][0], startTime);
-          assertEquals(res[count][1], endTime);
           assertEquals(res[count][2], firstValue);
           count++;
         }
