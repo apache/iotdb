@@ -206,8 +206,8 @@ public class TagManager {
     PartialPath pathPattern = plan.getPath();
     int curOffset = 0;
     int count = 0;
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
+    long limit = plan.getLimit();
+    long offset = plan.getOffset();
     boolean hasLimit = limit > 0 || offset > 0;
     while (curOffset < offset && allMatchedNodes.hasNext()) {
       IMeasurementMNode node = allMatchedNodes.next();

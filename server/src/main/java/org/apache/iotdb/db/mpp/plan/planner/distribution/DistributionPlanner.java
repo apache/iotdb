@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.optimization.LimitOffsetPushDown;
+import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -40,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import org.apache.commons.lang3.Validate;
 
@@ -57,10 +58,15 @@ public class DistributionPlanner {
   private MPPQueryContext context;
   private LogicalQueryPlan logicalPlan;
 
+  private final List<PlanOptimizer> optimizers;
+
+  private int planFragmentIndex = 0;
+
   public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
     this.analysis = analysis;
     this.logicalPlan = logicalPlan;
     this.context = logicalPlan.getContext();
+    this.optimizers = Collections.singletonList(new LimitOffsetPushDown());
   }
 
   public PlanNode rewriteSource() {
@@ -152,6 +158,15 @@ public class DistributionPlanner {
             || orderByComponent.getSortItemList().get(0).getSortKey().equals(SortKey.DEVICE));
   }
 
+  public PlanNode optimize(PlanNode rootWithExchange) {
+    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
+      for (PlanOptimizer optimizer : optimizers) {
+        rootWithExchange = optimizer.optimize(rootWithExchange, analysis, context);
+      }
+    }
+    return rootWithExchange;
+  }
+
   public SubPlan splitFragment(PlanNode root) {
     FragmentBuilder fragmentBuilder = new FragmentBuilder(context);
     return fragmentBuilder.splitToSubPlan(root);
@@ -160,13 +175,13 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement() instanceof QueryStatement
-        || analysis.getStatement() instanceof ShowQueriesStatement) {
+    if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
     }
-    SubPlan subPlan = splitFragment(rootWithExchange);
+    PlanNode optimizedRootWithExchange = optimize(rootWithExchange);
+    SubPlan subPlan = splitFragment(optimizedRootWithExchange);
     // Mark the root Fragment of root SubPlan as `root`
     subPlan.getPlanFragment().setRoot(true);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);

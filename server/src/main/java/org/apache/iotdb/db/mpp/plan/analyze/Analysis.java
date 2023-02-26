@@ -582,4 +582,8 @@ public class Analysis {
   public void setVirtualSource(boolean virtualSource) {
     isVirtualSource = virtualSource;
   }
+
+  public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
+    return expressionTypes;
+  }
 }
