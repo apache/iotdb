@@ -22,11 +22,14 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.backup.BackupByCopyTask;
 import org.apache.iotdb.db.engine.backup.BackupSystemFileTask;
 import org.apache.iotdb.db.engine.backup.BackupTsFileTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.tools.backup.BackupTool;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 
 public class BackupService implements IService {
   private ExecutorService backupThreadPool;
+  private List<BackupByCopyTask> backupByCopyTaskList = new ArrayList<>();
 
   public static BackupService getINSTANCE() {
     return BackupService.InstanceHolder.INSTANCE;
@@ -68,9 +72,14 @@ public class BackupService implements IService {
     task.backupSystemFile();
   }
 
+  private void submitBackupByCopyTask(BackupByCopyTask task) {
+    task.backupByCopy();
+  }
+
   public void backupFiles(List<TsFileResource> resources, String outputPath)
       throws WriteProcessException {
     File tempFile = new File(outputPath);
+    backupByCopyTaskList.clear();
     try {
       if (!tempFile.createNewFile()) {
         if (tempFile.isFile()) {
@@ -78,7 +87,7 @@ public class BackupService implements IService {
         }
         String[] files = tempFile.list();
         if (files != null && files.length != 0) {
-          throw new WriteProcessException("Can not backup into a non-empty folder.");
+          throw new WriteProcessException("Can not backup to a non-empty folder.");
         }
       } else {
         tempFile.delete();
@@ -86,28 +95,56 @@ public class BackupService implements IService {
     } catch (IOException e) {
       throw new WriteProcessException("Failed to create directory for backup.");
     }
-    for (TsFileResource resource : resources) {
-      submitBackupTsFileTask(new BackupTsFileTask(resource, outputPath));
-    }
-    String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    for (File file : getAllFilesInOneDir(systemDirPath)) {
-      submitBackupSystemFileTask(new BackupSystemFileTask(file, outputPath));
-    }
-  }
 
-  private static List<File> getAllFilesInOneDir(String path) {
-    List<File> sonFiles = new ArrayList<>();
-    File[] sonFileAndDirs = new File(path).listFiles();
-    if (sonFileAndDirs != null) {
-      for (File f : sonFileAndDirs) {
-        if (f.isFile()) {
-          sonFiles.add(f);
+    for (TsFileResource resource : resources) {
+      String tsfileTargetPath = BackupTool.getTsFileTargetPath(resource, outputPath);
+      try {
+        if (BackupTool.createTargetDirAndTryCreateLink(
+            new File(tsfileTargetPath), resource.getTsFile())) {
+          BackupTool.createTargetDirAndTryCreateLink(
+              new File(tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX),
+              new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
+          if (resource.getModFile().exists()) {
+            BackupTool.createTargetDirAndTryCreateLink(
+                new File(tsfileTargetPath + ModificationFile.FILE_SUFFIX),
+                new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+          }
         } else {
-          sonFiles.addAll(getAllFilesInOneDir(f.getAbsolutePath()));
+          backupByCopyTaskList.add(
+              new BackupByCopyTask(resource.getTsFilePath(), tsfileTargetPath));
+          backupByCopyTaskList.add(
+              new BackupByCopyTask(
+                  resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX,
+                  tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
+          if (resource.getModFile().exists()) {
+            backupByCopyTaskList.add(
+                new BackupByCopyTask(
+                    resource.getTsFilePath() + ModificationFile.FILE_SUFFIX,
+                    tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+          }
         }
+      } catch (IOException e) {
+        e.printStackTrace();
+      } finally {
+        resource.readUnlock();
       }
     }
-    return sonFiles;
+
+    String systemDirPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    for (File file : BackupTool.getAllFilesInOneDir(systemDirPath)) {
+      String systemFileTargetPath = BackupTool.getSystemFileTargetPath(file, outputPath);
+      try {
+        if (!BackupTool.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
+          backupByCopyTaskList.add(new BackupByCopyTask(file.getPath(), systemFileTargetPath));
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    for (BackupByCopyTask backupByCopyTask : backupByCopyTaskList) {
+      submitBackupByCopyTask(backupByCopyTask);
+    }
   }
 
   @Override
