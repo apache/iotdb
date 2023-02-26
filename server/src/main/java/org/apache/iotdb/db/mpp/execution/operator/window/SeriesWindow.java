@@ -54,6 +54,7 @@ public class SeriesWindow implements IWindow {
 
   @Override
   public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
+    keep++;
     long currentTime = controlTimeAndValueColumn[1].getLong(index);
     if (!timeInitialized) {
       startTime = currentTime;

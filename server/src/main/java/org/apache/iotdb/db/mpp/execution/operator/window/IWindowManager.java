@@ -150,10 +150,4 @@ public interface IWindowManager {
    * ignoringNull is false, null will be considered as a normal value in window.
    */
   boolean isIgnoringNull();
-
-  // TODO: "group by series" used for keep value temporarily, it will be removed in the future.
-  default void setKeep(long keep) {}
-
-  // TODO: "group by session" used for keeping lastTsBlockTime, it will be removed in the future.
-  default void setLastTsBlockTime() {}
 }

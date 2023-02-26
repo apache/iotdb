@@ -186,9 +186,4 @@ public class SeriesWindowManager implements IWindowManager {
   public boolean isIgnoringNull() {
     return seriesWindow.ignoringNull();
   }
-
-  @Override
-  public void setKeep(long keep) {
-    seriesWindow.setKeep(seriesWindow.getKeep() + keep);
-  }
 }

@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class MaxValueAccumulator implements Accumulator {
 
-  private TSDataType seriesDataType;
-  private TsPrimitiveType maxResult;
+  private final TSDataType seriesDataType;
+  private final TsPrimitiveType maxResult;
   private boolean initResult;
 
   public MaxValueAccumulator(TSDataType seriesDataType) {
@@ -42,16 +42,20 @@ public class MaxValueAccumulator implements Accumulator {
 
   // Column should be like: | ControlColumn | Time | Value |
   @Override
-  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
+  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow, ignoringNull);
+        addIntInput(column, needSkip, lastIndex);
+        return;
       case INT64:
-        return addLongInput(column, curWindow, ignoringNull);
+        addLongInput(column, needSkip, lastIndex);
+        return;
       case FLOAT:
-        return addFloatInput(column, curWindow, ignoringNull);
+        addFloatInput(column, needSkip, lastIndex);
+        return;
       case DOUBLE:
-        return addDoubleInput(column, curWindow, ignoringNull);
+        addDoubleInput(column, needSkip, lastIndex);
+        return;
       case TEXT:
       case BOOLEAN:
       default:
@@ -219,23 +223,16 @@ public class MaxValueAccumulator implements Accumulator {
     return maxResult.getDataType();
   }
 
-  private int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  private void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateIntResult(column[2].getInt(i));
+      if (!column[1].isNull(i)) {
+        updateIntResult(column[1].getInt(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateIntResult(int maxVal) {
@@ -245,23 +242,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  private void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateLongResult(column[2].getLong(i));
+      if (!column[1].isNull(i)) {
+        updateLongResult(column[1].getLong(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateLongResult(long maxVal) {
@@ -271,23 +261,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  private void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateFloatResult(column[2].getFloat(i));
+      if (!column[1].isNull(i)) {
+        updateFloatResult(column[1].getFloat(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateFloatResult(float maxVal) {
@@ -297,23 +280,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
+  private void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+      if (needSkip != null && needSkip.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateDoubleResult(column[2].getDouble(i));
+      if (!column[1].isNull(i)) {
+        updateDoubleResult(column[1].getDouble(i));
       }
     }
-    return curPositionCount;
   }
 
   private void updateDoubleResult(double maxVal) {

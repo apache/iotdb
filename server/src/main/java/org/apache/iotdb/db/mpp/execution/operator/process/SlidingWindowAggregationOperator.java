@@ -129,7 +129,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     }
 
     for (Aggregator aggregator : aggregators) {
-      aggregator.processTsBlock(inputTsBlock, true);
+      aggregator.processTsBlock(inputTsBlock);
     }
 
     inputTsBlock = inputTsBlock.skipFirst();

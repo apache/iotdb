@@ -173,9 +173,4 @@ public class SessionWindowManager implements IWindowManager {
   public boolean isIgnoringNull() {
     return false;
   }
-
-  @Override
-  public void setLastTsBlockTime() {
-    this.sessionWindow.setLastTsBlockTime(this.sessionWindow.getTimeValue());
-  }
 }
