@@ -20,11 +20,11 @@
 package org.apache.iotdb.pipe.api.customizer.connector;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.connector.parallel.ParallelStrategy;
-import org.apache.iotdb.pipe.api.customizer.connector.reuse.ReuseStrategy;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.connector.retry.RetryStrategy;
+import org.apache.iotdb.pipe.api.customizer.connector.reuse.ReuseStrategy;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 /**

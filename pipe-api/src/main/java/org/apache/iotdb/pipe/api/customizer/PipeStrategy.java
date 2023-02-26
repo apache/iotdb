@@ -23,8 +23,6 @@ import org.apache.iotdb.pipe.api.exception.PipeStrategyNotValidException;
 
 public interface PipeStrategy {
 
-  /**
-   * @throws PipeStrategyNotValidException if invalid strategy is set
-   */
+  /** @throws PipeStrategyNotValidException if invalid strategy is set */
   void check() throws PipeStrategyNotValidException;
 }

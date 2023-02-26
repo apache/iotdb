@@ -20,13 +20,13 @@
 package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.exception.PipeStrategyNotValidException;
 
 /**
- * Used in {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
- * When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
+ * Used in {@link PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}. When
+ * the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
  * strategy.
  *
  * <p>When PipeConnector is set to {@link EqualRetryIntervalStrategy}, the interval of waiting time

@@ -20,9 +20,9 @@
 package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
 import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 
 /**
  * Used to customize the strategy for reconnecting to sinks in {@link
