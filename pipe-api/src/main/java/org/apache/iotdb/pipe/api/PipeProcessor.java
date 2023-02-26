@@ -44,10 +44,11 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
  *   <li>While the collaboration task is in progress:
  *       <ul>
  *         <li>PipeCollector captures the events and wraps them into three types of Event instances.
- *         <li>PipeProcessor processes the event them pass them to the PipeConnector. The following
- *             3 methods will be called: {@link PipeProcessor#process(TabletInsertionEvent,
- *             EventCollector)}, {@link PipeProcessor#process(TsFileInsertionEvent, EventCollector)}
- *             and {@link PipeProcessor#process(DeletionEvent, EventCollector)}.
+ *         <li>PipeProcessor processes the event and then passes them to the PipeConnector. The
+ *             following 3 methods will be called: {@link
+ *             PipeProcessor#process(TabletInsertionEvent, EventCollector)}, {@link
+ *             PipeProcessor#process(TsFileInsertionEvent, EventCollector)} and {@link
+ *             PipeProcessor#process(DeletionEvent, EventCollector)}.
  *         <li>PipeConnector serializes the events into binaries and send them to sinks.
  *       </ul>
  *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link

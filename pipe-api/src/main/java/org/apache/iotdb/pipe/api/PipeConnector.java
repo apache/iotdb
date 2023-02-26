@@ -46,7 +46,7 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
  *   <li>While the collaboration task is in progress:
  *       <ul>
  *         <li>PipeCollector captures the events and wraps them into three types of Event instances.
- *         <li>PipeProcessor processes the event them pass them to the PipeConnector.
+ *         <li>PipeProcessor processes the event and then passes them to the PipeConnector.
  *         <li>PipeConnector serializes the events into binaries and send them to sinks. The
  *             following 3 methods will be called: {@link
  *             PipeConnector#transfer(TabletInsertionEvent)}, {@link
@@ -86,11 +86,12 @@ public interface PipeConnector extends AutoCloseable {
    * PipeConnector#validate(PipeParameterValidator)} is called and before the method {@link
    * PipeConnector#handshake()} is called.
    *
-   * @param params used to parse the input parameters entered by the user
-   * @param config used to set the required properties of the running PipeConnector
+   * @param parameters used to parse the input parameters entered by the user
+   * @param configuration used to set the required properties of the running PipeConnector
    * @throws Exception the user can throw errors if necessary
    */
-  void customize(PipeParameters params, PipeConnectorRuntimeConfiguration config) throws Exception;
+  void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+      throws Exception;
 
   /**
    * This method is used to create a connection with sink. This method will be called after the
