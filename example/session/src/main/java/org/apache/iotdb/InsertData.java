@@ -38,9 +38,6 @@ public class InsertData {
   private static final String DEVICE = "root.sg";
 
   private static final long TIME_PARTITION_INTERVAL = 10000 * 200;
-  //  private static final long FILE_NUM = 20;
-  //
-  //  private static final long RECORD_NUM = 100;
 
   private static final long FILE_NUM = 200;
 
@@ -50,11 +47,9 @@ public class InsertData {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
-    // session.executeNonQueryStatement("create database root.template;");
-    // set session fetchSize
+
     session.setFetchSize(10000);
 
-    // createTemplate();
     writeTargetData();
     writeTestData();
   }
