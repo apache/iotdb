@@ -19,7 +19,7 @@
 
 -->
 
-# 聚合函数
+## 聚合函数
 
 聚合函数是多对一函数。它们对一组值进行聚合计算，得到单个聚合结果。
 
@@ -41,9 +41,9 @@ IoTDB 支持的聚合函数如下：
 | MIN_TIME    | 求最小时间戳。                                       | 所有类型                 | 无                                                                                                                                                                                                                    | Timestamp |
 | COUNT_IF    | 求数据点连续满足某一给定条件，且满足条件的数据点个数（用keep表示）满足指定阈值的次数。 | BOOLEAN                  | `[keep >=/>/=/!=/</<=]threshold`：被指定的阈值或阈值条件，若只使用`threshold`则等价于`keep >= threshold`,`threshold`类型为`INT64`<br/> `ignoreNull`：可选，默认为`true`；为`true`表示忽略null值，即如果中间出现null值，直接忽略，不会打断连续性；为`false`表示不忽略null值，即如果中间出现null值，会打断连续性 | INT64     |
 
-## COUNT_IF
+### COUNT_IF
 
-### 语法
+#### 语法
 ```sql
 count_if(predicate, [keep >=/>/=/!=/</<=]threshold[, 'ignoreNull'='true/false'])
 ```
@@ -53,9 +53,9 @@ threshold 及 ignoreNull 用法见上表
 
 >注意: count_if 当前暂不支持与 group by time 的 SlidingWindow 一起使用
 
-### 使用示例
+#### 使用示例
 
-#### 原始数据
+##### 原始数据
 
 ``` 
 +-----------------------------+-------------+-------------+
@@ -74,7 +74,7 @@ threshold 及 ignoreNull 用法见上表
 +-----------------------------+-------------+-------------+
 ```
 
-#### 不使用ignoreNull参数(忽略null)
+##### 不使用ignoreNull参数(忽略null)
 
 SQL:
 ```sql
@@ -90,7 +90,7 @@ select count_if(s1=0 & s2=0, 3), count_if(s1=1 & s2=0, 3) from root.db.d1
 +--------------------------------------------------+--------------------------------------------------
 ```
 
-#### 使用ignoreNull参数
+##### 使用ignoreNull参数
 
 SQL:
 ```sql

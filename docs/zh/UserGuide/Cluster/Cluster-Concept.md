@@ -21,6 +21,7 @@ under the License.
 
 -->
 
+# 分布式
 ## 集群基本概念
 
 Apache IoTDB 集群版包含两种角色的节点，ConfigNode 和 DataNode，分别为不同的进程，可独立部署。

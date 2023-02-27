@@ -19,14 +19,14 @@
 
 -->
 
-# 查询结果分页
+## 查询结果分页
 
 当查询结果集数据量很大，放在一个页面不利于显示，可以使用  `LIMIT/SLIMIT` 子句和 `OFFSET/SOFFSET `子句进行分页控制。
 
 - `LIMIT` 和 `SLIMIT` 子句用于控制查询结果的行数和列数。
 - `OFFSET` 和 `SOFFSET` 子句用于控制结果显示的起始位置。
 
-## 按行分页
+### 按行分页
 
 用户可以通过 `LIMIT` 和 `OFFSET` 子句控制查询结果的行数，`LIMIT rowLimit` 指定查询结果的行数，`OFFSET rowOffset` 指定查询结果显示的起始行位置。
 
@@ -153,7 +153,7 @@ Total line number = 4
 It costs 0.016s
 ```
 
-## 按列分页
+### 按列分页
 
 用户可以通过 `SLIMIT` 和 `SOFFSET` 子句控制查询结果的列数，`SLIMIT seriesLimit` 指定查询结果的列数，`SOFFSET seriesOffset` 指定查询结果显示的起始列位置。
 

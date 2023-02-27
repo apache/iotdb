@@ -19,11 +19,11 @@
 
 -->
 
-# 系统集成
+## 系统集成
 
 
 
-## Grafana 插件
+### Grafana 插件
 
 Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。
 
@@ -31,20 +31,20 @@ Grafana 是开源的指标量监测和可视化工具，可用于展示时序数
 
 
 
-### 部署 Grafana 插件
+#### 部署 Grafana 插件
 
-#### 安装 Grafana 
+##### 安装 Grafana 
 
 * Grafana 组件下载地址：https://grafana.com/grafana/download
 * 版本 >= 7.0.0
 
-#### grafana-plugin 获取
+##### grafana-plugin 获取
 
-##### 方案一 grafana-plugin 下载
+###### 方案一 grafana-plugin 下载
 
 二进制文件下载地址：https://iotdb.apache.org/zh/Download/
 
-##### 方案二 grafana-plugin 单独编译
+###### 方案二 grafana-plugin 单独编译
 
 我们需要编译 IoTDB 仓库 `grafana-plugin` 目录下的前端工程并生成 `dist` 目标目录，具体执行流程如下。
 
@@ -85,7 +85,7 @@ go get: module github.com/grafana/grafana-plugin-sdk-go: Get "https://proxy.gola
 
 <img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana-plugin-build.png?raw=true">
 
-##### 方案三 IoTDB 的分发包完整编译
+###### 方案三 IoTDB 的分发包完整编译
 
 我们也可以通过执行 IoTDB 项目的**打包指令**获取 `grafana-plugin ` 的前端工程和其他配套的 IoTDB 可执行文件。
 
@@ -112,7 +112,7 @@ git clone https://github.com/apache/iotdb.git
 
 
 
-#### grafana-plugin 插件安装
+##### grafana-plugin 插件安装
 
 * 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`。如果没有此目录可以手动建或者启动grafana会自动建立，当然也可以修改plugins的位置,具体请查看下面的修改Grafana 的插件目录位置说明。
 
@@ -131,7 +131,7 @@ git clone https://github.com/apache/iotdb.git
 更多详情，请点 [这里](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 
-#### 启动 Grafana
+##### 启动 Grafana
 
 进入 Grafana 的安装目录，使用以下命令启动 Grafana：
 * Windows 系统：
@@ -153,7 +153,7 @@ brew services start grafana
 
 
 
-#### 配置 IoTDB REST 服务
+##### 配置 IoTDB REST 服务
 
 进入 `{iotdb 目录}/conf`，打开 `iotdb-common.properties` 文件，并作如下修改：
 
@@ -169,9 +169,9 @@ rest_service_port=18080
 
 
 
-### 使用 Grafana 插件
+#### 使用 Grafana 插件
 
-#### 访问 Grafana dashboard
+##### 访问 Grafana dashboard
 
 Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打开浏览器，访问 `http://<ip>:<port>`。
 
@@ -183,7 +183,7 @@ Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打�
 
 
 
-#### 添加 IoTDB 数据源
+##### 添加 IoTDB 数据源
 
 点击左侧的 `设置` 图标，选择 `Data Source` 选项，然后再点击 `Add data source`。
 
@@ -201,7 +201,7 @@ Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运�
 
 
 
-#### 创建一个新的 Panel
+##### 创建一个新的 Panel
 
 点击左侧的 `Dashboards` 图标，选择 `Manage`，如下图所示：
 
@@ -215,7 +215,7 @@ Grafana Plugin 支持SQL: Full Customized和SQL: Drop-down List 两种方式，�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
 
-##### SQL: Full Customized 输入方式
+###### SQL: Full Customized 输入方式
 
 在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE 和 CONTROL 输入框为非必填。
 
@@ -251,12 +251,12 @@ CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类
 
 提示：为了避免OOM问题，不推荐使用select * from root.xx.** 这种语句在Grafana plugin中使用。
 
-##### SQL: Drop-down List 输入方式
+###### SQL: Drop-down List 输入方式
 在 TIME-SERIES 选择框中选择一条时间序列、FUNCTION 选择一个函数、SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL 输入框中输入内容，其中 TIME-SERIESL 为必填项其余为非必填项。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input2.png?raw=true">
 
-#### 变量与模板功能的支持
+##### 变量与模板功能的支持
 
 SQL: Full Customized和SQL: Drop-down List两种输入方式都支持 Grafana 的变量与模板功能，下面示例中使用SQL: Full Customized输入方式，SQL: Drop-down List与之类似。
 
@@ -304,7 +304,7 @@ Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、A
 
 * 提示：如果查询的字段中有布尔类型的数据，会将true转化成1，false转化成0结果值进行显示。
 
-#### 告警功能
+##### 告警功能
 本插件支持 Grafana alert功能。
 
 1、在 Grafana 侧栏中，将光标悬停在`Alerting`图标上，然后单击`Notification channels`。
@@ -360,7 +360,7 @@ IS ABOVE -1 定义阈值的类型和阈值。IS ABOVE表示在-1之上，可以�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/alertpanel6.png?raw=true">
 
-### 更多
+#### 更多
 
 更多关于 Grafana 操作详情可参看 Grafana 官方文档：http://docs.grafana.org/guides/getting_started/。
 
