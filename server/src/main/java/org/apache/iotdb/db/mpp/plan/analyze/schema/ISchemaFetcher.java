@@ -30,28 +30,50 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
  */
 public interface ISchemaFetcher {
 
+  /**
+   * Fetch all the schema of existing timeseries matched by the given patternTree
+   *
+   * @param patternTree used for matching the timeseries
+   * @return the matched timeseries schema organized as tree structure logically
+   */
   ISchemaTree fetchSchema(PathPatternTree patternTree);
 
+  /**
+   * Fetch all the schema with tags of existing timeseries matched by the given patternTree
+   *
+   * @param patternTree used for matching the timeseries
+   * @return the matched timeseries schema organized as tree structure logically
+   */
   ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
 
-  ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      boolean aligned);
+  /**
+   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
+   * schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
+   * target timeseries doesn't exist, they will be auto created.
+   *
+   * @param schemaComputationWithAutoCreation define the target device, measurements and computation
+   */
+  void fetchAndComputeSchemaWithAutoCreate(
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation);
 
-  ISchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned);
+  /**
+   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
+   * schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
+   * target timeseries doesn't exist, they will be auto created.
+   *
+   * @param schemaComputationWithAutoCreationList define the target devices, measurements and
+   *     computation
+   */
+  void fetchAndComputeSchemaWithAutoCreate(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList);
 
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,

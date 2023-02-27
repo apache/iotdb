@@ -90,296 +90,327 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.1.1. 集群运行状态
 
-| Metric      | Tags                                            | Type      | Description                |
-|-------------|-------------------------------------------------|-----------|----------------------------|
-| config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
-| data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
-| points      | database="{{database}}", type="flush"           | Gauge     | 最新一个刷盘的memtale的点数          |
+| Metric                    | Tags                                              | Type      | Description                            |
+| ------------------------- | ------------------------------------------------- | --------- | -------------------------------------- |
+| config_node               | name="total",status="Registered/Online/Unknown"   | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
+| data_node                 | name="total",status="Registered/Online/Unknown"   | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
+| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge     | 节点上共识组Leader的数量               |
+| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge     | 节点的状态，0=Unkonwn 1=online         |
+| entry                     | name="{{interface}}"                              | Timer     | Client 建立的 Thrift 的耗时情况        |
+| mem                       | name="IoTConsensus"                               | AutoGauge | IoT共识协议的内存占用，单位为byte      |
 
-#### 4.1.2. IoTDB 进程运行状态
+#### 4.1.2. 节点统计
+| Metric   | Tags                                  | Type      | Description                 |
+| -------- | ------------------------------------- | --------- | --------------------------- |
+| quantity | name="database"                       | AutoGauge | 系统数据库数量              |
+| quantity | name="timeSeries"                     | AutoGauge | 系统时间序列数量            |
+| quantity | name="pointsIn"                       | Counter   | 系统累计写入点数            |
+| points   | database="{{database}}", type="flush" | Gauge     | 最新一个刷盘的memtale的点数 |
 
-| Metric            | Tags           | Type      | Description              |
-|-------------------|----------------|-----------|--------------------------|
-| process_cpu_load  | name="process" | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%   |
-| process_cpu_time  | name="process" | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
-| process_max_mem   | name="memory"  | AutoGauge | IoTDB 进程最大可用内存           |
-| process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存          |
-| process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存         |
+#### 4.1.3. 集群全链路
+| Metric                               | Tags                                                 | Type  | Description                |
+| ------------------------------------ | ---------------------------------------------------- | ----- | -------------------------- |
+| performance_overview                 | interface="{{interface}}", type="{{statement_type}}" | Timer | 客户端执行的操作的耗时情况 |
+| performance_overview_detail          | stage="authority"                                    | Timer | 权限认证总耗时             |
+| performance_overview_detail          | stage="parser"                                       | Timer | 解析构造总耗时             |
+| performance_overview_detail          | stage="analyzer"                                     | Timer | 语句分析总耗时             |
+| performance_overview_detail          | stage="planner"                                      | Timer | 请求规划总耗时             |
+| performance_overview_detail          | stage="scheduler"                                    | Timer | 请求执行总耗时             |
+| performance_overview_schedule_detail | stage="schema_validate"                              | Timer | 元数据验证总耗时           |
+| performance_overview_schedule_detail | stage="trigger"                                      | Timer | Trigger 触发总耗时         |
+| performance_overview_schedule_detail | stage="consensus"                                    | Timer | 共识层总耗时               |
+| performance_overview_schedule_detail | stage="lock"                                         | Timer | DataRegion 抢锁总耗时      |
+| performance_overview_schedule_detail | stage="memory_block"                                 | Timer | 内存控制阻塞总耗时         |
+| performance_overview_schedule_detail | stage="wal"                                          | Timer | 写入 Wal 总耗时            |
+| performance_overview_schedule_detail | stage="memtable"                                     | Timer | 写入 Memtable 总耗时       |
+| performance_overview_schedule_detail | stage="last_cache"                                   | Timer | 更新 LastCache 总耗时      |
 
-#### 4.1.3. 系统运行状态
+#### 4.1.4. 任务统计
 
-| Metric                         | Tags          | Type      | Description          |
-|--------------------------------|---------------|-----------|----------------------|
-| sys_cpu_load                   | name="system" | AutoGauge | 系统的 CPU 占用率，单位为%     |
-| sys_cpu_cores                  | name="system" | Gauge     | 系统的可用处理器数            |
-| sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存            |
-| sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存            |
-| sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间           |
-| sys_free_swap_space_size       | name="memory" | AutoGauge | 系统的交换区剩余可用空间         |
-| sys_committed_vm_size          | name="memory" | AutoGauge | 系统保证可用于正在运行的进程的虚拟内存量 |
-| sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小              |
-| sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小             |
-
-### 4.2. Important 级别监控指标
-
-目前 Important 级别的监控指标如下所述：
-
-#### 4.2.1. 集群运行状态
-
-| Metric                    | Tags                                              | Type  | Description              |
-|---------------------------|---------------------------------------------------|-------|--------------------------|
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | 节点上共识组Leader的数量          |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
-
-#### 4.2.2. 节点统计
-
-| Metric   | Tags                                       | Type      | Description              |
-|----------|--------------------------------------------|-----------|--------------------------|
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
-| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
-| region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
-| region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
-
-#### 4.2.3. IoT共识协议统计
-
-| Metric        | Tags                                                                                         | Type      | Description      |
-|---------------|----------------------------------------------------------------------------------------------|-----------|------------------|
-| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度   |
-| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度       |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度          |
-| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时      |
-| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时     |
-| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时       |
-| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时      |
-| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时         |
-| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时  |
-| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时     |
-
-#### 4.2.4. 缓存统计
-
-| Metric    | Tags                               | Type      | Description                                   |
-|-----------|------------------------------------|-----------|-----------------------------------------------|
-| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                           |
-| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                          |
-| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%              |
-| cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                          |
-| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                          |
-| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                   |
-| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                   |
-| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                     |
-| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                     |
-
-#### 4.2.5. 接口层统计
-
-| Metric                | Tags                                                 | Type      | Description                 |
-|-----------------------|------------------------------------------------------|-----------|-----------------------------|
-| statement_execution   | interface="{{interface}}", type="{{statement_type}}" | Timer     | 客户端执行的操作的耗时情况               |
-| entry                 | name="{{interface}}"                                 | Timer     | Client 建立的 Thrift 的耗时情况     |
-| thrift_connections    | name="ConfigNodeRPC"                                 | AutoGauge | ConfigNode 的内部 Thrift 连接数   |
-| thrift_connections    | name="Internal"                                      | AutoGauge | DataNode 的内部 Thrift 连接数     |
-| thrift_connections    | name="MPPDataExchange"                               | AutoGauge | MPP 框架的内部 Thrift 连接数        |
-| thrift_connections    | name="RPC"                                           | AutoGauge | Client 建立的 Thrift 连接数       |
-| thrift_active_threads | name="ConfigNodeRPC-Service"                         | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
-| thrift_active_threads | name="DataNodeInternalRPC-Service"                   | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
-| thrift_active_threads | name="MPPDataExchangeRPC-Service"                    | AutoGauge | MPP 框架的内部活跃 Thrift 连接数      |
-| thrift_active_threads | name="ClientRPC-Service"                             | AutoGauge | Client 建立的活跃 Thrift 连接数     |
-
-#### 4.2.6. 内存统计
-
-| Metric | Tags                                 | Type      | Description                          |
-|--------|--------------------------------------|-----------|--------------------------------------|
-| mem    | name="database_{{name}}"             | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte   |
-| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
-| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
-| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
-
-#### 4.2.7. 任务统计
-
-| Metric    | Tags                                              | Type      | Description |
-|-----------|---------------------------------------------------|-----------|-------------|
-| queue     | name="compaction_inner", status="running/waiting" | Gauge     | 空间内合并任务数    |
-| queue     | name="compaction_cross", status="running/waiting" | Gauge     | 跨空间合并任务数    |
-| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况      |
+| Metric    | Tags                                              | Type      | Description      |
+| --------- | ------------------------------------------------- | --------- | ---------------- |
+| queue     | name="compaction_inner", status="running/waiting" | Gauge     | 空间内合并任务数 |
+| queue     | name="compaction_cross", status="running/waiting" | Gauge     | 跨空间合并任务数 |
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数       |
+| cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况     |
 
-#### 4.2.8. 合并统计
+#### 4.1.5. IoTDB 进程运行状态
 
-| Metric                | Tags                                                | Type    | Description |
-|-----------------------|-----------------------------------------------------|---------|-------------|
-| data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | 合并时写入量      |
-| data_read             | name="compaction"                                   | Counter | 合并时的读取量     |
-| compaction_task_count | name = "inner_compaction", type="sequence"          | Counter | 顺序空间内合并次数   |
-| compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数   |
-| compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
+| Metric            | Tags           | Type      | Description                         |
+| ----------------- | -------------- | --------- | ----------------------------------- |
+| process_cpu_load  | name="process" | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
+| process_cpu_time  | name="process" | AutoGauge | IoTDB 进程占用的 CPU 时间，单位为ns |
+| process_max_mem   | name="memory"  | AutoGauge | IoTDB 进程最大可用内存              |
+| process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存            |
+| process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
-#### 4.2.9. 文件统计信息
+#### 4.1.6. 系统运行状态
 
-| Metric     | Tags                      | Type      | Description                  |
-|------------|---------------------------|-----------|------------------------------|
-| file_size  | name="wal"                | AutoGauge | 写前日志总大小，单位为byte              |
-| file_size  | name="seq"                | AutoGauge | 顺序TsFile总大小，单位为byte          |
-| file_size  | name="unseq"              | AutoGauge | 乱序TsFile总大小，单位为byte          |
-| file_size  | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件大小，单位为byte        |
-| file_size  | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件大小，单位为byte        |
-| file_size  | name="cross-temp"         | AutoGauge | 跨空间合并临时文件大小，单位为byte          |
-| file_size  | name="mods"               | AutoGauge | Modification 文件的大小           |
-| file_count | name="wal"                | AutoGauge | 写前日志文件个数                     |
-| file_count | name="seq"                | AutoGauge | 顺序TsFile文件个数                 |
-| file_count | name="unseq"              | AutoGauge | 乱序TsFile文件个数                 |
-| file_count | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件个数                |
-| file_count | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件个数                |
-| file_count | name="cross-temp"         | AutoGauge | 跨空间合并临时文件个数                  |
+| Metric                         | Tags          | Type      | Description                              |
+| ------------------------------ | ------------- | --------- | ---------------------------------------- |
+| sys_cpu_load                   | name="system" | AutoGauge | 系统的 CPU 占用率，单位为%               |
+| sys_cpu_cores                  | name="system" | Gauge     | 系统的可用处理器数                       |
+| sys_total_physical_memory_size | name="memory" | Gauge     | 系统的最大物理内存                       |
+| sys_free_physical_memory_size  | name="memory" | AutoGauge | 系统的剩余可用内存                       |
+| sys_total_swap_space_size      | name="memory" | AutoGauge | 系统的交换区最大空间                     |
+| sys_free_swap_space_size       | name="memory" | AutoGauge | 系统的交换区剩余可用空间                 |
+| sys_committed_vm_size          | name="memory" | AutoGauge | 系统保证可用于正在运行的进程的虚拟内存量 |
+| sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小                           |
+| sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小                         |
+
+#### 4.1.7. IoTDB 日志统计
+
+| Metric         | Tags                                | Type    | Description        |
+| -------------- | ----------------------------------- | ------- | ------------------ |
+| logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
+
+#### 4.1.8. 文件统计信息
+
+| Metric     | Tags                      | Type      | Description                              |
+| ---------- | ------------------------- | --------- | ---------------------------------------- |
+| file_size  | name="wal"                | AutoGauge | 写前日志总大小，单位为byte               |
+| file_size  | name="seq"                | AutoGauge | 顺序TsFile总大小，单位为byte             |
+| file_size  | name="unseq"              | AutoGauge | 乱序TsFile总大小，单位为byte             |
+| file_size  | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="cross-temp"         | AutoGauge | 跨空间合并临时文件大小，单位为byte       |
+| file_size  | name="mods"               | AutoGauge | Modification 文件的大小                  |
+| file_count | name="wal"                | AutoGauge | 写前日志文件个数                         |
+| file_count | name="seq"                | AutoGauge | 顺序TsFile文件个数                       |
+| file_count | name="unseq"              | AutoGauge | 乱序TsFile文件个数                       |
+| file_count | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件个数               |
+| file_count | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件个数               |
+| file_count | name="cross-temp"         | AutoGauge | 跨空间合并临时文件个数                   |
 | file_count | name="open_file_handlers" | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
-| file_count | name="mods                | AutoGauge | Modification 文件的数目           |
+| file_count | name="mods                | AutoGauge | Modification 文件的数目                  |
 
-#### 4.2.10. IoTDB 进程统计
+#### 4.1.9. JVM 内存统计
 
-| Metric                | Tags           | Type      | Description            |
-|-----------------------|----------------|-----------|------------------------|
-| process_used_mem      | name="memory"  | AutoGauge | IoTDB 进程当前使用内存         |
-| process_mem_ratio     | name="memory"  | AutoGauge | IoTDB 进程的内存占用比例        |
-| process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数          |
-| process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
+| Metric                          | Tags                            | Type      | Description          |
+| ------------------------------- | ------------------------------- | --------- | -------------------- |
+| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
+| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小       |
+| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量       |
+| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
+| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
+| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
 
-#### 4.2.11. IoTDB 日志统计
+#### 4.1.10. JVM 线程统计
 
-| Metric         | Tags                                | Type    | Description |
-|----------------|-------------------------------------|---------|-------------|
-| logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数   |
+| Metric                     | Tags                                                          | Type      | Description              |
+| -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
+| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数               |
+| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数       |
+| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
+| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
 
-#### 4.2.12. JVM 线程统计
+#### 4.1.11. JVM GC 统计
 
-| Metric                     | Tags                                                          | Type      | Description   |
-|----------------------------|---------------------------------------------------------------|-----------|---------------|
-| jvm_threads_live_threads   |                                                               | AutoGauge | 当前线程数         |
-| jvm_threads_daemon_threads |                                                               | AutoGauge | 当前 Daemon 线程数 |
-| jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数         |
-| jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数  |
-
-#### 4.2.13. JVM GC 统计
-
-| Metric                        | Tags                                                  | Type      | Description                 |
-|-------------------------------|-------------------------------------------------------|-----------|-----------------------------|
+| Metric                        | Tags                                                  | Type      | Description                            |
+| ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
 | jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
 |                               |
 | jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
 |                               |
 | jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | 老年代内存的历史最大值                 |
-| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                   |
-| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值                |
+| jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | 老年代内存的使用值                     |
+| jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
 | jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
 
-#### 4.2.14. JVM 内存统计
+### 4.2. Important 级别监控指标
 
-| Metric                          | Tags                            | Type      | Description |
-|---------------------------------|---------------------------------|-----------|-------------|
-| jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小  |
-| jvm_buffer_total_capacity_bytes | id="direct/mapped"              | AutoGauge | 最大缓冲区大小     |
-| jvm_buffer_count_buffers        | id="direct/mapped"              | AutoGauge | 当前缓冲区数量     |
-| jvm_memory_committed_bytes      | {area="heap/nonheap",id="xxx",} | AutoGauge | 当前申请的内存大小   |
-| jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存        |
-| jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小     |
+目前 Important 级别的监控指标如下所述：
 
-#### 4.2.15. JVM 类加载统计
+#### 4.2.1. 节点统计
 
-| Metric                       | Tags | Type      | Description  |
-|------------------------------|------|-----------|--------------|
+| Metric | Tags                                       | Type      | Description                          |
+| ------ | ------------------------------------------ | --------- | ------------------------------------ |
+| region | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
+| region | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
+| region | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+| region | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+
+#### 4.2.2. IoT共识协议统计
+
+| Metric        | Tags                                                                                         | Type      | Description                      |
+| ------------- | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="syncLag"                           | AutoGauge | 副本组写入进度与同步进度差        |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | 副本组Batch中来自WAL的日志项数量 |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | 副本组Batch中来自队列的日志项数量  |
+| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时         |
+| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时             |
+| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时                 |
+| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时          |
+| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时         |
+
+#### 4.2.3. 缓存统计
+
+| Metric    | Tags                               | Type      | Description                                             |
+| --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
+| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
+| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
+| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
+| cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
+| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                               |
+| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                               |
+| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
+| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
+| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
+| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
+
+#### 4.2.4. 接口层统计
+
+| Metric                | Tags                               | Type      | Description                         |
+| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
+| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
+| thrift_connections    | name="Internal"                    | AutoGauge | DataNode 的内部 Thrift 连接数       |
+| thrift_connections    | name="MPPDataExchange"             | AutoGauge | MPP 框架的内部 Thrift 连接数        |
+| thrift_connections    | name="RPC"                         | AutoGauge | Client 建立的 Thrift 连接数         |
+| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
+| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
+| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
+
+#### 4.2.5. 内存统计
+| Metric | Tags                             | Type      | Description                                       |
+| ------ | -------------------------------- | --------- | ------------------------------------------------- |
+| mem    | name="database_{{name}}"         | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{{name}}"    | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="IoTConsensus"              | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="IoTConsensusQueue"         | AutoGauge | IoT共识协议用于队列的内存占用，单位为byte         |
+| mem    | name="IoTConsensusSync"          | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
+| mem    | name="schema_region_total_usage" | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
+
+#### 4.2.6. 合并统计
+
+| Metric                | Tags                                                | Type    | Description        |
+| --------------------- | --------------------------------------------------- | ------- | ------------------ |
+| data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | 合并时写入量       |
+| data_read             | name="compaction"                                   | Counter | 合并时的读取量     |
+| compaction_task_count | name = "inner_compaction", type="sequence"          | Counter | 顺序空间内合并次数 |
+| compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
+| compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
+
+#### 4.2.7. IoTDB 进程统计
+
+| Metric                | Tags           | Type      | Description                          |
+| --------------------- | -------------- | --------- | ------------------------------------ |
+| process_used_mem      | name="memory"  | AutoGauge | IoTDB 进程当前使用内存               |
+| process_mem_ratio     | name="memory"  | AutoGauge | IoTDB 进程的内存占用比例             |
+| process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
+| process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
+
+#### 4.2.8. JVM 类加载统计
+
+| Metric                       | Tags | Type      | Description         |
+| ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-#### 4.2.16. JVM 编译时间统计
+#### 4.2.9. JVM 编译时间统计
 
-| Metric                  | Tags                                          | Type      | Description |
-|-------------------------|-----------------------------------------------|-----------|-------------|
-| jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间   |
+| Metric                  | Tags                                          | Type      | Description        |
+| ----------------------- | --------------------------------------------- | --------- | ------------------ |
+| jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-#### 4.2.17. 查询规划耗时统计
+#### 4.2.10. 查询规划耗时统计
 
-| Metric          | Tags                         | Type  | Description   |
-|-----------------|------------------------------|-------|---------------|
-| query_plan_cost | stage="sql_parser"           | Timer | SQL 解析耗时      |
-| query_plan_cost | stage="analyzer"             | Timer | 查询语句分析耗时      |
-| query_plan_cost | stage="logical_planner"      | Timer | 查询逻辑计划规划耗时    |
+| Metric          | Tags                         | Type  | Description                |
+| --------------- | ---------------------------- | ----- | -------------------------- |
+| query_plan_cost | stage="analyzer"             | Timer | 查询语句分析耗时           |
+| query_plan_cost | stage="logical_planner"      | Timer | 查询逻辑计划规划耗时       |
 | query_plan_cost | stage="distribution_planner" | Timer | 查询分布式执行计划规划耗时 |
-| query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时      |
-| query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时     |
+| query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
+| query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
 
-#### 4.2.18. 执行计划分发耗时统计
+#### 4.2.11. 执行计划分发耗时统计
 
-| Metric     | Tags                      | Type  | Description |
-|------------|---------------------------|-------|-------------|
-| dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时    |
-| dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时  |
+| Metric     | Tags                      | Type  | Description          |
+| ---------- | ------------------------- | ----- | -------------------- |
+| dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
+| dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
 
-#### 4.2.19. 查询资源访问统计
+#### 4.2.12. 查询资源访问统计
 
-| Metric         | Tags                     | Type | Description            |
-|----------------|--------------------------|------|------------------------|
-| query_resource | type="sequence_tsfile"   | Rate | 顺序文件访问频率               |
-| query_resource | type="unsequence_tsfile" | Rate | 乱序文件访问频率               |
+| Metric         | Tags                     | Type | Description                |
+| -------------- | ------------------------ | ---- | -------------------------- |
+| query_resource | type="sequence_tsfile"   | Rate | 顺序文件访问频率           |
+| query_resource | type="unsequence_tsfile" | Rate | 乱序文件访问频率           |
 | query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
 | query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
 
-#### 4.2.20. 数据传输模块统计
+#### 4.2.13. 数据传输模块统计
 
-| Metric              | Tags                                                                   | Type      | Description                       |
-|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------|
-| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | source handle 接收 TsBlock 耗时       |
+| Metric              | Tags                                                                   | Type      | Description                             |
+| ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
+| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | source handle 接收 TsBlock 耗时         |
 | data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | source handle 反序列化 TsBlock 耗时     |
-| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | sink handle 发送 TsBlock 耗时         |
-| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | sink handle 发送 TsBlock RPC 耗时     |
-| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | source handle 接收 TsBlock RPC 耗时   |
+| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | sink handle 发送 TsBlock 耗时           |
+| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | sink handle 发送 TsBlock RPC 耗时       |
+| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | source handle 接收 TsBlock RPC 耗时     |
 | data_exchange_cost  | operation="on_acknowledge_data_block_event_task", type="server/caller" | Timer     | source handle 确认接收 TsBlock RPC 耗时 |
-| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | sink handle 发送 TsBlock数量          |
-| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量       |
+| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | sink handle 发送 TsBlock数量            |
+| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
 
-#### 4.2.21. 查询任务调度统计
+#### 4.2.14. 查询任务调度统计
 
-| Metric           | Tags                           | Type      | Description |
-|------------------|--------------------------------|-----------|-------------|
-| driver_scheduler | name="ready_queued_time"       | Timer     | 就绪队列排队时间    |
-| driver_scheduler | name="block_queued_time"       | Timer     | 阻塞队列排队时间    |
-| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数   |
-| driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数   |
+| Metric           | Tags                           | Type      | Description        |
+| ---------------- | ------------------------------ | --------- | ------------------ |
+| driver_scheduler | name="ready_queued_time"       | Timer     | 就绪队列排队时间   |
+| driver_scheduler | name="block_queued_time"       | Timer     | 阻塞队列排队时间   |
+| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
+| driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
 
-#### 4.2.22. 查询执行耗时统计
+#### 4.2.15. 查询执行耗时统计
 
-| Metric                   | Tags                                                                                | Type    | Description                        |
-|--------------------------|-------------------------------------------------------------------------------------|---------|------------------------------------|
-| query_execution          | stage="local_execution_planner"                                                     | Timer   | 算子树构造耗时                            |
-| query_execution          | stage="query_resource_init"                                                         | Timer   | 查询资源初始化耗时                          |
-| query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | 查询资源内存查询与构造耗时                      |
-| query_execution          | stage="driver_internal_process"                                                     | Timer   | Driver 执行耗时                        |
+| Metric                   | Tags                                                                                | Type    | Description                                    |
+| ------------------------ | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
+| query_execution          | stage="local_execution_planner"                                                     | Timer   | 算子树构造耗时                                 |
+| query_execution          | stage="query_resource_init"                                                         | Timer   | 查询资源初始化耗时                             |
+| query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | 查询资源内存查询与构造耗时                     |
+| query_execution          | stage="driver_internal_process"                                                     | Timer   | Driver 执行耗时                                |
 | query_execution          | stage="wait_for_result"                                                             | Timer   | 从resultHandle 获取一次查询结果的耗时          |
-| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | 算子执行耗时                             |
-| operator_execution_count | name="{{operator_name}}"                                                            | Counter | 算子调用次数（以 next 方法调用次数计算）            |
-| aggregation              | from="raw_data"                                                                     | Timer   | 从一批原始数据进行一次聚合计算的耗时                 |
-| aggregation              | from="statistics"                                                                   | Timer   | 使用统计信息更新一次聚合值的耗时                   |
-| series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 TimeseriesMetadata 耗时           |
-| series_scan_cost         | stage="read_timeseries_metadata", type="", from="cache/file"                        | Timer   | 读取一个文件的 Metadata 耗时                |
-| series_scan_cost         | stage="timeseries_metadata_modification", type="aligned/non_aligned", from="null"   | Timer   | 过滤删除的 TimeseriesMetadata 耗时        |
-| series_scan_cost         | stage="load_chunk_metadata_list", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 ChunkMetadata 列表耗时              |
-| series_scan_cost         | stage="chunk_metadata_modification", type="aligned/non_aligned", from="mem/disk"    | Timer   | 过滤删除的 ChunkMetadata 耗时             |
+| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | 算子执行耗时                                   |
+| operator_execution_count | name="{{operator_name}}"                                                            | Counter | 算子调用次数（以 next 方法调用次数计算）       |
+| aggregation              | from="raw_data"                                                                     | Timer   | 从一批原始数据进行一次聚合计算的耗时           |
+| aggregation              | from="statistics"                                                                   | Timer   | 使用统计信息更新一次聚合值的耗时               |
+| series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 TimeseriesMetadata 耗时                   |
+| series_scan_cost         | stage="read_timeseries_metadata", type="", from="cache/file"                        | Timer   | 读取一个文件的 Metadata 耗时                   |
+| series_scan_cost         | stage="timeseries_metadata_modification", type="aligned/non_aligned", from="null"   | Timer   | 过滤删除的 TimeseriesMetadata 耗时             |
+| series_scan_cost         | stage="load_chunk_metadata_list", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 ChunkMetadata 列表耗时                    |
+| series_scan_cost         | stage="chunk_metadata_modification", type="aligned/non_aligned", from="mem/disk"    | Timer   | 过滤删除的 ChunkMetadata 耗时                  |
 | series_scan_cost         | stage="chunk_metadata_filter", type="aligned/non_aligned", from="mem/disk"          | Timer   | 根据查询过滤条件过滤 ChunkMetadata 耗时        |
-| series_scan_cost         | stage="construct_chunk_reader", type="aligned/non_aligned", from="mem/disk"         | Timer   | 构造 ChunkReader 耗时                  |
-| series_scan_cost         | stage="read_chunk", type="", from="cache/file"                                      | Timer   | 读取 Chunk 的耗时                       |
-| series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | 初始化 ChunkReader（构造 PageReader） 耗时  |
-| series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | 从 PageReader 构造 Tsblock 耗时         |
+| series_scan_cost         | stage="construct_chunk_reader", type="aligned/non_aligned", from="mem/disk"         | Timer   | 构造 ChunkReader 耗时                          |
+| series_scan_cost         | stage="read_chunk", type="", from="cache/file"                                      | Timer   | 读取 Chunk 的耗时                              |
+| series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | 初始化 ChunkReader（构造 PageReader） 耗时     |
+| series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | 从 PageReader 构造 Tsblock 耗时                |
 | series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | 从 MergeReader 构造 Tsblock （解乱序数据）耗时 |
+
+#### 4.2.16 元数据引擎统计
+
+| Metric        | Tags                                                         | Type      | Description                                    |
+| ------------- | ------------------------------------------------------------ | --------- | ---------------------------------------------- |
+| schema_engine | name="schema_region_total_mem_usage"                         | AutoGauge | SchemaRegion 全局内存使用量                    |
+| schema_engine | name="schema_region_mem_capacity"                            | AutoGauge | SchemaRegion 全局可用内存                      |
+| schema_engine | name="schema_engine_mode"                                    | Gauge     | SchemaEngine 模式                              |
+| schema_engine | name="schema_region_consensus"                               | Gauge     | 元数据管理引擎共识协议                         |
+| schema_engine | name="schema_region_number"                                  | AutoGauge | SchemaRegion 个数                              |
+| schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的内存使用量             |
+| schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数             |
 
 ### 4.3. Normal 级别监控指标
 
 #### 4.3.1. 集群
 
-| Metric | Tags                                                           | Type      | Description                                   |
-|--------|----------------------------------------------------------------|-----------|-----------------------------------------------|
+| Metric | Tags                                                           | Type      | Description                                             |
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------- |
 | region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 特定节点上不同 Database 的 DataRegion/SchemaRegion 个数 |
 | slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 特定节点上不同 Database 的 DataSlot/SchemaSlot 个数     |
 
@@ -419,13 +450,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，其中 value 为具体值
 
-| 监控指标类型          | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Counter         | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Histogram       | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="1.0"} value                                                                 |
-| Rate            | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
-| Timer           | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Counter          | name_total{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| AutoGauge、Gauge | name{k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Histogram        | name_max{k1="V1", ..., Kn="Vn"} value <br> name_sum{k1="V1", ..., Kn="Vn"} value <br> name_count{k1="V1", ..., Kn="Vn"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name{k1="V1", ..., Kn="Vn", quantile="0.999"} value                                                                 |
+| Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                          |
+| Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.999"} value |
 
 #### 5.2.2. 修改配置文件
 
@@ -506,6 +537,7 @@ static_configs:
        Apache IoTDB ConfigNode Dashboard</a>
     2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">
        Apache IoTDB DataNode Dashboard</a>
+    3. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-Performance-Overview-Dashboard.json">Apache IoTDB Performance Overview Dashboard</a>
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
@@ -552,9 +584,9 @@ static_configs:
     - `Database Used Memory`：每个 Database 使用的内存大小
 - `Interface`：接口
     - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
-    - `The Time Consumed Of Operation(75%)`：不同客户端操作耗时的上四分位数
-    - `The Time Consumed Of Operation(100%)`：不同客户端操作耗时的最大值
-    - `The QPS of Interface`：系统接口每秒钟访问次数
+    - `The Time Consumed Of Operation(99%)`：不同客户端操作耗时的P99
+    - `The Time Consumed Of Operation(99.9%)`：不同客户端操作耗时的P999
+    - `The OPS of Interface`：系统接口每秒钟访问次数
     - `The Time Consumed Of Interface`：系统接口的平均耗时
     - `Cache Hit Rate`：缓存命中率
     - `Thrift Connection`：建立的 Thrift 连接个数
@@ -566,45 +598,43 @@ static_configs:
     - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
     - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
 - `Query Engine`：查询引擎
-    - `The time consumed of query plan stages(avg\50%\75%\100%)`：查询规划各阶段耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of plan dispatch stages(avg\50%\75%\100%)`：查询计划分发耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query execution stages(avg\50%\75%\100%)`：查询执行各阶段耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of operator execution stages(avg\50%\75%\100%)`：查询算子耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query aggregation(avg\50%\75%\100%)`：查询聚合计算耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query scan(avg\50%\75%\100%)`：查询文件/内存耗时的平均值\中位数\上四分位数\最大值
-    - `The usage of query resource(avg\50%\75%\100%)`：查询不同资源访问数量的平均值\中位数\上四分位数\最大值
-    - `The time consumed of query data exchange(avg\50%\75%\100%)`：查询数据传输耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of query plan stages(avg\50%\99%\99.9%)`：查询规划各阶段耗时的平均值\中位数\P99\P999
+    - `The time consumed of plan dispatch stages(avg\50%\99%\99.9%)`：查询计划分发耗时的平均值\中位数\P99\P999
+    - `The time consumed of query execution stages(avg\50%\99%\99.9%)`：查询执行各阶段耗时的平均值\中位数\P99\P999
+    - `The time consumed of operator execution stages(avg\50%\99%\99.9%)`：查询算子耗时的平均值\中位数\P99\P999
+    - `The time consumed of query aggregation(avg\50%\99%\99.9%)`：查询聚合计算耗时的平均值\中位数\P99\P999
+    - `The time consumed of query scan(avg\50%\99%\99.9%)`：查询文件/内存耗时的平均值\中位数\P99\P999
+    - `The usage of query resource(avg\50%\99%\99.9%)`：查询不同资源访问数量的平均值\中位数\P99\P999
+    - `The time consumed of query data exchange(avg\50%\99%\99.9%)`：查询数据传输耗时的平均值\中位数\P99\P999
     - `The count of data exchange(avg)`：查询数据传输平均次数
     - `The count of data exchange`：查询数据传输次数的分布情况（最小值、下四分位数、中位数、上四分位数、最大值）
     - `The number of query queue`：查询不同队列的大小
-    - `The time consumed of query schedule time(avg\50%\75%\100%)`：查询任务调度耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of query schedule time(avg\50%\99%\99.9%)`：查询任务调度耗时的平均值\中位数\P99\P999
 - `Query Interface`：查询文件/耗时的具体耗时情况
-    - `The time consumed of load timesereis metadata(avg\50%\75%\100%)`：查询从不同来源加载时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of read timeseries metadata(avg\50%\75%\100%)`：查询从不同来源读取时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of timeseries metadata modiftication(avg\50%\75%\100%)`：查询修改不同类型时间序列元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of load chunk metadata list(avg\50%\75%\100%)`：查询加载不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of chunk metadata modification(avg\50%\75%\100%)`：查询修改不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of chunk metadata filter(avg\50%\75%\100%)`：查询过滤不同类型Chunk元数据耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of construct chunk reader(avg\50%\75%\100%)`：查询构造不同类型Chunk读取器耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of read chunk(avg\50%\75%\100%)`：查询读取不同类型Chunk耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of init chunk reader(avg\50%\75%\100%)`：查询初始化不同类型Chunk读取器耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of build tsblock from page reader(avg\50%\75%\100%)`：查询从Page
-      Reader构造TsBlock耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of build tsblock from merge reader(avg\50%\75%\100%)`：查询从Merge
-      Reader构造TsBlock耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of load timesereis metadata(avg\50%\99%\99.9%)`：查询从不同来源加载时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of read timeseries metadata(avg\50%\99%\99.9%)`：查询从不同来源读取时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of timeseries metadata modiftication(avg\50%\99%\99.9%)`：查询修改不同类型时间序列元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of load chunk metadata list(avg\50%\99%\99.9%)`：查询加载不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of chunk metadata modification(avg\50%\99%\99.9%)`：查询修改不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of chunk metadata filter(avg\50%\99%\99.9%)`：查询过滤不同类型Chunk元数据耗时的平均值\中位数\P99\P999
+    - `The time consumed of construct chunk reader(avg\50%\99%\99.9%)`：查询构造不同类型Chunk读取器耗时的平均值\中位数\P99\P999
+    - `The time consumed of read chunk(avg\50%\99%\99.9%)`：查询读取不同类型Chunk耗时的平均值\中位数\P99\P999
+    - `The time consumed of init chunk reader(avg\50%\99%\99.9%)`：查询初始化不同类型Chunk读取器耗时的平均值\中位数\P99\P999
+    - `The time consumed of build tsblock from page reader(avg\50%\99%\99.9%)`：查询从PageReader构造TsBlock耗时的平均值\中位数\P99\P999
+    - `The time consumed of build tsblock from merge reader(avg\50%\99%\99.9%)`：查询从MergeReader构造TsBlock耗时的平均值\中位数\P99\P999
 - `Query Data Exchange`：查询数据传输的具体耗时情况
-    - `The time consumed of source handle get tsblock(avg\50%\75%\100%)`：查询从不同来源获取TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of source handle deserialize tsblock(avg\50%\75%\100%)`：查询从不同来源反序列化TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of sink handle send tsblock(avg\50%\75%\100%)`：查询向不同地方发送TsBlock的耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of on acknowledge data block event task(avg\50%\75%\100%)`：查询从不同地方确认Block耗时的平均值\中位数\上四分位数\最大值
-    - `The time consumed of get data block event task(avg\50%\75%\100%)`：查询从不同地方获取Block耗时的平均值\中位数\上四分位数\最大值
+    - `The time consumed of source handle get tsblock(avg\50%\99%\99.9%)`：查询从不同来源获取TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of source handle deserialize tsblock(avg\50%\99%\99.9%)`：查询从不同来源反序列化TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of sink handle send tsblock(avg\50%\99%\99.9%)`：查询向不同地方发送TsBlock的耗时的平均值\中位数\P99\P999
+    - `The time consumed of on acknowledge data block event task(avg\50%\99%\99.9%)`：查询从不同地方确认Block耗时的平均值\中位数\P99\P999
+    - `The time consumed of get data block event task(avg\50%\99%\99.9%)`：查询从不同地方获取Block耗时的平均值\中位数\P99\P999
 - `IoTConsensus`：IoT共识协议
     - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
     - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
     - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
     - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
-    - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
-    - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
+    - `The time consumed of different stages(99%)`：不同阶段耗时的P99
+    - `The time consumed of different stages(99.9%)`：不同阶段耗时的P999
     - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
     - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
     - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
@@ -630,19 +660,60 @@ static_configs:
     - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
     - `The Number Of Class`：JVM 加载和卸载的类数量
 
+##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
+
+> 除特殊说明的监控项以外，以下监控项均保证在Core级别的监控框架中可用。
+
+- `Overview`：系统概述
+    - `CPU Core`：系统 CPU 核数情况。
+    - `Total Disk Space`：系统 data 目录挂载的磁盘总大小
+    - `System Memory`：系统内存总大小
+    - `Swap Memory`：系统交换区内存大小
+    - `Total Timeseries`：系统当前时间序列总数量
+    - `Total File Number`：系统文件总数量
+    - `CPU Load`：系统 CPU 负载率，单位为%
+    - `Disk`：系统 Disk 占比率，单位为%
+    - `Process Memory`：进程内存使用率，单位为%
+    - `System Memory`： 系统内存使用率，单位为%
+    - `Write Point Per Second`：系统每秒中写入点数
+- `Performance`：系统性能
+    - `OPS`：系统接口和RPC每秒钟访问次数
+    - `OPS Of Stage`：Stage 各部分的每秒钟执行次数
+    - `OPS Of Schedule`：Schedule 各部分的每秒钟执行次数
+    - `Time Consumed Of Operation`：不同操作的耗时情况
+    - `P99 Time Consumed of Interface`：不同接口的 P99 耗时情况
+    - `Average Time Consumed of Interface`：不同接口的平均耗时情况
+    - `P99 Time Consumed of Stage`：不同阶段的 P99 耗时情况
+    - `Average Time Consumed of Stage`：不同阶段的平均耗时情况
+    - `P99 Time Consumed of Schedule Stage`：不同 Schedule 阶段的 P99 耗时情况
+    - `Average Time Consumed of Schedule Stage`：不同 Schedule 阶段的平均耗时情况
+    - `Task Number`：任务个数
+    - `P99 Time Consumed of Task`：任务的 P99 耗时情况
+    - `Average Time Consumed of Task`：任务的平均耗时情况
+- `System`：系统
+    - `CPU Load`：CPU 负载变化情况
+    - `CPU Time Per Minute`：CPU 平均每分钟的耗时
+    - `GC Time Per Minute`：GC 平均每分钟的耗时
+    - `Heap Memory`：IoTDB 进程的堆内存
+    - `Off Heap Memory`：IoTDB 进程的堆外内存
+    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
+    - `File Count`：文件数量变化情况
+    - `File Size`：文件大小变化情况
+    - `Log Number Per Minute`：日志每分钟变化情况
+
 ### 5.3. 使用 IoTDB 方式
 
 #### 5.3.1. 监控指标的 IoTDB 映射关系
 
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric.`ip:port` 为例
 
-| 监控指标类型          | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Counter         | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Histogram       | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
-| Rate            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Timer           | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p99 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p999   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. 获取监控指标
 

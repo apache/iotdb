@@ -77,7 +77,7 @@ public class CountGroupByLevelMergeOperatorTest {
               1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator1 =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
@@ -152,7 +152,7 @@ public class CountGroupByLevelMergeOperatorTest {
               1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       operatorContext.setDriverContext(
-          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
           new CountGroupByLevelScanOperator<>(
               planNodeId,

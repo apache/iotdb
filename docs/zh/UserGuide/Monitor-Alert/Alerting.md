@@ -39,7 +39,7 @@ IoTDB 告警功能预计支持两种模式：
     * 适合需要将原始数据降采样并持久化的场景。
     * 由于定时查询几乎不影响原始时间序列的写入，适合对原始数据写入性能敏感的场景。
 
-随着 [Trigger](../Trigger/Triggers.md) 模块的引入，可以实现写入触发模式的告警。
+随着 [Trigger](../Trigger/Instructions.md) 模块的引入，可以实现写入触发模式的告警。
 
 ## 部署 AlertManager 
 
@@ -243,7 +243,7 @@ inhibit_rules:
 ### 编写 trigger 类
 
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
-具体配置流程参见 [Triggers](Triggers.md)。
+具体配置流程参见 [Trigger](../Trigger/Implement-Trigger.md)。
 
 下面的示例创建了 `org.apache.iotdb.trigger.ClusterAlertingExample` 类，
 其 `alertManagerHandler` 

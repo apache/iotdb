@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -35,24 +36,23 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
-  private IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
-  private AtomicLong localMemoryUsage = new AtomicLong(0);
+  private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
+  private MemSchemaRegionStatistics regionStatistics;
 
   private IMNode root;
 
+  // Only used for ConfigMTree
   public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup) {
     if (isStorageGroup) {
       this.root =
@@ -65,8 +65,41 @@ public class MemMTreeStore implements IMTreeStore {
     }
   }
 
-  private MemMTreeStore(IMNode root) {
+  public MemMTreeStore(
+      PartialPath rootPath, boolean isStorageGroup, MemSchemaRegionStatistics regionStatistics) {
+    if (isStorageGroup) {
+      this.root =
+          new StorageGroupMNode(
+              null,
+              rootPath.getTailNode(),
+              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    } else {
+      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    }
+    this.regionStatistics = regionStatistics;
+  }
+
+  private MemMTreeStore(IMNode root, MemSchemaRegionStatistics regionStatistics) {
     this.root = root;
+    this.regionStatistics = regionStatistics;
+  }
+
+  @Override
+  public IMNode generatePrefix(PartialPath storageGroupPath) {
+    String[] nodes = storageGroupPath.getNodes();
+    // nodes[0] must be root
+    IMNode res = new AboveDatabaseMNode(null, nodes[0]);
+    IMNode cur = res;
+    IMNode child;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      child = new AboveDatabaseMNode(cur, nodes[i]);
+      cur.addChild(nodes[i], child);
+      cur = child;
+    }
+    root.setParent(cur);
+    cur.addChild(root);
+    requestMemory(estimator.estimateSize(root));
+    return res;
   }
 
   @Override
@@ -186,8 +219,6 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    memoryStatistics.releaseMemory(localMemoryUsage.get());
-    localMemoryUsage.set(0);
   }
 
   @Override
@@ -196,17 +227,24 @@ public class MemMTreeStore implements IMTreeStore {
   }
 
   public static MemMTreeStore loadFromSnapshot(
-      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
-    return new MemMTreeStore(MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess));
+      File snapshotDir,
+      Consumer<IMeasurementMNode> measurementProcess,
+      MemSchemaRegionStatistics regionStatistics)
+      throws IOException {
+    return new MemMTreeStore(
+        MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
+        regionStatistics);
   }
 
   private void requestMemory(int size) {
-    memoryStatistics.requestMemory(size);
-    localMemoryUsage.getAndUpdate(v -> v += size);
+    if (regionStatistics != null) {
+      regionStatistics.requestMemory(size);
+    }
   }
 
   private void releaseMemory(int size) {
-    localMemoryUsage.getAndUpdate(v -> v -= size);
-    memoryStatistics.releaseMemory(size);
+    if (regionStatistics != null) {
+      regionStatistics.releaseMemory(size);
+    }
   }
 }

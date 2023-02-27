@@ -41,6 +41,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -225,20 +227,26 @@ public class SlidingWindowAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(leafAggregationTypes, TSDataType.INT32, ascending)
+    AccumulatorFactory.createAccumulators(
+            leafAggregationTypes,
+            TSDataType.INT32,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            ascending)
         .forEach(
             accumulator -> aggregators.add(new Aggregator(accumulator, AggregationStep.PARTIAL)));
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(Collections.singleton("sensor0"));
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             sourceId,
             d0s0,
-            Collections.singleton("sensor0"),
+            ascending ? Ordering.ASC : Ordering.DESC,
+            scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
-            null,
-            ascending,
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(
@@ -250,6 +258,8 @@ public class SlidingWindowAggregationOperatorTest {
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               rootAggregationTypes.get(i),
               TSDataType.INT32,
+              Collections.emptyList(),
+              Collections.emptyMap(),
               ascending,
               inputLocations.get(i).stream()
                   .map(tmpInputLocations -> tmpInputLocations.toArray(new InputLocation[0]))

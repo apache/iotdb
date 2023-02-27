@@ -34,8 +34,8 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
-import org.apache.iotdb.confignode.consensus.response.PipeResp;
-import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
+import org.apache.iotdb.confignode.consensus.response.pipe.PipeResp;
+import org.apache.iotdb.confignode.consensus.response.pipe.PipeSinkResp;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -77,8 +78,9 @@ public class TsFileGeneratorUtils {
     for (int i : meausurementIndex) {
       if (!isAligned) {
         timeseriesPath.add(
-            new PartialPath(
-                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex + PATH_SEPARATOR + "s" + i));
+            new MeasurementPath(
+                testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex + PATH_SEPARATOR + "s" + i,
+                dataTypes.get(i)));
       } else {
         timeseriesPath.add(
             new AlignedPath(
@@ -168,6 +170,10 @@ public class TsFileGeneratorUtils {
     }
     // seal current chunk
     chunkWriter.writeToFileWriter(tsFileIOWriter);
+  }
+
+  public static void writeNullPoint(ValuePageWriter valuePageWriter, long timestamp) {
+    valuePageWriter.write(timestamp, null, true);
   }
 
   public static void writeAlignedPoint(

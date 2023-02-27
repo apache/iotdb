@@ -324,6 +324,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    cnConfig.setDegreeOfParallelism(degreeOfParallelism);
+    dnConfig.setDegreeOfParallelism(degreeOfParallelism);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     cnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
     dnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
@@ -334,6 +341,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    dnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
     return this;
   }
 }

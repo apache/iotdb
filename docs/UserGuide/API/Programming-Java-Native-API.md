@@ -47,7 +47,7 @@ In root directory:
 
 ## Syntax Convention
 
-- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
+- **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Syntax-Conventions/Literal-Values.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
   - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
@@ -219,50 +219,6 @@ template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
 createSchemaTemplate(flatTemplate);
-```
-
-After measurement template created, you can edit the template with belowed APIs.
-
-**Attention: **
-
-**1. templates had been set could not be pruned**
-
-**2. templates will be activated until data points insert into correspoding measurements**
-
-**3. templates will not be shown by showtimeseries before activating**
-
-```java
-// Add aligned measurements to a template
-public void addAlignedMeasurementsInTemplate(String templateName,
-    						  String[] measurementsPath,
-                              TSDataType[] dataTypes,
-                              TSEncoding[] encodings,
-                              CompressionType[] compressors);
-
-// Add one aligned measurement to a template
-public void addAlignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-
-
-// Add unaligned measurements to a template
-public void addUnalignedMeasurementInTemplate(String templateName,
-                                String measurementPath,
-                                TSDataType dataType,
-                                TSEncoding encoding,
-                                CompressionType compressor);
-                                
-// Add one unaligned measurement to a template
-public void addUnalignedMeasurementsIntemplate(String templateName,
-                                String[] measurementPaths,
-                                TSDataType[] dataTypes,
-                                TSEncoding[] encodings,
-                                CompressionType[] compressors);
-
-// Delete a node in template
-public void deleteNodeInTemplate(String templateName, String path);
 ```
 
 You can query measurement inside templates with these APIS:

@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -61,6 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -114,10 +114,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
-      int schemaRegionId) {
-    store = new MemMTreeStore(storageGroupPath, true);
+      MemSchemaRegionStatistics regionStatistics) {
+    store = new MemMTreeStore(storageGroupPath, true, regionStatistics);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
+    this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
   }
@@ -125,35 +125,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   private MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       MemMTreeStore store,
-      Function<IMeasurementMNode, Map<String, String>> tagGetter,
-      int schemaRegionId) {
+      Function<IMeasurementMNode, Map<String, String>> tagGetter) {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
-    this.rootNode = generatePrefix(storageGroupPath, this.storageGroupMNode);
+    this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
-  }
-
-  /**
-   * Generate the ancestor nodes of storageGroupNode
-   *
-   * @return root node
-   */
-  private IMNode generatePrefix(
-      PartialPath storageGroupPath, IStorageGroupMNode storageGroupMNode) {
-    String[] nodes = storageGroupPath.getNodes();
-    // nodes[0] must be root
-    IMNode root = new AboveDatabaseMNode(null, nodes[0]);
-    IMNode cur = root;
-    IMNode child;
-    for (int i = 1; i < nodes.length - 1; i++) {
-      child = new AboveDatabaseMNode(cur, nodes[i]);
-      cur.addChild(nodes[i], child);
-      cur = child;
-    }
-    storageGroupMNode.setParent(cur);
-    cur.addChild(storageGroupMNode);
-    return root;
   }
 
   @Override
@@ -175,15 +152,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
       File snapshotDir,
       String storageGroupFullPath,
-      int schemaRegionId,
+      MemSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode> measurementProcess,
       Function<IMeasurementMNode, Map<String, String>> tagGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
-        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
-        tagGetter,
-        schemaRegionId);
+        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess, regionStatistics),
+        tagGetter);
   }
 
   // endregion
@@ -455,8 +431,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @param path Format: root.node(.node)+
    */
   @Override
-  public Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
-      PartialPath path) throws MetadataException {
+  public IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0) {
       throw new IllegalPathException(path.getFullPath());
@@ -469,11 +444,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (deletedNode.getAlias() != null) {
       parent.deleteAliasChild(deletedNode.getAlias());
     }
-    return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
+    deleteEmptyInternalMNode(parent);
+    return deletedNode;
   }
 
   /** Used when delete timeseries or deactivate template */
-  public PartialPath deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(IEntityMNode entityMNode) {
+  public void deleteEmptyInternalMNode(IEntityMNode entityMNode) {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -501,12 +477,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     while (isEmptyInternalMNode(curNode)) {
       // if current database has no time series, return the database name
       if (curNode.isStorageGroup()) {
-        return curNode.getPartialPath();
+        return;
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
-    return null;
   }
 
   @Override
@@ -806,7 +781,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 node.deactivateTemplate();
-                deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(node);
+                deleteEmptyInternalMNode(node);
               }
             }
           }) {

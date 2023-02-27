@@ -129,6 +129,10 @@ CONCAT
     : C O N C A T
     ;
 
+CONDITION
+    : C O N D I T I O N
+    ;
+
 CONFIGNODES
     : C O N F I G N O D E S
     ;
@@ -558,6 +562,10 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SESSION
+    : S E S S I O N
+    ;
+
 SET
     : S E T
     ;
@@ -712,6 +720,10 @@ USING
 
 VALUES
     : V A L U E S
+    ;
+
+VARIATION
+    : V A R I A T I O N
     ;
 
 VERIFY

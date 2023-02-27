@@ -25,8 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -41,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,15 +138,15 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
-                  // get the sinkHandle of last driver
-                  ISinkHandle sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
+                  // get the sink of last driver
+                  ISink sink = drivers.get(drivers.size() - 1).getSink();
 
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
                       context,
                       drivers,
-                      sinkHandle,
+                      sink,
                       stateMachine,
                       failedInstances,
                       instance.getTimeOut());
@@ -195,14 +193,20 @@ public class FragmentInstanceManager {
                               fragmentInstanceId, stateMachine, instance.getSessionInfo()));
 
               try {
-                SchemaDriver driver =
+                List<PipelineDriverFactory> driverFactories =
                     planner.plan(instance.getFragment().getPlanNodeTree(), context, schemaRegion);
+
+                List<IDriver> drivers = new ArrayList<>();
+                driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                // get the sink of last driver
+                ISink sink = drivers.get(drivers.size() - 1).getSink();
+
                 return createFragmentInstanceExecution(
                     scheduler,
                     instanceId,
                     context,
-                    Collections.singletonList(driver),
-                    driver.getSinkHandle(),
+                    drivers,
+                    sink,
                     stateMachine,
                     failedInstances,
                     instance.getTimeOut());

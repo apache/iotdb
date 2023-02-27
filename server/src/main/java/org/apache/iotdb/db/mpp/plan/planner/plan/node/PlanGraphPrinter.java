@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
@@ -41,11 +42,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -95,6 +96,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("SeriesScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
     boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+
+    long limit = node.getLimit(), offset = node.getOffset();
+    if (limit > 0) {
+      boxValue.add(String.format("Limit: %s", limit));
+    }
+    if (offset > 0) {
+      boxValue.add(String.format("Offset: %s", offset));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -108,6 +117,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             "Series: %s%s",
             node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     boxValue.add(String.format("TimeFilter: %s", node.getTimeFilter()));
+
+    long limit = node.getLimit(), offset = node.getOffset();
+    if (limit > 0) {
+      boxValue.add(String.format("Limit: %s", limit));
+    }
+    if (offset > 0) {
+      boxValue.add(String.format("Offset: %s", offset));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -306,14 +323,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitFragmentSink(FragmentSinkNode node, GraphContext context) {
-    List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("FragmentSink-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("Destination: %s", node.getDownStreamPlanNodeId()));
-    return render(node, boxValue, context);
-  }
-
-  @Override
   public List<String> visitTransform(TransformNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Transform-%s", node.getPlanNodeId().getId()));
@@ -414,9 +423,23 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitVerticallyConcat(VerticallyConcatNode node, GraphContext context) {
+  public List<String> visitHorizontallyConcat(HorizontallyConcatNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("VerticallyConcat-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("HorizontallyConcat-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitIdentitySink(IdentitySinkNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("IdentitySink-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitShuffleSink(ShuffleSinkNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ShuffleSink-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 

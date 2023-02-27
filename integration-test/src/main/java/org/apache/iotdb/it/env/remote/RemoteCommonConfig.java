@@ -233,12 +233,22 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     return this;
   }
 
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     return this;
   }
 }

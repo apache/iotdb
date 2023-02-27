@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -40,6 +42,7 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.SystemMetrics;
+import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,6 +93,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
     try {
       processPid();
+      // Add shutdown hook
+      Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -189,11 +194,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
-      try {
-        stop();
-      } catch (IOException e2) {
-        LOGGER.error("Meet error when stop ConfigNode!", e);
-      }
+      stop();
     }
   }
 
@@ -202,22 +203,6 @@ public class ConfigNode implements ConfigNodeMBean {
     if (pidFile != null) {
       new File(pidFile).deleteOnExit();
     }
-  }
-
-  private void initConfigManager() {
-    try {
-      configManager = new ConfigManager();
-    } catch (IOException e) {
-      LOGGER.error("Can't start ConfigNode consensus group!", e);
-      try {
-        stop();
-      } catch (IOException e2) {
-        LOGGER.error("Meet error when stop ConfigNode!", e);
-      }
-    }
-    // Add some Metrics for configManager
-    configManager.addMetrics();
-    LOGGER.info("Successfully initialize ConfigManager.");
   }
 
   private void setUpInternalServices() throws StartupException, IOException {
@@ -231,8 +216,21 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
+    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
 
     LOGGER.info("Successfully setup internal services.");
+  }
+
+  private void initConfigManager() {
+    try {
+      configManager = new ConfigManager();
+    } catch (IOException e) {
+      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      stop();
+    }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
+    LOGGER.info("Successfully initialize ConfigManager.");
   }
 
   /** Register Non-seed ConfigNode when first startup */
@@ -345,7 +343,8 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  public void stop() throws IOException {
+  /** Deactivating ConfigNode internal services */
+  public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
@@ -353,6 +352,14 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager.close();
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  public void stop() {
+    try {
+      deactivate();
+    } catch (IOException e) {
+      LOGGER.error("Meet error when deactivate ConfigNode", e);
+    }
     System.exit(-1);
   }
 

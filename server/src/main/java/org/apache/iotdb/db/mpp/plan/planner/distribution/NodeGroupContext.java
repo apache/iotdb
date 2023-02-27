@@ -19,19 +19,54 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class NodeGroupContext {
-  protected MPPQueryContext queryContext;
-  protected Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+  protected final MPPQueryContext queryContext;
+  private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+  private final boolean isAlignByDevice;
+  private final TRegionReplicaSet mostlyUsedDataRegion;
+  protected final List<ExchangeNode> exchangeNodes;
 
-  public NodeGroupContext(MPPQueryContext queryContext) {
+  public NodeGroupContext(MPPQueryContext queryContext, boolean isAlignByDevice, PlanNode root) {
     this.queryContext = queryContext;
     this.nodeDistributionMap = new HashMap<>();
+    this.isAlignByDevice = isAlignByDevice;
+    this.mostlyUsedDataRegion = isAlignByDevice ? getMostlyUsedDataRegion(root) : null;
+    this.exchangeNodes = new ArrayList<>();
+  }
+
+  private TRegionReplicaSet getMostlyUsedDataRegion(PlanNode root) {
+    Map<TRegionReplicaSet, Long> regionCount = new HashMap<>();
+    countRegionOfSourceNodes(root, regionCount);
+    return Collections.max(
+            regionCount.entrySet().stream()
+                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
+                .collect(Collectors.toList()),
+            Map.Entry.comparingByValue())
+        .getKey();
+  }
+
+  private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {
+    root.getChildren().forEach(child -> countRegionOfSourceNodes(child, result));
+    if (root instanceof SourceNode) {
+      result.compute(
+          ((SourceNode) root).getRegionReplicaSet(),
+          (region, count) -> (count == null) ? 1 : count + 1);
+    }
   }
 
   public void putNodeDistribution(PlanNodeId nodeId, NodeDistribution distribution) {
@@ -40,5 +75,13 @@ public class NodeGroupContext {
 
   public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {
     return this.nodeDistributionMap.get(nodeId);
+  }
+
+  public boolean isAlignByDevice() {
+    return isAlignByDevice;
+  }
+
+  public TRegionReplicaSet getMostlyUsedDataRegion() {
+    return mostlyUsedDataRegion;
   }
 }

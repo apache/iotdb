@@ -21,8 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 public enum WindowType {
   TIME_WINDOW((byte) 0),
-
-  EVENT_WINDOW((byte) 1);
+  EVENT_WINDOW((byte) 1),
+  SERIES_WINDOW((byte) 2),
+  SESSION_WINDOW((byte) 3);
 
   private final byte type;
 

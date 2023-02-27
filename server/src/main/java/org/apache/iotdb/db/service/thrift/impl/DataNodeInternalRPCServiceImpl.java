@@ -57,12 +57,8 @@ import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.BloomFilterCache;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -399,7 +395,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
-    DataNodeSchemaCache.getInstance().cleanUp();
+    DataNodeSchemaCache.getInstance().invalidateAll();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -481,7 +477,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     cache.takeWriteLock();
     try {
       // todo implement precise timeseries clean rather than clean all
-      cache.cleanUp();
+      cache.invalidateAll();
     } finally {
       cache.releaseWriteLock();
     }
@@ -958,20 +954,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TLoadSample loadSample = new TLoadSample();
 
       // Sample cpu load
-      long cpuLoad =
+      double cpuLoad =
           MetricService.getInstance()
               .getAutoGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
       if (cpuLoad != 0) {
-        loadSample.setCpuUsageRate((short) cpuLoad);
+        loadSample.setCpuUsageRate(cpuLoad);
       }
 
       // Sample memory load
-      long usedMemory = getMemory("jvm.memory.used.bytes");
-      long maxMemory = getMemory("jvm.memory.max.bytes");
+      double usedMemory = getMemory("jvm.memory.used.bytes");
+      double maxMemory = getMemory("jvm.memory.max.bytes");
       if (usedMemory != 0 && maxMemory != 0) {
-        loadSample.setMemoryUsageRate((double) usedMemory * 100 / maxMemory);
+        loadSample.setMemoryUsageRate(usedMemory * 100 / maxMemory);
       }
 
       // Sample disk load
@@ -1024,8 +1020,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private long getMemory(String gaugeName) {
-    long result = 0;
+  private double getMemory(String gaugeName) {
+    double result = 0d;
     try {
       //
       List<String> heapIds = Arrays.asList("PS Eden Space", "PS Old Eden", "Ps Survivor Space");
@@ -1045,7 +1041,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     } catch (Exception e) {
       LOGGER.warn("Failed to get memory from metric because: ", e);
-      return 0;
+      return 0d;
     }
     return result;
   }
@@ -1053,7 +1049,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private void sampleDiskLoad(TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-    long freeDisk =
+    double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
                 Metric.SYS_DISK_FREE_SPACE.toString(),
@@ -1061,7 +1057,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 Tag.NAME.toString(),
                 "system")
             .value();
-    long totalDisk =
+    double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
                 Metric.SYS_DISK_TOTAL_SPACE.toString(),
@@ -1071,11 +1067,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .value();
 
     if (freeDisk != 0 && totalDisk != 0) {
-      double freeDiskRatio = (double) freeDisk / totalDisk;
+      double freeDiskRatio = freeDisk / totalDisk;
       loadSample.setFreeDiskSpace(freeDisk);
-      loadSample.setDiskUsageRate(1.0 - freeDiskRatio);
+      loadSample.setDiskUsageRate(1d - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+        LOGGER.warn(
+            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            freeDiskRatio,
+            commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       }
@@ -1102,14 +1102,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    return storageEngine.operateFlush(req);
+    try {
+      storageEngine.operateFlush(req);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus clearCache() throws TException {
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
-    BloomFilterCache.getInstance().clear();
+    try {
+      storageEngine.clearCache();
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -1122,7 +1129,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus loadConfiguration() throws TException {
     try {
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
-    } catch (QueryProcessException e) {
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

@@ -41,7 +41,7 @@ public class SchemaRegionReadPlanFactory {
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
-      PartialPath path, int limit, int offset, boolean isPrefixMatch) {
+      PartialPath path, long limit, long offset, boolean isPrefixMatch) {
     return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);
   }
 
@@ -76,8 +76,8 @@ public class SchemaRegionReadPlanFactory {
       boolean isContains,
       String key,
       String value,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean isPrefixMatch) {
     return new ShowTimeSeriesPlanImpl(
         path, relatedTemplate, isContains, key, value, limit, offset, isPrefixMatch);

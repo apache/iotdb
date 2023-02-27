@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --max_old_space_size=6000 ./node_modules/vuepress/cli.js dev src",
     "build": "node --max_old_space_size=6000 ./node_modules/vuepress/cli.js build src",
-    "deploy": "node --max_old_space_size=6000 deploy.js"
+    "deploy": "node --max_old_space_size=6000 deploy.js",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix"
   },
   "repository": {
     "type": "git",
@@ -32,15 +33,20 @@
   },
   "devDependencies": {
     "@dovyp/vuepress-plugin-clipboard-copy": "^1.0.0-alpha.7",
+    "@rushstack/eslint-patch": "^1.2.0",
+    "@vue/eslint-config-airbnb": "^7.0.0",
+    "@vuepress/plugin-back-to-top": "^1.9.7",
+    "@vuepress/plugin-html-redirect": "0.1.4",
+    "eslint": "^8.34.0",
+    "eslint-plugin-vue": "^9.9.0",
     "remark": "^11.0.2",
     "remark-validate-links": "^9.2.0",
     "unified-engine": "^7.0.0",
     "vfile-reporter": "^6.0.1",
+    "vue-router": "3.4.5",
     "vue-tabs-component": "^1.5.0",
     "vuepress": "^1.7.1",
-    "vuepress-plugin-tabs": "^0.3.0",
-    "vue-router": "3.4.5",
-    "@vuepress/plugin-html-redirect": "0.1.4",
-    "@vuepress/plugin-back-to-top": "^1.9.7"
+    "vuepress-plugin-sitemap": "^2.3.1",
+    "vuepress-plugin-tabs": "^0.3.0"
   }
 }

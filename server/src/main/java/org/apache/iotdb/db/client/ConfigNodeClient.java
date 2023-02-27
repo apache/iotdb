@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -38,7 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -55,9 +56,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -97,23 +100,21 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -408,6 +409,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.reportDataNodeShutdown(dataNodeLocation);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeId) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -492,10 +509,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.setStorageGroup(req);
+        TSStatus status = client.setDatabase(databaseSchema);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -513,10 +530,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
+  public TSStatus alterDatabase(TDatabaseSchema databaseSchema) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroup(req);
+        TSStatus status = client.alterDatabase(databaseSchema);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -534,10 +551,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req) throws TException {
+  public TSStatus deleteDatabase(TDeleteDatabaseReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroups(req);
+        TSStatus status = client.deleteDatabase(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
@@ -555,11 +572,32 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+  public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deleteDatabases(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -577,12 +615,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupSchemaResp resp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -907,6 +944,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
+      throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
+  }
+
+  @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support stopConfigNode.");
   }
@@ -1128,12 +1171,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
-      throws TException {
+  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowStorageGroupResp showStorageGroupResp =
-            client.showStorageGroup(storageGroupPathPattern);
+        TShowDatabaseResp showStorageGroupResp = client.showDatabase(storageGroupPathPattern);
         if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
           return showStorageGroupResp;
         }

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -228,6 +228,20 @@ public class ConfigMTreeTest {
     result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
+
+    root.setStorageGroup(new PartialPath("root.test.`001.002.003`"));
+    root.setStorageGroup(new PartialPath("root.test.g_0.s_0_b001"));
+    root.setStorageGroup(new PartialPath("root.sg"));
+    root.setStorageGroup(new PartialPath("root.ln"));
+
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true);
+    Assert.assertEquals(0, result.left.size());
+    Assert.assertEquals(5, result.right.size());
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg2")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.sg")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.ln")));
+    Assert.assertTrue(result.right.contains(new PartialPath("root.test.`001.002.003`")));
   }
 
   @Test
@@ -257,7 +271,7 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      TStorageGroupSchema storageGroupSchema =
+      TDatabaseSchema storageGroupSchema =
           newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());

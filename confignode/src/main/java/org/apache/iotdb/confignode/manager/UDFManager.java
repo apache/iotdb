@@ -31,8 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTa
 import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
-import org.apache.iotdb.confignode.consensus.response.FunctionTableResp;
-import org.apache.iotdb.confignode.consensus.response.JarResp;
+import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
+import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;

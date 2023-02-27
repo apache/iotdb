@@ -238,7 +238,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 括号里的`temprature`是`s1`这个传感器的别名。
 我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
 
-> IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/DML-Data-Manipulation%20Language.md) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
+> IoTDB 同时支持在查询语句中 [使用 AS 函数](../Reference/SQL-Reference.md#数据管理语句) 设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
 
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 

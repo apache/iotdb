@@ -287,7 +287,6 @@ public class DataNode implements DataNodeMBean {
       IoTDBStartCheck.getInstance().checkSystemConfig();
       IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
-      IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
         IoTDBDescriptor.getInstance().reclaimConsensusMemory();
@@ -565,7 +564,7 @@ public class DataNode implements DataNodeMBean {
     DataNodeMetricsHelper.bind();
   }
 
-  private TDataNodeLocation generateDataNodeLocation() {
+  public static TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));

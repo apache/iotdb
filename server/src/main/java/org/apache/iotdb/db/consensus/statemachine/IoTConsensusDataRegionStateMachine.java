@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -57,7 +58,12 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
         }
         return new TSStatus().setSubStatus(subStatus);
       } else {
-        return write((PlanNode) request);
+        PlanNode planNode = (PlanNode) request;
+        if (planNode.getMetricTime() != 0) {
+          PerformanceOverviewMetricsManager.getInstance()
+              .recordScheduleConsensusCost(System.nanoTime() - planNode.getMetricTime());
+        }
+        return write(planNode);
       }
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);

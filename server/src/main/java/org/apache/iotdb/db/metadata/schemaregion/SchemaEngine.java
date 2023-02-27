@@ -27,9 +27,14 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
+import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -67,6 +72,8 @@ public class SchemaEngine {
 
   // seriesNumberMonitor may be null
   private ISeriesNumerMonitor seriesNumerMonitor = null;
+
+  private ISchemaEngineStatistics schemaEngineStatistics;
 
   public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
     return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
@@ -113,7 +120,11 @@ public class SchemaEngine {
     schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
-    SchemaResourceManager.initSchemaResource();
+    initSchemaEngineStatistics();
+    SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
+    // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after
+    // CacheMemoryManager
+    SchemaMetricManager.getInstance().init(schemaEngineStatistics);
 
     schemaRegionMap = new ConcurrentHashMap<>();
 
@@ -142,7 +153,7 @@ public class SchemaEngine {
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
-  private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
+  private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
 
     File schemaDir = new File(config.getSchemaDir());
@@ -213,6 +224,14 @@ public class SchemaEngine {
     return partitionTable;
   }
 
+  private void initSchemaEngineStatistics() {
+    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
+      schemaEngineStatistics = new MemSchemaEngineStatistics();
+    } else {
+      schemaEngineStatistics = new CachedSchemaEngineStatistics();
+    }
+  }
+
   public void forceMlog() {
     Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
     if (schemaRegionMap != null) {
@@ -223,20 +242,24 @@ public class SchemaEngine {
   }
 
   public void clear() {
+    // clearSchemaResource will shut down release and flush task in Schema_File mode, which must be
+    // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
-
     if (timedForceMLogThread != null) {
       timedForceMLogThread.shutdown();
       timedForceMLogThread = null;
     }
 
     if (schemaRegionMap != null) {
+      // SchemaEngineStatistics will be clear after clear all schema region
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.clear();
       }
       schemaRegionMap.clear();
       schemaRegionMap = null;
     }
+    // SchemaMetric should be cleared lastly
+    SchemaMetricManager.getInstance().clear();
   }
 
   public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
@@ -297,11 +320,14 @@ public class SchemaEngine {
     ISchemaRegion schemaRegion;
     switch (this.schemaRegionStoredMode) {
       case Memory:
-        schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, seriesNumerMonitor);
+        schemaRegion =
+            new SchemaRegionMemoryImpl(
+                storageGroup, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
         break;
       case Schema_File:
         schemaRegion =
-            new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, seriesNumerMonitor);
+            new SchemaRegionSchemaFileImpl(
+                storageGroup, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
         break;
       case Rocksdb_based:
         schemaRegion = new RSchemaRegionLoader().loadRSchemaRegion(storageGroup, schemaRegionId);
@@ -312,6 +338,7 @@ public class SchemaEngine {
                 "This mode [%s] is not supported. Please check and modify it.",
                 schemaRegionStoredMode));
     }
+    SchemaMetricManager.getInstance().createSchemaRegionMetric(schemaRegion);
     return schemaRegion;
   }
 
@@ -323,6 +350,7 @@ public class SchemaEngine {
       return;
     }
     schemaRegion.deleteSchemaRegion();
+    SchemaMetricManager.getInstance().deleteSchemaRegionMetric(schemaRegionId.getId());
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
@@ -347,5 +375,14 @@ public class SchemaEngine {
 
   public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
     this.seriesNumerMonitor = seriesNumerMonitor;
+  }
+
+  public int getSchemaRegionNumber() {
+    return schemaRegionMap == null ? 0 : schemaRegionMap.size();
+  }
+
+  @TestOnly
+  public ISchemaEngineStatistics getSchemaEngineStatistics() {
+    return schemaEngineStatistics;
   }
 }

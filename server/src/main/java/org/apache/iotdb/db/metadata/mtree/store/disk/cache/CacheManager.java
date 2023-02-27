@@ -23,8 +23,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
-import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
+import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -65,10 +64,14 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
  */
 public abstract class CacheManager implements ICacheManager {
 
-  private IMemManager memManager = MemManagerHolder.getMemManagerInstance();
+  private final MemManager memManager;
 
   // The nodeBuffer helps to quickly locate the volatile subtree
-  private NodeBuffer nodeBuffer = new NodeBuffer();
+  private final NodeBuffer nodeBuffer = new NodeBuffer();
+
+  public CacheManager(MemManager memManager) {
+    this.memManager = memManager;
+  }
 
   public void initRootStatus(IMNode root) {
     pinMNodeWithMemStatusUpdate(root);
@@ -495,6 +498,11 @@ public abstract class CacheManager implements ICacheManager {
     return node.getCacheEntry();
   }
 
+  @Override
+  public long getBufferNodeNum() {
+    return nodeBuffer.getBufferNodeNum();
+  }
+
   protected void initCacheEntryForNode(IMNode node) {
     node.setCacheEntry(new CacheEntry());
   }
@@ -550,6 +558,14 @@ public abstract class CacheManager implements ICacheManager {
           action.accept(node);
         }
       }
+    }
+
+    long getBufferNodeNum() {
+      long res = updatedStorageGroupMNode == null ? 0 : 1;
+      for (int i = 0; i < MAP_NUM; i++) {
+        res += maps[i].size();
+      }
+      return res;
     }
 
     void clear() {

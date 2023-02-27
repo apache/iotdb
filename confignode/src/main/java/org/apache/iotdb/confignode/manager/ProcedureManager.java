@@ -49,7 +49,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
@@ -70,10 +70,10 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -147,12 +147,12 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteStorageGroups(ArrayList<TStorageGroupSchema> deleteSgSchemaList) {
+  public TSStatus deleteStorageGroups(ArrayList<TDatabaseSchema> deleteSgSchemaList) {
     List<Long> procedureIds = new ArrayList<>();
-    for (TStorageGroupSchema storageGroupSchema : deleteSgSchemaList) {
-      DeleteStorageGroupProcedure deleteStorageGroupProcedure =
-          new DeleteStorageGroupProcedure(storageGroupSchema);
-      long procedureId = this.executor.submitProcedure(deleteStorageGroupProcedure);
+    for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
+      DeleteDatabaseProcedure deleteDatabaseProcedure =
+          new DeleteDatabaseProcedure(storageGroupSchema);
+      long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
       procedureIds.add(procedureId);
     }
     List<TSStatus> procedureStatus = new ArrayList<>();

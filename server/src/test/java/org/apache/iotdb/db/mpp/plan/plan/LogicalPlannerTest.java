@@ -82,7 +82,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 @Ignore
-@Deprecated
 public class LogicalPlannerTest {
 
   @Test
@@ -281,7 +280,7 @@ public class LogicalPlannerTest {
             }
           });
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
-          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
+          StatementGenerator.createStatement(req);
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       Analyzer analyzer =
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());

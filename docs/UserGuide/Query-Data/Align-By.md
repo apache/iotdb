@@ -55,7 +55,7 @@ The result shows below:
 Total line number = 6
 It costs 0.012s
 ```
-### ordering in ALIGN BY DEVICE
+## Ordering in ALIGN BY DEVICE
 
 ALIGN BY DEVICE mode arranges according to the device first, and sort each device in ascending order according to the timestamp. The ordering and priority can be adjusted through `ORDER BY` clause.
 

@@ -243,4 +243,62 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(expectedTimeseries.get(i), result.get(i).getFullPath());
     }
   }
+
+  @Test
+  public void testDeleteSchemaWithTemplate() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    int templateId = 1;
+    Template template =
+        new Template(
+            "t1",
+            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
+            Arrays.asList(
+                Collections.singletonList(TSDataType.DOUBLE),
+                Collections.singletonList(TSDataType.INT32)),
+            Arrays.asList(
+                Collections.singletonList(TSEncoding.RLE),
+                Collections.singletonList(TSEncoding.RLE)),
+            Arrays.asList(
+                Collections.singletonList(CompressionType.SNAPPY),
+                Collections.singletonList(CompressionType.SNAPPY)));
+    template.setId(templateId);
+    schemaRegion.activateSchemaTemplate(
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.db.d1"), 3, templateId),
+        template);
+
+    schemaRegion.createTimeseries(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+            new PartialPath("root.db.d1.s3"),
+            TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null),
+        -1);
+
+    Assert.assertEquals(
+        0, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s1")));
+    Assert.assertEquals(
+        1, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
+
+    Assert.assertEquals(
+        1,
+        schemaRegion
+            .fetchSchema(
+                new PartialPath("root.db.d1.s1"),
+                Collections.singletonMap(templateId, template),
+                false)
+            .size());
+    Assert.assertEquals(
+        0,
+        schemaRegion
+            .fetchSchema(
+                new PartialPath("root.db.d1.s3"),
+                Collections.singletonMap(templateId, template),
+                false)
+            .size());
+  }
 }

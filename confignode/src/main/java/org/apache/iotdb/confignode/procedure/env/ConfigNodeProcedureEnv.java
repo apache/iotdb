@@ -38,14 +38,14 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
@@ -63,7 +63,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
@@ -122,8 +121,8 @@ public class ConfigNodeProcedureEnv {
    * @return tsStatus
    */
   public TSStatus deleteConfig(String name) {
-    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
-    return getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
+    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
+    return getClusterSchemaManager().deleteStorageGroup(deleteDatabasePlan);
   }
 
   /**
@@ -132,8 +131,7 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDelete(
-      PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
+  public void preDelete(PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
     getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 
@@ -383,16 +381,11 @@ public class ConfigNodeProcedureEnv {
               DataNodeRequestType.SET_SYSTEM_STATUS);
     }
 
-    // Force updating NodeStatus
-    long currentTime = System.currentTimeMillis();
-    NodeHeartbeatSample removingSample =
-        new NodeHeartbeatSample(
-            new THeartbeatResp(currentTime, NodeStatus.Removing.getStatus()).setStatusReason(null),
-            currentTime);
+    // Force updating NodeStatus to Removing
     getNodeManager()
         .getNodeCacheMap()
         .get(dataNodeLocation.getDataNodeId())
-        .forceUpdate(removingSample);
+        .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
   }
 
   /**

@@ -25,24 +25,25 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -92,9 +93,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -223,6 +224,15 @@ public interface IManager {
   DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
+   * Report that the specified DataNode will be shutdown.
+   *
+   * <p>The ConfigNode-leader will mark it as Unknown
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
+
+  /**
    * DataNode report region migrate result to ConfigNode when remove DataNode
    *
    * @param req TRegionMigrateResultReportReq
@@ -264,21 +274,28 @@ public interface IManager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan);
+  DataSet countMatchedStorageGroups(CountDatabasePlan countDatabasePlan);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupPlan);
+  DataSet getMatchedStorageGroupSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
 
   /**
-   * Set StorageGroup
+   * Set Database
    *
-   * @return status
+   * @return TSStatus
    */
-  TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan);
+  TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan);
+
+  /**
+   * Alter Database
+   *
+   * @return TSStatus
+   */
+  TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
    * Delete StorageGroups
@@ -367,6 +384,14 @@ public interface IManager {
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
+  /**
+   * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
+   * Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
+
   TSStatus createFunction(TCreateFunctionReq req);
 
   TSStatus dropFunction(String udfName);
@@ -439,7 +464,7 @@ public interface IManager {
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
    */
-  TShowStorageGroupResp showStorageGroup(GetStorageGroupPlan getStorageGroupPlan);
+  TShowDatabaseResp showStorageGroup(GetDatabasePlan getStorageGroupPlan);
 
   /**
    * create schema template

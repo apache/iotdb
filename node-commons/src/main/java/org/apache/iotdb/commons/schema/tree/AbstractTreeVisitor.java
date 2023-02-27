@@ -201,6 +201,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
       N nextTempNode = iterator.next();
 
+      shouldVisitSubtree = false;
       if (currentStateMatchInfo.hasFinalState()) {
         if (acceptFullMatchedNode(nextTempNode)) {
           nextMatchedNode = nextTempNode;

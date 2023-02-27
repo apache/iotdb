@@ -63,6 +63,8 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TGetDataBlockResponse {
@@ -73,6 +75,8 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -227,14 +231,14 @@ struct THeartbeatResp {
 
 struct TLoadSample {
   // Percentage of occupied cpu in DataNode
-  1: required i16 cpuUsageRate
+  1: required double cpuUsageRate
   // Percentage of occupied memory space in DataNode
   2: required double memoryUsageRate
   // Percentage of occupied disk space in DataNode
   3: required double diskUsageRate
   // The size of free disk space
   // Unit: Byte
-  4: required i64 freeDiskSpace
+  4: required double freeDiskSpace
 }
 
 struct TRegionRouteReq {

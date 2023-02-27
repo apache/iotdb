@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -66,8 +68,8 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
-import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
+import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -136,8 +138,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean usingMLog = true;
   private SchemaLogWriter<ISchemaRegionPlan> logWriter;
 
-  private SchemaStatisticsManager schemaStatisticsManager = SchemaStatisticsManager.getInstance();
-  private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+  private final MemSchemaRegionStatistics regionStatistics;
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
@@ -149,6 +150,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
+      ISchemaEngineStatistics engineStatistics,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
 
@@ -171,7 +173,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     this.seriesNumerMonitor = seriesNumerMonitor;
-
+    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId(), engineStatistics);
     init();
   }
 
@@ -191,7 +193,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
+              new PartialPath(storageGroupFullPath), tagManager::readTags, regionStatistics);
 
       if (!(config.isClusterMode()
           && config
@@ -273,6 +275,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public MemSchemaRegionStatistics getSchemaRegionStatistics() {
+    return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    return new SchemaRegionMemMetric(regionStatistics);
+  }
+
   /**
    * Init from metadata log file.
    *
@@ -348,6 +360,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       if (this.mtree != null) {
         this.mtree.clear();
       }
+      this.regionStatistics.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -378,8 +391,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void deleteSchemaRegion() throws MetadataException {
     // collect all the LeafMNode in this schema region
-    long seriesCount = mtree.countAllMeasurement();
-    schemaStatisticsManager.deleteTimeseries(seriesCount);
+    long seriesCount = regionStatistics.getSeriesNumber();
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries((int) seriesCount);
     }
@@ -452,8 +464,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
               storageGroupFullPath,
-              schemaRegionId.getId(),
+              regionStatistics,
               measurementMNode -> {
+                regionStatistics.addTimeseries(1L);
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
@@ -511,7 +524,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
 
@@ -545,7 +558,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
       // update statistics and schemaDataTypeNumMap
-      schemaStatisticsManager.addTimeseries(1L);
+      regionStatistics.addTimeseries(1L);
 
       // update tag index
       if (offset != -1 && isRecovering) {
@@ -591,7 +604,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException();
     }
 
@@ -631,7 +644,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
       // update statistics and schemaDataTypeNumMap
-      schemaStatisticsManager.addTimeseries(seriesCount);
+      regionStatistics.addTimeseries(seriesCount);
 
       List<Long> tagOffsets = plan.getTagOffsets();
       for (int i = 0; i < measurements.size(); i++) {
@@ -763,13 +776,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
@@ -780,24 +790,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  /**
-   * @param path full path from root to leaf node
-   * @return After delete if the schema region is empty, return its path, otherwise return null
-   */
-  private PartialPath deleteOneTimeseriesUpdateStatistics(PartialPath path)
+  /** @param path full path from root to leaf node */
+  private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-    PartialPath storageGroupPath = pair.left;
 
-    schemaStatisticsManager.deleteTimeseries(1L);
+    regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
-    return storageGroupPath;
   }
   // endregion
 
