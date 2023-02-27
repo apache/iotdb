@@ -589,6 +589,10 @@ public class PartitionManager {
     return partitionInfo.getRegionGroupCount(database, type);
   }
 
+  public boolean isDatabaseExisted(String database) {
+    return partitionInfo.isDatabaseExisted(database);
+  }
+
   /**
    * Only leader use this interface.
    *
