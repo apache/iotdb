@@ -618,7 +618,7 @@ public class StatementGenerator {
       compressors.add(thisCompressors);
     }
     return new CreateSchemaTemplateStatement(
-        templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
+        req.getName(), measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
   }
 
   public static Statement createStatement(TSQueryTemplateReq req) {
