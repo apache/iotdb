@@ -36,16 +36,25 @@ statement
     ;
 
 ddlStatement
-    : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery
-    | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
-    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
-    | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
-    | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
-    | showSchemaTemplates | showNodesInSchemaTemplate
-    | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
-    | countStorageGroup | countDevices | countTimeseries | countNodes
+    // Database
+    : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
+    // Timeseries & Path
+    | createTimeseries | dropTimeseries | alterTimeseries
+    | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
+    // Schema Template
+    | createSchemaTemplate | createTimeseriesOfSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
+    | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
+    | setSchemaTemplate | unsetSchemaTemplate
+    // TTL
+    | setTTL | unsetTTL | showTTL | showAllTTL
+    // Function
+    | createFunction | dropFunction | showFunctions
+    // Trigger
+    | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // CQ
+    | createContinuousQuery | dropContinuousQuery | showContinuousQueries
+    // Cluster
+    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     ;
 
@@ -72,26 +81,58 @@ syncStatement
  * 2. Data Definition Language (DDL)
  */
 
-// Create Storage Group
-createStorageGroup
-    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
-    | CREATE (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause?
+// Database =========================================================================================
+// ---- Create Database
+createDatabase
+    : SET STORAGE GROUP TO prefixPath databaseAttributesClause?
+    | CREATE (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause?
     ;
 
-storageGroupAttributesClause
-    : WITH storageGroupAttributeClause (COMMA? storageGroupAttributeClause)*
+databaseAttributesClause
+    : WITH databaseAttributeClause (COMMA? databaseAttributeClause)*
     ;
 
-storageGroupAttributeClause
-    : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL | SCHEMA_REGION_GROUP_NUM | DATA_REGION_GROUP_NUM) '=' INTEGER_LITERAL
+databaseAttributeClause
+    : databaseAttributeKey operator_eq INTEGER_LITERAL
     ;
 
-// Alter StorageGroup
-alterStorageGroup
-    : ALTER (STORAGE GROUP | DATABASE) prefixPath storageGroupAttributesClause
+databaseAttributeKey
+    : TTL
+    | SCHEMA_REPLICATION_FACTOR
+    | DATA_REPLICATION_FACTOR
+    | TIME_PARTITION_INTERVAL
+    | SCHEMA_REGION_GROUP_NUM
+    | DATA_REGION_GROUP_NUM
     ;
 
-// Create Timeseries
+// ---- Drop Database
+dropDatabase
+    : (DELETE | DROP) (STORAGE GROUP | DATABASE) prefixPath (COMMA prefixPath)*
+    ;
+
+// ---- Drop Partition
+dropPartition
+    : (DELETE | DROP) PARTITION prefixPath INTEGER_LITERAL(COMMA INTEGER_LITERAL)*
+    ;
+
+// ---- Alter Database
+alterDatabase
+    : ALTER (STORAGE GROUP | DATABASE) prefixPath databaseAttributesClause
+    ;
+
+// ---- Show Databases
+showDatabases
+    : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
+    ;
+
+// ---- Count Databases
+countDatabases
+    : COUNT (STORAGE GROUP | DATABASES) prefixPath?
+    ;
+
+
+// Timeseries & Path ===============================================================================
+// ---- Create Timeseries
 createTimeseries
     : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements? #createAlignedTimeseries
     | CREATE TIMESERIES fullPath attributeClauses  #createNonAlignedTimeseries
@@ -102,7 +143,71 @@ alignedMeasurements
     (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET
     ;
 
-// Create Schema Template
+// ---- Drop Timeseries
+dropTimeseries
+    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
+    ;
+
+// ---- Alter Timeseries
+alterTimeseries
+    : ALTER TIMESERIES fullPath alterClause
+    ;
+
+alterClause
+    : RENAME beforeName=attributeKey TO currentName=attributeKey
+    | SET attributePair (COMMA attributePair)*
+    | DROP attributeKey (COMMA attributeKey)*
+    | ADD TAGS attributePair (COMMA attributePair)*
+    | ADD ATTRIBUTES attributePair (COMMA attributePair)*
+    | UPSERT aliasClause? tagClause? attributeClause?
+    ;
+
+aliasClause
+    : ALIAS operator_eq alias
+    ;
+
+// ---- Show Devices
+showDevices
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? rowPaginationClause?
+    ;
+
+// ---- Show Timeseries
+showTimeseries
+    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? rowPaginationClause?
+    ;
+
+// ---- Show Child Paths
+showChildPaths
+    : SHOW CHILD PATHS prefixPath?
+    ;
+
+// ---- Show Child Nodes
+showChildNodes
+    : SHOW CHILD NODES prefixPath?
+    ;
+
+// ---- Count Devices
+countDevices
+    : COUNT DEVICES prefixPath?
+    ;
+
+// ---- Count Timeseries
+countTimeseries
+    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    ;
+
+// ---- Count Nodes
+countNodes
+    : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
+    ;
+
+tagWhereClause
+    : WHERE (attributePair | containsExpression)
+    ;
+
+
+// Schema Template ==================================================================================
+// ---- Create Schema Template
 createSchemaTemplate
     : CREATE SCHEMA TEMPLATE templateName=identifier
     ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
@@ -112,12 +217,76 @@ templateMeasurementClause
     : nodeNameWithoutWildcard attributeClauses
     ;
 
-// Create Timeseries Of Schema Template
+// ---- Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
     : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
     ;
 
-// Create Function
+// ---- Drop Schema Template
+dropSchemaTemplate
+    : DROP SCHEMA TEMPLATE templateName=identifier
+    ;
+
+// ---- Drop Timeseries of Schema Template
+dropTimeseriesOfSchemaTemplate
+    : ((DELETE | DROP) TIMESERIES OF | DEACTIVATE) SCHEMA TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    ;
+
+// ---- Show Schema Template
+showSchemaTemplates
+    : SHOW SCHEMA TEMPLATES
+    ;
+
+// ---- Show Measurements In Schema Template
+showNodesInSchemaTemplate
+    : SHOW NODES OPERATOR_IN SCHEMA TEMPLATE templateName=identifier
+    ;
+
+// ---- Show Paths Set Schema Template
+showPathsSetSchemaTemplate
+    : SHOW PATHS SET SCHEMA TEMPLATE templateName=identifier
+    ;
+
+// ---- Show Paths Using Schema Template
+showPathsUsingSchemaTemplate
+    : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
+    ;
+
+// ---- Set Schema Template
+setSchemaTemplate
+    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    ;
+
+// ---- Unset Schema Template
+unsetSchemaTemplate
+    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    ;
+
+
+// TTL =============================================================================================
+// ---- Set TTL
+setTTL
+    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
+    ;
+
+// ---- Unset TTL
+unsetTTL
+    : UNSET TTL TO path=prefixPath
+    ;
+
+// ---- Show TTL
+showTTL
+    : SHOW TTL ON prefixPath (COMMA prefixPath)*
+    ;
+
+// ---- Show All TTL
+showAllTTL
+    : SHOW ALL TTL
+    ;
+
+
+// Function =========================================================================================
+// ---- Create Function
 createFunction
     : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
     ;
@@ -130,7 +299,19 @@ uri
     : STRING_LITERAL
     ;
 
-// Create Trigger
+// ---- Drop Function
+dropFunction
+    : DROP FUNCTION udfName=identifier
+    ;
+
+// ---- Show Functions
+showFunctions
+    : SHOW FUNCTIONS
+    ;
+
+
+// Trigger =========================================================================================
+// ---- Create Trigger
 createTrigger
     : CREATE triggerType? TRIGGER triggerName=identifier
         triggerEventClause
@@ -156,7 +337,29 @@ triggerAttribute
     : key=attributeKey operator_eq value=attributeValue
     ;
 
-// Create Continuous Query
+// ---- Drop Trigger
+dropTrigger
+    : DROP TRIGGER triggerName=identifier
+    ;
+
+// ---- Show Triggers
+showTriggers
+    : SHOW TRIGGERS
+    ;
+
+// ---- Start Trigger
+startTrigger
+    : START TRIGGER triggerName=identifier
+    ;
+
+// ---- Stop Trigger
+stopTrigger
+    : STOP TRIGGER triggerName=identifier
+    ;
+
+
+// CQ ==============================================================================================
+// ---- Create Continuous Query
 createContinuousQuery
     : CREATE (CONTINUOUS QUERY | CQ) cqId=identifier
         resampleClause?
@@ -177,241 +380,66 @@ timeoutPolicyClause
     : TIMEOUT POLICY (BLOCKED | DISCARD)
     ;
 
-// Alter Timeseries
-alterTimeseries
-    : ALTER TIMESERIES fullPath alterClause
-    ;
-
-alterClause
-    : RENAME beforeName=attributeKey TO currentName=attributeKey
-    | SET attributePair (COMMA attributePair)*
-    | DROP attributeKey (COMMA attributeKey)*
-    | ADD TAGS attributePair (COMMA attributePair)*
-    | ADD ATTRIBUTES attributePair (COMMA attributePair)*
-    | UPSERT aliasClause? tagClause? attributeClause?
-    ;
-
-aliasClause
-    : ALIAS operator_eq alias
-    ;
-
-alias
-    : constant
-    | identifier
-    ;
-
-// Delete Storage Group
-deleteStorageGroup
-    : (DELETE | DROP) (STORAGE GROUP | DATABASE) prefixPath (COMMA prefixPath)*
-    ;
-
-// Delete Timeseries
-deleteTimeseries
-    : (DELETE | DROP) TIMESERIES prefixPath (COMMA prefixPath)*
-    ;
-
-// Delete Partition
-deletePartition
-    : DELETE PARTITION prefixPath INTEGER_LITERAL(COMMA INTEGER_LITERAL)*
-    ;
-
-// Delete Timeseries of Schema Template
-deleteTimeseriesOfSchemaTemplate
-    : (DELETE TIMESERIES OF | DEACTIVATE) SCHEMA TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
-    ;
-
-// Drop Function
-dropFunction
-    : DROP FUNCTION udfName=identifier
-    ;
-
-// Drop Trigger
-dropTrigger
-    : DROP TRIGGER triggerName=identifier
-    ;
-
-// Drop Continuous Query
+// ---- Drop Continuous Query
 dropContinuousQuery
     : DROP (CONTINUOUS QUERY|CQ) cqId=identifier
     ;
 
-// Drop Schema Template
-dropSchemaTemplate
-    : DROP SCHEMA TEMPLATE templateName=identifier
+// ---- Show Continuous Queries
+showContinuousQueries
+    : SHOW (CONTINUOUS QUERIES | CQS)
     ;
 
-// Get Region Id
+
+// Cluster =========================================================================================
+// ---- Show Variables
+showVariables
+    : SHOW VARIABLES
+    ;
+
+// ---- Show Cluster
+showCluster
+    : SHOW CLUSTER (DETAILS)?
+    ;
+
+// ---- Show Regions
+showRegions
+    : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
+        (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
+    ;
+
+// ---- Show Data Nodes
+showDataNodes
+    : SHOW DATANODES
+    ;
+
+// ---- Show Config Nodes
+showConfigNodes
+    : SHOW CONFIGNODES
+    ;
+
+// ---- Get Region Id
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
         seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
         TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
     ;
 
-// Get Time Slot List
+// ---- Get Time Slot List
 getTimeSlotList
     : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
         (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
-// Get Series Slot List
+// ---- Get Series Slot List
 getSeriesSlotList
     : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
     ;
 
-// Migrate Region
+// ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
-    ;
-
-// Set TTL
-setTTL
-    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
-    ;
-
-// Unset TTL
-unsetTTL
-    : UNSET TTL TO path=prefixPath
-    ;
-
-// Set Schema Template
-setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
-    ;
-
-// Unset Schema Template
-unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
-    ;
-
-// Start Trigger
-startTrigger
-    : START TRIGGER triggerName=identifier
-    ;
-
-// Stop Trigger
-stopTrigger
-    : STOP TRIGGER triggerName=identifier
-    ;
-
-// Show Storage Group
-showStorageGroup
-    : SHOW (STORAGE GROUP | DATABASES) DETAILS? prefixPath?
-    ;
-
-// Show Devices
-showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? rowPaginationClause?
-    ;
-
-// Show Timeseries
-showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? rowPaginationClause?
-    ;
-
-// Show Child Paths
-showChildPaths
-    : SHOW CHILD PATHS prefixPath?
-    ;
-
-// Show Child Nodes
-showChildNodes
-    : SHOW CHILD NODES prefixPath?
-    ;
-
-// Show Functions
-showFunctions
-    : SHOW FUNCTIONS
-    ;
-
-// Show Triggers
-showTriggers
-    : SHOW TRIGGERS
-    ;
-
-// Show Continuous Queries
-showContinuousQueries
-    : SHOW (CONTINUOUS QUERIES | CQS)
-    ;
-
-// Show TTL
-showTTL
-    : SHOW TTL ON prefixPath (COMMA prefixPath)*
-    ;
-
-// Show All TTL
-showAllTTL
-    : SHOW ALL TTL
-    ;
-
-// Show Variables
-showVariables
-    : SHOW VARIABLES
-    ;
-
-// Show Cluster
-showCluster
-    : SHOW CLUSTER (DETAILS)?
-    ;
-
-// Show Region
-showRegion
-    : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
-        (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
-    ;
-
-// Show Data Nodes
-showDataNodes
-    : SHOW DATANODES
-    ;
-
-// Show Config Nodes
-showConfigNodes
-    : SHOW CONFIGNODES
-    ;
-
-// Show Schema Template
-showSchemaTemplates
-    : SHOW SCHEMA TEMPLATES
-    ;
-
-// Show Measurements In Schema Template
-showNodesInSchemaTemplate
-    : SHOW NODES OPERATOR_IN SCHEMA TEMPLATE templateName=identifier
-    ;
-
-// Show Paths Set Schema Template
-showPathsSetSchemaTemplate
-    : SHOW PATHS SET SCHEMA TEMPLATE templateName=identifier
-    ;
-
-// Show Paths Using Schema Template
-showPathsUsingSchemaTemplate
-    : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
-    ;
-
-// Count Storage Group
-countStorageGroup
-    : COUNT (STORAGE GROUP | DATABASES) prefixPath?
-    ;
-
-// Count Devices
-countDevices
-    : COUNT DEVICES prefixPath?
-    ;
-
-// Count Timeseries
-countTimeseries
-    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
-    ;
-
-// Count Nodes
-countNodes
-    : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
-    ;
-
-tagWhereClause
-    : WHERE (attributePair | containsExpression)
     ;
 
 
@@ -873,10 +901,6 @@ prefixPath
     : ROOT (DOT nodeName)*
     ;
 
-suffixPath
-    : nodeName (DOT nodeName)*
-    ;
-
 intoPath
     : ROOT (DOT nodeNameInIntoPath)* #fullPathInIntoPath
     | nodeNameInIntoPath (DOT nodeNameInIntoPath)* #suffixPathInIntoPath
@@ -1010,4 +1034,9 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    ;
+
+alias
+    : constant
+    | identifier
     ;
