@@ -880,7 +880,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLimit(int rowLimit) {
+  public LogicalPlanBuilder planLimit(long rowLimit) {
     if (rowLimit == 0) {
       return this;
     }
@@ -889,7 +889,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planOffset(int rowOffset) {
+  public LogicalPlanBuilder planOffset(long rowOffset) {
     if (rowOffset == 0) {
       return this;
     }
@@ -963,8 +963,8 @@ public class LogicalPlanBuilder {
       PartialPath pathPattern,
       String key,
       String value,
-      int limit,
-      int offset,
+      long limit,
+      long offset,
       boolean orderByHeat,
       boolean contains,
       boolean prefixPath,
@@ -985,7 +985,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceSchemaSource(
-      PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
+      PartialPath pathPattern, long limit, long offset, boolean prefixPath, boolean hasSgCol) {
     this.root =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);

@@ -645,6 +645,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_compaction_validation",
                 Boolean.toString(conf.isEnableCompactionValidation()))));
+    conf.setCandidateCompactionTaskQueueSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "candidate_compaction_task_queue_size",
+                Integer.toString(conf.getCandidateCompactionTaskQueueSize()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
@@ -1401,12 +1406,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      // update max_deduplicated_path_num
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_deduplicated_path_num",
-                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -1537,12 +1536,6 @@ public class IoTDBDescriptor {
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
-
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
     conf.setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(

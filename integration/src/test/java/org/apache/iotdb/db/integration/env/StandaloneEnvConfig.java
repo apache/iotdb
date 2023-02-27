@@ -60,13 +60,6 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
-    return this;
-  }
-
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     IoTDBDescriptor.getInstance()
         .getConfig()

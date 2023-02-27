@@ -60,8 +60,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcat
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
@@ -70,7 +72,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -78,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -93,76 +97,88 @@ public abstract class PlanVisitor<R, C> {
 
   public abstract R visitPlan(PlanNode node, C context);
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  public R visitSourceNode(SourceNode node, C context) {
     return visitPlan(node, context);
+  }
+
+  public R visitSingleChildProcess(SingleChildProcessNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitMultiChildProcess(MultiChildProcessNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitSourceNode(node, context);
   }
 
   public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
   public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
-    return visitPlan(node, context);
+    return visitSourceNode(node, context);
   }
 
   public R visitDeviceView(DeviceViewNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitDeviceMerge(DeviceMergeNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitFill(FillNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitFilter(FilterNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitGroupByLevel(GroupByLevelNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitGroupByTag(GroupByTagNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitSlidingWindowAggregation(SlidingWindowAggregationNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitLimit(LimitNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitOffset(OffsetNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitAggregation(AggregationNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitSort(SortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitProject(ProjectNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitTimeJoin(TimeJoinNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitExchange(ExchangeNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSchemaQueryMerge(SchemaQueryMergeNode node, C context) {
@@ -198,10 +214,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitCountMerge(CountSchemaMergeNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitFragmentSink(FragmentSinkNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -354,6 +366,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitIdentitySink(IdentitySinkNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitShuffleSink(ShuffleSinkNode node, C context) {
     return visitPlan(node, context);
   }
 }

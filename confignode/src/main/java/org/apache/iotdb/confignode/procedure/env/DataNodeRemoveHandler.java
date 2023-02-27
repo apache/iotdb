@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegio
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -551,11 +553,16 @@ public class DataNodeRemoveHandler {
   /**
    * Remove data node in node info
    *
-   * @param tDataNodeLocation data node location
+   * @param dataNodeLocation data node location
    */
-  public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
-    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(tDataNodeLocation);
+  public void removeDataNodePersistence(TDataNodeLocation dataNodeLocation) {
+    // Remove consensus record
+    List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+
+    // Remove metrics
+    PartitionMetrics.unbindDataNodePartitionMetrics(
+        NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
   }
 
   /**

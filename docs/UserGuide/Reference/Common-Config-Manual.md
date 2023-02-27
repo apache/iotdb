@@ -518,15 +518,6 @@ Different configuration parameters take effect in the following three ways:
 |Default| true |
 |Effective|After restarting system|
 
-* max\_deduplicated\_path\_num
-
-|Name| max\_deduplicated\_path\_num |
-|:---:|:---|
-|Description| allowed max numbers of deduplicated path in one query. |
-|Type| Int32 |
-|Default| 1000 |
-|Effective|After restarting system|
-
 * mpp\_data\_exchange\_core\_pool\_size
 
 |    Name     | mpp\_data\_exchange\_core\_pool\_size        |
@@ -1026,6 +1017,14 @@ Different configuration parameters take effect in the following three ways:
 |Default| true                                                            |
 |Effective| After restart system                                            |
 
+* candidate\_compaction\_task\_queue\_size
+
+|Name| candidate\_compaction\_task\_queue\_size    |
+|:---:|:--------------------------------------------|
+|Description| The size of candidate compaction task queue |
+|Type| Int32                                       |
+|Default| 50                                          |
+|Effective| After restart system                        |
 
 ### Write Ahead Log Configuration
 
