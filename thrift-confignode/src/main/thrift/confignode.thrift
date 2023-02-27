@@ -710,6 +710,7 @@ struct TUpdateModelInfoReq {
 struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
+  3: optional string bestTrailId
 }
 
 service IConfigNodeRPCService {
@@ -1293,6 +1294,6 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if the model was removed successfully
    */
-   common.TSStatus updateModelState(TUpdateModelStateReq req)
+  common.TSStatus updateModelState(TUpdateModelStateReq req)
 }
 
