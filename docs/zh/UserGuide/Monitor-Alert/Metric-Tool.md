@@ -99,7 +99,21 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | entry                     | name="{{interface}}"                              | Timer     | Client 建立的 Thrift 的耗时情况        |
 | mem                       | name="IoTConsensus"                               | AutoGauge | IoT共识协议的内存占用，单位为byte      |
 
-#### 4.1.2. 节点统计
+#### 4.1.2. 接口层统计
+
+| Metric                | Tags                               | Type      | Description                         |
+| --------------------- |------------------------------------| --------- | ----------------------------------- |
+| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
+| thrift_connections    | name="InternalRPC"                 | AutoGauge | DataNode 的内部 Thrift 连接数       |
+| thrift_connections    | name="MPPDataExchangeRPC"          | AutoGauge | MPP 框架的内部 Thrift 连接数        |
+| thrift_connections    | name="ClientRPC"                   | AutoGauge | Client 建立的 Thrift 连接数         |
+| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
+| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
+| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
+| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
+| session_idle_time     | name = "sessionId"                 | Histogram | 不同 Session 的空闲时间分布情况     |
+
+#### 4.1.3. 节点统计
 | Metric   | Tags                                  | Type      | Description                 |
 | -------- | ------------------------------------- | --------- | --------------------------- |
 | quantity | name="database"                       | AutoGauge | 系统数据库数量              |
@@ -107,7 +121,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | quantity | name="pointsIn"                       | Counter   | 系统累计写入点数            |
 | points   | database="{{database}}", type="flush" | Gauge     | 最新一个刷盘的memtale的点数 |
 
-#### 4.1.3. 集群全链路
+#### 4.1.4. 集群全链路
 | Metric                               | Tags                                                 | Type  | Description                |
 | ------------------------------------ | ---------------------------------------------------- | ----- | -------------------------- |
 | performance_overview                 | interface="{{interface}}", type="{{statement_type}}" | Timer | 客户端执行的操作的耗时情况 |
@@ -125,7 +139,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | performance_overview_schedule_detail | stage="memtable"                                     | Timer | 写入 Memtable 总耗时       |
 | performance_overview_schedule_detail | stage="last_cache"                                   | Timer | 更新 LastCache 总耗时      |
 
-#### 4.1.4. 任务统计
+#### 4.1.5. 任务统计
 
 | Metric    | Tags                                              | Type      | Description      |
 | --------- | ------------------------------------------------- | --------- | ---------------- |
@@ -134,7 +148,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数       |
 | cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况     |
 
-#### 4.1.5. IoTDB 进程运行状态
+#### 4.1.6. IoTDB 进程运行状态
 
 | Metric            | Tags           | Type      | Description                         |
 | ----------------- | -------------- | --------- | ----------------------------------- |
@@ -144,7 +158,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存            |
 | process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
-#### 4.1.6. 系统运行状态
+#### 4.1.7. 系统运行状态
 
 | Metric                         | Tags          | Type      | Description                              |
 | ------------------------------ | ------------- | --------- | ---------------------------------------- |
@@ -158,13 +172,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小                           |
 | sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小                         |
 
-#### 4.1.7. IoTDB 日志统计
+#### 4.1.8. IoTDB 日志统计
 
 | Metric         | Tags                                | Type    | Description        |
 | -------------- | ----------------------------------- | ------- | ------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
 
-#### 4.1.8. 文件统计信息
+#### 4.1.9. 文件统计信息
 
 | Metric     | Tags                      | Type      | Description                              |
 | ---------- | ------------------------- | --------- | ---------------------------------------- |
@@ -184,7 +198,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | file_count | name="open_file_handlers" | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
 | file_count | name="mods                | AutoGauge | Modification 文件的数目                  |
 
-#### 4.1.9. JVM 内存统计
+#### 4.1.10. JVM 内存统计
 
 | Metric                          | Tags                            | Type      | Description          |
 | ------------------------------- | ------------------------------- | --------- | -------------------- |
@@ -195,7 +209,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
 
-#### 4.1.10. JVM 线程统计
+#### 4.1.11. JVM 线程统计
 
 | Metric                     | Tags                                                          | Type      | Description              |
 | -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
@@ -204,7 +218,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
 
-#### 4.1.11. JVM GC 统计
+#### 4.1.12. JVM GC 统计
 
 | Metric                        | Tags                                                  | Type      | Description                            |
 | ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
@@ -232,22 +246,22 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.2. IoT共识协议统计
 
-| Metric        | Tags                                                                                         | Type      | Description                      |
-| ------------- | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
-| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
-| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小 |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度             |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                   |
+| Metric        | Tags                                                                                         | Type      | Description                       |
+| ------------- | -------------------------------------------------------------------------------------------- | --------- | --------------------------------- |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度      |
+| iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | 副本组同步线程缓存队列请求总大小  |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | 副本组主流程写入进度              |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | 副本组同步进度                    |
 | iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="syncLag"                           | AutoGauge | 副本组写入进度与同步进度差        |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | 副本组Batch中来自WAL的日志项数量 |
-| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | 副本组Batch中来自队列的日志项数量  |
-| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时           |
-| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时         |
-| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时             |
-| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时           |
-| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时                 |
-| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时          |
-| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时         |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | 副本组Batch中来自WAL的日志项数量  |
+| iot_consensus | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | 副本组Batch中来自队列的日志项数量 |
+| stage         | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | 主流程获取状态机锁耗时            |
+| stage         | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | 主流程写入状态机检查耗时          |
+| stage         | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | 主流程写入状态机耗时              |
+| stage         | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | 主流程尝试添加队列耗时            |
+| stage         | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | 主流程全写入耗时                  |
+| stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时           |
+| stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时          |
 
 #### 4.2.3. 缓存统计
 
@@ -264,20 +278,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
 | cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
 
-#### 4.2.4. 接口层统计
-
-| Metric                | Tags                               | Type      | Description                         |
-| --------------------- | ---------------------------------- | --------- | ----------------------------------- |
-| thrift_connections    | name="ConfigNodeRPC"               | AutoGauge | ConfigNode 的内部 Thrift 连接数     |
-| thrift_connections    | name="Internal"                    | AutoGauge | DataNode 的内部 Thrift 连接数       |
-| thrift_connections    | name="MPPDataExchange"             | AutoGauge | MPP 框架的内部 Thrift 连接数        |
-| thrift_connections    | name="RPC"                         | AutoGauge | Client 建立的 Thrift 连接数         |
-| thrift_active_threads | name="ConfigNodeRPC-Service"       | AutoGauge | ConfigNode 的内部活跃 Thrift 连接数 |
-| thrift_active_threads | name="DataNodeInternalRPC-Service" | AutoGauge | DataNode 的内部活跃 Thrift 连接数   |
-| thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
-| thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
-
-#### 4.2.5. 内存统计
+#### 4.2.4. 内存统计
 | Metric | Tags                             | Type      | Description                                       |
 | ------ | -------------------------------- | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"         | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
@@ -287,7 +288,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | mem    | name="IoTConsensusSync"          | AutoGauge | IoT共识协议用于同步的内存占用，单位为byte         |
 | mem    | name="schema_region_total_usage" | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
 
-#### 4.2.6. 合并统计
+#### 4.2.5. 合并统计
 
 | Metric                | Tags                                                | Type    | Description        |
 | --------------------- | --------------------------------------------------- | ------- | ------------------ |
@@ -297,7 +298,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
-#### 4.2.7. IoTDB 进程统计
+#### 4.2.6. IoTDB 进程统计
 
 | Metric                | Tags           | Type      | Description                          |
 | --------------------- | -------------- | --------- | ------------------------------------ |
@@ -306,20 +307,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
 | process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
-#### 4.2.8. JVM 类加载统计
+#### 4.2.7. JVM 类加载统计
 
 | Metric                       | Tags | Type      | Description         |
 | ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-#### 4.2.9. JVM 编译时间统计
+#### 4.2.8. JVM 编译时间统计
 
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-#### 4.2.10. 查询规划耗时统计
+#### 4.2.9. 查询规划耗时统计
 
 | Metric          | Tags                         | Type  | Description                |
 | --------------- | ---------------------------- | ----- | -------------------------- |
@@ -329,14 +330,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
 | query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
 
-#### 4.2.11. 执行计划分发耗时统计
+#### 4.2.10. 执行计划分发耗时统计
 
 | Metric     | Tags                      | Type  | Description          |
 | ---------- | ------------------------- | ----- | -------------------- |
 | dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
 | dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
 
-#### 4.2.12. 查询资源访问统计
+#### 4.2.11. 查询资源访问统计
 
 | Metric         | Tags                     | Type | Description                |
 | -------------- | ------------------------ | ---- | -------------------------- |
@@ -345,7 +346,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
 | query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
 
-#### 4.2.13. 数据传输模块统计
+#### 4.2.12. 数据传输模块统计
 
 | Metric              | Tags                                                                   | Type      | Description                             |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
@@ -359,7 +360,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
 
-#### 4.2.14. 查询任务调度统计
+#### 4.2.13. 查询任务调度统计
 
 | Metric           | Tags                           | Type      | Description        |
 | ---------------- | ------------------------------ | --------- | ------------------ |
@@ -368,7 +369,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
 
-#### 4.2.15. 查询执行耗时统计
+#### 4.2.14. 查询执行耗时统计
 
 | Metric                   | Tags                                                                                | Type    | Description                                    |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
