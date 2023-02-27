@@ -74,17 +74,20 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+    try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, isPrefixMatch, slimit, soffset);
-    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+            root, pathPattern, isPrefixMatch, slimit, soffset)) {
+      return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+    }
   }
 
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
-    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(root, pathPattern, false, 0, 0);
-    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+    try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+            root, pathPattern, false, 0, 0)) {
+      return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+    }
   }
 
   public List<MeasurementPath> getAllMeasurement() {
@@ -99,16 +102,18 @@ public class ClusterSchemaTree implements ISchemaTree {
    */
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
-    SchemaTreeDeviceVisitor visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
-    return visitor.getAllResult();
+    try (SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch)) {
+      return visitor.getAllResult();
+    }
   }
 
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
-    SchemaTreeDeviceVisitor visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, false);
-    return visitor.getAllResult();
+    try (SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, false)) {
+      return visitor.getAllResult();
+    }
   }
 
   @Override
