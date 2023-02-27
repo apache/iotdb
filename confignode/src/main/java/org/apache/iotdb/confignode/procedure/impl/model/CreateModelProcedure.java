@@ -44,6 +44,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState> {
 
@@ -214,5 +215,10 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
           && thatProc.modelConfigs.equals(this.modelConfigs);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId(), getState(), modelInformation, modelConfigs);
   }
 }

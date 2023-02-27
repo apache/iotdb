@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Optional;
 
 public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
@@ -230,5 +231,10 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
           && (thatProc.modelId).equals(this.modelId);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId(), getState(), modelId);
   }
 }

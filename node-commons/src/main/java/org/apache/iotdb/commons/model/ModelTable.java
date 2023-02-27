@@ -56,7 +56,7 @@ public class ModelTable {
 
   public ModelInformation getModelInformationById(String modelId) {
     if (modelInfoMap.containsKey(modelId)) {
-      modelInfoMap.get(modelId);
+      return modelInfoMap.get(modelId);
     }
     return null;
   }
