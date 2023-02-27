@@ -294,7 +294,8 @@ public class QueryStatement extends Statement {
   }
 
   private boolean isGroupByVariation() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.VARIATION_WINDOW;
   }
 
   private boolean isGroupByCondition() {

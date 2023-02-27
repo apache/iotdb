@@ -71,7 +71,7 @@ public abstract class GroupByParameter {
 
   public static GroupByParameter deserialize(ByteBuffer byteBuffer) {
     byte type = ReadWriteIOUtils.readByte(byteBuffer);
-    if (type == WindowType.EVENT_WINDOW.getType()) {
+    if (type == WindowType.VARIATION_WINDOW.getType()) {
       return GroupByVariationParameter.deserialize(byteBuffer);
     } else if (type == WindowType.CONDITION_WINDOW.getType()) {
       return GroupByConditionParameter.deserialize(byteBuffer);

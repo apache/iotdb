@@ -23,25 +23,25 @@ import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-public abstract class EventWindow implements IWindow {
+public abstract class AbstractVariationWindow implements IWindow {
 
-  protected EventWindowParameter eventWindowParameter;
+  protected VariationWindowParameter variationWindowParameter;
 
   protected long startTime;
 
   protected long endTime;
 
-  protected boolean initializedEventValue;
+  protected boolean initializedHeadValue;
 
   protected boolean valueIsNull = false;
 
-  protected EventWindow(EventWindowParameter eventWindowParameter) {
-    this.eventWindowParameter = eventWindowParameter;
+  protected AbstractVariationWindow(VariationWindowParameter eventWindowParameter) {
+    this.variationWindowParameter = eventWindowParameter;
   }
 
   @Override
   public Column getControlColumn(TsBlock tsBlock) {
-    return tsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
+    return tsBlock.getColumn(variationWindowParameter.getControlColumnIndex());
   }
 
   @Override
@@ -49,13 +49,12 @@ public abstract class EventWindow implements IWindow {
     return accumulator.hasFinalResult();
   }
 
-  // TODO
   @Override
   public boolean contains(Column column) {
     return false;
   }
 
-  public abstract void updatePreviousEventValue();
+  public abstract void updatePreviousValue();
 
   public long getStartTime() {
     return startTime;
@@ -73,15 +72,11 @@ public abstract class EventWindow implements IWindow {
     this.endTime = endTime;
   }
 
-  public void setInitializedEventValue(boolean initializedEventValue) {
-    this.initializedEventValue = initializedEventValue;
+  public void setInitializedHeadValue(boolean initializedHeadValue) {
+    this.initializedHeadValue = initializedHeadValue;
   }
 
   public boolean valueIsNull() {
     return valueIsNull;
-  }
-
-  public boolean ignoringNull() {
-    return eventWindowParameter.isIgnoringNull();
   }
 }
