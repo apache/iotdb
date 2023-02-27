@@ -70,6 +70,7 @@ public class MemTableFlushTask {
           : new LinkedBlockingQueue<>();
 
   private String storageGroup;
+  private String dataRegionId;
 
   private IMemTable memTable;
 
@@ -82,10 +83,14 @@ public class MemTableFlushTask {
    * @param storageGroup current database
    */
   public MemTableFlushTask(
-      IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
+      IMemTable memTable,
+      RestorableTsFileIOWriter writer,
+      String storageGroup,
+      String dataRegionId) {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
+    this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
     LOGGER.debug(
@@ -269,7 +274,9 @@ public class MemTableFlushTask {
                     Tag.DATABASE.toString(),
                     storageGroup.substring(0, lastIndex),
                     Tag.TYPE.toString(),
-                    "flush");
+                    "flush",
+                    Tag.REGION.toString(),
+                    dataRegionId);
           }
 
           LOGGER.info(
