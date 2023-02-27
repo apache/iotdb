@@ -26,9 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
@@ -155,28 +153,10 @@ public class ConditionWindowManager implements IWindowManager {
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
     if (!keepEvaluator.apply(conditionWindow.getKeep())) {
-      for (Aggregator aggregator : aggregators) aggregator.reset();
       return;
     }
-    // Use the start time of eventWindow as default output time.
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    timeColumnBuilder.writeLong(conditionWindow.getStartTime());
-
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    if (conditionWindow.isOutputEndTime()) {
-      columnBuilders[0].writeLong(conditionWindow.getEndTime());
-      columnIndex = 1;
-    }
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    resultTsBlockBuilder.declarePosition();
+    long endTime = conditionWindow.isOutputEndTime() ? conditionWindow.getEndTime() : -1;
+    outputAggregators(aggregators, resultTsBlockBuilder, conditionWindow.getStartTime(), endTime);
   }
 
   @Override

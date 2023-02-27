@@ -965,7 +965,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.EVENT_WINDOW));
+              parseGroupByClause(groupByAttribute, WindowType.VARIATION_WINDOW));
         } else if (groupByAttribute.CONDITION() != null) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
@@ -1210,7 +1210,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     List<ExpressionContext> expressions = ctx.expression();
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       ExpressionContext expressionContext = expressions.get(0);
       GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
       groupByVariationComponent.setControlColumnExpression(

@@ -104,7 +104,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       } else {
         // If there are no points belong to last time window, the last time window will not
         // initialize window and aggregators. Specially for time window.
-        if (windowManager.notInitedLastTimeWindow()) {
+        if (windowManager.notInitializedLastTimeWindow()) {
           initWindowAndAggregators();
         }
         // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()

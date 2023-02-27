@@ -1189,7 +1189,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
       for (Expression expression : deviceToGroupByExpression.values()) {
         checkGroupByVariationExpressionType(analysis, expression, delta);
@@ -1245,7 +1245,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupByExpression = expressions.get(0);
     }
 
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
       checkGroupByVariationExpressionType(analysis, groupByExpression, delta);
       GroupByParameter groupByParameter =
