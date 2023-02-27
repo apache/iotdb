@@ -205,18 +205,6 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
-  private void initConfigManager() {
-    try {
-      configManager = new ConfigManager();
-    } catch (IOException e) {
-      LOGGER.error("Can't start ConfigNode consensus group!", e);
-      stop();
-    }
-    // Add some Metrics for configManager
-    configManager.addMetrics();
-    LOGGER.info("Successfully initialize ConfigManager.");
-  }
-
   private void setUpInternalServices() throws StartupException, IOException {
     // Setup JMXService
     registerManager.register(new JMXService());
@@ -231,6 +219,18 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
 
     LOGGER.info("Successfully setup internal services.");
+  }
+
+  private void initConfigManager() {
+    try {
+      configManager = new ConfigManager();
+    } catch (IOException e) {
+      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      stop();
+    }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
+    LOGGER.info("Successfully initialize ConfigManager.");
   }
 
   /** Register Non-seed ConfigNode when first startup */
