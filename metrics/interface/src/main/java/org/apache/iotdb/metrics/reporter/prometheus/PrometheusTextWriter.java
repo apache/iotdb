@@ -75,7 +75,7 @@ class PrometheusTextWriter extends FilterWriter {
       write("\",nodeType=\"");
       write(METRIC_CONFIG.getNodeType().toString());
       write("\",nodeId=\"");
-      write(METRIC_CONFIG.getNodeId());
+      write(String.valueOf(METRIC_CONFIG.getNodeId()));
       write("\",");
       for (Map.Entry<String, String> entry : labels.entrySet()) {
         write(entry.getKey());
