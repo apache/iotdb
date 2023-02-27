@@ -2714,6 +2714,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void backup(BackupPlan plan) throws StorageEngineException {
     try {
       String outputPath = plan.getOutputPath();
+      BackupService.getINSTANCE().checkBackupPathValid(outputPath);
       List<TsFileResource> resources = new ArrayList<>();
       StorageEngine.getInstance().appendAndReadLockFilesForBackup(resources);
       BackupService.getINSTANCE().backupFiles(resources, outputPath);

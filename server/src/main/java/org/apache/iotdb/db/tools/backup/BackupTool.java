@@ -98,6 +98,7 @@ public class BackupTool {
   public static String getSystemFileTmpLinkPath(File source) {
     String absolutePath = source.getAbsolutePath();
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    systemDir = new File(systemDir).getAbsolutePath();
     systemDir = FilePathUtils.regularizePath(systemDir);
     return systemDir
         + IoTDBConstant.BACKUP_SYSTEM_TMP_FOLDER_NAME
@@ -105,20 +106,52 @@ public class BackupTool {
         + absolutePath.replace(systemDir, "");
   }
 
-  public static void moveFile(Path source, Path target) {}
+  public static void copyFile(Path source, Path target) throws IOException {
+    Files.copy(source, target);
+  }
 
   public static List<File> getAllFilesInOneDir(String path) {
     List<File> sonFiles = new ArrayList<>();
     File[] sonFileAndDirs = new File(path).listFiles();
-    if (sonFileAndDirs != null) {
-      for (File f : sonFileAndDirs) {
-        if (f.isFile()) {
-          sonFiles.add(f);
-        } else {
-          sonFiles.addAll(getAllFilesInOneDir(f.getAbsolutePath()));
-        }
+    if (sonFileAndDirs == null) {
+      return sonFiles;
+    }
+    for (File sonFile : sonFileAndDirs) {
+      if (sonFile.isFile()) {
+        sonFiles.add(sonFile);
+      } else {
+        sonFiles.addAll(getAllFilesInOneDir(sonFile.getAbsolutePath()));
       }
     }
     return sonFiles;
+  }
+
+  public static boolean deleteBackupTmpDir() {
+    boolean success = true;
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      File dataTmpDir =
+          new File(
+              FilePathUtils.regularizePath(dataDir) + IoTDBConstant.BACKUP_DATA_TMP_FOLDER_NAME);
+      success = success && deleteFileOrDir(dataTmpDir);
+    }
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    File systemTmpDir =
+        new File(
+            FilePathUtils.regularizePath(systemDir) + IoTDBConstant.BACKUP_SYSTEM_TMP_FOLDER_NAME);
+    return success && deleteFileOrDir(systemTmpDir);
+  }
+
+  public static boolean deleteFileOrDir(File file) {
+    if (file == null) return true;
+    if (!file.isFile()) {
+      File[] sonFileAndDirs = file.listFiles();
+      if (sonFileAndDirs != null) {
+        for (File sonFile : sonFileAndDirs) {
+          deleteFileOrDir(sonFile);
+        }
+      }
+    }
+    return file.delete();
   }
 }
