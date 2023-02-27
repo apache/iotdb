@@ -361,20 +361,6 @@ public class IoTDBGroupBySessionIT {
   }
 
   @Test
-  public void groupBySessionTest8() {
-    String[][] res =
-        new String[][] {
-          {"7550", "10.2"}, {"5550", "10.6"}, {"3550", "10.8"}, {"1550", "10.2"}, {"1500", "9.8"},
-          {"580", "37.8"}, {"500", "38.2"}, {"300", "38.3"}, {"250", "38.4"}, {"200", "38.6"},
-          {"150", "38.8"}, {"100", "38"}, {"1", "35.7"}
-        };
-
-    String sql =
-        "select first_value(temperature) from root.ln.wf02.wt02 group by session(10ms) order by time desc";
-    groupBySessionFirstValueTest(sql, res);
-  }
-
-  @Test
   public void GroupBySessionAlignByDeviceTest() {
     String[][] res =
         new String[][] {
@@ -422,6 +408,13 @@ public class IoTDBGroupBySessionIT {
     String sql =
         "select __endTime,first_value(hardware) from root.ln.** group by session(50s) align by device";
     normalTestAlignByDevice2(res, sql, 6, "Time,Device,__endTime,first_value(hardware)");
+  }
+
+  @Test
+  public void GroupBySessionFirstValueTest() {
+    String[][] res = new String[][] {{"1", "35.7"}};
+    String sql = "select first_value(temperature) from root.ln.wf02.wt02 group by session(50s)";
+    groupBySessionFirstValueTest(sql, res);
   }
 
   @Test

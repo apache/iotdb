@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
@@ -25,10 +26,19 @@ import org.apache.ratis.metrics.MetricRegistries;
 
 public class RatisMetricSet implements IMetricSet {
   private MetricRegistries manager;
+  private final String consensusGroupType;
+
+  public RatisMetricSet(TConsensusGroupType consensusGroupType) {
+    super();
+    this.consensusGroupType = consensusGroupType.toString();
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     manager = MetricRegistries.global();
+    if (manager instanceof MetricRegistryManager) {
+      ((MetricRegistryManager) manager).setConsensusGroupType(consensusGroupType);
+    }
   }
 
   @Override

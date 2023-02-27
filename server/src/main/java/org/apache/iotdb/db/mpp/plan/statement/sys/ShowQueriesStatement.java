@@ -37,12 +37,17 @@ public class ShowQueriesStatement extends ShowStatement {
 
   private OrderByComponent orderByComponent;
 
-  private int rowLimit;
-  private int rowOffset;
+  private long rowLimit;
+  private long rowOffset;
 
   private ZoneId zoneId;
 
   public ShowQueriesStatement() {}
+
+  @Override
+  public boolean isQuery() {
+    return true;
+  }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
@@ -73,19 +78,19 @@ public class ShowQueriesStatement extends ShowStatement {
     return orderByComponent.getSortItemList();
   }
 
-  public void setRowLimit(int rowLimit) {
+  public void setRowLimit(long rowLimit) {
     this.rowLimit = rowLimit;
   }
 
-  public int getRowLimit() {
+  public long getRowLimit() {
     return rowLimit;
   }
 
-  public void setRowOffset(int rowOffset) {
+  public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
   }
 
-  public int getRowOffset() {
+  public long getRowOffset() {
     return rowOffset;
   }
 

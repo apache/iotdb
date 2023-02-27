@@ -29,8 +29,8 @@ public class TimerProxy extends com.codahale.metrics.Timer {
     this.timer = timer;
   }
 
+  /** time() method is used as a user time clock. Will reuse the dropwizard implementation. */
   @Override
-  // time() method is used as a user time clock. Will reuse the dropwizard implementation.
   public Context time() {
     return super.time();
   }

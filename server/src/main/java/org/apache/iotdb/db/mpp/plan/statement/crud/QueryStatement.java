@@ -78,14 +78,14 @@ public class QueryStatement extends Statement {
   private HavingCondition havingCondition;
 
   // row limit for result set. The default value is 0, which means no limit
-  private int rowLimit = 0;
+  private long rowLimit = 0;
   // row offset for result set. The default value is 0
-  private int rowOffset = 0;
+  private long rowOffset = 0;
 
   // series limit and offset for result set. The default value is 0, which means no limit
-  private int seriesLimit = 0;
+  private long seriesLimit = 0;
   // series offset for result set. The default value is 0
-  private int seriesOffset = 0;
+  private long seriesOffset = 0;
 
   private FillComponent fillComponent;
 
@@ -114,6 +114,11 @@ public class QueryStatement extends Statement {
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return true;
   }
 
   @Override
@@ -168,35 +173,35 @@ public class QueryStatement extends Statement {
     this.havingCondition = havingCondition;
   }
 
-  public int getRowLimit() {
+  public long getRowLimit() {
     return rowLimit;
   }
 
-  public void setRowLimit(int rowLimit) {
+  public void setRowLimit(long rowLimit) {
     this.rowLimit = rowLimit;
   }
 
-  public int getRowOffset() {
+  public long getRowOffset() {
     return rowOffset;
   }
 
-  public void setRowOffset(int rowOffset) {
+  public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
   }
 
-  public int getSeriesLimit() {
+  public long getSeriesLimit() {
     return seriesLimit;
   }
 
-  public void setSeriesLimit(int seriesLimit) {
+  public void setSeriesLimit(long seriesLimit) {
     this.seriesLimit = seriesLimit;
   }
 
-  public int getSeriesOffset() {
+  public long getSeriesOffset() {
     return seriesOffset;
   }
 
-  public void setSeriesOffset(int seriesOffset) {
+  public void setSeriesOffset(long seriesOffset) {
     this.seriesOffset = seriesOffset;
   }
 
@@ -371,6 +376,14 @@ public class QueryStatement extends Statement {
 
   public void setCqQueryBody(boolean cqQueryBody) {
     isCqQueryBody = cqQueryBody;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
+  public boolean hasOffset() {
+    return rowOffset > 0;
   }
 
   public void semanticCheck() {

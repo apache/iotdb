@@ -1336,12 +1336,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // parse LIMIT & OFFSET
-  private int parseLimitClause(IoTDBSqlParser.LimitClauseContext ctx) {
-    int limit;
+  private long parseLimitClause(IoTDBSqlParser.LimitClauseContext ctx) {
+    long limit;
     try {
-      limit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+      limit = Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SemanticException("Out of range. LIMIT <N>: N should be Int32.");
+      throw new SemanticException("Out of range. LIMIT <N>: N should be Int64.");
     }
     if (limit <= 0) {
       throw new SemanticException("LIMIT <N>: N should be greater than 0.");
@@ -1349,13 +1349,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return limit;
   }
 
-  private int parseOffsetClause(IoTDBSqlParser.OffsetClauseContext ctx) {
-    int offset;
+  private long parseOffsetClause(IoTDBSqlParser.OffsetClauseContext ctx) {
+    long offset;
     try {
-      offset = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+      offset = Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
       throw new SemanticException(
-          "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
+          "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int64.");
     }
     if (offset < 0) {
       throw new SemanticException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");

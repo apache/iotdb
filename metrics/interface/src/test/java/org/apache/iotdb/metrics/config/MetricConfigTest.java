@@ -85,7 +85,7 @@ public class MetricConfigTest {
     properties.setProperty("dn_metric_iotdb_reporter_max_connection_number", "1");
     properties.setProperty("dn_metric_iotdb_reporter_location", "metric");
     properties.setProperty("dn_metric_iotdb_reporter_push_period", "5");
-    properties.setProperty("dn_metric_internal_reporter_type", "MEMORY");
+    properties.setProperty("dn_metric_internal_reporter_type", "IOTDB");
 
     MetricConfigDescriptor.getInstance().loadProps(properties);
 
@@ -105,6 +105,6 @@ public class MetricConfigTest {
     assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
     assertEquals("metric", reporterConfig.getLocation());
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
-    assertEquals(InternalReporterType.MEMORY, metricConfig.getInternalReportType());
+    assertEquals(InternalReporterType.IOTDB, metricConfig.getInternalReportType());
   }
 }

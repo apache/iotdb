@@ -82,7 +82,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 @Ignore
-@Deprecated
 public class LogicalPlannerTest {
 
   @Test
