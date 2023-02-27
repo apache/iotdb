@@ -195,13 +195,12 @@ public class BackupService implements IService {
       submitBackupByCopyTask(backupByCopyTask);
     }
   }
-  
+
   public void cleanUpAfterBackup() {
     logger.info("Backup completed, cleaning up temporary files now.");
     if (BackupTool.deleteBackupTmpDir()) {
       logger.info("Backup temporary files successfully deleted.");
-    }
-    else {
+    } else {
       logger.warn("Failed to delete some backup temporary files.");
     }
   }
