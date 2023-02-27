@@ -59,7 +59,8 @@ ddlStatement
     ;
 
 dmlStatement
-    : selectStatement | insertStatement | deleteStatement;
+    : selectStatement | insertStatement | deleteStatement
+    ;
 
 dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
@@ -71,11 +72,13 @@ utilityStatement
     : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
+    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
+    ;
 
 syncStatement
     : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
-    | createPipe | showPipe | stopPipe | startPipe | dropPipe;
+    | createPipe | showPipe | stopPipe | startPipe | dropPipe
+    ;
 
 /**
  * 2. Data Definition Language (DDL)
