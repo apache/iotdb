@@ -709,7 +709,7 @@ keep表达式用来指定形成分组所需要连续满足`predict`条件的数�
 用于指定遇到predict为null的数据行时的处理方式，为true则跳过该行，为false则结束当前分组。
 
 ### 使用注意事项
-1. keep条件在查询中是必需的，但可以省略掉keep字符串给出一个常数，默认为`keep=该常数`的等于条件。
+1. keep条件在查询中是必需的，但可以省略掉keep字符串给出一个`long`类型常数，默认为`keep=该long型常数`的等于条件。
 2. `ignoreNull`默认为true。
 3. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
 4. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
