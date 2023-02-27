@@ -670,11 +670,12 @@ struct TUnsetSchemaTemplateReq{
 
 struct TCreateModelReq {
   1: required string modelId
-  2: required byte modelTask
-  3: required bool isAuto
-  4: required map<string, string> modelConfigs
-  5: required list<string> queryExpressions
-  6: optional string queryFilter
+  2: required common.ModelTask modelTask
+  3: required string modelType
+  4: required list<string> queryExpressions
+  5: optional string queryFilter
+  6: required bool isAuto
+  7: required map<string, string> modelConfigs
 }
 
 struct TDropModelReq {
@@ -685,14 +686,9 @@ struct TShowModelReq {
   1: optional string modelId
 }
 
-struct TModelInfo {
-  1: required string modelId
-  2: required map<string, string> modelInfo
-}
-
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<TModelInfo> modelInfoList
+  2: required list<binary> modelInfoList
 }
 
 struct TShowTrailReq {
@@ -700,20 +696,21 @@ struct TShowTrailReq {
   2: optional string trailId
 }
 
-struct TTrailInfo {
-  1: required string modelId
-  2: required string trailId
-  3: required map<string, string> trailInfo
-}
-
 struct TShowTrailResp {
   1: required common.TSStatus status
-  2: required list<TTrailInfo> trailInfoList
+  2: required list<binary> trailInfoList
 }
 
 struct TUpdateModelInfoReq {
   1: required string modelId
-  2: required map<string, string> modelInfo
+  2: required string trailId
+  3: required map<string, string> modelInfo
+}
+
+struct TUpdateModelStateReq {
+  1: required string modelId
+  2: required common.TrainingState state
+  3: optional string bestTrailId
 }
 
 service IConfigNodeRPCService {
@@ -1291,5 +1288,12 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  /**
+   * Update the model state
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelState(TUpdateModelStateReq req)
 }
 
