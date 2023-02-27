@@ -1255,7 +1255,7 @@ public class TsFileProcessor {
           compressionRatio,
           totalMemTableSize,
           writer.getPos());
-      String dataRegionId = dataRegionInfo.getDataRegion().toString();
+      String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetricsManager.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
       CompressionRatio.getInstance().updateRatio(compressionRatio);

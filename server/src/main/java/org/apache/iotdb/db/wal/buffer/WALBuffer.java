@@ -198,6 +198,7 @@ public class WALBuffer extends AbstractWALBuffer {
           return;
         }
       }
+      WRITING_METRICS.recordSerializeWALEntryTotalCost(System.nanoTime() - start);
 
       // call fsync at last and set fsyncListeners
       if (totalSize > 0) {

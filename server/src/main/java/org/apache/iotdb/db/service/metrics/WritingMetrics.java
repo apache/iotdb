@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -58,9 +59,10 @@ public class WritingMetrics implements IMetricSet {
   public static final String COMPRESSION_RATIO = "compression_ratio";
   public static final String EFFECTIVE_RATIO_INFO = "effective_ratio_info";
   public static final String OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT =
-      "mem_table_ram_when_cause_snapshot";
+      "oldest_mem_table_ram_when_cause_snapshot";
   public static final String OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH =
-      "mem_table_ram_when_cause_flush";
+      "oldest_mem_table_ram_when_cause_flush";
+  public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
   private void bindFlushMetrics(AbstractMetricService metricService) {
     Arrays.asList(FLUSH_STAGE_SORT, FLUSH_STAGE_ENCODING, FLUSH_STAGE_IO, WRITE_PLAN_INDICES)
@@ -71,14 +73,20 @@ public class WritingMetrics implements IMetricSet {
                     MetricLevel.IMPORTANT,
                     Tag.STAGE.toString(),
                     stage));
-    Arrays.asList(PENDING_TASK_NUM, PENDING_SUB_TASK_NUM)
-        .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.AUTO_GAUGE,
-                    Metric.PENDING_FLUSH_TASK.toString(),
-                    Tag.NAME.toString(),
-                    name));
+    metricService.createAutoGauge(
+        Metric.PENDING_FLUSH_TASK.toString(),
+        MetricLevel.IMPORTANT,
+        FlushManager.getInstance(),
+        FlushManager::getNumberOfPendingTasks,
+        Tag.TYPE.toString(),
+        PENDING_TASK_NUM);
+    metricService.createAutoGauge(
+        Metric.PENDING_FLUSH_TASK.toString(),
+        MetricLevel.IMPORTANT,
+        FlushManager.getInstance(),
+        FlushManager::getNumberOfPendingSubTasks,
+        Tag.TYPE.toString(),
+        PENDING_SUB_TASK_NUM);
   }
 
   private void unbindFlushMetrics(AbstractMetricService metricService) {

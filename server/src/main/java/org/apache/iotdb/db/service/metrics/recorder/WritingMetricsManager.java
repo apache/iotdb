@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -35,6 +36,27 @@ public class WritingMetricsManager {
   public static final WritingMetricsManager INSTANCE = new WritingMetricsManager();
 
   private WritingMetricsManager() {}
+
+  public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
+    DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()));
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.DATA_REGION_MEM_COST.toString(),
+            MetricLevel.IMPORTANT,
+            dataRegion,
+            DataRegion::getMemCost,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  public void removeDataRegionMemoryCostMetrics(DataRegionId dataRegionId) {
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.DATA_REGION_MEM_COST.toString(),
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
 
   public void createWALNodeInfoMetrics(String walNodeId) {
     Arrays.asList(
@@ -75,7 +97,8 @@ public class WritingMetricsManager {
             WritingMetrics.SERIES_NUM,
             WritingMetrics.POINTS_NUM,
             WritingMetrics.AVG_SERIES_POINT_NUM,
-            WritingMetrics.COMPRESSION_RATIO)
+            WritingMetrics.COMPRESSION_RATIO,
+            WritingMetrics.FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -94,7 +117,8 @@ public class WritingMetricsManager {
             WritingMetrics.SERIES_NUM,
             WritingMetrics.POINTS_NUM,
             WritingMetrics.AVG_SERIES_POINT_NUM,
-            WritingMetrics.COMPRESSION_RATIO)
+            WritingMetrics.COMPRESSION_RATIO,
+            WritingMetrics.FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -139,7 +163,7 @@ public class WritingMetricsManager {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH,
-            Tag.REGION.toString(),
+            Tag.TYPE.toString(),
             walNodeId);
   }
 
@@ -158,12 +182,10 @@ public class WritingMetricsManager {
 
   public void recordFlushingMemTableStatus(
       String storageGroup, long memSize, long seriesNum, long totalPointsNum, long avgSeriesNum) {
-    int idx = storageGroup.lastIndexOf('-');
-    if (idx == -1) {
+    DataRegionId dataRegionId = getDataRegionIdFromStorageGroupStr(storageGroup);
+    if (dataRegionId == null) {
       return;
     }
-    String dataRegionIdStr = storageGroup.substring(idx + 1);
-    DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdStr));
 
     MetricService.getInstance()
         .histogram(
@@ -201,6 +223,31 @@ public class WritingMetricsManager {
             WritingMetrics.AVG_SERIES_POINT_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
+  }
+
+  public void recordFlushTsFileSize(String storageGroup, long size) {
+    DataRegionId dataRegionId = getDataRegionIdFromStorageGroupStr(storageGroup);
+    if (dataRegionId == null) {
+      return;
+    }
+    MetricService.getInstance()
+        .histogram(
+            size,
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.FLUSH_TSFILE_SIZE,
+            Tag.REGION.toString(),
+            dataRegionId.toString());
+  }
+
+  private DataRegionId getDataRegionIdFromStorageGroupStr(String storageGroup) {
+    int idx = storageGroup.lastIndexOf('-');
+    if (idx == -1) {
+      return null;
+    }
+    String dataRegionIdStr = storageGroup.substring(idx + 1);
+    return new DataRegionId(Integer.parseInt(dataRegionIdStr));
   }
 
   public void recordFlushCost(String stage, long costTimeInMillis) {

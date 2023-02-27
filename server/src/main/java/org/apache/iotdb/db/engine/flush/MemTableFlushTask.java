@@ -345,6 +345,7 @@ public class MemTableFlushTask {
             writer.getFile().getName(),
             storageGroup,
             ioTime);
+        WRITING_METRICS.recordFlushTsFileSize(storageGroup, writer.getFile().length());
         WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, ioTime);
       };
 

@@ -102,6 +102,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval = -1;
@@ -460,7 +461,8 @@ public class StorageEngine implements IService {
             String.valueOf(dataRegionId.getId()),
             fileFlushPolicy,
             logicalStorageGroupName);
-    WritingMetricsManager.getInstance().createFlushingMemTableStatusMetrics(dataRegionId);
+    WRITING_METRICS.createFlushingMemTableStatusMetrics(dataRegionId);
+    WRITING_METRICS.createDataRegionMemoryCostMetrics(dataRegion);
     dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
@@ -656,7 +658,8 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       region.markDeleted();
-      WritingMetricsManager.getInstance().removeFlushingMemTableStatusMetrics(regionId);
+      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
