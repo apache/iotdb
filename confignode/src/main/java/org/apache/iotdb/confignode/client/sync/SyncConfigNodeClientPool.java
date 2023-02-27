@@ -85,6 +85,8 @@ public class SyncConfigNodeClientPool {
             return removeConfigNode((TConfigNodeLocation) req, client);
           case DELETE_CONFIG_NODE_PEER:
             return client.deleteConfigNodePeer((TConfigNodeLocation) req);
+          case REPORT_CONFIG_NODE_SHUTDOWN:
+            return client.reportConfigNodeShutdown((TConfigNodeLocation) req);
           case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.
             return client.stopConfigNode((TConfigNodeLocation) req);

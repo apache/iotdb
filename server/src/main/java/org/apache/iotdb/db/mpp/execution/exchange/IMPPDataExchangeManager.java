@@ -20,8 +20,17 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkChannel;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
+import java.util.List;
 
 public interface IMPPDataExchangeManager {
   /**
@@ -30,26 +39,17 @@ public interface IMPPDataExchangeManager {
    *
    * @param localFragmentInstanceId ID of the local fragment instance who generates and sends data
    *     blocks to the sink handle.
-   * @param remoteEndpoint Hostname and Port of the remote fragment instance where the data blocks
-   *     should be sent to.
-   * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
-   * @param remotePlanNodeId The plan node ID of the local fragment instance.
    * @param instanceContext The context of local fragment instance.
    */
-  ISinkHandle createSinkHandle(
+  ISinkHandle createShuffleSinkHandle(
+      List<DownStreamChannelLocation> downStreamChannelLocationList,
+      DownStreamChannelIndex downStreamChannelIndex,
+      ShuffleSinkHandle.ShuffleStrategyEnum shuffleStrategyEnum,
       TFragmentInstanceId localFragmentInstanceId,
-      TEndPoint remoteEndpoint,
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
       String localPlanNodeId,
       FragmentInstanceContext instanceContext);
 
-  ISinkHandle createLocalSinkHandleForFragment(
-      TFragmentInstanceId localFragmentInstanceId,
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
-      FragmentInstanceContext instanceContext);
-
+  ISinkChannel createLocalSinkChannelForPipeline(DriverContext driverContext, String planNodeId);
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
    * plan node of a local fragment instance in async manner.
@@ -65,6 +65,7 @@ public interface IMPPDataExchangeManager {
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
@@ -72,8 +73,13 @@ public interface IMPPDataExchangeManager {
   ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
+      String remotePlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
+      int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
+
+  /** SharedTsBlockQueue must belong to corresponding LocalSinkChannel */
+  ISourceHandle createLocalSourceHandleForPipeline(SharedTsBlockQueue queue, DriverContext context);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

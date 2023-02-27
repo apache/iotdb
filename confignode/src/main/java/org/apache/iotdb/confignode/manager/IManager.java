@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -230,6 +231,15 @@ public interface IManager {
   DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
+   * Report that the specified DataNode will be shutdown.
+   *
+   * <p>The ConfigNode-leader will mark it as Unknown
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
+
+  /**
    * DataNode report region migrate result to ConfigNode when remove DataNode
    *
    * @param req TRegionMigrateResultReportReq
@@ -380,6 +390,14 @@ public interface IManager {
    * @return status
    */
   TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
+
+  /**
+   * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
+   * Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
 
   TSStatus createFunction(TCreateFunctionReq req);
 

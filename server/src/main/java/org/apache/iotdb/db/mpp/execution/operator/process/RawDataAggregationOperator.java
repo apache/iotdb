@@ -67,7 +67,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       long maxReturnSize,
       WindowParameter windowParameter) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
-    this.windowManager = genWindowManager(windowParameter, timeRangeIterator);
+    this.windowManager = genWindowManager(windowParameter, timeRangeIterator, ascending);
     this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 
@@ -105,7 +105,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         if (windowManager.notInitedLastTimeWindow()) {
           initWindowAndAggregators();
         }
-        break;
+        // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()
+        // but if it's skipping the last window, just break and keep skipping.
+        if (needSkip || windowManager.isCurWindowInit()) break;
+        return false;
       }
     }
 
@@ -157,11 +160,13 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
                 lastReadRowIndex,
                 aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
       }
+
       // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
       // aggregators.
       if (lastReadRowIndex != 0) {
         // todo update the keep value in group by series, it will be removed in the future
         windowManager.setKeep(lastReadRowIndex);
+        windowManager.setLastTsBlockTime();
         hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -39,8 +38,6 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
@@ -68,6 +65,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -108,8 +106,6 @@ public class LoadManager {
 
     eventBus.register(configManager.getClusterSchemaManager());
     eventBus.register(configManager.getSyncManager());
-
-    MetricService.getInstance().addMetricSet(new LoadManagerMetrics(configManager));
   }
 
   /**
@@ -151,8 +147,29 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
+  /** @return Map<RegionGroupId, DataNodeId where the leader resides> */
   public Map<TConsensusGroupId, Integer> getLatestRegionLeaderMap() {
     return routeBalancer.getLatestRegionLeaderMap();
+  }
+
+  /**
+   * Get the number of RegionGroup-leaders in the specified DataNode.
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @return The number of RegionGroup-leaders
+   */
+  public int getRegionGroupLeaderCount(int dataNodeId, TConsensusGroupType type) {
+    AtomicInteger result = new AtomicInteger(0);
+    routeBalancer
+        .getLatestRegionLeaderMap()
+        .forEach(
+            ((consensusGroupId, leaderId) -> {
+              if (dataNodeId == leaderId && type.equals(consensusGroupId.getType())) {
+                result.getAndIncrement();
+              }
+            }));
+    return result.get();
   }
 
   /**
@@ -333,16 +350,8 @@ public class LoadManager {
     return routeBalancer;
   }
 
-  private ConsensusManager getConsensusManager() {
-    return configManager.getConsensusManager();
-  }
-
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
-  }
-
-  private ClusterSchemaManager getClusterSchemaManager() {
-    return configManager.getClusterSchemaManager();
   }
 
   private PartitionManager getPartitionManager() {

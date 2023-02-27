@@ -47,6 +47,10 @@ public class ExpressionFactory {
     return new TimeSeriesOperand(path);
   }
 
+  public static TimeSeriesOperand timeSeries(PartialPath path) {
+    return new TimeSeriesOperand(path);
+  }
+
   public static ConstantOperand constant(TSDataType dataType, String valueString) {
     return new ConstantOperand(dataType, valueString);
   }
