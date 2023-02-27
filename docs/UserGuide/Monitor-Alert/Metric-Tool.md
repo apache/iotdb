@@ -112,40 +112,40 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.1.1. Cluster
 
-| Metric                    | Tags                                              | Type      | Description                                         |
-| ------------------------- | ------------------------------------------------- | --------- | --------------------------------------------------- |
-| config_node               | name="total",status="Registered/Online/Unknown"   | AutoGauge | The number of registered/online/unknown confignodes |
-| data_node                 | name="total",status="Registered/Online/Unknown"   | AutoGauge | The number of registered/online/unknown datanodes   |
-| cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge     | The count of consensus group leader on each node    |
-| cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge     | The current node status, 0=Unkonwn 1=online         |
-| entry                     | name="{{interface}}"                              | Timer     | The time consumed of thrift operations              |
-| mem                       | name="IoTConsensus"                               | AutoGauge | The memory usage of IoTConsensus, Unit: byte        |
+| Metric                    | Tags                                            | Type      | Description                                         |
+| ------------------------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
+| config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
+| data_node                 | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
+| cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | The count of consensus group leader on each node    |
+| cluster_node_status       | name="{ip}:{port}",type="ConfigNode/DataNode"   | Gauge     | The current node status, 0=Unkonwn 1=online         |
+| entry                     | name="{interface}"                              | Timer     | The time consumed of thrift operations              |
+| mem                       | name="IoTConsensus"                             | AutoGauge | The memory usage of IoTConsensus, Unit: byte        |
 
 #### 4.1.2. Node Statistics
-| Metric   | Tags                                  | Type      | Description                               |
-| -------- | ------------------------------------- | --------- | ----------------------------------------- |
-| quantity | name="database"                       | AutoGauge | The number of database                    |
-| quantity | name="timeSeries"                     | AutoGauge | The number of timeseries                  |
-| quantity | name="pointsIn"                       | Counter   | The number of write points                |
-| points   | database="{{database}}", type="flush" | Gauge     | The point number of last flushed memtable |
+| Metric   | Tags                                | Type      | Description                               |
+| -------- | ----------------------------------- | --------- | ----------------------------------------- |
+| quantity | name="database"                     | AutoGauge | The number of database                    |
+| quantity | name="timeSeries"                   | AutoGauge | The number of timeseries                  |
+| quantity | name="pointsIn"                     | Counter   | The number of write points                |
+| points   | database="{database}", type="flush" | Gauge     | The point number of last flushed memtable |
 
 #### 4.1.3. Cluster Tracing
-| Metric                               | Tags                                                 | Type  | Description                                      |
-| ------------------------------------ | ---------------------------------------------------- | ----- | ------------------------------------------------ |
-| performance_overview                 | interface="{{interface}}", type="{{statement_type}}" | Timer | The time consumed of operations in client        |
-| performance_overview_detail          | stage="authority"                                    | Timer | The time consumed on authority authentication    |
-| performance_overview_detail          | stage="parser"                                       | Timer | The time consumed on parsing statement           |
-| performance_overview_detail          | stage="analyzer"                                     | Timer | The time consumed on analyzing statement         |
-| performance_overview_detail          | stage="planner"                                      | Timer | The time consumed on planning                    |
-| performance_overview_detail          | stage="scheduler"                                    | Timer | The time consumed on scheduling                  |
-| performance_overview_schedule_detail | stage="schema_validate"                              | Timer | The time consumed on schema validation           |
-| performance_overview_schedule_detail | stage="trigger"                                      | Timer | The time consumed on trigger                     |
-| performance_overview_schedule_detail | stage="consensus"                                    | Timer | The time consumed on consensus                   |
-| performance_overview_schedule_detail | stage="lock"                                         | Timer | The time consumed on grabbing lock in DataRegion |
-| performance_overview_schedule_detail | stage="memory_block"                                 | Timer | The time consumed on insert memory control       |
-| performance_overview_schedule_detail | stage="wal"                                          | Timer | The time consumed on writing wal                 |
-| performance_overview_schedule_detail | stage="memtable"                                     | Timer | The time consumed on writing memtable            |
-| performance_overview_schedule_detail | stage="last_cache"                                   | Timer | The time consumed on updating last cache         |
+| Metric                               | Tags                                             | Type  | Description                                      |
+| ------------------------------------ | ------------------------------------------------ | ----- | ------------------------------------------------ |
+| performance_overview                 | interface="{interface}", type="{statement_type}" | Timer | The time consumed of operations in client        |
+| performance_overview_detail          | stage="authority"                                | Timer | The time consumed on authority authentication    |
+| performance_overview_detail          | stage="parser"                                   | Timer | The time consumed on parsing statement           |
+| performance_overview_detail          | stage="analyzer"                                 | Timer | The time consumed on analyzing statement         |
+| performance_overview_detail          | stage="planner"                                  | Timer | The time consumed on planning                    |
+| performance_overview_detail          | stage="scheduler"                                | Timer | The time consumed on scheduling                  |
+| performance_overview_schedule_detail | stage="schema_validate"                          | Timer | The time consumed on schema validation           |
+| performance_overview_schedule_detail | stage="trigger"                                  | Timer | The time consumed on trigger                     |
+| performance_overview_schedule_detail | stage="consensus"                                | Timer | The time consumed on consensus                   |
+| performance_overview_schedule_detail | stage="lock"                                     | Timer | The time consumed on grabbing lock in DataRegion |
+| performance_overview_schedule_detail | stage="memory_block"                             | Timer | The time consumed on insert memory control       |
+| performance_overview_schedule_detail | stage="wal"                                      | Timer | The time consumed on writing wal                 |
+| performance_overview_schedule_detail | stage="memtable"                                 | Timer | The time consumed on writing memtable            |
+| performance_overview_schedule_detail | stage="last_cache"                               | Timer | The time consumed on updating last cache         |
 
 #### 4.1.4. Task Statistics
 
@@ -232,7 +232,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | ----------------------------- | ----------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
 | jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | The number and time consumed of Young GC/Full Gc caused by different reason |
 |                               |
-| jvm_gc_concurrent_phase_time  | action="{{action}}",cause="{{cause}}"                 | Timer     | The number and time consumed of Young GC/Full Gc caused by different        |
+| jvm_gc_concurrent_phase_time  | action="{action}",cause="{cause}"                     | Timer     | The number and time consumed of Young GC/Full Gc caused by different        |
 |                               |
 | jvm_gc_max_data_size_bytes    |                                                       | AutoGauge | The historical maximum value of old memory                                  |
 | jvm_gc_live_data_size_bytes   |                                                       | AutoGauge | The usage of old memory                                                     |
@@ -244,31 +244,31 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.2.1. Node
 
-| Metric | Tags                                       | Type      | Description                                                   |
-| ------ | ------------------------------------------ | --------- | ------------------------------------------------------------- |
-| region | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
-| region | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
-| region | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
-| region | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
+| Metric | Tags                                   | Type      | Description                                                   |
+| ------ | -------------------------------------- | --------- | ------------------------------------------------------------- |
+| region | name="total",type="SchemaRegion"       | AutoGauge | The total number of SchemaRegion in PartitionTable            |
+| region | name="total",type="DataRegion"         | AutoGauge | The total number of DataRegion in PartitionTable              |
+| region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
+| region | name="{ip}:{port}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
 
 #### 4.2.2. IoTConsensus
 
-| Metric       | Tags                                                                                         | Type      | Description                                                           |
-| ------------ | -------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
-| mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="searchIndex"                       | AutoGauge | The write process of main process in replica group                    |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="safeIndex"                         | AutoGauge | The sync index of replica group                                       |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="syncLag"                           | AutoGauge | The sync lag of replica group                                         |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromWAL"                 | AutoGauge | The number of logEntries from wal in Batch                            |
-| mutli_leader | name="IoTConsensusServerImpl", region="{{region}}", type="LogEntriesFromQueue"               | AutoGauge | The number of logEntries from queue in Batch                          |
-| stage        | name="iot_consensus", region="{{region}}", type="getStateMachineLock"                        | Histogram | The time consumed to get statemachine lock in main process            |
-| stage        | name="iot_consensus", region="{{region}}", type="checkingBeforeWrite"                        | Histogram | The time consumed to precheck before write in main process            |
-| stage        | name="iot_consensus", region="{{region}}", type="writeStateMachine"                          | Histogram | The time consumed to write statemachine in main process               |
-| stage        | name="iot_consensus", region="{{region}}", type="offerRequestToQueue"                        | Histogram | The time consumed to try to offer request to queue in main process    |
-| stage        | name="iot_consensus", region="{{region}}", type="consensusWrite"                             | Histogram | The time consumed to the whole write in main process                  |
-| stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | The time consumed to construct batch in synchronization thread        |
-| stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | The time consumed to sync log in asynchronous callback process        |
+| Metric       | Tags                                                                                   | Type      | Description                                                           |
+| ------------ | -------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
+| mutli_leader | name="logDispatcher-{IP}:{Port}", region="{region}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
+| mutli_leader | name="logDispatcher-{IP}:{Port}", region="{region}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="searchIndex"                   | AutoGauge | The write process of main process in replica group                    |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="safeIndex"                     | AutoGauge | The sync index of replica group                                       |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="syncLag"                       | AutoGauge | The sync lag of replica group                                         |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromWAL"             | AutoGauge | The number of logEntries from wal in Batch                            |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromQueue"           | AutoGauge | The number of logEntries from queue in Batch                          |
+| stage        | name="iot_consensus", region="{region}", type="getStateMachineLock"                    | Histogram | The time consumed to get statemachine lock in main process            |
+| stage        | name="iot_consensus", region="{region}", type="checkingBeforeWrite"                    | Histogram | The time consumed to precheck before write in main process            |
+| stage        | name="iot_consensus", region="{region}", type="writeStateMachine"                      | Histogram | The time consumed to write statemachine in main process               |
+| stage        | name="iot_consensus", region="{region}", type="offerRequestToQueue"                    | Histogram | The time consumed to try to offer request to queue in main process    |
+| stage        | name="iot_consensus", region="{region}", type="consensusWrite"                         | Histogram | The time consumed to the whole write in main process                  |
+| stage        | name="iot_consensus", region="{region}", type="constructBatch"                         | Histogram | The time consumed to construct batch in synchronization thread        |
+| stage        | name="iot_consensus", region="{region}", type="syncLogTimePerRequest"                  | Histogram | The time consumed to sync log in asynchronous callback process        |
 
 #### 4.2.3. Cache
 
@@ -302,8 +302,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 | Metric | Tags                                 | Type      | Description                                                        |
 | ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
-| mem    | name="database_{{name}}"             | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
-| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
+| mem    | name="database_{name}"               | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
+| mem    | name="chunkMetaData_{name}"          | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
 | mem    | name="IoTConsensus"                  | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
 | mem    | name="IoTConsensusQueue"             | AutoGauge | The memory usage of IoTConsensus Queue, Unit: byte                 |
 | mem    | name="IoTConsensusSync"              | AutoGauge | The memory usage of IoTConsensus SyncStatus, Unit: byte            |
@@ -400,8 +400,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 | query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | The time-consuming of query resource memory query and construction                      |
 | query_execution          | stage="driver_internal_process"                                                     | Timer   | The time-consuming of driver execution                                                  |
 | query_execution          | stage="wait_for_result"                                                             | Timer   | The time-consuming of getting query result from result handle                           |
-| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | The operator execution time                                                             |
-| operator_execution_count | name="{{operator_name}}"                                                            | Counter | The number of operator calls (counted by the number of next method calls)               |
+| operator_execution_cost  | name="{operator_name}"                                                              | Timer   | The operator execution time                                                             |
+| operator_execution_count | name="{operator_name}"                                                              | Counter | The number of operator calls (counted by the number of next method calls)               |
 | aggregation              | from="raw_data"                                                                     | Timer   | The time-consuming of performing an aggregation calculation from a batch of raw data    |
 | aggregation              | from="statistics"                                                                   | Timer   | The time-consuming of updating an aggregated value with statistics                      |
 | series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | The time-consuming of loading TimeseriesMetadata                                        |
@@ -420,10 +420,10 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.3.1. Cluster
 
-| Metric | Tags                                                           | Type      | Description                                                        |
-| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
-| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
-| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
+| Metric | Tags                                                         | Type      | Description                                                        |
+| ------ | ------------------------------------------------------------ | --------- | ------------------------------------------------------------------ |
+| region | name="{DatabaseName}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
+| slot   | name="{DatabaseName}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
 ### 4.4. All Metric
 
