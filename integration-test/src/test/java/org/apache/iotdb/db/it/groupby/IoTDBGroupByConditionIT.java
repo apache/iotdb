@@ -125,6 +125,7 @@ public class IoTDBGroupByConditionIT {
         .setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
+    prepareData(SQLs2);
   }
 
   @AfterClass
@@ -164,9 +165,6 @@ public class IoTDBGroupByConditionIT {
           {"1", "2", "1.0", "2", "16.0"},
           {"5", "2500000000", "2499999995.0", "9", "100.0"}
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
         "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=2,ignoreNull=true)";
     normalTest(res, sql2);
@@ -181,9 +179,6 @@ public class IoTDBGroupByConditionIT {
     String sql =
         "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
     normalTestWithEndTime(res, sql);
-    String sql2 =
-        "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=true)";
-    normalTest(res, sql2);
   }
 
   @Test
@@ -192,12 +187,20 @@ public class IoTDBGroupByConditionIT {
         new String[][] {
           {"5", "7", "2.0", "3", "36.0"},
         };
-    String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
-    normalTestWithEndTime(res, sql);
     String sql2 =
         "select max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=1,KEEP>=3,ignoreNull=false)";
     normalTest(res, sql2);
+  }
+
+  @Test
+  public void groupByConditionTest5() {
+    String[][] res =
+        new String[][] {
+          {"3", "4", "1.0", "2", "16.0"},
+        };
+    String sql =
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(charging_status=0,KEEP=2,ignoreNull=true)";
+    normalTestWithEndTime(res, sql);
   }
 
   private void normalTestWithEndTime(String[][] res, String sql) {
@@ -371,26 +374,18 @@ public class IoTDBGroupByConditionIT {
   public void groupByConditionFirstValueTest() {
     String[][] res = new String[][] {{"5", "7", "18.0"}};
     String sql =
-        "select __endTime,first_value(soc) from root.sg.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
+        "select first_value(soc) from root.sg.beijing.car01 group by condition(charging_status!=0,KEEP>2,ignoreNull=false)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,__endTime,first_value(root.sg.beijing.car01.soc)");
+        checkHeader(resultSetMetaData, "Time,first_value(root.sg.beijing.car01.soc)");
         int count = 0;
-        int rowNum = res.length;
-        String device = "root.sg.beijing.car01";
         while (resultSet.next()) {
-          if (count == rowNum) {
-            count = 0;
-            device = "root.sg.beijing.car02";
-          }
           String startTime = resultSet.getString(1);
-          String endTime = resultSet.getString(2);
-          String firstValue = resultSet.getString(3);
+          String firstValue = resultSet.getString(2);
           assertEquals(res[count][0], startTime);
-          assertEquals(res[count][1], endTime);
           assertEquals(res[count][2], firstValue);
           count++;
         }

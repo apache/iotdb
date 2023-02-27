@@ -33,10 +33,12 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class MetricRegistryManager extends MetricRegistries {
-  // Using RefCountingMap here because of potential duplicate MetricRegistryInfos
+  /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos */
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
-  // TODO: enable ratis metrics after verifying its correctness and efficiency
+  /** TODO: enable ratis metrics after verifying its correctness and efficiency */
   private final AbstractMetricService service = new DoNothingMetricService();
+
+  private String consensusGroupType;
 
   public MetricRegistryManager() {
     this.registries = new RefCountingMap<>();
@@ -53,7 +55,8 @@ public class MetricRegistryManager extends MetricRegistries {
   @Override
   public RatisMetricRegistry create(MetricRegistryInfo metricRegistryInfo) {
     return registries.put(
-        metricRegistryInfo, () -> new IoTDBMetricRegistry(metricRegistryInfo, service));
+        metricRegistryInfo,
+        () -> new IoTDBMetricRegistry(metricRegistryInfo, service, consensusGroupType));
   }
 
   @Override
@@ -94,5 +97,9 @@ public class MetricRegistryManager extends MetricRegistries {
     // We shall disable the Console reporter since we already have one in MetricService
     throw new UnsupportedOperationException(
         "Console Reporter is disabled from RatisMetricRegistries");
+  }
+
+  public void setConsensusGroupType(String consensusGroupType) {
+    this.consensusGroupType = consensusGroupType;
   }
 }
