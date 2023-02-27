@@ -953,6 +953,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
+        if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS) {
+            isAllSuccessful = false;
+        }
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
