@@ -726,7 +726,7 @@ Keep expression consists of a 'keep' string and a threshold of type `long` or a 
 Used to specify how to handle data rows that encounter null predict, skip the row when it's true and end current group when it's false.
 
 ### Precautions for Use
-1. keep condition is required in the query, but you can omit the 'keep' string and given a constant which defaults to 'keep=constant' condition.
+1. keep condition is required in the query, but you can omit the 'keep' string and given a `long` number which defaults to 'keep=long number' condition.
 2. IgnoreNull defaults to true.
 3. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
 4. Each device is grouped separately when used with `ALIGN BY DEVICE`.
