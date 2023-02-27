@@ -36,12 +36,46 @@ public class WritingMetricsManager {
 
   private WritingMetricsManager() {}
 
+  public void createWALNodeInfoMetrics(String walNodeId) {
+    Arrays.asList(
+            WritingMetrics.EFFECTIVE_RATIO_INFO,
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT,
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH)
+        .forEach(
+            name ->
+                MetricService.getInstance()
+                    .getOrCreateHistogram(
+                        Metric.WAL_NODE_INFO.toString(),
+                        MetricLevel.IMPORTANT,
+                        Tag.NAME.toString(),
+                        name,
+                        Tag.TYPE.toString(),
+                        walNodeId));
+  }
+
+  public void removeWALNodeInfoMetrics(String walNodeId) {
+    Arrays.asList(
+            WritingMetrics.EFFECTIVE_RATIO_INFO,
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT,
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH)
+        .forEach(
+            name ->
+                MetricService.getInstance()
+                    .remove(
+                        MetricType.HISTOGRAM,
+                        Tag.NAME.toString(),
+                        name,
+                        Tag.TYPE.toString(),
+                        walNodeId));
+  }
+
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
     Arrays.asList(
             WritingMetrics.MEM_TABLE_SIZE,
             WritingMetrics.SERIES_NUM,
             WritingMetrics.POINTS_NUM,
-            WritingMetrics.AVG_SERIES_POINT_NUM)
+            WritingMetrics.AVG_SERIES_POINT_NUM,
+            WritingMetrics.COMPRESSION_RATIO)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -59,7 +93,8 @@ public class WritingMetricsManager {
             WritingMetrics.MEM_TABLE_SIZE,
             WritingMetrics.SERIES_NUM,
             WritingMetrics.POINTS_NUM,
-            WritingMetrics.AVG_SERIES_POINT_NUM)
+            WritingMetrics.AVG_SERIES_POINT_NUM,
+            WritingMetrics.COMPRESSION_RATIO)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -70,6 +105,55 @@ public class WritingMetricsManager {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+  }
+
+  public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
+    MetricService.getInstance()
+        .histogram(
+            (long) (ratio * 100),
+            Metric.WAL_NODE_INFO.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.EFFECTIVE_RATIO_INFO,
+            Tag.TYPE.toString(),
+            walNodeId);
+  }
+
+  public void recordMemTableRamWhenCauseSnapshot(String walNodeId, long ram) {
+    MetricService.getInstance()
+        .histogram(
+            ram,
+            Metric.WAL_NODE_INFO.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_SNAPSHOT,
+            Tag.TYPE.toString(),
+            walNodeId);
+  }
+
+  public void recordMemTableRamWhenCauseFlush(String walNodeId, long ram) {
+    MetricService.getInstance()
+        .histogram(
+            ram,
+            Metric.WAL_NODE_INFO.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.OLDEST_MEM_TABLE_RAM_WHEN_CAUSE_FLUSH,
+            Tag.REGION.toString(),
+            walNodeId);
+  }
+
+  public void recordTsFileCompressionRatioOfFlushingMemTable(
+      String dataRegionId, double compressionRatio) {
+    MetricService.getInstance()
+        .histogram(
+            (long) (compressionRatio * 100),
+            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.COMPRESSION_RATIO,
+            Tag.REGION.toString(),
+            new DataRegionId(Integer.parseInt(dataRegionId)).toString());
   }
 
   public void recordFlushingMemTableStatus(
@@ -154,7 +238,7 @@ public class WritingMetricsManager {
             type.toString());
   }
 
-  public void recordSerializeWALInfoEntryCost(long costTimeInNanos) {
+  public void recordSerializeOneWALInfoEntryCost(long costTimeInNanos) {
     MetricService.getInstance()
         .timer(
             costTimeInNanos,
@@ -162,12 +246,26 @@ public class WritingMetricsManager {
             Metric.WAL_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            WritingMetrics.SERIALIZE_ONE_INFO_ENTRY,
+            WritingMetrics.SERIALIZE_WAL_ENTRY,
             Tag.TYPE.toString(),
-            WritingMetrics.TYPE_WAL_INFO_ENTRY);
+            WritingMetrics.SERIALIZE_ONE_WAL_INFO_ENTRY);
   }
 
-  public void recordSyncWALBufferCost(long costTimeInNanos) {
+  public void recordSerializeWALEntryTotalCost(long costTimeInNanos) {
+    MetricService.getInstance()
+        .timer(
+            costTimeInNanos,
+            TimeUnit.NANOSECONDS,
+            Metric.WAL_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            WritingMetrics.SERIALIZE_WAL_ENTRY,
+            Tag.TYPE.toString(),
+            WritingMetrics.SERIALIZE_WAL_ENTRY_TOTAL);
+  }
+
+  public void recordSyncWALBufferCost(long costTimeInNanos, boolean forceFlag) {
+    String syncType = forceFlag ? WritingMetrics.FSYNC : WritingMetrics.SYNC;
     MetricService.getInstance()
         .timer(
             costTimeInNanos,
@@ -177,7 +275,27 @@ public class WritingMetricsManager {
             Tag.STAGE.toString(),
             WritingMetrics.SYNC_WAL_BUFFER,
             Tag.TYPE.toString(),
-            WritingMetrics.TYPE_NULL);
+            syncType);
+  }
+
+  public void recordWALBufferUsedRatio(double usedRatio) {
+    MetricService.getInstance()
+        .histogram(
+            (long) (usedRatio * 100),
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.USED_RATIO);
+  }
+
+  public void recordWALBufferEntriesCount(long count) {
+    MetricService.getInstance()
+        .histogram(
+            count,
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WritingMetrics.ENTRIES_COUNT);
   }
 
   public static WritingMetricsManager getInstance() {

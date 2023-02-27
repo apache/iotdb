@@ -163,10 +163,12 @@ public class WALBuffer extends AbstractWALBuffer {
     /** In order to control memory usage of blocking queue, get 1 and then serialize 1 */
     private void serialize() {
       // try to get first WALEntry with blocking interface
+      long start = System.nanoTime();
       try {
         WALEntry firstWALEntry = walEntries.take();
         boolean returnFlag = handleWALEntry(firstWALEntry);
         if (returnFlag) {
+          WRITING_METRICS.recordSerializeWALEntryTotalCost(System.nanoTime() - start);
           return;
         }
       } catch (InterruptedException e) {
@@ -192,6 +194,7 @@ public class WALBuffer extends AbstractWALBuffer {
         }
         boolean returnFlag = handleWALEntry(walEntry);
         if (returnFlag) {
+          WRITING_METRICS.recordSerializeWALEntryTotalCost(System.nanoTime() - start);
           return;
         }
       }
@@ -228,7 +231,7 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         long start = System.nanoTime();
         walEntry.serialize(byteBufferView);
-        WRITING_METRICS.recordSerializeWALInfoEntryCost(System.nanoTime() - start);
+        WRITING_METRICS.recordSerializeOneWALInfoEntryCost(System.nanoTime() - start);
         size = byteBufferView.position() - size;
       } catch (Exception e) {
         logger.error(
@@ -430,12 +433,11 @@ public class WALBuffer extends AbstractWALBuffer {
       long start = System.nanoTime();
       currentWALFileWriter.updateFileStatus(fileStatus);
 
-      if (logger.isDebugEnabled()) {
-        double usedRatio = (double) syncingBuffer.position() / syncingBuffer.capacity();
-        logger.debug(
-            "Sync wal buffer, forceFlag: {}, buffer used: {} / {} = {}%",
-            forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
-      }
+      double usedRatio = (double) syncingBuffer.position() / syncingBuffer.capacity();
+      WRITING_METRICS.recordWALBufferUsedRatio(usedRatio);
+      logger.debug(
+          "Sync wal buffer, forceFlag: {}, buffer used: {} / {} = {}%",
+          forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
 
       // flush buffer to os
       try {
@@ -489,7 +491,8 @@ public class WALBuffer extends AbstractWALBuffer {
           fsyncListener.succeed();
         }
       }
-      WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - start);
+      WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
+      WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - start, forceFlag);
     }
   }
 
