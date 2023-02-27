@@ -65,8 +65,8 @@ public class ModelTable {
     modelInfoMap.get(modelId).update(trailId, modelInfo);
   }
 
-  public void updateState(String modelId, TrainingState state) {
-    modelInfoMap.get(modelId).updateState(state);
+  public void updateState(String modelId, TrainingState state, String bestTrailId) {
+    modelInfoMap.get(modelId).updateState(state, bestTrailId);
   }
 
   public void clear() {

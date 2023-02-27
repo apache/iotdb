@@ -149,9 +149,12 @@ public class ModelInformation {
     }
   }
 
-  public void updateState(TrainingState newState) {
+  public void updateState(TrainingState newState, String bestTrailId) {
     // TODO: add state transform validate
     this.trainingState = newState;
+    if (bestTrailId != null) {
+      this.bestTrailId = bestTrailId;
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {

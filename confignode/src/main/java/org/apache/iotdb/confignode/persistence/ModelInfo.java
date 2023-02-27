@@ -163,7 +163,7 @@ public class ModelInfo implements SnapshotProcessor {
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateState(modelId, plan.getState());
+        modelTable.updateState(modelId, plan.getState(), plan.getBestTrailId());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

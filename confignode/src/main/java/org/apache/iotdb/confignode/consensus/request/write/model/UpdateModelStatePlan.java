@@ -34,6 +34,7 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
 
   private String modelId;
   private TrainingState state;
+  private String bestTrailId;
 
   public UpdateModelStatePlan() {
     super(ConfigPhysicalPlanType.UpdateModelState);
@@ -43,6 +44,7 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.UpdateModelState);
     this.modelId = updateModelStateReq.getModelId();
     this.state = updateModelStateReq.getState();
+    this.bestTrailId = updateModelStateReq.getBestTrailId();
   }
 
   public String getModelId() {
@@ -53,17 +55,30 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     return state;
   }
 
+  public String getBestTrailId() {
+    return bestTrailId;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(state.getValue(), stream);
+    boolean isNull = bestTrailId == null;
+    ReadWriteIOUtils.write(isNull, stream);
+    if (!isNull) {
+      ReadWriteIOUtils.write(bestTrailId, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.modelId = ReadWriteIOUtils.readString(buffer);
     this.state = TrainingState.findByValue(ReadWriteIOUtils.readInt(buffer));
+    boolean isNull = ReadWriteIOUtils.readBool(buffer);
+    if (!isNull) {
+      this.bestTrailId = ReadWriteIOUtils.readString(buffer);
+    }
   }
 
   @Override
@@ -78,11 +93,13 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateModelStatePlan that = (UpdateModelStatePlan) o;
-    return Objects.equals(modelId, that.modelId) && state == that.state;
+    return modelId.equals(that.modelId)
+        && state == that.state
+        && Objects.equals(bestTrailId, that.bestTrailId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, state);
+    return Objects.hash(super.hashCode(), modelId, state, bestTrailId);
   }
 }
