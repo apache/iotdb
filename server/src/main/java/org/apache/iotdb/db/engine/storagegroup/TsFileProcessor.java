@@ -1076,7 +1076,11 @@ public class TsFileProcessor {
         try {
           writer.mark();
           MemTableFlushTask flushTask =
-              new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+              new MemTableFlushTask(
+                  memTableToFlush,
+                  writer,
+                  storageGroupName,
+                  dataRegionInfo.getDataRegion().getDataRegionId());
           flushTask.syncFlushMemTable();
         } catch (Throwable e) {
           if (writer == null) {
