@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
 import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -150,6 +151,19 @@ public class ModelInfo implements SnapshotProcessor {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
         modelTable.updateModel(modelId, plan.getTrailId(), plan.getModelInfo());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseModelTableLock();
+    }
+  }
+
+  public TSStatus updateModelState(UpdateModelStatePlan plan) {
+    acquireModelTableLock();
+    try {
+      String modelId = plan.getModelId();
+      if (modelTable.containsModel(modelId)) {
+        modelTable.updateState(modelId, plan.getState());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

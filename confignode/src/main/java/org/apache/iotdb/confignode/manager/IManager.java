@@ -105,6 +105,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
@@ -637,4 +638,7 @@ public interface IManager {
 
   /** Update the model info */
   TSStatus updateModelInfo(TUpdateModelInfoReq req);
+
+  /** Update the model state */
+  TSStatus updateModelState(TUpdateModelStateReq req);
 }

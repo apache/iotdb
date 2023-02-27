@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
@@ -394,6 +395,8 @@ public class ConfigPlanExecutor {
         return modelInfo.createModel((CreateModelPlan) physicalPlan);
       case UpdateModelInfo:
         return modelInfo.updateModelInfo((UpdateModelInfoPlan) physicalPlan);
+      case UpdateModelState:
+        return modelInfo.updateModelState((UpdateModelStatePlan) physicalPlan);
       case DropModel:
         return modelInfo.dropModel((DropModelPlan) physicalPlan);
       default:

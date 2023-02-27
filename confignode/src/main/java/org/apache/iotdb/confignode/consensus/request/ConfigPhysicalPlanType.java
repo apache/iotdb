@@ -145,9 +145,10 @@ public enum ConfigPhysicalPlanType {
   /** Ml model */
   CreateModel((short) 1200),
   UpdateModelInfo((short) 1201),
-  DropModel((short) 1202),
-  ShowModel((short) 1203),
-  ShowTrail((short) 1204);
+  UpdateModelState((short) 1202),
+  DropModel((short) 1203),
+  ShowModel((short) 1204),
+  ShowTrail((short) 1205);
 
   private final short planType;
 

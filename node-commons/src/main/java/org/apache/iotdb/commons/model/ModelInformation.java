@@ -149,6 +149,11 @@ public class ModelInformation {
     }
   }
 
+  public void updateState(TrainingState newState) {
+    // TODO: add state transform validate
+    this.trainingState = newState;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelTask.ordinal(), stream);

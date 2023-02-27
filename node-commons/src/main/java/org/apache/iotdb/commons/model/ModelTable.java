@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.model;
 
+import org.apache.iotdb.common.rpc.thrift.TrainingState;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.FileOutputStream;
@@ -62,6 +63,10 @@ public class ModelTable {
 
   public void updateModel(String modelId, String trailId, Map<String, String> modelInfo) {
     modelInfoMap.get(modelId).update(trailId, modelInfo);
+  }
+
+  public void updateState(String modelId, TrainingState state) {
+    modelInfoMap.get(modelId).updateState(state);
   }
 
   public void clear() {
