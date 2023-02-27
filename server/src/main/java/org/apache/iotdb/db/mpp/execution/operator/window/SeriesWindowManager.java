@@ -49,7 +49,7 @@ public class SeriesWindowManager implements IWindowManager {
 
   public SeriesWindowManager(SeriesWindowParameter seriesWindowParameter) {
     this.seriesWindow = new SeriesWindow(seriesWindowParameter);
-    this.needSkip = false;
+    this.needSkip = true;
     this.keepEvaluator =
         AccumulatorFactory.initKeepEvaluator(seriesWindowParameter.getKeepExpression());
   }
