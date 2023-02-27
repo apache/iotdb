@@ -213,7 +213,7 @@ public class ClusterNodeStartUtils {
             checkUpdatedTEndPointOfDataNode(
                 (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
         if (!updatedTEndPoints.isEmpty()
-            && updatedTEndPoints.stream().max(Integer::compare).get() > 0) {
+            && updatedTEndPoints.stream().max(Integer::compare).orElse(0) > 0) {
           // TODO: Accept internal TEndPoints
           acceptRestart = false;
         }
