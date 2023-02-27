@@ -290,6 +290,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    seriesScanOptionsBuilder.withLimit(node.getLimit());
+    seriesScanOptionsBuilder.withOffset(node.getOffset());
 
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
@@ -2512,7 +2514,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                 ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                 context.getDriverContext()),
-            childNode.getPlanNodeId());
+            childNode.getPlanNodeId(),
+            childOperation.calculateMaxReturnSize());
 
     context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
     context.addExchangeOperator(sourceOperator);
@@ -2590,7 +2593,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                       ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                       context.getDriverContext()),
-                  childNode.getPlanNodeId());
+                  childNode.getPlanNodeId(),
+                  childOperation.calculateMaxReturnSize());
           context
               .getTimeSliceAllocator()
               .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
