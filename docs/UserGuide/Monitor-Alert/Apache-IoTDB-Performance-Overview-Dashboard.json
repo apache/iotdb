@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1677255442257,
+  "iteration": 1677469194439,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1367,7 +1367,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 12,
         "x": 0,
         "y": 26
       },
@@ -1397,7 +1397,7 @@
           "expr": "sum(rate(session_idle_time_sum{instance=\"$instance\"}[1m])) / sum(rate(session_idle_time_count{instance=\"$instance\"}[1m]))",
           "hide": false,
           "interval": "",
-          "legendFormat": "Average",
+          "legendFormat": "Average Idle",
           "range": true,
           "refId": "B"
         },
@@ -1407,10 +1407,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "avg(session_idle_time{instance=~\"$instance\", quantile=\"0.99\"})",
+          "expr": "sum(rate(performance_overview_seconds_sum{instance=~\"$instance\"}[1m])) / sum(rate(performance_overview_seconds_count{instance=~\"$instance\"}[1m])) * 1000000000",
           "hide": false,
           "interval": "",
-          "legendFormat": "P99",
+          "legendFormat": "Average Busy",
           "refId": "A"
         }
       ],
@@ -1466,12 +1466,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Total"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
+        "w": 12,
+        "x": 12,
         "y": 26
       },
       "id": 54,
@@ -1493,98 +1518,25 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "thrift_connections{instance=~\"$instance\"}",
+          "expr": "thrift_connections{instance=~\"$instance\", name=~\".*Client.*\"}",
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "Total",
           "refId": "A"
-        }
-      ],
-      "title": "Thrift Connection",
-      "type": "timeseries"
-    },
-    {
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 5,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 26
-      },
-      "id": 55,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "thrift_active_threads{instance=~\"$instance\"}",
+          "expr": "thrift_active_threads{instance=~\"$instance\", name=~\".*Client.*\"}",
+          "hide": false,
           "interval": "",
-          "legendFormat": "{{name}}",
-          "refId": "A"
+          "legendFormat": "Active",
+          "refId": "B"
         }
       ],
-      "title": "Thrift Active Thread",
+      "title": "Client Connection",
       "type": "timeseries"
     },
     {
@@ -3400,7 +3352,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "10s",
   "schemaVersion": 35,
   "style": "dark",
   "tags": [],
@@ -3473,6 +3425,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Performance Overview Dashboard",
   "uid": "ZRfEph04k",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
