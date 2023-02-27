@@ -292,12 +292,13 @@ public class QueryStatement extends Statement {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.EVENT_WINDOW;
   }
 
-  private boolean isGroupBySeries() {
-    return groupByComponent != null && groupByComponent.getWindowType() == WindowType.SERIES_WINDOW;
+  private boolean isGroupByCondition() {
+    return groupByComponent != null
+        && groupByComponent.getWindowType() == WindowType.CONDITION_WINDOW;
   }
 
   public boolean hasGroupByExpression() {
-    return isGroupByVariation() || isGroupBySeries();
+    return isGroupByVariation() || isGroupByCondition();
   }
 
   public boolean isAlignByTime() {

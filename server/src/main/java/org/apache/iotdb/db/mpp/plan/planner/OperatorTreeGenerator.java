@@ -123,8 +123,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.mpp.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
-import org.apache.iotdb.db.mpp.execution.operator.window.SeriesWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
@@ -189,8 +189,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
@@ -771,6 +771,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
   }
 
+  @Deprecated
   @Override
   public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
@@ -1463,7 +1464,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         WindowParameter windowParameter;
         switch (windowType) {
           case EVENT_WINDOW:
-            String controlColumn = node.getGroupByExpression().getExpressionString();
+            Expression groupByVariationExpression = node.getGroupByExpression();
+            if (groupByVariationExpression == null) {
+              throw new IllegalArgumentException("groupByVariationExpression can't be null");
+            }
+            String controlColumn = groupByVariationExpression.getExpressionString();
             TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
             windowParameter =
                 new EventWindowParameter(
@@ -1473,16 +1478,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
                     ((GroupByVariationParameter) groupByParameter).getDelta());
             break;
-          case SERIES_WINDOW:
+          case CONDITION_WINDOW:
+            Expression groupByConditionExpression = node.getGroupByExpression();
+            if (groupByConditionExpression == null) {
+              throw new IllegalArgumentException("groupByConditionExpression can't be null");
+            }
             windowParameter =
-                new SeriesWindowParameter(
+                new ConditionWindowParameter(
                     node.isOutputEndTime(),
-                    ((GroupBySeriesParameter) groupByParameter).isIgnoringNull(),
+                    ((GroupByConditionParameter) groupByParameter).isIgnoringNull(),
                     layout
-                        .get(node.getGroupByExpression().getExpressionString())
+                        .get(groupByConditionExpression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex(),
-                    ((GroupBySeriesParameter) groupByParameter).getKeepExpression());
+                    ((GroupByConditionParameter) groupByParameter).getKeepExpression());
             break;
           case SESSION_WINDOW:
             windowParameter =
@@ -1744,6 +1753,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
+  @Deprecated
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -2422,7 +2432,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LocalExecutionPlanContext subContext = context.createSubContext();
           subContext.setDegreeOfParallelism(1);
           // Create partial parent operator for children
-          PlanNode partialParentNode = null;
+          PlanNode partialParentNode;
           if (endIndex - startIndex == 1) {
             partialParentNode = node.getChildren().get(startIndex);
           } else {

@@ -67,8 +67,8 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
@@ -79,7 +79,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySeriesComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByConditionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
@@ -1198,13 +1198,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
-    } else if (windowType == WindowType.SERIES_WINDOW) {
-      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
+    } else if (windowType == WindowType.CONDITION_WINDOW) {
+      Expression keepExpression =
+          ((GroupByConditionComponent) groupByComponent).getKeepExpression();
       for (Expression expression : deviceToGroupByExpression.values()) {
-        checkGroupBySeriesExpressionType(analysis, expression, keepExpression);
+        checkGroupByConditionExpressionType(analysis, expression, keepExpression);
       }
       GroupByParameter groupByParameter =
-          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
+          new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else if (windowType == WindowType.SESSION_WINDOW) {
@@ -1251,11 +1252,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
-    } else if (windowType == WindowType.SERIES_WINDOW) {
-      Expression keepExpression = ((GroupBySeriesComponent) groupByComponent).getKeepExpression();
-      checkGroupBySeriesExpressionType(analysis, groupByExpression, keepExpression);
+    } else if (windowType == WindowType.CONDITION_WINDOW) {
+      Expression keepExpression =
+          ((GroupByConditionComponent) groupByComponent).getKeepExpression();
+      checkGroupByConditionExpressionType(analysis, groupByExpression, keepExpression);
       GroupByParameter groupByParameter =
-          new GroupBySeriesParameter(groupByComponent.isIgnoringNull(), keepExpression);
+          new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
     } else if (windowType == WindowType.SESSION_WINDOW) {
@@ -1277,7 +1279,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void checkGroupBySeriesExpressionType(
+  private void checkGroupByConditionExpressionType(
       Analysis analysis, Expression groupByExpression, Expression keepExpression) {
     TSDataType type = analyzeExpression(analysis, groupByExpression);
     if (type != TSDataType.BOOLEAN) {

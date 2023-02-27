@@ -369,11 +369,7 @@ public class IoTDBGroupBySessionIT {
         };
     String sql =
         "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(50s) having count(status)>5 align by device";
-    normalTestAlignByDevice(
-        res,
-        sql,
-        1,
-        "Time,Device,__endTime,count(status),avg(temperature),sum(hardware),first_value(hardware)");
+    normalTestAlignByDevice(res, sql, 1);
   }
 
   @Test
@@ -386,11 +382,7 @@ public class IoTDBGroupBySessionIT {
         };
     String sql =
         "select __endTime,count(status), avg(temperature), sum(hardware), first_value(hardware) from root.ln.** group by session(1d) align by device";
-    normalTestAlignByDevice(
-        res,
-        sql,
-        2,
-        "Time,Device,__endTime,count(status),avg(temperature),sum(hardware),first_value(hardware)");
+    normalTestAlignByDevice(res, sql, 2);
   }
 
   @Test
@@ -430,13 +422,15 @@ public class IoTDBGroupBySessionIT {
     normalTestAlignByDevice2(res, sql, 2, "Time,Device,__endTime,count(hardware)");
   }
 
-  private void normalTestAlignByDevice(String[][] res, String sql, int split, String title) {
+  private void normalTestAlignByDevice(String[][] res, String sql, int split) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, title);
+        checkHeader(
+            resultSetMetaData,
+            "Time,Device,__endTime,count(status),avg(temperature),sum(hardware),first_value(hardware)");
         int count = 0;
         String device = "root.ln.wf02.wt01";
         while (resultSet.next()) {

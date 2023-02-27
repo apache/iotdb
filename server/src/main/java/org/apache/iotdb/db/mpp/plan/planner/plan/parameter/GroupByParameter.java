@@ -73,8 +73,8 @@ public abstract class GroupByParameter {
     byte type = ReadWriteIOUtils.readByte(byteBuffer);
     if (type == WindowType.EVENT_WINDOW.getType()) {
       return GroupByVariationParameter.deserialize(byteBuffer);
-    } else if (type == WindowType.SERIES_WINDOW.getType()) {
-      return GroupBySeriesParameter.deserialize(byteBuffer);
+    } else if (type == WindowType.CONDITION_WINDOW.getType()) {
+      return GroupByConditionParameter.deserialize(byteBuffer);
     } else if (type == WindowType.SESSION_WINDOW.getType()) {
       return GroupBySessionParameter.deserialize(byteBuffer);
     } else throw new SemanticException("Unsupported window type");

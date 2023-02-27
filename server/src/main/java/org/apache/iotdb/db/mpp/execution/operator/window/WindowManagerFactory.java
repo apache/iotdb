@@ -33,8 +33,8 @@ public class WindowManagerFactory {
         return ((EventWindowParameter) windowParameter).getDelta() == 0
             ? genEqualEventWindowManager((EventWindowParameter) windowParameter, ascending)
             : genVariationEventWindowManager((EventWindowParameter) windowParameter, ascending);
-      case SERIES_WINDOW:
-        return new SeriesWindowManager((SeriesWindowParameter) windowParameter);
+      case CONDITION_WINDOW:
+        return new ConditionWindowManager((ConditionWindowParameter) windowParameter);
       case SESSION_WINDOW:
         return new SessionWindowManager(
             windowParameter.isNeedOutputEndTime(),
