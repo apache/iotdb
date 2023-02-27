@@ -413,7 +413,7 @@ struct TFetchWindowBatchResp {
 struct TRecordModelMetricsReq {
   1: required string modelId
   2: required string trialId
-  3: required list<string> metrics
+  3: required list<common.EvaluateMetric> metrics
   4: required i64 timestamp
   5: required list<double> values
 }

@@ -153,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
@@ -933,31 +934,31 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.createModel(req);
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.dropModel(req);
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.showModel(req);
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.showTrail(req);
   }
 
   @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+    return configManager.updateModelInfo(req);
+  }
+
+  @Override
+  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+    return configManager.updateModelState(req);
   }
 }
