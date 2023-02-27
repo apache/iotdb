@@ -116,7 +116,7 @@ public class HeartbeatRespHandler implements AsyncMethodCallback<HeartBeatRespon
       if (lastLogIdx == peerInfo.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peerInfo.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 5000) {
+        if (inconsistentNum >= 5) {
           logger.info(
               "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
               memberName,

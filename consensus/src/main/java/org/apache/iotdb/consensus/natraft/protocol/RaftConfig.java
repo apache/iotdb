@@ -93,7 +93,7 @@ public class RaftConfig {
   private RPCConfig rpcConfig;
 
   public RaftConfig(ConsensusConfig config) {
-    this.storageDir = config.getStorageDir() + File.separator + "system";
+    this.storageDir = config.getStorageDir();
     new File(this.storageDir).mkdirs();
     this.rpcConfig = config.getRPCConfig();
   }

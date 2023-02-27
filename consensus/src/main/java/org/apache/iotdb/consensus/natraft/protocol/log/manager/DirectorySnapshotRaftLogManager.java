@@ -25,12 +25,18 @@ import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
+import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.List;
 
 public class DirectorySnapshotRaftLogManager extends RaftLogManager {
 
   private File latestSnapshotDir;
+  private long snapshotIndex;
+  private long snapshotTerm;
+  DirectorySnapshot directorySnapshot;
 
   public DirectorySnapshotRaftLogManager(
       StableEntryManager stableEntryManager,
@@ -43,7 +49,7 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
 
   @Override
   public Snapshot getSnapshot(long minLogIndex) {
-    return new DirectorySnapshot(latestSnapshotDir);
+    return directorySnapshot;
   }
 
   @Override
@@ -55,6 +61,18 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
                 + getName()
                 + "-snapshot-"
                 + System.currentTimeMillis());
+    try {
+      lock.readLock().lock();
+      snapshotIndex = getAppliedIndex();
+      snapshotTerm = getAppliedTerm();
+    } finally {
+      lock.readLock().unlock();
+    }
     stateMachine.takeSnapshot(latestSnapshotDir);
+    List<Path> snapshotFiles = stateMachine.getSnapshotFiles(latestSnapshotDir);
+    snapshotFiles.addAll(IOUtils.collectPaths(latestSnapshotDir));
+    directorySnapshot = new DirectorySnapshot(latestSnapshotDir, snapshotFiles);
+    directorySnapshot.setLastLogIndex(snapshotIndex);
+    directorySnapshot.setLastLogTerm(snapshotTerm);
   }
 }

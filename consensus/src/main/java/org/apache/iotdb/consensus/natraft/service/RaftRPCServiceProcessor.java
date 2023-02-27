@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
@@ -41,6 +42,9 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
 
@@ -74,6 +78,10 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler)
       throws TException {
     RaftMember member = getMember(request.groupId);
+    logger.info(
+        "Member for election request: {}, request groupId {}",
+        member.getRaftGroupId(),
+        request.getGroupId());
     resultHandler.onComplete(member.processElectionRequest(request));
   }
 
@@ -90,11 +98,10 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   }
 
   @Override
-  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler)
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<TSStatus> resultHandler)
       throws TException {
     RaftMember member = getMember(request.groupId);
-    member.installSnapshot(request.snapshotBytes);
-    resultHandler.onComplete(null);
+    resultHandler.onComplete(member.installSnapshot(request.snapshotBytes, request.source));
   }
 
   @Override
@@ -126,5 +133,15 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       throws TException {
     RaftMember member = getMember(groupId);
     resultHandler.onComplete(member.requestCommitIndex());
+  }
+
+  @Override
+  public void readFile(
+      String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
   }
 }

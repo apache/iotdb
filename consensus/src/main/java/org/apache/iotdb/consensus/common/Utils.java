@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,10 @@ import java.util.List;
 
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
+
+  public static String buildPeerDir(File storageDir, ConsensusGroupId groupId) {
+    return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
+  }
 
   public static List<Path> listAllRegularFilesRecursively(File rootDir) {
     List<Path> allFiles = new ArrayList<>();

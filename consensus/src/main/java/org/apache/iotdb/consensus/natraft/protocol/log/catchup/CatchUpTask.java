@@ -302,7 +302,12 @@ public class CatchUpTask implements Runnable {
     raftMember.getLogManager().takeSnapshot();
     snapshot = raftMember.getLogManager().getSnapshot(peerInfo.getMatchIndex());
     if (logger.isInfoEnabled()) {
-      logger.info("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
+      logger.info(
+          "{}: Logs in {} are too old, catch up with snapshot {}-{}",
+          raftMember.getName(),
+          node,
+          snapshot.getLastLogIndex(),
+          snapshot.getLastLogTerm());
     }
   }
 
@@ -349,7 +354,7 @@ public class CatchUpTask implements Runnable {
         catchUpSucceeded = task.call();
       }
       if (catchUpSucceeded) {
-        // the catch up may be triggered by an old heartbeat, and the node may have already
+        // the catch-up may be triggered by an old heartbeat, and the node may have already
         // caught up, so logs can be empty
         if (!logs.isEmpty() || snapshot != null) {
           long lastIndex =
@@ -367,6 +372,9 @@ public class CatchUpTask implements Runnable {
               System.currentTimeMillis() - startTime);
         }
         peerInfo.resetInconsistentHeartbeatNum();
+      } else {
+        // wait for a while before the next catch-up so that the status of the follower may update
+        Thread.sleep(5000);
       }
 
     } catch (LeaderUnknownException e) {

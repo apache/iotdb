@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -80,6 +81,15 @@ public class SyncClientAdaptor {
     GenericHandler<AppendEntryResult> matchTermHandler = new GenericHandler<>(client.getEndpoint());
     client.appendEntries(request, matchTermHandler);
     return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
+  }
+
+  public static ByteBuffer readFile(
+      AsyncRaftServiceClient client, String remotePath, long offset, int fetchSize)
+      throws InterruptedException, TException {
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getEndpoint());
+
+    client.readFile(remotePath, offset, fetchSize, handler);
+    return handler.getResult(config.getConnectionTimeoutInMS());
   }
 
   public static void setConfig(RaftConfig config) {

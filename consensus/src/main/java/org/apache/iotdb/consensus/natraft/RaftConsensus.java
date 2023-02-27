@@ -111,6 +111,7 @@ public class RaftConsensus implements IConsensus {
     } else {
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
         for (Path path : stream) {
+          logger.info("Recovering a RaftMember from {}", path);
           Path fileName = path.getFileName();
           String[] items = fileName.toString().split("_");
           if (items.length != 2) {
@@ -121,6 +122,7 @@ public class RaftConsensus implements IConsensus {
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
           RaftMember raftMember =
               new RaftMember(
+                  path.toString(),
                   config,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new ArrayList<>(),
@@ -202,7 +204,7 @@ public class RaftConsensus implements IConsensus {
           }
           RaftMember impl =
               new RaftMember(
-                  config, thisPeer, peers, groupId, registry.apply(groupId), clientManager);
+                  path, config, thisPeer, peers, groupId, registry.apply(groupId), clientManager);
           impl.start();
           return impl;
         });

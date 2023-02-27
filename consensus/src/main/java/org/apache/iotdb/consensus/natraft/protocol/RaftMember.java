@@ -187,6 +187,7 @@ public class RaftMember {
   private FlowBalancer flowBalancer;
 
   public RaftMember(
+      String storageDir,
       RaftConfig config,
       Peer thisNode,
       List<Peer> allNodes,
@@ -194,6 +195,7 @@ public class RaftMember {
       IStateMachine stateMachine,
       IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager) {
     this.config = config;
+    this.storageDir = storageDir;
     initConfig();
 
     this.thisNode = thisNode;
@@ -252,7 +254,7 @@ public class RaftMember {
       for (int i = 0; i < size; i++) {
         allNodes.add(Peer.deserialize(buffer));
       }
-      logger.info("Recover IoTConsensus server Impl, configuration: {}", allNodes);
+      logger.info("{}: Recover IoTConsensus server Impl, configuration: {}", name, allNodes);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
@@ -304,7 +306,6 @@ public class RaftMember {
 
   private void initConfig() {
     this.enableWeakAcceptance = config.isEnableWeakAcceptance();
-    this.storageDir = config.getStorageDir();
   }
 
   public void initPeerMap() {
@@ -1006,10 +1007,32 @@ public class RaftMember {
     }
   }
 
-  public void installSnapshot(ByteBuffer snapshotBytes) {
-    DirectorySnapshot directorySnapshot = new DirectorySnapshot(null);
-    directorySnapshot.deserialize(snapshotBytes);
-    directorySnapshot.install(this);
+  public String getLocalSnapshotTmpDir(String remoteSnapshotDirName) {
+    return config.getStorageDir()
+        + File.separator
+        + groupId
+        + File.separator
+        + "remote_snapshot"
+        + File.separator
+        + remoteSnapshotDirName;
+  }
+
+  public TSStatus installSnapshot(ByteBuffer snapshotBytes, TEndPoint source) {
+    if (!snapshotApplyLock.tryLock()) {
+      return new TSStatus(TSStatusCode.SNAPSHOT_INSTALLING.getStatusCode());
+    }
+
+    DirectorySnapshot directorySnapshot;
+    try {
+      directorySnapshot = new DirectorySnapshot(null, null);
+      directorySnapshot.deserialize(snapshotBytes);
+      directorySnapshot.setSource(source);
+      directorySnapshot.setMemberName(name);
+      directorySnapshot.install(this);
+    } finally {
+      snapshotApplyLock.unlock();
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public boolean containsNode(Peer node) {

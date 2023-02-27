@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.catchup;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.exception.LeaderUnknownException;
@@ -27,6 +28,7 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
 import org.apache.iotdb.consensus.raft.thrift.SendSnapshotRequest;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -35,7 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * SnapshotCatchUpTask first sends the snapshot to the stale node then sends the logs to the node.
@@ -62,6 +64,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   private void doSnapshotCatchUp() throws TException, InterruptedException, LeaderUnknownException {
     SendSnapshotRequest request = new SendSnapshotRequest();
     request.setGroupId(raftMember.getRaftGroupId().convertToTConsensusGroupId());
+    request.setSource(raftMember.getThisNode().getEndpoint());
     logger.info("Start to send snapshot to {}", node);
     ByteBuffer data = snapshot.serialize();
     if (logger.isInfoEnabled()) {
@@ -76,34 +79,39 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       }
     }
 
-    abort = !sendSnapshotAsync(request);
+    TSStatus tsStatus = sendSnapshotAsync(request);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      abort = true;
+      logger.warn("Failed to send snapshot to {}: {}", node, tsStatus);
+    }
   }
 
   @SuppressWarnings("java:S2274") // enable timeout
-  private boolean sendSnapshotAsync(SendSnapshotRequest request)
+  private TSStatus sendSnapshotAsync(SendSnapshotRequest request)
       throws TException, InterruptedException {
-    AtomicBoolean succeed = new AtomicBoolean(false);
-    SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
+    AtomicReference<TSStatus> result =
+        new AtomicReference<>(new TSStatus(TSStatusCode.TIME_OUT.getStatusCode()));
+    SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(result, node, snapshot);
     AsyncRaftServiceClient client = raftMember.getClient(node.getEndpoint());
     if (client == null) {
       logger.info("{}: client null for node {}", raftMember.getThisNode(), node);
       abort = true;
-      return false;
+      return result.get();
     }
 
     logger.info(
         "{}: the snapshot request size={}",
         raftMember.getName(),
         request.getSnapshotBytes().length);
-    synchronized (succeed) {
+    synchronized (result) {
       client.sendSnapshot(request, handler);
       catchUpManager.registerTask(node);
-      succeed.wait(sendSnapshotWaitMs);
+      result.wait(sendSnapshotWaitMs);
     }
     if (logger.isInfoEnabled()) {
-      logger.info("send snapshot to node {} success {}", raftMember.getThisNode(), succeed.get());
+      logger.info("send snapshot to node {} success {}", raftMember.getThisNode(), result.get());
     }
-    return succeed.get();
+    return result.get();
   }
 
   @Override
@@ -122,7 +130,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     } else {
       logger.warn("{}: Log catch up {} failed", raftMember.getName(), node);
     }
-    // the next catch up is enabled
+    // the next catch-up is enabled
     catchUpManager.unregisterTask(node);
     return !abort;
   }

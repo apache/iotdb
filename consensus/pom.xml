@@ -67,7 +67,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>thrift-raft-consensus</artifactId>
+            <artifactId>iotdb-thrift-raft-consensus</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

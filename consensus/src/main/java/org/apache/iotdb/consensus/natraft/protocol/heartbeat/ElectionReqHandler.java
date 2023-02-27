@@ -42,12 +42,26 @@ public class ElectionReqHandler {
   }
 
   public long processElectionRequest(ElectionRequest electionRequest) {
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: start to handle request from elector {}",
+    TEndPoint candidate = electionRequest.getElector();
+    Peer peer =
+        new Peer(
+            Factory.createFromTConsensusGroupId(electionRequest.groupId),
+            electionRequest.electorId,
+            candidate);
+    // check if the node is in the group
+    if (!member.containsNode(peer)) {
+      logger.info(
+          "{}: the elector {} is not in the data group {}, so reject this election.",
           member.getName(),
-          electionRequest.getElector());
+          peer,
+          member.getAllNodes());
+      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
     }
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: start to handle request from elector {}", member.getName(), peer);
+    }
+
     long currentTerm = member.getStatus().getTerm().get();
     long response =
         checkElectorTerm(currentTerm, electionRequest.getTerm(), electionRequest.getElector());
@@ -56,7 +70,7 @@ public class ElectionReqHandler {
     }
 
     // compare the log progress of the elector with this node
-    response = checkElectorLogProgress(electionRequest);
+    response = checkElectorLogProgress(electionRequest, peer);
     logger.info(
         "{} sending response {} to the elector {}",
         member.getName(),
@@ -109,22 +123,7 @@ public class ElectionReqHandler {
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
    *     smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
-  long checkElectorLogProgress(ElectionRequest electionRequest) {
-    TEndPoint candidate = electionRequest.getElector();
-    Peer peer =
-        new Peer(
-            Factory.createFromTConsensusGroupId(electionRequest.groupId),
-            electionRequest.electorId,
-            candidate);
-    // check if the node is in the group
-    if (!member.containsNode(peer)) {
-      logger.info(
-          "{}: the elector {} is not in the data group {}, so reject this election.",
-          member.getName(),
-          member.getAllNodes(),
-          candidate);
-      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
-    }
+  long checkElectorLogProgress(ElectionRequest electionRequest, Peer peer) {
 
     long thatTerm = electionRequest.getTerm();
     long thatLastLogIndex = electionRequest.getLastLogIndex();

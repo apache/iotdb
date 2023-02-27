@@ -100,6 +100,7 @@ struct SendSnapshotRequest {
   1: required binary snapshotBytes
   // for data group
   2: required common.TConsensusGroupId groupId
+  3: required common.TEndPoint source
 }
 
 struct RequestCommitIndexResponse {
@@ -150,7 +151,7 @@ service RaftService {
   **/
   AppendEntryResult appendEntries(1:AppendEntriesRequest request)
 
-  void sendSnapshot(1:SendSnapshotRequest request)
+  common.TSStatus sendSnapshot(1:SendSnapshotRequest request)
 
   /**
   * Test if a log of "index" and "term" exists.
@@ -169,4 +170,10 @@ service RaftService {
     * leader.
     **/
     RequestCommitIndexResponse requestCommitIndex(1:common.TConsensusGroupId groupId)
+
+    /**
+      * Read a chunk of a file from the client. If the remaining of the file does not have enough
+      * bytes, only the remaining will be returned.
+      **/
+      binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
 }

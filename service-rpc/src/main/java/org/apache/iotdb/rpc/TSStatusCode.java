@@ -50,6 +50,7 @@ public enum TSStatusCode {
   TIME_OUT(307),
   NO_LEADER(308),
   READ_ONLY(309),
+  SNAPSHOT_INSTALLING(310),
 
   // Client,
   REDIRECTION_RECOMMEND(400),

@@ -752,6 +752,10 @@ public abstract class RaftLogManager {
     return appliedIndex;
   }
 
+  public long getAppliedTerm() {
+    return appliedTerm;
+  }
+
   /** check whether delete the committed log */
   void checkDeleteLog() {
     try {
@@ -881,10 +885,16 @@ public abstract class RaftLogManager {
           }
         }
       }
-      synchronized (changeApplyCommitIndexCond) {
-        // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
-        appliedIndex = Math.max(appliedIndex, nextToCheckIndex);
+      if (nextToCheckIndex > appliedIndex) {
+        synchronized (changeApplyCommitIndexCond) {
+          // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
+          if (nextToCheckIndex > appliedIndex) {
+            appliedTerm = log.getCurrLogTerm();
+            appliedIndex = nextToCheckIndex;
+          }
+        }
       }
+
       logger.debug(
           "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
           name,
