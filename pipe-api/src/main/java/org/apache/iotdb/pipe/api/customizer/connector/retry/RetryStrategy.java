@@ -17,17 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.pipe.api.customizer.connector.retry;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 
-public class PathNumOverLimitException extends SemanticException {
-
-  public PathNumOverLimitException() {
-    super(
-        String.format(
-            "Too many paths in one query! Currently allowed max deduplicated path number is %d. "
-                + "Please use slimit or adjust max_deduplicated_path_num in iotdb-common.properties.",
-            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()));
-  }
-}
+/**
+ * Used to customize the strategy for reconnecting to sinks in {@link
+ * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ *
+ * <p>When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
+ * strategy.
+ */
+public interface RetryStrategy extends PipeStrategy {}
