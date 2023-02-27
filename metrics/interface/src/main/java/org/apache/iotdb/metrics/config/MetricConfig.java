@@ -58,10 +58,6 @@ public class MetricConfig {
   /** The type of internal reporter. */
   private InternalReporterType internalReporterType = InternalReporterType.IOTDB;
 
-  /** The address of iotdb instance that is monitored. */
-  private String rpcAddress = "0.0.0.0";
-  /** The port of iotdb instance that is monitored. */
-  private Integer rpcPort = 6667;
   /** The pid of iotdb instance. */
   private String pid = "";
   /** The running system of iotdb instance. */
@@ -70,6 +66,8 @@ public class MetricConfig {
   private NodeType nodeType = NodeType.CONFIGNODE;
   /** The name of iotdb cluster. */
   private String clusterName = "iotdb-cluster";
+  /** The id of iotdb node. */
+  private int nodeId = 0;
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -137,14 +135,6 @@ public class MetricConfig {
     return iotdbReporterConfig;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
-  }
-
-  public Integer getRpcPort() {
-    return rpcPort;
-  }
-
   public String getPid() {
     return pid;
   }
@@ -161,12 +151,14 @@ public class MetricConfig {
     return clusterName;
   }
 
+  public int getNodeId() {
+    return nodeId;
+  }
+
   /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(
-      String clusterName, String rpcAddress, int rpcPort, NodeType nodeType) {
+  public void updateRpcInstance(String clusterName, int nodeId, NodeType nodeType) {
     this.clusterName = clusterName;
-    this.rpcAddress = rpcAddress;
-    this.rpcPort = rpcPort;
+    this.nodeId = nodeId;
     this.nodeType = nodeType;
   }
 

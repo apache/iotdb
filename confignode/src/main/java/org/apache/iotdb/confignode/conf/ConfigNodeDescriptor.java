@@ -134,11 +134,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(),
-                conf.getInternalAddress(),
-                conf.getInternalPort(),
-                NodeType.CONFIGNODE);
+            .updateRpcInstance(conf.getClusterName(), conf.getConfigNodeId(), NodeType.CONFIGNODE);
       }
     } else {
       LOGGER.warn(

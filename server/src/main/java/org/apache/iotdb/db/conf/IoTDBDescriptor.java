@@ -189,11 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(),
-                conf.getInternalAddress(),
-                conf.getInternalPort(),
-                NodeType.DATANODE);
+            .updateRpcInstance(conf.getClusterName(), conf.getDataNodeId(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
