@@ -62,10 +62,10 @@ public class MetricConfig {
   private String pid = "";
   /** The running system of iotdb instance. */
   private final SystemType systemType = SystemType.getSystemType();
-  /** The type of monitored node */
+  /** The type of monitored node. */
   private NodeType nodeType = NodeType.CONFIGNODE;
   /** The name of iotdb cluster. */
-  private String clusterName = "iotdb-cluster";
+  private String clusterName = "defaultCluster";
   /** The id of iotdb node. */
   private int nodeId = 0;
 
