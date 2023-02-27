@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.state.model;
 
 public enum DropModelState {
   INIT,
+  VALIDATED,
   CONFIG_NODE_DROPPING,
   DATA_NODE_DROPPED,
   ML_NODE_DROPPED,

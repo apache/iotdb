@@ -153,6 +153,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
@@ -954,5 +955,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
     return configManager.updateModelInfo(req);
+  }
+
+  @Override
+  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+    return configManager.updateModelState(req);
   }
 }

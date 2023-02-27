@@ -147,7 +147,8 @@ enum TrainingState {
   PENDING,
   RUNNING,
   FINISHED,
-  FAILED
+  FAILED,
+  DROPPING
 }
 
 enum ModelTask {

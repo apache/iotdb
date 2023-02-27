@@ -123,6 +123,14 @@ public class ModelInformation {
     return isAuto;
   }
 
+  public List<String> getQueryExpressions() {
+    return queryExpressions;
+  }
+
+  public String getQueryFilter() {
+    return queryFilter;
+  }
+
   public TrailInformation getTrailInformationById(String trailId) {
     if (trailMap.containsKey(trailId)) {
       return trailMap.get(trailId);

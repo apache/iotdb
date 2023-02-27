@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.mlnode.rpc.thrift.IMLNodeRPCService;
 import org.apache.iotdb.mlnode.rpc.thrift.TCreateTrainingTaskReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TDeleteModelReq;
@@ -42,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -78,17 +78,16 @@ public class MLNodeClient implements AutoCloseable {
   }
 
   public TSStatus createTrainingTask(
-      String modelId,
-      boolean isAuto,
-      Map<String, String> modelConfigs,
-      List<String> queryExpressions,
-      String queryFilter)
-      throws TException {
+      ModelInformation modelInformation, Map<String, String> modelConfigs) throws TException {
     try {
       TCreateTrainingTaskReq req =
-          new TCreateTrainingTaskReq(modelId, isAuto, modelConfigs, queryExpressions);
-      if (queryFilter != null) {
-        req.setQueryFilter(queryFilter);
+          new TCreateTrainingTaskReq(
+              modelInformation.getModelId(),
+              modelInformation.isAuto(),
+              modelConfigs,
+              modelInformation.getQueryExpressions());
+      if (modelInformation.getQueryFilter() != null) {
+        req.setQueryFilter(modelInformation.getQueryFilter());
       }
       return client.createTrainingTask(req);
     } catch (TException e) {
@@ -99,9 +98,9 @@ public class MLNodeClient implements AutoCloseable {
     }
   }
 
-  public TSStatus deleteModel(String modelPath) throws TException {
+  public TSStatus deleteModel(String modelId) throws TException {
     try {
-      return client.deleteModel(new TDeleteModelReq(modelPath));
+      return client.deleteModel(new TDeleteModelReq(modelId));
     } catch (TException e) {
       logger.warn(
           "Failed to connect to MLNode from ConfigNode when executing {}",

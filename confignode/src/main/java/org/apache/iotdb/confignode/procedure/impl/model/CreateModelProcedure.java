@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.model;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
@@ -31,8 +32,11 @@ import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.CreateModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.client.MLNodeClient;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,15 +86,17 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
 
         case VALIDATED:
           ConfigManager configManager = env.getConfigManager();
+          modelId = modelInformation.getModelId();
 
-          LOGGER.info(
-              "Start to add model [{}] in ModelTable on Config Nodes",
-              modelInformation.getModelId());
+          LOGGER.info("Start to add model [{}] in ModelTable on Config Nodes", modelId);
 
           ConsensusWriteResponse response =
               configManager.getConsensusManager().write(new CreateModelPlan(modelInformation));
           if (!response.isSuccessful()) {
-            throw new ModelManagementException(response.getErrorMessage());
+            throw new ModelManagementException(
+                String.format(
+                    "Failed to add model [%s] in ModelTable on Config Nodes: %s",
+                    modelId, response.getErrorMessage()));
           }
 
           setNextState(CreateModelState.CONFIG_NODE_ACTIVE);
@@ -99,18 +105,23 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
         case CONFIG_NODE_ACTIVE:
           LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
 
-          if (true) {
-            // TODO
+          try (MLNodeClient client = new MLNodeClient()) {
+            TSStatus status = client.createTrainingTask(modelInformation, modelConfigs);
+            if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new TException(status.getMessage());
+            }
+
             setNextState(CreateModelState.ML_NODE_ACTIVE);
-          } else {
+          } catch (TException e) {
             throw new ModelManagementException(
                 String.format(
-                    "Fail to start training model [%s] on ML Node", modelInformation.getModelId()));
+                    "Fail to start training model [%s] on ML Node: %s",
+                    modelInformation.getModelId(), e.getMessage()));
           }
           break;
 
         case ML_NODE_ACTIVE:
-          env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
+          env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -151,13 +162,6 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
         env.getConfigManager()
             .getConsensusManager()
             .write(new DropModelPlan(modelInformation.getModelId()));
-        break;
-
-      case ML_NODE_ACTIVE:
-        LOGGER.info(
-            "Start to [CONFIG_NODE_INACTIVE] rollback of model [{}]",
-            modelInformation.getModelId());
-        // TODO stop train
         break;
 
       default:
