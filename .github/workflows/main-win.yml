@@ -69,6 +69,6 @@ jobs:
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
         run: |
-          mvn clean package -DskipTests
+          mvn clean install -DskipTests
           mvn clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P get-jar-with-dependencies
 
