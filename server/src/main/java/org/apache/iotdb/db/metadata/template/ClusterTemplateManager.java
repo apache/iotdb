@@ -85,7 +85,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement) {
     TCreateSchemaTemplateReq req = constructTCreateSchemaTemplateReq(statement);
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
       // Get response or throw exception
@@ -127,7 +127,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public List<Template> getAllTemplates() {
     List<Template> templatesList = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetAllTemplatesResp tGetAllTemplatesResp = configNodeClient.getAllTemplates();
       // Get response or throw exception
       if (tGetAllTemplatesResp.getStatus().getCode()
@@ -156,7 +156,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   @Override
   public Template getTemplate(String name) {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         byte[] templateBytes = resp.getTemplate();
@@ -177,7 +177,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   @Override
   public void setSchemaTemplate(String name, PartialPath path) {
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSetSchemaTemplateReq req = new TSetSchemaTemplateReq();
       req.setName(name);
       req.setPath(path.getFullPath());
@@ -194,7 +194,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   public List<PartialPath> getPathsSetTemplate(String name) {
     List<PartialPath> listPath = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp.getPathList() != null) {

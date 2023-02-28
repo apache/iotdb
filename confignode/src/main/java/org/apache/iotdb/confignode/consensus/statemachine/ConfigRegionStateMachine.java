@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -55,7 +56,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** StateMachine for ConfigRegion */
+/** StateMachine for ConfigRegion. */
 public class ConfigRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
@@ -67,7 +68,7 @@ public class ConfigRegionStateMachine
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
 
-  /** Variables for ConfigNode Simple Consensus */
+  /** Variables for ConfigNode Simple Consensus. */
   private LogWriter simpleLogWriter;
 
   private File simpleLogFile;
@@ -107,13 +108,29 @@ public class ConfigRegionStateMachine
         .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
+  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  protected TSStatus write(ConfigPhysicalPlan plan) {
+    TSStatus result;
+    try {
+      result = executor.executeNonQueryPlan(plan);
+    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+      LOGGER.error(e.getMessage());
+      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      writeLogForSimpleConsensus(plan);
+    }
+    return result;
+  }
+
   @Override
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
     IConsensusRequest result;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         result = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (Throwable e) {
+      } catch (Exception e) {
         LOGGER.error(
             "Deserialization error for write plan, request: {}, bytebuffer: {}",
             request,
@@ -133,29 +150,13 @@ public class ConfigRegionStateMachine
     return result;
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
-  protected TSStatus write(ConfigPhysicalPlan plan) {
-    TSStatus result;
-    try {
-      result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
-      LOGGER.error(e.getMessage());
-      result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-    }
-
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      writeLogForSimpleConsensus(plan);
-    }
-    return result;
-  }
-
   @Override
   public DataSet read(IConsensusRequest request) {
     ConfigPhysicalPlan plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
         plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
-      } catch (Throwable e) {
+      } catch (Exception e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }
@@ -168,16 +169,6 @@ public class ConfigRegionStateMachine
     return read(plan);
   }
 
-  @Override
-  public boolean takeSnapshot(File snapshotDir) {
-    return executor.takeSnapshot(snapshotDir);
-  }
-
-  @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    executor.loadSnapshot(latestSnapshotRootDir);
-  }
-
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
   protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
@@ -188,6 +179,16 @@ public class ConfigRegionStateMachine
       result = null;
     }
     return result;
+  }
+
+  @Override
+  public boolean takeSnapshot(File snapshotDir) {
+    return executor.takeSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    executor.loadSnapshot(latestSnapshotRootDir);
   }
 
   @Override
@@ -254,25 +255,7 @@ public class ConfigRegionStateMachine
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  @Override
-  public boolean shouldRetry(TSStatus writeResult) {
-    // TODO implement this
-    return RetryPolicy.super.shouldRetry(writeResult);
-  }
-
-  @Override
-  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
-    // TODO implement this
-    return RetryPolicy.super.updateResult(previousResult, retryResult);
-  }
-
-  @Override
-  public long getSleepTime() {
-    // TODO implement this
-    return RetryPolicy.super.getSleepTime();
-  }
-
-  /** TODO optimize the lock usage */
+  /** TODO optimize the lock usage. */
   private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
     if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
       try {

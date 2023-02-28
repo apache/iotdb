@@ -50,12 +50,12 @@ public class ConfigNodeInfo {
 
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
 
-  // latest config nodes
+  /** latest config nodes. */
   private final Set<TEndPoint> onlineConfigNodes;
 
-  public static ConfigRegionId configRegionId = new ConfigRegionId(0);
+  public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
-  private File propertiesFile;
+  private final File propertiesFile;
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();

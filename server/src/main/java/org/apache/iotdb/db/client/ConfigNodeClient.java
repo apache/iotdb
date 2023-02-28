@@ -165,7 +165,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   ClientManager<ConfigRegionId, ConfigNodeClient> clientManager;
 
-  ConfigRegionId configRegionId = ConfigNodeInfo.configRegionId;
+  ConfigRegionId configRegionId = ConfigNodeInfo.CONFIG_REGION_ID;
 
   TProtocolFactory protocolFactory;
 
@@ -280,7 +280,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.configRegionId);
+    clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
