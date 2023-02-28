@@ -413,7 +413,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);
           List<CrossCompactionTaskResource> selected =
-              selector.selectCrossSpaceTask(new TsFileResourceList(seqTsFileResourceList),new TsFileResourceList( unseqTsFileResourceList));
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           index++;
           if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
@@ -718,7 +718,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);
           List<CrossCompactionTaskResource> selected =
-              selector.selectCrossSpaceTask(new TsFileResourceList(seqTsFileResourceList),new TsFileResourceList( unseqTsFileResourceList));
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
@@ -1021,7 +1021,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);
           List<CrossCompactionTaskResource> selected =
-              selector.selectCrossSpaceTask(new TsFileResourceList(seqTsFileResourceList),new TsFileResourceList( unseqTsFileResourceList));
+              selector.selectCrossSpaceTask(seqTsFileResourceList, unseqTsFileResourceList);
           if (selected.size() > 0) {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(

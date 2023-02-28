@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompaction
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 
@@ -225,7 +224,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    */
   @Override
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
-          TsFileResourceList sequenceFileList, TsFileResourceList unsequenceFileList) {
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
     if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
       return Collections.emptyList();
     }
@@ -242,19 +241,25 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!taskResources.isValid() && !hasPrintedLog) {
         LOGGER.info(
             "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
-            logicalStorageGroupName + "-" + dataRegionId,sequenceFileList.size(),unsequenceFileList.size(),candidate.getSeqFiles().size(),candidate.getUnseqFiles().size());
+            logicalStorageGroupName + "-" + dataRegionId,
+            sequenceFileList.size(),
+            unsequenceFileList.size(),
+            candidate.getSeqFiles().size(),
+            candidate.getUnseqFiles().size());
         hasPrintedLog = true;
         return Collections.emptyList();
       }
       LOGGER.info(
-              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms."
-                     ,
-              logicalStorageGroupName+ "-" + dataRegionId,
-              sequenceFileList.size(),unsequenceFileList.size(),candidate.getSeqFiles().size(),candidate.getUnseqFiles().size(),
-              taskResources.getSeqFiles().size(),
-              taskResources.getUnseqFiles().size(),
-              taskResources.getTotalMemoryCost(),
-              System.currentTimeMillis() - startTime);
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms.",
+          logicalStorageGroupName + "-" + dataRegionId,
+          sequenceFileList.size(),
+          unsequenceFileList.size(),
+          candidate.getSeqFiles().size(),
+          candidate.getUnseqFiles().size(),
+          taskResources.getSeqFiles().size(),
+          taskResources.getUnseqFiles().size(),
+          taskResources.getTotalMemoryCost(),
+          System.currentTimeMillis() - startTime);
       hasPrintedLog = false;
       return Collections.singletonList(taskResources);
 

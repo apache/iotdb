@@ -113,9 +113,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
         storageGroupName,
         dataRegionId,
-        sequence?"Sequence":"Unsequence",
+        sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
-            selectedFileSize/1024/1024);
+        selectedFileSize / 1024 / 1024);
     try {
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
@@ -258,7 +258,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               + "time cost is {} s, compaction speed is {} MB/s, {}",
           storageGroupName,
           dataRegionId,
-              sequence?"Sequence":"Unsequence",
+          sequence ? "Sequence" : "Unsequence",
           targetTsFileResource.getTsFile().getName(),
           costTime,
           selectedFileSize / 1024.0d / 1024.0d / costTime,

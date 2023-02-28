@@ -40,12 +40,6 @@ public class TsFileResourceList implements List<TsFileResource> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private int count = 0;
 
-  public TsFileResourceList(List<TsFileResource> resources){
-    addAll(resources);
-  }
-
-  public TsFileResourceList(){}
-
   /**
    * Insert a new node before an existing node
    *
@@ -392,10 +386,6 @@ public class TsFileResourceList implements List<TsFileResource> {
     public TsFileResource next() {
       return this.tsFileResourceList.get(currentIndex++);
     }
-
-    public void reset(){
-      currentIndex=0;
-    }
   }
 
   private class TsFileReverseIterator implements Iterator<TsFileResource> {
@@ -415,10 +405,6 @@ public class TsFileResourceList implements List<TsFileResource> {
     @Override
     public TsFileResource next() {
       return tsFileResourceList.get(currentIndex--);
-    }
-
-    public void reset(){
-      currentIndex=tsFileResourceList.size()-1;
     }
   }
 
