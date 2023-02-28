@@ -56,6 +56,8 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
     | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
+    // ML Model
+    | createModel | dropModel | showModels | showTrails
     ;
 
 dmlStatement
@@ -445,6 +447,31 @@ migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+
+// ML Model =========================================================================================
+// ---- Create Model
+createModel
+    : CREATE AUTO? MODEL modelId=identifier
+        WITH attributePair (COMMA attributePair)*
+        BEGIN
+            selectStatement
+        END
+    ;
+
+// ---- Drop Model
+dropModel
+    : DROP MODEL modelId=identifier
+    ;
+
+// ---- Show Models
+showModels
+    : SHOW MODELS
+    ;
+
+// ---- Show Trails
+showTrails
+    : SHOW TRAILS
+    ;
 
 /**
  * 3. Data Manipulation Language (DML)
