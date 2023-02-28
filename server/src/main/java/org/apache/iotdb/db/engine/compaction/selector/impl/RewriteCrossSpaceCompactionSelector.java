@@ -238,15 +238,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
-      if (!taskResources.isValid() && !hasPrintedLog) {
-        LOGGER.info(
-            "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
-            logicalStorageGroupName + "-" + dataRegionId,
-            sequenceFileList.size(),
-            unsequenceFileList.size(),
-            candidate.getSeqFiles().size(),
-            candidate.getUnseqFiles().size());
-        hasPrintedLog = true;
+      if (!taskResources.isValid()) {
+        if (!hasPrintedLog) {
+          LOGGER.info(
+              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
+              logicalStorageGroupName + "-" + dataRegionId,
+              sequenceFileList.size(),
+              unsequenceFileList.size(),
+              candidate.getSeqFiles().size(),
+              candidate.getUnseqFiles().size());
+          hasPrintedLog = true;
+        }
         return Collections.emptyList();
       }
       LOGGER.info(
