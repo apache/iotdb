@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.reporter.prometheus;
 
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.io.FilterWriter;
@@ -27,6 +29,8 @@ import java.io.Writer;
 import java.util.Map;
 
 class PrometheusTextWriter extends FilterWriter {
+  private static final MetricConfig METRIC_CONFIG =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
   public PrometheusTextWriter(Writer out) {
     super(out);
@@ -66,6 +70,13 @@ class PrometheusTextWriter extends FilterWriter {
     write(name);
     if (labels.size() > 0) {
       write('{');
+      write("cluster=\"");
+      write(METRIC_CONFIG.getClusterName());
+      write("\",nodeType=\"");
+      write(METRIC_CONFIG.getNodeType().toString());
+      write("\",nodeId=\"");
+      write(String.valueOf(METRIC_CONFIG.getNodeId()));
+      write("\",");
       for (Map.Entry<String, String> entry : labels.entrySet()) {
         write(entry.getKey());
         write("=\"");
