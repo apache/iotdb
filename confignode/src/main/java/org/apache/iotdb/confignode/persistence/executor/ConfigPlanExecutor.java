@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
@@ -55,6 +57,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
@@ -93,6 +99,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -147,6 +154,8 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
+  private final ModelInfo modelInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -156,7 +165,8 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo,
-      CQInfo cqInfo) {
+      CQInfo cqInfo,
+      ModelInfo modelInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -183,6 +193,9 @@ public class ConfigPlanExecutor {
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
+
+    this.modelInfo = modelInfo;
+    this.snapshotProcessorList.add(modelInfo);
 
     this.procedureInfo = procedureInfo;
   }
@@ -250,6 +263,10 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFTable();
       case GetFunctionJar:
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
+      case ShowModel:
+        return modelInfo.showModel((ShowModelPlan) req);
+      case ShowTrail:
+        return modelInfo.showTrail((ShowTrailPlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -374,6 +391,14 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case CreateModel:
+        return modelInfo.createModel((CreateModelPlan) physicalPlan);
+      case UpdateModelInfo:
+        return modelInfo.updateModelInfo((UpdateModelInfoPlan) physicalPlan);
+      case UpdateModelState:
+        return modelInfo.updateModelState((UpdateModelStatePlan) physicalPlan);
+      case DropModel:
+        return modelInfo.dropModel((DropModelPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

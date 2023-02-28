@@ -620,10 +620,14 @@ public abstract class AbstractCli {
     }
 
     List<List<String>> lists = new ArrayList<>(columnCount);
+    int endTimeIndex = -1;
     if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
         String columnLabel = resultSetMetaData.getColumnLabel(i);
+        if (columnLabel.equalsIgnoreCase("__endTime")) {
+          endTimeIndex = i;
+        }
         list.add(columnLabel);
         lists.add(list);
         int count = computeHANCount(columnLabel);
@@ -638,6 +642,10 @@ public abstract class AbstractCli {
             tmp =
                 RpcUtils.formatDatetime(
                     timeFormat, timestampPrecision, resultSet.getLong(TIMESTAMP_STR), zoneId);
+          } else if (endTimeIndex == i) {
+            tmp =
+                RpcUtils.formatDatetime(
+                    timeFormat, timestampPrecision, resultSet.getLong(i), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }

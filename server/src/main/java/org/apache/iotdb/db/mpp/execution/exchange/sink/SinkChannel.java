@@ -419,7 +419,11 @@ public class SinkChannel implements ISinkChannel {
     public void run() {
       try (SetThreadName sinkChannelName = new SetThreadName(threadName)) {
         LOGGER.debug(
-            "[NotifyNewTsBlock] [{}, {})", startSequenceId, startSequenceId + blockSizes.size());
+            "[NotifyNewTsBlock] [{}, {}) to {}.{}",
+            startSequenceId,
+            startSequenceId + blockSizes.size(),
+            remoteFragmentInstanceId,
+            remotePlanNodeId);
         int attempt = 0;
         TNewDataBlockEvent newDataBlockEvent =
             new TNewDataBlockEvent(

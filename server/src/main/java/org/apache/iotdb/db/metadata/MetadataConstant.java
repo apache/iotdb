@@ -73,6 +73,8 @@ public class MetadataConstant {
   public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
   public static final String SCHEMA_ENGINE_METRIC_NAME = "schema_file";
 
+  public static final String DEFAULT_SCHEMA_ENGINE_MODE = "Memory";
+
   public static String getMNodeTypeName(byte type) {
     switch (type) {
       case INTERNAL_MNODE_TYPE:

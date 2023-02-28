@@ -24,13 +24,10 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -39,14 +36,14 @@ public class NodeGroupContext {
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
   private final boolean isAlignByDevice;
   private final TRegionReplicaSet mostlyUsedDataRegion;
-  protected final List<ExchangeNode> exchangeNodes;
+  protected boolean hasExchangeNode;
 
   public NodeGroupContext(MPPQueryContext queryContext, boolean isAlignByDevice, PlanNode root) {
     this.queryContext = queryContext;
     this.nodeDistributionMap = new HashMap<>();
     this.isAlignByDevice = isAlignByDevice;
     this.mostlyUsedDataRegion = isAlignByDevice ? getMostlyUsedDataRegion(root) : null;
-    this.exchangeNodes = new ArrayList<>();
+    this.hasExchangeNode = false;
   }
 
   private TRegionReplicaSet getMostlyUsedDataRegion(PlanNode root) {

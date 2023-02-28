@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
@@ -54,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -96,10 +97,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
@@ -216,14 +223,6 @@ public interface IManager {
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
-
-  /**
-   * Update DataNode
-   *
-   * @param updateDataNodePlan UpdateDataNodePlan
-   * @return DataNodeConfigurationDataSet
-   */
-  DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan);
 
   /**
    * Report that the specified DataNode will be shutdown.
@@ -626,4 +625,22 @@ public interface IManager {
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
   TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
+
+  /** Create a model */
+  TSStatus createModel(TCreateModelReq req);
+
+  /** Drop a model */
+  TSStatus dropModel(TDropModelReq req);
+
+  /** Return the model table */
+  TShowModelResp showModel(TShowModelReq req);
+
+  /** Return the trail table */
+  TShowTrailResp showTrail(TShowTrailReq req);
+
+  /** Update the model info */
+  TSStatus updateModelInfo(TUpdateModelInfoReq req);
+
+  /** Update the model state */
+  TSStatus updateModelState(TUpdateModelStateReq req);
 }

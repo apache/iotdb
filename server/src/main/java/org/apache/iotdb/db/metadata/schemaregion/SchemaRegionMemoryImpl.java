@@ -68,7 +68,6 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -120,6 +119,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
+@SchemaRegion(mode = MetadataConstant.DEFAULT_SCHEMA_ENGINE_MODE)
 public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionMemoryImpl.class);
@@ -147,15 +147,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private final ISeriesNumerMonitor seriesNumerMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionMemoryImpl(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      ISchemaEngineStatistics engineStatistics,
-      ISeriesNumerMonitor seriesNumerMonitor)
-      throws MetadataException {
+  public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    storageGroupFullPath = storageGroup.getFullPath();
-    this.schemaRegionId = schemaRegionId;
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
@@ -172,8 +167,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId(), engineStatistics);
+    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
+    this.regionStatistics =
+        new MemSchemaRegionStatistics(
+            schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
     init();
   }
 
