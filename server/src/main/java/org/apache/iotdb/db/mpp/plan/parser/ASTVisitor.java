@@ -1222,11 +1222,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ExpressionContext conditionExpressionContext = expressions.get(0);
       GroupByConditionComponent groupByConditionComponent = new GroupByConditionComponent();
       groupByConditionComponent.setControlColumnExpression(
-          parseExpression(
-              conditionExpressionContext, true));
+          parseExpression(conditionExpressionContext, true));
       if (expressions.size() == 2) {
-        groupByConditionComponent.setKeepExpression(
-            parseExpression(expressions.get(1), true));
+        groupByConditionComponent.setKeepExpression(parseExpression(expressions.get(1), true));
       }
       groupByConditionComponent.setIgnoringNull(ignoringNull);
       return groupByConditionComponent;
