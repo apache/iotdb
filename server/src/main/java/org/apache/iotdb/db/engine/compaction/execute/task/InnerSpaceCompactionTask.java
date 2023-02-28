@@ -110,10 +110,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] InnerSpaceCompaction task starts with {} files",
+        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
         storageGroupName,
         dataRegionId,
-        selectedTsFileResourceList.size());
+        sequence ? "Sequence" : "Unsequence",
+        selectedTsFileResourceList.size(),
+        selectedFileSize / 1024 / 1024);
     try {
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
@@ -252,10 +254,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
-          "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
+          "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s, {}",
           storageGroupName,
           dataRegionId,
+          sequence ? "Sequence" : "Unsequence",
           targetTsFileResource.getTsFile().getName(),
           costTime,
           selectedFileSize / 1024.0d / 1024.0d / costTime,

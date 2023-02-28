@@ -225,7 +225,7 @@ public class SizeTieredCompactionSelector
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
-        return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
+        return (int) (fileNameOfO1.getVersion() - fileNameOfO2.getVersion());
       } catch (IOException e) {
         return 0;
       }
