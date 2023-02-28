@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
@@ -119,6 +120,7 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
 
+@SchemaRegion(mode = "Rocksdb_based")
 public class RSchemaRegion implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);

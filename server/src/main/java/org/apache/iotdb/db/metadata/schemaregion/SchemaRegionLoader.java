@@ -35,8 +35,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 class SchemaRegionLoader {
-  private static final String ROCKSDB_BASED = "Rocksdb_based";
-
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static final String PACKAGE_NAME = "org.apache.iotdb.db.metadata";
@@ -95,10 +93,6 @@ class SchemaRegionLoader {
   }
 
   void init(String schemaEngineMode) {
-    if (schemaEngineMode.equals(ROCKSDB_BASED)) {
-      currentMode = ROCKSDB_BASED;
-      return;
-    }
     Constructor<ISchemaRegion> constructor = constructorMap.get(schemaEngineMode);
     if (constructor == null) {
       logger.warn(
@@ -115,9 +109,6 @@ class SchemaRegionLoader {
 
   ISchemaRegion createSchemaRegion(ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
-    if (currentMode.equals(ROCKSDB_BASED)) {
-      return new RSchemaRegionLoader().loadRSchemaRegion(schemaRegionParams);
-    }
     try {
       return currentConstructor.newInstance(schemaRegionParams);
     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
