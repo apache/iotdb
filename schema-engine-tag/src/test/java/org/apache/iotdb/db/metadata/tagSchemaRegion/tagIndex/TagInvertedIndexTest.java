@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +40,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(Parameterized.class)
 public class TagInvertedIndexTest {
   private String[][] record =
       new String[][] {
@@ -73,11 +76,39 @@ public class TagInvertedIndexTest {
 
   private String schemaDir;
 
+  private boolean enableFlush;
+
+  protected final TagInvertedIndexTestParam testParam;
+
+  @Parameterized.Parameters(name = "{0}")
+  public static List<TagInvertedIndexTestParam> getTestNode() {
+    return Arrays.asList(
+        new TagInvertedIndexTestParam("FlushMode", true),
+        new TagInvertedIndexTestParam("Non-FlushMode", false));
+  }
+
+  protected static class TagInvertedIndexTestParam {
+    private final String testModeName;
+
+    private final boolean enableFlush;
+
+    private TagInvertedIndexTestParam(String testModeName, boolean enableFlush) {
+      this.testModeName = testModeName;
+      this.enableFlush = enableFlush;
+    }
+  }
+
+  public TagInvertedIndexTest(TagInvertedIndexTestParam testParam) {
+    this.testParam = testParam;
+  }
+
   @Before
   public void setUp() throws Exception {
     numOfDeviceIdsInMemTable =
         TagSchemaDescriptor.getInstance().getTagSchemaConfig().getNumOfDeviceIdsInMemTable();
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setNumOfDeviceIdsInMemTable(3);
+    enableFlush = TagSchemaDescriptor.getInstance().getTagSchemaConfig().isEnableFlush();
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setEnableFlush(testParam.enableFlush);
     schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
     storageGroupDirPath = schemaDir + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + 0;
@@ -89,6 +120,7 @@ public class TagInvertedIndexTest {
     TagSchemaDescriptor.getInstance()
         .getTagSchemaConfig()
         .setNumOfDeviceIdsInMemTable(numOfDeviceIdsInMemTable);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setEnableFlush(enableFlush);
     tagInvertedIndex.clear();
     tagInvertedIndex = null;
     FileUtils.deleteDirectoryAndEmptyParent(new File(schemaDir));
