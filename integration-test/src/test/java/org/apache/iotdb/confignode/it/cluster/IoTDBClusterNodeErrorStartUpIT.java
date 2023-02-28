@@ -241,7 +241,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
               Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
 
       /* Restart and updatePeer */
-      // TODO: @Itami-sho, enable this test and delete it
+      // TODO: Delete this IT after enable modify internal TEndPoints
       int registeredConfigNodeId = -1;
       TShowClusterResp showClusterResp = client.showCluster();
       for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
@@ -260,7 +260,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
       configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("have been changed"));
+      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("the internal TEndPoints"));
       registeredConfigNodeWrapper.setConsensusPort(originPort);
 
       int registeredDataNodeId = -1;
@@ -282,7 +282,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(),
           dataNodeRestartResp.getStatus().getCode());
-      Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("have been changed"));
+      Assert.assertTrue(
+          dataNodeRestartResp.getStatus().getMessage().contains("the internal TEndPoints"));
       registeredDataNodeWrapper.setInternalPort(originPort);
 
       // Restart and check

@@ -50,12 +50,16 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
   private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
 
-  IoTDBMetricRegistry(MetricRegistryInfo info, AbstractMetricService service) {
+  IoTDBMetricRegistry(
+      MetricRegistryInfo info, AbstractMetricService service, String consensusGroupType) {
     this.info = info;
     this.metricService = service;
     prefix =
         MetricRegistry.name(
-            info.getApplicationName(), info.getMetricsComponentName(), info.getPrefix());
+            consensusGroupType,
+            info.getApplicationName(),
+            info.getMetricsComponentName(),
+            info.getPrefix());
   }
 
   private String getMetricName(String name) {

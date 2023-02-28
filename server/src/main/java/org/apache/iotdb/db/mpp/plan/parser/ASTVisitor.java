@@ -1173,8 +1173,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // ---- Where Clause
   private WhereCondition parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
-    Expression predicate =
-        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
+    Expression predicate = parseExpression(ctx.expression(), true);
     return new WhereCondition(predicate);
   }
 
@@ -1254,7 +1253,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ExpressionContext expressionContext = expressions.get(0);
       GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
       groupByVariationComponent.setControlColumnExpression(
-          parseExpression(expressionContext, expressionContext.OPERATOR_NOT() == null));
+          parseExpression(expressionContext, true));
       groupByVariationComponent.setDelta(
           ctx.delta == null ? 0 : Double.parseDouble(ctx.delta.getText()));
       groupByVariationComponent.setIgnoringNull(ignoringNull);
@@ -1263,11 +1262,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ExpressionContext conditionExpressionContext = expressions.get(0);
       GroupBySeriesComponent groupBySeriesComponent = new GroupBySeriesComponent();
       groupBySeriesComponent.setControlColumnExpression(
-          parseExpression(
-              conditionExpressionContext, conditionExpressionContext.OPERATOR_NOT() == null));
+          parseExpression(conditionExpressionContext, true));
       if (expressions.size() == 2) {
-        groupBySeriesComponent.setKeepExpression(
-            parseExpression(expressions.get(1), expressions.get(1).OPERATOR_NOT() == null));
+        groupBySeriesComponent.setKeepExpression(parseExpression(expressions.get(1), true));
       }
       groupBySeriesComponent.setIgnoringNull(ignoringNull);
       return groupBySeriesComponent;
@@ -1305,8 +1302,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // ---- Having Clause
   private HavingCondition parseHavingClause(IoTDBSqlParser.HavingClauseContext ctx) {
-    Expression predicate =
-        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
+    Expression predicate = parseExpression(ctx.expression(), true);
     return new HavingCondition(predicate);
   }
 
@@ -1577,13 +1573,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  /** path of expression in withoutNull clause can start with root. */
   private PartialPath parseFullPathInExpression(
-      IoTDBSqlParser.FullPathInExpressionContext ctx, boolean inWithoutNull) {
+      IoTDBSqlParser.FullPathInExpressionContext ctx, boolean canUseFullPath) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     int size = nodeNames.size();
     if (ctx.ROOT() != null) {
-      if (!inWithoutNull) {
+      if (!canUseFullPath) {
+        // now full path cannot occur in SELECT only
         throw new SemanticException("Path can not start with root in select clause.");
       }
       size++;
@@ -2230,26 +2226,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Expression & Predicate ========================================================================
 
   private Expression parseExpression(
-      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
+      IoTDBSqlParser.ExpressionContext context, boolean canUseFullPath) {
     if (context.unaryInBracket != null) {
-      return parseExpression(context.unaryInBracket, inWithoutNull);
+      return parseExpression(context.unaryInBracket, canUseFullPath);
     }
 
     if (context.expressionAfterUnaryOperator != null) {
       if (context.MINUS() != null) {
         return new NegationExpression(
-            parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
+            parseExpression(context.expressionAfterUnaryOperator, canUseFullPath));
       }
       if (context.OPERATOR_NOT() != null) {
         return new LogicNotExpression(
-            parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
+            parseExpression(context.expressionAfterUnaryOperator, canUseFullPath));
       }
-      return parseExpression(context.expressionAfterUnaryOperator, inWithoutNull);
+      return parseExpression(context.expressionAfterUnaryOperator, canUseFullPath);
     }
 
     if (context.leftExpression != null && context.rightExpression != null) {
-      Expression leftExpression = parseExpression(context.leftExpression, inWithoutNull);
-      Expression rightExpression = parseExpression(context.rightExpression, inWithoutNull);
+      Expression leftExpression = parseExpression(context.leftExpression, canUseFullPath);
+      Expression rightExpression = parseExpression(context.rightExpression, canUseFullPath);
       if (context.STAR() != null) {
         return new MultiplicationExpression(leftExpression, rightExpression);
       }
@@ -2294,24 +2290,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (context.unaryBeforeRegularOrLikeExpression != null) {
       if (context.REGEXP() != null) {
-        return parseRegularExpression(context, inWithoutNull);
+        return parseRegularExpression(context, canUseFullPath);
       }
       if (context.LIKE() != null) {
-        return parseLikeExpression(context, inWithoutNull);
+        return parseLikeExpression(context, canUseFullPath);
       }
       throw new UnsupportedOperationException();
     }
 
     if (context.unaryBeforeIsNullExpression != null) {
-      return parseIsNullExpression(context, inWithoutNull);
+      return parseIsNullExpression(context, canUseFullPath);
     }
 
     if (context.firstExpression != null
         && context.secondExpression != null
         && context.thirdExpression != null) {
-      Expression firstExpression = parseExpression(context.firstExpression, inWithoutNull);
-      Expression secondExpression = parseExpression(context.secondExpression, inWithoutNull);
-      Expression thirdExpression = parseExpression(context.thirdExpression, inWithoutNull);
+      Expression firstExpression = parseExpression(context.firstExpression, canUseFullPath);
+      Expression secondExpression = parseExpression(context.secondExpression, canUseFullPath);
+      Expression thirdExpression = parseExpression(context.thirdExpression, canUseFullPath);
 
       if (context.OPERATOR_BETWEEN() != null) {
         return new BetweenExpression(
@@ -2321,16 +2317,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (context.unaryBeforeInExpression != null) {
-      return parseInExpression(context, inWithoutNull);
+      return parseInExpression(context, canUseFullPath);
     }
 
     if (context.functionName() != null) {
-      return parseFunctionExpression(context, inWithoutNull);
+      return parseFunctionExpression(context, canUseFullPath);
     }
 
     if (context.fullPathInExpression() != null) {
       return new TimeSeriesOperand(
-          parseFullPathInExpression(context.fullPathInExpression(), inWithoutNull));
+          parseFullPathInExpression(context.fullPathInExpression(), canUseFullPath));
     }
 
     if (context.time != null) {
@@ -2345,14 +2341,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Expression parseFunctionExpression(
-      IoTDBSqlParser.ExpressionContext functionClause, boolean inWithoutNull) {
+      IoTDBSqlParser.ExpressionContext functionClause, boolean canUseFullPath) {
     FunctionExpression functionExpression =
         new FunctionExpression(parseIdentifier(functionClause.functionName().getText()));
 
     // expressions
     boolean hasNonPureConstantSubExpression = false;
     for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {
-      Expression subexpression = parseExpression(expression, inWithoutNull);
+      Expression subexpression = parseExpression(expression, canUseFullPath);
       if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
@@ -2453,26 +2449,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             expressionString, actual, Arrays.toString(expected)));
   }
 
-  private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseRegularExpression(ExpressionContext context, boolean canUseFullPath) {
     return new RegularExpression(
-        parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+        parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
         parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
-  private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseLikeExpression(ExpressionContext context, boolean canUseFullPath) {
     return new LikeExpression(
-        parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+        parseExpression(context.unaryBeforeRegularOrLikeExpression, canUseFullPath),
         parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
-  private Expression parseIsNullExpression(ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {
     return new IsNullExpression(
-        parseExpression(context.unaryBeforeIsNullExpression, inWithoutNull),
+        parseExpression(context.unaryBeforeIsNullExpression, canUseFullPath),
         context.OPERATOR_NOT() != null);
   }
 
-  private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
-    Expression childExpression = parseExpression(context.unaryBeforeInExpression, inWithoutNull);
+  private Expression parseInExpression(ExpressionContext context, boolean canUseFullPath) {
+    Expression childExpression = parseExpression(context.unaryBeforeInExpression, canUseFullPath);
     LinkedHashSet<String> values = new LinkedHashSet<>();
     for (ConstantContext constantContext : context.constant()) {
       values.add(parseConstant(constantContext));
@@ -3081,8 +3077,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // parse where
     IoTDBSqlParser.WhereClauseContext whereCtx = ctx.whereClause();
     if (whereCtx != null) {
-      Expression predicate =
-          parseExpression(whereCtx.expression(), whereCtx.expression().OPERATOR_NOT() == null);
+      Expression predicate = parseExpression(whereCtx.expression(), true);
       if (!((predicate instanceof GreaterThanExpression)
           || (predicate instanceof GreaterEqualExpression))) {
         throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);

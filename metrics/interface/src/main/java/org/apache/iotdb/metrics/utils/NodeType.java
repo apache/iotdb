@@ -17,17 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.metrics.utils;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+public enum NodeType {
+  CONFIGNODE,
+  DATANODE;
 
-public class PathNumOverLimitException extends SemanticException {
-
-  public PathNumOverLimitException() {
-    super(
-        String.format(
-            "Too many paths in one query! Currently allowed max deduplicated path number is %d. "
-                + "Please use slimit or adjust max_deduplicated_path_num in iotdb-common.properties.",
-            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()));
+  @Override
+  public String toString() {
+    return name();
   }
 }

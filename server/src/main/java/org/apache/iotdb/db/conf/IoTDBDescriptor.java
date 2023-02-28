@@ -49,6 +49,7 @@ import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -188,7 +189,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
+            .updateRpcInstance(conf.getClusterName(), conf.getDataNodeId(), NodeType.DATANODE);
       }
     } else {
       logger.warn(
@@ -1406,12 +1407,6 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
-      // update max_deduplicated_path_num
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_deduplicated_path_num",
-                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -1542,12 +1537,6 @@ public class IoTDBDescriptor {
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
-
-    conf.setMaxQueryDeduplicatedPathNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_deduplicated_path_num",
-                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
     conf.setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(

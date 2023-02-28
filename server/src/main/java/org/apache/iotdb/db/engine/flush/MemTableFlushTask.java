@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -70,6 +69,7 @@ public class MemTableFlushTask {
           : new LinkedBlockingQueue<>();
 
   private String storageGroup;
+  private String dataRegionId;
 
   private IMemTable memTable;
 
@@ -82,10 +82,14 @@ public class MemTableFlushTask {
    * @param storageGroup current database
    */
   public MemTableFlushTask(
-      IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
+      IMemTable memTable,
+      RestorableTsFileIOWriter writer,
+      String storageGroup,
+      String dataRegionId) {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
+    this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
     LOGGER.debug(
@@ -253,10 +257,7 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)
-              && MetricLevel.higherOrEqual(
-                  MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel(),
-                  MetricLevel.CORE)) {
+          if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)) {
             int lastIndex = storageGroup.lastIndexOf("-");
             if (lastIndex == -1) {
               lastIndex = storageGroup.length();
@@ -269,7 +270,9 @@ public class MemTableFlushTask {
                     Tag.DATABASE.toString(),
                     storageGroup.substring(0, lastIndex),
                     Tag.TYPE.toString(),
-                    "flush");
+                    "flush",
+                    Tag.REGION.toString(),
+                    dataRegionId);
           }
 
           LOGGER.info(
