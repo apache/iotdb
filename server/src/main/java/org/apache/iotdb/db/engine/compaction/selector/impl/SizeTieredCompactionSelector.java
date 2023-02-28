@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -60,7 +62,8 @@ public class SizeTieredCompactionSelector
   protected String storageGroupName;
   protected String dataRegionId;
   protected long timePartition;
-  protected List<TsFileResource> tsFileResources;
+  protected Iterator<TsFileResource> tsFileResourceIterator;
+  protected TsFileResourceList tsFileResources;
   protected boolean sequence;
   protected TsFileManager tsFileManager;
   protected boolean hasNextTimePartition;
@@ -101,7 +104,8 @@ public class SizeTieredCompactionSelector
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
 
-    for (TsFileResource currentFile : tsFileResources) {
+    while( tsFileResourceIterator.hasNext()) {
+      TsFileResource currentFile= tsFileResourceIterator.next();
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level) {
@@ -160,6 +164,9 @@ public class SizeTieredCompactionSelector
     if (CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
             + taskPriorityQueue.size()
         < config.getCandidateCompactionTaskQueueSize()) {
+      if(sequence){
+        Collections.sort(selectedFileList, TsFileResource::compareFileName);
+      }
       taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       return true;
     }
@@ -175,8 +182,9 @@ public class SizeTieredCompactionSelector
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
-    this.tsFileResources = tsFileResources;
+  public List<List<TsFileResource>> selectInnerSpaceTask(TsFileResourceList tsFileResources) {
+    this.tsFileResources=tsFileResources;
+    resetIterator();
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
@@ -185,6 +193,7 @@ public class SizeTieredCompactionSelector
         if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
           break;
         }
+        resetIterator();
       }
       List<List<TsFileResource>> taskList = new LinkedList<>();
       while (taskPriorityQueue.size() > 0) {
@@ -198,15 +207,21 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
+  private void resetIterator(){
+    tsFileResourceIterator =sequence ? tsFileResources.reverseIterator(): tsFileResources.iterator();
+  }
+
   private int searchMaxFileLevel() throws IOException {
     int maxLevel = -1;
-    for (TsFileResource currentFile : tsFileResources) {
+    while(tsFileResourceIterator.hasNext()) {
+      TsFileResource currentFile= tsFileResourceIterator.next();
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() > maxLevel) {
         maxLevel = currentName.getInnerCompactionCnt();
       }
     }
+    resetIterator();
     return maxLevel;
   }
 
@@ -225,7 +240,7 @@ public class SizeTieredCompactionSelector
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
-        return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
+        return sequence?(int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion()):(int) (fileNameOfO1.getVersion() - fileNameOfO2.getVersion());
       } catch (IOException e) {
         return 0;
       }

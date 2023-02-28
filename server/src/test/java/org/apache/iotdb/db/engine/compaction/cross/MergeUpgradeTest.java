@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskR
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -88,7 +89,7 @@ public class MergeUpgradeTest {
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, tsFileManager);
     List<CrossCompactionTaskResource> selected =
-        selector.selectCrossSpaceTask(seqResources, unseqResources);
+        selector.selectCrossSpaceTask(new TsFileResourceList(seqResources),new TsFileResourceList( unseqResources));
     assertEquals(0, selected.size());
   }
 
