@@ -119,41 +119,6 @@ public class SinkChannel implements ISinkChannel {
       TsBlockSerde serde,
       SinkListener sinkListener,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-          mppDataExchangeServiceClientManager,
-      int index) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
-    this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
-    this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
-    this.fullFragmentInstanceId =
-        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    this.executorService = Validate.notNull(executorService);
-    this.serde = Validate.notNull(serde);
-    this.sinkListener = Validate.notNull(sinkListener);
-    this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
-    this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
-    this.threadName =
-        createFullId(
-            localFragmentInstanceId.queryId,
-            localFragmentInstanceId.fragmentId,
-            localFragmentInstanceId.instanceId + "-" + index);
-    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-    this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-  }
-
-  public SinkChannel(
-      TEndPoint remoteEndpoint,
-      TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId,
-      String localPlanNodeId,
-      TFragmentInstanceId localFragmentInstanceId,
-      LocalMemoryManager localMemoryManager,
-      ExecutorService executorService,
-      TsBlockSerde serde,
-      SinkListener sinkListener,
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);

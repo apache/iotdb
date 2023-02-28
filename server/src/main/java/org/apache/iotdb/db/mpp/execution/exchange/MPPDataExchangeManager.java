@@ -60,7 +60,6 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -506,8 +505,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
-      FragmentInstanceContext instanceContext,
-      int index) {
+      FragmentInstanceContext instanceContext) {
 
     LOGGER.debug(
         "Create sink handle to plan node {} of {} for {}",
@@ -525,8 +523,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         executorService,
         tsBlockSerdeFactory.get(),
         new SinkListenerImpl(instanceContext, instanceContext::failed),
-        mppDataExchangeServiceClientManager,
-        index);
+        mppDataExchangeServiceClientManager);
   }
 
   @Override
@@ -544,8 +541,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           "ShuffleSinkHandle for " + localFragmentInstanceId + " exists.");
     }
 
-    AtomicInteger index = new AtomicInteger(0);
-
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -554,8 +549,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localFragmentInstanceId,
                         localPlanNodeId,
                         downStreamChannelLocation,
-                        instanceContext,
-                        index.getAndIncrement()))
+                        instanceContext))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -574,8 +568,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
-      FragmentInstanceContext instanceContext,
-      int index) {
+      FragmentInstanceContext instanceContext) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -590,8 +583,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemoteFragmentInstanceId(),
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
-          instanceContext,
-          index);
+          instanceContext);
     }
   }
 
