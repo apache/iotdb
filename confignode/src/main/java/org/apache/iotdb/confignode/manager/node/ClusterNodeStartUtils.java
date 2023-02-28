@@ -195,30 +195,38 @@ public class ClusterNodeStartUtils {
       return status;
     }
 
-    boolean isTEndPointUpdated;
+    boolean acceptRestart = true;
+    Set<Integer> updatedTEndPoints;
     switch (nodeType) {
       case ConfigNode:
-        isTEndPointUpdated =
-            isTEndPointsOfTConfigNodeLocationUpdated(
+        updatedTEndPoints =
+            checkUpdatedTEndPointOfConfigNode(
                 (TConfigNodeLocation) nodeLocation, (TConfigNodeLocation) matchedNodeLocation);
+        if (!updatedTEndPoints.isEmpty()) {
+          // TODO: Accept internal TEndPoints
+          acceptRestart = false;
+        }
         break;
       case DataNode:
       default:
-        isTEndPointUpdated =
-            isTEndPointsOfTDataNodeLocationUpdated(
+        updatedTEndPoints =
+            checkUpdatedTEndPointOfDataNode(
                 (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
+        if (updatedTEndPoints.stream().max(Integer::compare).orElse(-1) > 0) {
+          // TODO: Accept internal TEndPoints
+          acceptRestart = false;
+        }
         break;
     }
 
-    if (isTEndPointUpdated) {
-      /* Reject restart because some TEndPoints have changed */
-      // TODO: @Itami-Sho, enable this
+    if (!acceptRestart) {
+      /* Reject restart because some internal TEndPoints have been changed */
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because some TEndPoints of this %s have been changed."
+              "Reject %s restart. Because the internal TEndPoints of this %s can't be modified."
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Please delete 'data' dir and retry start. This Node will be registered as a new Node, so don't forget to remove the old one.",
+                  + "\t1. Please keep the internal TEndPoints of this Node the same as before.",
               nodeType.getNodeType(),
               nodeType.getNodeType()));
       return status;
@@ -336,47 +344,53 @@ public class ClusterNodeStartUtils {
   /**
    * Check if some TEndPoints of the specified ConfigNode have updated.
    *
-   * @return True if some TEndPoints of the specified ConfigNode have updated, false otherwise.
+   * @param restartLocation The location of restart ConfigNode
+   * @param recordLocation The record ConfigNode location
+   * @return The set of TEndPoints that have modified.
    */
-  public static boolean isTEndPointsOfTConfigNodeLocationUpdated(
-      TConfigNodeLocation configNodeLocationA, TConfigNodeLocation configNodeLocationB) {
-    if (!configNodeLocationA
-        .getInternalEndPoint()
-        .equals(configNodeLocationB.getInternalEndPoint())) {
-      return true;
+  public static Set<Integer> checkUpdatedTEndPointOfConfigNode(
+      TConfigNodeLocation restartLocation, TConfigNodeLocation recordLocation) {
+    Set<Integer> updatedTEndPoints = new HashSet<>();
+    if (!recordLocation.getInternalEndPoint().equals(restartLocation.getInternalEndPoint())) {
+      updatedTEndPoints.add(0);
     }
-    return !configNodeLocationA
-        .getConsensusEndPoint()
-        .equals(configNodeLocationB.getConsensusEndPoint());
+    if (!recordLocation.getConsensusEndPoint().equals(restartLocation.getConsensusEndPoint())) {
+      updatedTEndPoints.add(1);
+    }
+    return updatedTEndPoints;
   }
 
   /**
    * Check if some TEndPoints of the specified DataNode have updated.
    *
-   * @return True if some TEndPoints of the specified DataNode have updated, false otherwise.
+   * @param restartLocation The location of restart DataNode
+   * @param recordLocation The record DataNode location
+   * @return The set of TEndPoints that have modified.
    */
-  public static boolean isTEndPointsOfTDataNodeLocationUpdated(
-      TDataNodeLocation dataNodeLocationA, TDataNodeLocation dataNodeLocationB) {
-    if (!dataNodeLocationA
-        .getClientRpcEndPoint()
-        .equals(dataNodeLocationB.getClientRpcEndPoint())) {
-      return true;
+  public static Set<Integer> checkUpdatedTEndPointOfDataNode(
+      TDataNodeLocation restartLocation, TDataNodeLocation recordLocation) {
+    Set<Integer> updatedTEndPoints = new HashSet<>();
+    if (!recordLocation.getClientRpcEndPoint().equals(restartLocation.getClientRpcEndPoint())) {
+      updatedTEndPoints.add(0);
     }
-    if (!dataNodeLocationA.getInternalEndPoint().equals(dataNodeLocationB.getInternalEndPoint())) {
-      return true;
+    if (!recordLocation.getInternalEndPoint().equals(restartLocation.getInternalEndPoint())) {
+      updatedTEndPoints.add(1);
     }
-    if (!dataNodeLocationA
+    if (!recordLocation
         .getMPPDataExchangeEndPoint()
-        .equals(dataNodeLocationB.getMPPDataExchangeEndPoint())) {
-      return true;
+        .equals(restartLocation.getMPPDataExchangeEndPoint())) {
+      updatedTEndPoints.add(2);
     }
-    if (!dataNodeLocationA
+    if (!recordLocation
         .getSchemaRegionConsensusEndPoint()
-        .equals(dataNodeLocationB.getSchemaRegionConsensusEndPoint())) {
-      return true;
+        .equals(restartLocation.getSchemaRegionConsensusEndPoint())) {
+      updatedTEndPoints.add(3);
     }
-    return !dataNodeLocationA
+    if (!recordLocation
         .getDataRegionConsensusEndPoint()
-        .equals(dataNodeLocationB.getDataRegionConsensusEndPoint());
+        .equals(restartLocation.getDataRegionConsensusEndPoint())) {
+      updatedTEndPoints.add(4);
+    }
+    return updatedTEndPoints;
   }
 }

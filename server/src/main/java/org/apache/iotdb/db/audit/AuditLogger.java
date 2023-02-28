@@ -63,7 +63,9 @@ public class AuditLogger {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private AuditLogger() {}
+  private AuditLogger() {
+    // empty constructor
+  }
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(

@@ -41,6 +41,7 @@ public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
+  private String dataRegionId = "DataRegion-1";
   private String filePath =
       TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
@@ -71,7 +72,8 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(
@@ -107,7 +109,8 @@ public class MemTableFlushTaskTest {
   public void testFlushVectorMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceVectorData(memTable);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -134,7 +137,8 @@ public class MemTableFlushTaskTest {
   public void testFlushNullableVectorMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceNullableVectorData(memTable);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)

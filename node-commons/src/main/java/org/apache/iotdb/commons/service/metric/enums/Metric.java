@@ -97,7 +97,8 @@ public enum Metric {
   FLUSHING_MEM_TABLE_STATUS,
   DATA_REGION_MEM_COST,
   SCHEMA_REGION,
-  SCHEMA_ENGINE;
+  SCHEMA_ENGINE,
+  SESSION_IDLE_TIME;
 
   @Override
   public String toString() {

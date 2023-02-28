@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -133,6 +134,8 @@ public class SyncDataNodeClientPool {
         return client.removeRegionPeer((TMaintainPeerReq) req);
       case DELETE_OLD_REGION_PEER:
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
+      case DELETE_MODEL_METRICS:
+        return client.deleteModelMetrics((TDeleteModelMetricsReq) req);
       default:
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
