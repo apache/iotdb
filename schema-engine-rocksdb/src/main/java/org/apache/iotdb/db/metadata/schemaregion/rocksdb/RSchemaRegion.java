@@ -60,6 +60,7 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
@@ -150,11 +151,10 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  public RSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, RSchemaConfLoader rSchemaConfLoader)
-      throws MetadataException {
-    this.schemaRegionId = schemaRegionId;
-    storageGroupFullPath = storageGroup.getFullPath();
+  public RSchemaRegion(ISchemaRegionParams schemaRegionParams) throws MetadataException {
+    RSchemaConfLoader rSchemaConfLoader = new RSchemaConfLoader();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
     init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);

@@ -61,8 +61,9 @@ public class SchemaEngine {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private final SchemaRegionLoader schemaRegionLoader;
+
   private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
-  private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
 
@@ -79,6 +80,9 @@ public class SchemaEngine {
   }
 
   private SchemaEngine() {
+
+    schemaRegionLoader = new SchemaRegionLoader();
+
     // init ISeriesNumerMonitor if there is.
     // each mmanager instance will generate an ISeriesNumerMonitor instance
     // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
@@ -99,8 +103,9 @@ public class SchemaEngine {
   }
 
   public void init() {
-    schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
-    logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
+    logger.info("used schema engine mode: {}.", config.getSchemaEngineMode());
+
+    schemaRegionLoader.init(config.getSchemaEngineMode());
 
     initSchemaEngineStatistics();
     SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
@@ -214,6 +219,8 @@ public class SchemaEngine {
   }
 
   public void clear() {
+    schemaRegionLoader.clear();
+
     // clearSchemaResource will shut down release and flush task in Schema_File mode, which must be
     // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
@@ -288,28 +295,11 @@ public class SchemaEngine {
   }
 
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegion schemaRegion;
-    switch (this.schemaRegionStoredMode) {
-      case Memory:
-        schemaRegion =
-            new SchemaRegionMemoryImpl(
-                storageGroup, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
-        break;
-      case Schema_File:
-        schemaRegion =
-            new SchemaRegionSchemaFileImpl(
-                storageGroup, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
-        break;
-      case Rocksdb_based:
-        schemaRegion = new RSchemaRegionLoader().loadRSchemaRegion(storageGroup, schemaRegionId);
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                "This mode [%s] is not supported. Please check and modify it.",
-                schemaRegionStoredMode));
-    }
+      PartialPath database, SchemaRegionId schemaRegionId) throws MetadataException {
+    ISchemaRegionParams schemaRegionParams =
+        new SchemaRegionParams(
+            database, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
+    ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
     SchemaMetricManager.getInstance().createSchemaRegionMetric(schemaRegion);
     return schemaRegion;
   }
