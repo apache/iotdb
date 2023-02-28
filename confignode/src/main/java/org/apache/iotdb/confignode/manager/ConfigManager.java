@@ -79,7 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
-import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
+import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -229,7 +229,7 @@ public class ConfigManager implements IManager {
   /** ML Model */
   private final ModelManager modelManager;
 
-  private final ConfigNodeRegionStateMachine stateMachine;
+  private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
 
@@ -259,7 +259,7 @@ public class ConfigManager implements IManager {
             syncInfo,
             cqInfo,
             modelInfo);
-    this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
+    this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);

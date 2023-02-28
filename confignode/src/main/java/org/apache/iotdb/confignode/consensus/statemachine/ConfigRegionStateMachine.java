@@ -55,11 +55,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** StateMachine for ConfigNodeRegion */
-public class ConfigNodeRegionStateMachine
+/** StateMachine for ConfigRegion */
+public class ConfigRegionStateMachine
     implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRegionStateMachine.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionStateMachine.class);
 
   private static final ExecutorService threadPool =
       IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
@@ -83,7 +83,7 @@ public class ConfigNodeRegionStateMachine
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
-  public ConfigNodeRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
+  public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.configManager = configManager;
     this.currentNodeTEndPoint =
@@ -193,7 +193,7 @@ public class ConfigNodeRegionStateMachine
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
     // We get currentNodeId here because the currentNodeId
-    // couldn't initialize earlier than the ConfigNodeRegionStateMachine
+    // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
 
     if (currentNodeId == newLeaderId) {

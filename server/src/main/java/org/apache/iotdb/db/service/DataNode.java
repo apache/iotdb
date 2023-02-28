@@ -237,7 +237,7 @@ public class DataNode implements DataNodeMBean {
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
@@ -349,7 +349,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -408,7 +408,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -655,7 +655,7 @@ public class DataNode implements DataNodeMBean {
 
   private void getJarOfUDFs(List<UDFInformation> udfInformationList) throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
@@ -765,7 +765,7 @@ public class DataNode implements DataNodeMBean {
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
       throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
       List<String> jarNameList =
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)

@@ -2831,7 +2831,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private List<TDataNodeLocation> getRunningDataNodeLocations() {
     try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
       TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new StatementAnalyzeException(

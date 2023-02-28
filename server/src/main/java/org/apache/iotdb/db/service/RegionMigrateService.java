@@ -509,7 +509,7 @@ public class RegionMigrateService implements IService {
       throws TException, ClientManagerException {
     TSStatus status;
     try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configRegionId)) {
       status = client.reportRegionMigrateResult(req);
       LOGGER.info(
           "{}, Report region {} migrate result {} to Config node succeed, result: {}",
