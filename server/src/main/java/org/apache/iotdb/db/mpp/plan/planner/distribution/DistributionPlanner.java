@@ -44,8 +44,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import org.apache.commons.lang3.Validate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,9 +53,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class DistributionPlanner {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DistributionPlanner.class);
-
   private Analysis analysis;
   private MPPQueryContext context;
   private LogicalQueryPlan logicalPlan;
