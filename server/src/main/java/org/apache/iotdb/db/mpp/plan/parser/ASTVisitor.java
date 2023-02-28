@@ -134,6 +134,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowModelsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -908,6 +912,42 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowContinuousQueries(IoTDBSqlParser.ShowContinuousQueriesContext ctx) {
     return new ShowContinuousQueriesStatement();
+  }
+
+  // Create Model =====================================================================
+  @Override
+  public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
+    CreateModelStatement createModelStatement = new CreateModelStatement();
+    createModelStatement.setModelId(parseIdentifier(ctx.modelId.getText()));
+    createModelStatement.setAuto(ctx.AUTO() != null);
+
+    Map<String, String> attributes = new HashMap<>();
+    for (IoTDBSqlParser.AttributePairContext attribute : ctx.attributePair()) {
+      attributes.put(parseAttributeKey(attribute.key), parseAttributeValue(attribute.value));
+    }
+    createModelStatement.setAttributes(attributes);
+
+    createModelStatement.setQueryStatement(
+        (QueryStatement) visitSelectStatement(ctx.selectStatement()));
+    return createModelStatement;
+  }
+
+  // Drop Model =====================================================================
+  @Override
+  public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
+    return new DropModelStatement(parseIdentifier(ctx.modelId.getText()));
+  }
+
+  // Show Models =====================================================================
+  @Override
+  public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
+    return new ShowModelsStatement();
+  }
+
+  // Show Trails =====================================================================
+  @Override
+  public Statement visitShowTrails(IoTDBSqlParser.ShowTrailsContext ctx) {
+    return new ShowTrailsStatement(parseIdentifier(ctx.modelId.getText()));
   }
 
   /** Data Manipulation Language (DML) */

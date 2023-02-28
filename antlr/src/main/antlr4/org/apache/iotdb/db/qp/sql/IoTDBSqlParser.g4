@@ -470,7 +470,7 @@ showModels
 
 // ---- Show Trails
 showTrails
-    : SHOW TRAILS
+    : SHOW TRAILS modelId=identifier
     ;
 
 /**
