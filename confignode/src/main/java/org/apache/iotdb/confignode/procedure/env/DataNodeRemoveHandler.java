@@ -88,7 +88,7 @@ public class DataNodeRemoveHandler {
         .filter(
             replicaSet ->
                 replicaSet.getDataNodeLocations().contains(removedDataNode)
-                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigNodeRegion)
+                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }
