@@ -71,6 +71,8 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     this.queryStatement = queryStatement;
   }
 
+  public void semanticCheck() {}
+
   @Override
   public List<? extends PartialPath> getPaths() {
     return Collections.emptyList();

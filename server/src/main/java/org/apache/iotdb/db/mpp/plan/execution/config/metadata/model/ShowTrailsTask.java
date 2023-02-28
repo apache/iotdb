@@ -24,6 +24,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ShowTrailsTask implements IConfigTask {
 
@@ -38,4 +42,7 @@ public class ShowTrailsTask implements IConfigTask {
       throws InterruptedException {
     return configTaskExecutor.showTrails(modelId);
   }
+
+  public static void buildTsBlock(
+      List<ByteBuffer> trailInfoList, SettableFuture<ConfigTaskResult> future) {}
 }

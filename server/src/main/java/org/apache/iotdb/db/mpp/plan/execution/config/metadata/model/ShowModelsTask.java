@@ -24,6 +24,10 @@ import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ShowModelsTask implements IConfigTask {
 
@@ -34,4 +38,7 @@ public class ShowModelsTask implements IConfigTask {
       throws InterruptedException {
     return configTaskExecutor.showModels();
   }
+
+  public static void buildTsBlock(
+      List<ByteBuffer> modelInfoList, SettableFuture<ConfigTaskResult> future) {}
 }
