@@ -93,7 +93,7 @@ public class DistributionPlanner {
                 && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
             root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
-    adjustUpStream(root, nodeGroupContext);
+    adjustUpStream(newRoot, nodeGroupContext);
     return newRoot;
   }
 
@@ -129,16 +129,13 @@ public class DistributionPlanner {
         MultiChildrenSinkNode newChild =
             memo.computeIfAbsent(
                 regionOfChild,
-                tRegionReplicaSet -> {
-                  MultiChildrenSinkNode result =
-                      needShuffleSinkNode
-                          ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
-                          : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
-                  result.addChild(exchangeNode.getChild());
-                  result.addDownStreamChannelLocation(
-                      new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
-                  return result;
-                });
+                tRegionReplicaSet ->
+                    needShuffleSinkNode
+                        ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                        : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId()));
+        newChild.addChild(exchangeNode.getChild());
+        newChild.addDownStreamChannelLocation(
+            new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
         exchangeNode.setChild(newChild);
         exchangeNode.setIndexOfUpstreamSinkHandle(newChild.getCurrentLastIndex());
       }
