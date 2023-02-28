@@ -141,8 +141,6 @@ public class IoTDBConfig {
   /** Memory allocated for the consensus layer */
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
-  private volatile int maxQueryDeduplicatedPathNum = 1000;
-
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -990,8 +988,8 @@ public class IoTDBConfig {
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
 
-  private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
-  private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
+  private long dataRatisConsensusLogAppenderBufferSizeMax = 16 * 1024 * 1024L;
+  private long schemaRatisConsensusLogAppenderBufferSizeMax = 16 * 1024 * 1024L;
 
   private long dataRatisConsensusSnapshotTriggerThreshold = 400000L;
   private long schemaRatisConsensusSnapshotTriggerThreshold = 400000L;
@@ -2487,14 +2485,6 @@ public class IoTDBConfig {
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
-  }
-
-  public int getMaxQueryDeduplicatedPathNum() {
-    return maxQueryDeduplicatedPathNum;
-  }
-
-  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
   public int getCheckPeriodWhenInsertBlocked() {

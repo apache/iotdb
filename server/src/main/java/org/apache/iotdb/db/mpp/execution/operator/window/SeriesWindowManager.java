@@ -49,7 +49,9 @@ public class SeriesWindowManager implements IWindowManager {
 
   public SeriesWindowManager(SeriesWindowParameter seriesWindowParameter) {
     this.seriesWindow = new SeriesWindow(seriesWindowParameter);
-    this.needSkip = false;
+    // In group by condition, the first data point cannot be guaranteed to be true in controlColumn,
+    // so there is going to be a skipPointsOutOfBounds() in the beginning.
+    this.needSkip = true;
     this.keepEvaluator =
         AccumulatorFactory.initKeepEvaluator(seriesWindowParameter.getKeepExpression());
   }
@@ -115,6 +117,9 @@ public class SeriesWindowManager implements IWindowManager {
       if (isFirstSkip) {
         k++;
         long currentTime = timeColumn.getLong(i);
+        if (seriesWindow.getStartTime() > currentTime) {
+          seriesWindow.setStartTime(currentTime);
+        }
         if (seriesWindow.getEndTime() < currentTime) {
           seriesWindow.setEndTime(currentTime);
         }

@@ -129,6 +129,10 @@ CONCAT
     : C O N C A T
     ;
 
+CONDITION
+    : C O N D I T I O N
+    ;
+
 CONFIGNODES
     : C O N F I G N O D E S
     ;
@@ -554,12 +558,12 @@ SELECT
     : S E L E C T
     ;
 
-SERIES
-    : S E R I E S
-    ;
-
 SERIESSLOTID
     : S E R I E S S L O T I D
+    ;
+
+SESSION
+    : S E S S I O N
     ;
 
 SET

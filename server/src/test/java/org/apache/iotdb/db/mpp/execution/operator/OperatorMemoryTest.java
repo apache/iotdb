@@ -46,7 +46,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
@@ -79,6 +78,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
@@ -138,16 +138,15 @@ public class OperatorMemoryTest {
       PlanNodeId planNodeId = new PlanNodeId("1");
       driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
-              allSensors,
-              TSDataType.INT32,
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              scanOptionsBuilder.build());
 
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
@@ -188,12 +187,11 @@ public class OperatorMemoryTest {
 
       AlignedSeriesScanOperator seriesScanOperator =
           new AlignedSeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               alignedPath,
-              driverContext.getOperatorContexts().get(0),
-              null,
-              null,
-              true);
+              Ordering.ASC,
+              SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath));
 
       long maxPeekMemory =
           Math.max(
@@ -224,6 +222,21 @@ public class OperatorMemoryTest {
 
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxReturnSize());
+    assertEquals(0, exchangeOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void pipelineExchangeOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(null, null, null, child.calculateMaxReturnSize());
+
+    assertEquals(1024L, exchangeOperator.calculateMaxPeekMemory());
+    assertEquals(1024L, exchangeOperator.calculateMaxReturnSize());
     assertEquals(0, exchangeOperator.calculateRetainedSizeAfterCallingNext());
   }
 
@@ -468,42 +481,6 @@ public class OperatorMemoryTest {
     assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
     assertEquals(1024, sortOperator.calculateMaxReturnSize());
     assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
-  }
-
-  @Test
-  public void timeJoinOperatorTest() {
-    List<Operator> children = new ArrayList<>(4);
-    List<TSDataType> dataTypeList = new ArrayList<>(2);
-    dataTypeList.add(TSDataType.INT32);
-    dataTypeList.add(TSDataType.INT32);
-    long expectedMaxReturnSize =
-        Math.min(
-            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-            3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
-    long expectedMaxPeekMemory = 0;
-    long childrenMaxPeekMemory = 0;
-
-    for (int i = 0; i < 4; i++) {
-      Operator child = Mockito.mock(Operator.class);
-      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
-      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
-      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
-      childrenMaxPeekMemory =
-          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
-      expectedMaxPeekMemory += 64 * 1024L;
-      children.add(child);
-    }
-
-    expectedMaxPeekMemory =
-        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
-
-    TimeJoinOperator timeJoinOperator =
-        new TimeJoinOperator(
-            Mockito.mock(OperatorContext.class), children, Ordering.ASC, dataTypeList, null, null);
-
-    assertEquals(expectedMaxPeekMemory, timeJoinOperator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, timeJoinOperator.calculateMaxReturnSize());
-    assertEquals(3 * 64 * 1024L, timeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -1217,15 +1194,16 @@ public class OperatorMemoryTest {
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
     return new SeriesAggregationScanOperator(
         planNodeId,
         measurementPath,
-        allSensors,
+        Ordering.ASC,
+        scanOptionsBuilder.build(),
         driverContext.getOperatorContexts().get(0),
         aggregators,
         timeRangeIterator,
-        null,
-        true,
         groupByTimeParameter,
         maxReturnSize);
   }

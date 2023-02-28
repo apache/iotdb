@@ -160,9 +160,6 @@ public class SizeTieredCompactionSelector
     if (CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
             + taskPriorityQueue.size()
         < config.getCandidateCompactionTaskQueueSize()) {
-      if (sequence) {
-        Collections.sort(selectedFileList, TsFileResource::compareFileName);
-      }
       taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       return true;
     }

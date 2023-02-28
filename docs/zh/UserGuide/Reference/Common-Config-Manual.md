@@ -573,15 +573,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | true                |
 | 改后生效方式 | 重启服务生效        |
 
-* max\_deduplicated\_path\_num
-
-|名字| max\_deduplicated\_path\_num |
-|:---:|:---|
-|描述| 单次查询允许的最大路径数。 |
-|类型| Int32 |
-|默认值| 1000 |
-|改后生效方式|重启服务生效|
-
 * mpp\_data\_exchange\_core\_pool\_size
 
 |     名字     | mpp\_data\_exchange\_core\_pool\_size |

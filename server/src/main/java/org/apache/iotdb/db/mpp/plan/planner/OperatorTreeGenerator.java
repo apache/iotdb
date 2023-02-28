@@ -33,11 +33,14 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
-import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
-import org.apache.iotdb.db.mpp.execution.exchange.LocalSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkChannel;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.LocalSinkChannel;
+import org.apache.iotdb.db.mpp.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -112,6 +115,8 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperato
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
+import org.apache.iotdb.db.mpp.execution.operator.sink.IdentitySinkOperator;
+import org.apache.iotdb.db.mpp.execution.operator.sink.ShuffleHelperOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -120,6 +125,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SeriesWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
@@ -170,7 +176,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -184,11 +191,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDes
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -218,6 +227,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -225,11 +235,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -260,7 +270,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -271,16 +281,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
+    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
+    if (timeFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+    }
+    seriesScanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    seriesScanOptionsBuilder.withLimit(node.getLimit());
+    seriesScanOptionsBuilder.withOffset(node.getOffset());
+
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
-            seriesPath.getSeriesType(),
-            timeFilter != null ? timeFilter.copy() : null,
-            valueFilter != null ? valueFilter.copy() : null,
-            ascending);
+            node.getScanOrder(),
+            seriesScanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -293,7 +312,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
     AlignedPath seriesPath = node.getAlignedPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -304,14 +323,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Filter timeFilter = node.getTimeFilter();
     Filter valueFilter = node.getValueFilter();
+    SeriesScanOptions.Builder seriesScanOptionsBuilder = new SeriesScanOptions.Builder();
+    if (timeFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+    }
+    seriesScanOptionsBuilder.withLimit(node.getLimit());
+    seriesScanOptionsBuilder.withOffset(node.getOffset());
+    seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
+            operatorContext,
             node.getPlanNodeId(),
             seriesPath,
-            operatorContext,
-            timeFilter != null ? timeFilter.copy() : null,
-            valueFilter != null ? valueFilter.copy() : null,
-            ascending);
+            node.getScanOrder(),
+            seriesScanOptionsBuilder.build());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -357,16 +386,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            timeFilter != null ? timeFilter.copy() : null,
-            ascending,
             node.getGroupByTimeParameter(),
             maxReturnSize);
 
@@ -424,15 +459,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
+            node.getScanOrder(),
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            timeFilter != null ? timeFilter.copy() : null,
-            ascending,
             groupByTimeParameter,
             maxReturnSize);
 
@@ -1420,7 +1461,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // groupByParameter and groupByTimeParameter
       if (groupByParameter != null) {
         WindowType windowType = groupByParameter.getWindowType();
-        WindowParameter windowParameter = null;
+
+        WindowParameter windowParameter;
         switch (windowType) {
           case EVENT_WINDOW:
             String controlColumn = node.getGroupByExpression().getExpressionString();
@@ -1430,19 +1472,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     controlColumnType,
                     layout.get(controlColumn).get(0).getValueColumnIndex(),
                     node.isOutputEndTime(),
-                    groupByParameter.isIgnoringNull(),
+                    ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
                     ((GroupByVariationParameter) groupByParameter).getDelta());
             break;
           case SERIES_WINDOW:
             windowParameter =
                 new SeriesWindowParameter(
                     node.isOutputEndTime(),
-                    groupByParameter.isIgnoringNull(),
+                    ((GroupBySeriesParameter) groupByParameter).isIgnoringNull(),
                     layout
                         .get(node.getGroupByExpression().getExpressionString())
                         .get(0)
                         .getValueColumnIndex(),
                     ((GroupBySeriesParameter) groupByParameter).getKeepExpression());
+            break;
+          case SESSION_WINDOW:
+            windowParameter =
+                new SessionWindowParameter(
+                    ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
+                    node.isOutputEndTime());
             break;
           default:
             throw new IllegalArgumentException("Unsupported window type");
@@ -1800,20 +1848,26 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
     TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
+    boolean isSameNode = isSameNode(upstreamEndPoint);
     ISourceHandle sourceHandle =
-        isSameNode(upstreamEndPoint)
+        isSameNode
             ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
+                node.getUpstreamPlanNodeId().getId(),
                 remoteInstanceId.toThrift(),
+                node.getIndexOfUpstreamSinkHandle(),
                 context.getInstanceContext()::failed)
             : MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
+                node.getIndexOfUpstreamSinkHandle(),
                 upstreamEndPoint,
                 remoteInstanceId.toThrift(),
                 context.getInstanceContext()::failed);
-    context.addExchangeSumNum(1);
+    if (!isSameNode) {
+      context.addExchangeSumNum(1);
+    }
     sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
@@ -1822,36 +1876,73 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
-    if (!isSameNode(node.getDownStreamEndpoint())) {
-      context.addExchangeSumNum(1);
-    }
-    Operator child = node.getChild().accept(this, context);
+  public Operator visitIdentitySink(IdentitySinkNode node, LocalExecutionPlanContext context) {
+    context.addExchangeSumNum(1);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                IdentitySinkOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
-    FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
-    TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
-
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
-        isSameNode(downStreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForFragment(
-                localInstanceId.toThrift(),
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId(),
-                context.getInstanceContext())
-            : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
-                localInstanceId.toThrift(),
-                downStreamEndPoint,
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId(),
-                node.getPlanNodeId().getId(),
-                context.getInstanceContext());
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+            node.getDownStreamChannelLocationList(),
+            downStreamChannelIndex,
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            localInstanceId.toThrift(),
+            node.getPlanNodeId().getId(),
+            context.getInstanceContext());
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSinkHandle(sinkHandle);
-    return child;
+    context.getDriverContext().setSink(sinkHandle);
+
+    return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+  }
+
+  @Override
+  public Operator visitShuffleSink(ShuffleSinkNode node, LocalExecutionPlanContext context) {
+    context.addExchangeSumNum(1);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ShuffleHelperOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+
+    checkArgument(
+        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    ISinkHandle sinkHandle =
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+            node.getDownStreamChannelLocationList(),
+            downStreamChannelIndex,
+            ShuffleSinkHandle.ShuffleStrategyEnum.SIMPLE_ROUND_ROBIN,
+            localInstanceId.toThrift(),
+            node.getPlanNodeId().getId(),
+            context.getInstanceContext());
+    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.getDriverContext().setSink(sinkHandle);
+
+    return new ShuffleHelperOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
 
   @Override
@@ -1953,16 +2044,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         calculateMaxAggregationResultSizeForLastQuery(
             aggregators, seriesPath.transformToPartialPath());
 
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
+    scanOptionsBuilder.withGlobalTimeFilter(context.getLastQueryTimeFilter());
+
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
-            context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
+            Ordering.DESC,
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            context.getLastQueryTimeFilter(),
-            false,
             null,
             maxReturnSize);
     ((DataDriverContext) context.getDriverContext())
@@ -2051,15 +2146,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators, unCachedPath);
 
+    Filter timeFilter = context.getLastQueryTimeFilter();
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(new HashSet<>(unCachedPath.getMeasurementList()));
+    if (timeFilter != null) {
+      scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             unCachedPath,
+            Ordering.DESC,
+            scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
-            context.getLastQueryTimeFilter(),
-            false,
             null,
             maxReturnSize);
     ((DataDriverContext) context.getDriverContext())
@@ -2386,11 +2488,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private Operator createNewPipelineForChildNode(
       LocalExecutionPlanContext context, LocalExecutionPlanContext subContext, PlanNode childNode) {
     Operator childOperation = childNode.accept(this, subContext);
-    ISinkHandle localSinkHandle =
-        MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
+    ISinkChannel localSinkChannel =
+        MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
             // Attention, there is no parent node, use first child node instead
             subContext.getDriverContext(), childNode.getPlanNodeId().getId());
-    subContext.setSinkHandle(localSinkHandle);
+    subContext.setISink(localSinkChannel);
     subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
     ExchangeOperator sourceOperator =
@@ -2400,9 +2502,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 .addOperatorContext(
                     context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
             MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                 context.getDriverContext()),
-            childNode.getPlanNodeId());
+            childNode.getPlanNodeId(),
+            childOperation.calculateMaxReturnSize());
 
     context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
     context.addExchangeOperator(sourceOperator);
@@ -2442,11 +2545,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           subContext.setDegreeOfParallelism(dopForChild);
           int originPipeNum = context.getPipelineNumber();
           Operator childOperation = childNode.accept(this, subContext);
-          ISinkHandle localSinkHandle =
-              MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
+          ISinkChannel localSinkChannel =
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
                   // Attention, there is no parent node, use first child node instead
                   context.getDriverContext(), childNode.getPlanNodeId().getId());
-          subContext.setSinkHandle(localSinkHandle);
+          subContext.setISink(localSinkChannel);
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
           int curChildPipelineNum = subContext.getPipelineNumber() - originPipeNum;
@@ -2478,9 +2581,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                           null,
                           ExchangeOperator.class.getSimpleName()),
                   MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                      ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                      ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                       context.getDriverContext()),
-                  childNode.getPlanNodeId());
+                  childNode.getPlanNodeId(),
+                  childOperation.calculateMaxReturnSize());
           context
               .getTimeSliceAllocator()
               .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);

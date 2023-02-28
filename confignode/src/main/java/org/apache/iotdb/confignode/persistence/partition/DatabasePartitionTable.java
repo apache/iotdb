@@ -137,23 +137,35 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Get all RegionGroups currently owned by this StorageGroup
+   * Only leader use this interface.
    *
+   * <p>Get the number of Regions currently owned by the specified DataNode
+   *
+   * @param dataNodeId The specified DataNode
    * @param type SchemaRegion or DataRegion
-   * @return The regions currently owned by this StorageGroup
+   * @return The number of Regions currently owned by the specified DataNode
    */
-  public Set<RegionGroup> getRegionGroups(TConsensusGroupType type) {
-    Set<RegionGroup> regionGroups = new HashSet<>();
+  public int getRegionCount(int dataNodeId, TConsensusGroupType type) {
+    AtomicInteger result = new AtomicInteger(0);
     regionGroupMap
         .values()
         .forEach(
             regionGroup -> {
-              if (regionGroup.getId().getType().equals(type)) {
-                regionGroups.add(regionGroup);
+              if (type.equals(regionGroup.getId().getType())) {
+                regionGroup
+                    .getReplicaSet()
+                    .getDataNodeLocations()
+                    .forEach(
+                        dataNodeLocation -> {
+                          if (dataNodeLocation.getDataNodeId() == dataNodeId) {
+                            result.getAndIncrement();
+                          }
+                        });
               }
             });
-    return regionGroups;
+    return result.get();
   }
+
   /**
    * Get the number of RegionGroups currently owned by this StorageGroup
    *
@@ -271,7 +283,7 @@ public class DatabasePartitionTable {
    * @param type SchemaRegion or DataRegion
    * @return Set<TDataNodeLocation>, the related DataNodes
    */
-  public Set<TDataNodeLocation> getStorageGroupRelatedDataNodes(TConsensusGroupType type) {
+  public Set<TDataNodeLocation> getDatabaseRelatedDataNodes(TConsensusGroupType type) {
     HashSet<TDataNodeLocation> result = new HashSet<>();
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
@@ -489,14 +501,6 @@ public class DatabasePartitionTable {
 
   public String getDatabaseName() {
     return databaseName;
-  }
-
-  public int getDataPartitionMapSize() {
-    return dataPartitionTable.getDataPartitionMap().size();
-  }
-
-  public int getSchemaPartitionMapSize() {
-    return schemaPartitionTable.getSchemaPartitionMap().size();
   }
 
   @Override

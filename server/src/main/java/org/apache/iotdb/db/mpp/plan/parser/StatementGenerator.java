@@ -643,7 +643,7 @@ public class StatementGenerator {
     }
     CreateSchemaTemplateStatement statement =
         new CreateSchemaTemplateStatement(
-            templateName, measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
+            req.getName(), measurements, dataTypes, encodings, compressors, alignedPrefix.keySet());
     PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }

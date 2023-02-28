@@ -168,7 +168,6 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,
-            measurementSchemas[2688].getType(),
             TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),

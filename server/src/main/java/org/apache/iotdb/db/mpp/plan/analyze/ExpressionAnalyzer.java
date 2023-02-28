@@ -629,6 +629,17 @@ public class ExpressionAnalyzer {
       for (Expression childExpression : expression.getExpressions()) {
         childrenExpressions.add(
             replaceRawPathWithGroupedPath(childExpression, rawPathToGroupedPathMap));
+
+        // We just process first input Expression of AggregationFunction.
+        // If AggregationFunction need more than one input series,
+        // we need to reconsider the process of it
+        if (expression.isBuiltInAggregationFunctionExpression()) {
+          List<Expression> children = expression.getExpressions();
+          for (int i = 1; i < children.size(); i++) {
+            childrenExpressions.add(children.get(i));
+          }
+          break;
+        }
       }
       return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
@@ -1326,6 +1337,40 @@ public class ExpressionAnalyzer {
       return false;
     } else if (expression instanceof LeafOperand) {
       return false;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static boolean checkIsScalarExpression(Expression expression, Analysis analysis) {
+    if (expression instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) expression;
+      return checkIsScalarExpression(ternaryExpression.getFirstExpression(), analysis)
+          && checkIsScalarExpression(ternaryExpression.getSecondExpression(), analysis)
+          && checkIsScalarExpression(ternaryExpression.getThirdExpression(), analysis);
+    } else if (expression instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) expression;
+      return checkIsScalarExpression(binaryExpression.getLeftExpression(), analysis)
+          && checkIsScalarExpression(binaryExpression.getRightExpression(), analysis);
+    } else if (expression instanceof UnaryExpression) {
+      return checkIsScalarExpression(((UnaryExpression) expression).getExpression(), analysis);
+    } else if (expression instanceof FunctionExpression) {
+      FunctionExpression functionExpression = (FunctionExpression) expression;
+      if (!functionExpression.isMappable(analysis.getExpressionTypes())
+          || BuiltinFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              functionExpression.getFunctionName())) {
+        return false;
+      }
+      List<Expression> inputExpressions = functionExpression.getExpressions();
+      for (Expression inputExpression : inputExpressions) {
+        if (!checkIsScalarExpression(inputExpression, analysis)) {
+          return false;
+        }
+      }
+      return true;
+    } else if (expression instanceof LeafOperand) {
+      return true;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
