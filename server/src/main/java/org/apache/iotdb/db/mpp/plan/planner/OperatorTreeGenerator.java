@@ -2547,7 +2547,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
           // OneByOneChild may be divided into more than dop pipelines, but the number of running
-          // is dop actually
+          // actually is dop
           int curChildPipelineNum =
               Math.min(dopForChild, subContext.getPipelineNumber() - originPipeNum);
           childPipelineNums.add(curChildPipelineNum);
