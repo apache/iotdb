@@ -199,17 +199,7 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    // only update query operation's timeout because we will never limit write operation's execution
-    // time
-    if (isQuery()) {
-      long currentTime = System.currentTimeMillis();
-      long remainTime = context.getTimeOut() - (currentTime - context.getStartTime());
-      if (remainTime <= 0) {
-        throw new QueryTimeoutRuntimeException(
-            context.getStartTime(), currentTime, context.getTimeOut());
-      }
-      context.setTimeOut(remainTime);
-    }
+    checkAndUpdateTimeOutForQuery(context.getStartTime());
 
     doLogicalPlan();
     doDistributedPlan();
@@ -219,6 +209,19 @@ public class QueryExecution implements IQueryExecution {
     }
     PerformanceOverviewMetricsManager.getInstance().recordPlanCost(System.nanoTime() - startTime);
     schedule();
+  }
+
+  private void checkAndUpdateTimeOutForQuery(long startTime) {
+    // only update query operation's timeout because we will never limit write operation's execution
+    // time
+    if (isQuery()) {
+      long currentTime = System.currentTimeMillis();
+      long remainTime = context.getTimeOut() - (currentTime - startTime);
+      if (remainTime <= 0) {
+        throw new QueryTimeoutRuntimeException(context.getStartTime(), currentTime);
+      }
+      context.setTimeOut(remainTime);
+    }
   }
 
   private ExecutionResult retry() {
@@ -310,8 +313,10 @@ public class QueryExecution implements IQueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
+    long startTime = System.currentTimeMillis();
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
+    checkAndUpdateTimeOutForQuery(startTime);
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
@@ -323,7 +328,7 @@ public class QueryExecution implements IQueryExecution {
     long startTime = System.nanoTime();
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-
+    checkAndUpdateTimeOutForQuery(startTime);
     if (rawStatement.isQuery()) {
       QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }

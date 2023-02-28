@@ -25,7 +25,7 @@ public class QueryTimeoutRuntimeException extends RuntimeException {
       "Current query is time out, please check your statement or modify timeout parameter.";
 
   public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
-      "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
+      "Current query is time out, query start time is %d, current time is %d, please check your statement or modify timeout parameter.";
 
   public QueryTimeoutRuntimeException(String message, Throwable cause) {
     super(message, cause);
@@ -35,9 +35,7 @@ public class QueryTimeoutRuntimeException extends RuntimeException {
     super(TIMEOUT_EXCEPTION_MESSAGE);
   }
 
-  public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
-    super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime));
+  public QueryTimeoutRuntimeException(long startTime, long currentTime) {
+    super(String.format(QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, currentTime));
   }
 }
