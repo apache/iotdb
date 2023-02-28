@@ -114,4 +114,8 @@ public abstract class MultiChildrenSinkNode extends SinkNode {
   public void addDownStreamChannelLocation(DownStreamChannelLocation downStreamChannelLocation) {
     downStreamChannelLocationList.add(downStreamChannelLocation);
   }
+
+  public int getCurrentLastIndex() {
+    return children.size() - 1;
+  }
 }
