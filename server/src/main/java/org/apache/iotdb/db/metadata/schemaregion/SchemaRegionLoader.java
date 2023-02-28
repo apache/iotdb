@@ -58,10 +58,18 @@ class SchemaRegionLoader {
     Set<Class<?>> annotatedSchemaRegionSet = reflections.getTypesAnnotatedWith(SchemaRegion.class);
 
     for (Class<?> annotatedSchemaRegion : annotatedSchemaRegionSet) {
-      if (!annotatedSchemaRegion.isInstance(ISchemaRegion.class)) {
+      boolean isSchemaRegion = false;
+      for (Class<?> interfaces : annotatedSchemaRegion.getInterfaces()) {
+        if (interfaces == ISchemaRegion.class) {
+          isSchemaRegion = true;
+          break;
+        }
+      }
+      if (!isSchemaRegion) {
         logger.warn(
             String.format(
                 "Class %s is not a subclass of ISchemaRegion.", annotatedSchemaRegion.getName()));
+        continue;
       }
       SchemaRegion annotationInfo = annotatedSchemaRegion.getAnnotation(SchemaRegion.class);
       constructorMap.compute(
