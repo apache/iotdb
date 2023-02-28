@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,40 +58,22 @@ public class CompactionScheduler {
       return;
     }
     try {
-      tryToSubmitCrossSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager);
-      tryToSubmitInnerSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager,
-          true);
-      tryToSubmitInnerSpaceCompactionTask(
-          tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegionId(),
-          timePartition,
-          tsFileManager,
-          false);
+      tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
+      tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
     }
   }
 
-  public static void tryToSubmitInnerSpaceCompactionTask(
-      String storageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager,
-      boolean sequence)
-      throws InterruptedException {
+  private static List<List<TsFileResource>> selectInnerSpaceCompactionTask(
+      long timePartition, TsFileManager tsFileManager, boolean sequence) {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
-      return;
+      return Collections.emptyList();
     }
+    String storageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
 
     ICompactionSelector innerSpaceCompactionSelector = null;
     if (sequence) {
@@ -104,44 +87,76 @@ public class CompactionScheduler {
               .getInnerUnsequenceCompactionSelector()
               .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
     }
-    List<List<TsFileResource>> taskList =
-        innerSpaceCompactionSelector.selectInnerSpaceTask(
-            sequence
-                ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
-                : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
-    for (List<TsFileResource> task : taskList) {
-      ICompactionPerformer performer =
-          sequence
-              ? IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getInnerSeqCompactionPerformer()
-                  .createInstance()
-              : IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getInnerUnseqCompactionPerformer()
-                  .createInstance();
-      CompactionTaskManager.getInstance()
-          .addTaskToWaitingQueue(
-              new InnerSpaceCompactionTask(
-                  timePartition,
-                  tsFileManager,
-                  task,
-                  sequence,
-                  performer,
-                  CompactionTaskManager.currentTaskNum,
-                  tsFileManager.getNextCompactionTaskId()));
+
+    return innerSpaceCompactionSelector.selectInnerSpaceTask(
+        sequence
+            ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
+            : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+  }
+
+  public static void tryToSubmitInnerSpaceCompactionTask(
+      TsFileManager tsFileManager, long timePartition) throws InterruptedException {
+    List<List<TsFileResource>> seqTaskList =
+        selectInnerSpaceCompactionTask(timePartition, tsFileManager, true);
+    List<List<TsFileResource>> unseqTaskList =
+        selectInnerSpaceCompactionTask(timePartition, tsFileManager, false);
+    int taskFreeSize =
+        config.getCandidateCompactionTaskQueueSize()
+            - CompactionTaskManager.getInstance().getCompactionCandidateTaskCount();
+    int taskSize = Math.max(seqTaskList.size(), unseqTaskList.size());
+    for (int i = 0; i < taskSize; i++) {
+      if (taskFreeSize <= 0) {
+        break;
+      }
+      // submit one seq inner space task
+      if (i < seqTaskList.size()) {
+        submitInnerTask(seqTaskList.get(i), tsFileManager, timePartition, true);
+        taskFreeSize--;
+      }
+
+      // submit one unseq inner space task
+      if (i < unseqTaskList.size()) {
+        submitInnerTask(unseqTaskList.get(i), tsFileManager, timePartition, false);
+        taskFreeSize--;
+      }
     }
   }
 
-  private static void tryToSubmitCrossSpaceCompactionTask(
-      String logicalStorageGroupName,
-      String dataRegionId,
+  private static void submitInnerTask(
+      List<TsFileResource> taskList,
+      TsFileManager tsFileManager,
       long timePartition,
-      TsFileManager tsFileManager)
+      boolean sequence)
       throws InterruptedException {
+    ICompactionPerformer performer =
+        sequence
+            ? IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getInnerSeqCompactionPerformer()
+                .createInstance()
+            : IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getInnerUnseqCompactionPerformer()
+                .createInstance();
+    CompactionTaskManager.getInstance()
+        .addTaskToWaitingQueue(
+            new InnerSpaceCompactionTask(
+                timePartition,
+                tsFileManager,
+                taskList,
+                sequence,
+                performer,
+                CompactionTaskManager.currentTaskNum,
+                tsFileManager.getNextCompactionTaskId()));
+  }
+
+  private static void tryToSubmitCrossSpaceCompactionTask(
+      TsFileManager tsFileManager, long timePartition) throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return;
     }
+    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
