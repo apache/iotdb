@@ -476,7 +476,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getUDFTableResp.getStatus().message, getUDFTableResp.getStatus().code));
         return future;
       }
-      // convert triggerTable and buildTsBlock
+      // convert UDFTable and buildTsBlock
       ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -819,7 +819,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getPipePluginTableResp.getStatus().code));
         return future;
       }
-      // convert triggerTable and buildTsBlock
+      // convert PipePluginTable and buildTsBlock
       ShowFunctionsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);

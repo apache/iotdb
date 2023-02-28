@@ -827,7 +827,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
   }
 
-  // Show PipePlugin =====================================================================
+  // Show PipePlugins =====================================================================
   @Override
   public Statement visitShowPipePlugins(IoTDBSqlParser.ShowPipePluginsContext ctx) {
     return new ShowPipePluginsStatement();
