@@ -70,7 +70,6 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
-import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -122,6 +121,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
+@SchemaRegion(mode = "Schema_File")
 public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
@@ -152,22 +152,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private final ISeriesNumerMonitor seriesNumerMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionSchemaFileImpl(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      ISchemaEngineStatistics engineStatistics,
-      ISeriesNumerMonitor seriesNumerMonitor)
+  public SchemaRegionSchemaFileImpl(ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = storageGroup.getFullPath();
-    this.schemaRegionId = schemaRegionId;
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
-    this.seriesNumerMonitor = seriesNumerMonitor;
+    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
     this.regionStatistics =
-        new CachedSchemaRegionStatistics(schemaRegionId.getId(), engineStatistics);
+        new CachedSchemaRegionStatistics(
+            schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
     init();
   }
 

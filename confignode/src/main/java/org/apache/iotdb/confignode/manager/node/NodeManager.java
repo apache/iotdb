@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -278,8 +279,16 @@ public class NodeManager {
     return resp;
   }
 
-  public TDataNodeRestartResp restartDataNode(TDataNodeLocation dataNodeLocation) {
-    // TODO: @Itami-Sho update peer if necessary
+  public TDataNodeRestartResp updateDataNodeIfNecessary(
+      TDataNodeConfiguration dataNodeConfiguration) {
+    TDataNodeConfiguration recordConfiguration =
+        getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
+    if (!recordConfiguration.equals(dataNodeConfiguration)) {
+      // Update DataNodeConfiguration when modified during restart
+      UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      getConsensusManager().write(updateDataNodePlan);
+    }
+
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setConfigNodeList(getRegisteredConfigNodes());
@@ -334,48 +343,6 @@ public class NodeManager {
     LOGGER.info(
         "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
         removeDataNodePlan);
-    return dataSet;
-  }
-
-  /**
-   * Update the specified DataNode‘s location
-   *
-   * @param updateDataNodePlan UpdateDataNodePlan
-   * @return TSStatus. The TSStatus will be set to SUCCESS_STATUS when update success, and
-   *     DATANODE_NOT_EXIST when some datanode is not exist, UPDATE_DATANODE_FAILED when update
-   *     failed.
-   */
-  public DataSet updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
-    LOGGER.info("NodeManager start to update DataNode {}", updateDataNodePlan);
-
-    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
-    TSStatus status;
-    // check if node is already exist
-    boolean found = false;
-    List<TDataNodeConfiguration> configurationList = getRegisteredDataNodes();
-    for (TDataNodeConfiguration configuration : configurationList) {
-      if (configuration.getLocation().getDataNodeId()
-          == updateDataNodePlan.getDataNodeLocation().getDataNodeId()) {
-        found = true;
-        break;
-      }
-    }
-    if (found) {
-      getConsensusManager().write(updateDataNodePlan);
-      status =
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              .setMessage("updateDataNode(nodeId=%d) success.");
-    } else {
-      status =
-          new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
-              .setMessage(
-                  String.format(
-                      "The specified DataNode(nodeId=%d) doesn't exist",
-                      updateDataNodePlan.getDataNodeLocation().getDataNodeId()));
-    }
-    dataSet.setStatus(status);
-    dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
-    dataSet.setConfigNodeList(getRegisteredConfigNodes());
     return dataSet;
   }
 

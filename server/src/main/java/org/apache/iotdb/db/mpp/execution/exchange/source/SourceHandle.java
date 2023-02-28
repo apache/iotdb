@@ -470,7 +470,12 @@ public class SourceHandle implements ISourceHandle {
     @Override
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        LOGGER.debug("[StartPullTsBlocksFromRemote] [{}, {}) ", startSequenceId, endSequenceId);
+        LOGGER.debug(
+            "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
+            remoteFragmentInstanceId,
+            indexOfUpstreamSinkHandle,
+            startSequenceId,
+            endSequenceId);
         TGetDataBlockRequest req =
             new TGetDataBlockRequest(
                 remoteFragmentInstanceId,

@@ -50,7 +50,9 @@ public class BaseServerContextHandler {
     }
   }
 
-  public BaseServerContextHandler() {}
+  public BaseServerContextHandler() {
+    // empty constructor
+  }
 
   public ServerContext createContext(TProtocol in, TProtocol out) {
     Socket socket =
