@@ -58,6 +58,6 @@ class MLNode(object):
 
 
 if __name__ == "__main__":
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method('spawn', force=True) # to use gpu in forked processes
     server = MLNode()
     server.start()

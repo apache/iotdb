@@ -39,7 +39,7 @@ def parseConfig(config):
     # config = argparse.Namespace(**config)
     
     # default config
-    config.use_gpu = True
+    config.use_gpu = False
     config.use_multi_gpu = False
     config.devices = [0]
     config.gpu = 0
@@ -57,10 +57,11 @@ class BasicTrial(object):
         self.model = self.model.to(self.device)
         self.dataset, self.dataloader, self.val_dataset, self.val_loader = self._build_data()
 
-        self.model_id = 1
+        self.model_id = configs.model_id
+        self.trial_id = configs.trial_id
 
 
-    def _build_model(self):
+    def _build_model(self): # MODEL Factory
         model_type = self.configs.model_type
         model_config = parseModelConfig(self.configs)
         model = eval(model_type)(model_config)
@@ -68,7 +69,7 @@ class BasicTrial(object):
         return model
 
 
-    def _build_data(self):
+    def _build_data(self): # virtual method
         # data_config = parseDataConfig(self.config)
         # dataset, dataloader = data_provider(data_config)
         dataset, dataloader, testset, testloader = debug_dataset()
@@ -168,8 +169,8 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss = self.validate(self.model, criterion, self.val_loader, self.configs, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelManager.saveModel(self.model, self.model_id, 1)
-        return val_loss
+                modelManager.save_model(self.model, self.model_id, 1)
+        return best_loss
         
 
 class ForecastingInferenceTrial(BasicTrial):
@@ -241,5 +242,6 @@ if __name__ == '__main__':
     from data_provider.build_dataset_debug import *
     configs = default_configs()
     data = debug_inference_data()
-    trial = ForecastingInferenceTrial(configs, data)
+    trial = ForecastingTrainingTrial(configs)
+    # trial = ForecastingInferenceTrial(configs, data)
     trial.start()

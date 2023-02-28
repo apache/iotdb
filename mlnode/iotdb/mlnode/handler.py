@@ -25,7 +25,7 @@ from utils.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 
 from manager import Manager
-from data_provider.build_dataset_debug import *
+from data.build_dataset_debug import *
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
@@ -45,16 +45,16 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         self.taskManager = Manager(10)
         pass
 
-    def deleteModel(self, req: TDeleteModelReq):
+    def delete_model(self, req: TDeleteModelReq):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
-    def createTrainingTask(self, req: TCreateTrainingTaskReq):
+    def create_training_task(self, req: TCreateTrainingTaskReq):
         config = default_configs()
-        self.taskManager.createSingleTrainingTask_Pool(config)
+        self.taskManager.create_single_training_task_pool(config)
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def forecast(self, req: TForecastReq):
         status = get_status(TSStatusCode.SUCCESS_STATUS, "")
         forecast_result = b'forecast result'
-        self.taskManager.createInferenceTask_Pool(default_configs())
+        self.taskManager.create_inference_task_pool(default_configs())
         return TForecastResp(status, forecast_result)

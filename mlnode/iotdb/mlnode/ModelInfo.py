@@ -15,10 +15,10 @@ class ModelInfo(object):
         if not os.path.exists(self.model_dir):
             os.mkdir(self.model_dir)
 
-    def existModel(self):
+    def exist_model(self):
         return os.path.exists(self.model_dir)
 
-    def saveModel(self, model, trail_id, updateBestTrail):
+    def save_model(self, model, trail_id, updateBestTrail):
         trail_dir = self.model_dir + '/' + str(trail_id)
         if not os.path.exists(trail_dir):
             os.mkdir(trail_dir)
@@ -27,8 +27,8 @@ class ModelInfo(object):
             self.best_trail_dir = trail_dir
         print("Model Saved Successfully in " + trail_dir)
 
-    def loadBestModel(self):
-        if not self.existModel():
+    def load_best_model(self):
+        if not self.exist_model():
             print("Model not exist")
             return None
         else:
@@ -38,7 +38,7 @@ class ModelInfo(object):
             self.lock.release()
             return model
 
-    def deleteModel(self):
+    def delete_model(self):
         count = 0
         while count < self.capacity:
             try:
@@ -48,4 +48,4 @@ class ModelInfo(object):
                 pass
         shutil.rmtree(self.model_dir)
         print('Delete ' + str(self.model_id) + ' Successfully')
-        return self.existModel()
+        return self.exist_model()
