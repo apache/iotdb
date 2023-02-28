@@ -212,8 +212,7 @@ public class ClusterNodeStartUtils {
         updatedTEndPoints =
             checkUpdatedTEndPointOfDataNode(
                 (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
-        if (!updatedTEndPoints.isEmpty()
-            && updatedTEndPoints.stream().max(Integer::compare).orElse(0) > 0) {
+        if (updatedTEndPoints.stream().max(Integer::compare).orElse(-1) > 0) {
           // TODO: Accept internal TEndPoints
           acceptRestart = false;
         }
@@ -347,7 +346,7 @@ public class ClusterNodeStartUtils {
    *
    * @param restartLocation The location of restart ConfigNode
    * @param recordLocation The record ConfigNode location
-   * @return The set of TEndPoints that have modified. 0: internalEndPoint, 1: consensusEndPoint
+   * @return The set of TEndPoints that have modified.
    */
   public static Set<Integer> checkUpdatedTEndPointOfConfigNode(
       TConfigNodeLocation restartLocation, TConfigNodeLocation recordLocation) {
@@ -366,8 +365,7 @@ public class ClusterNodeStartUtils {
    *
    * @param restartLocation The location of restart DataNode
    * @param recordLocation The record DataNode location
-   * @return The set of TEndPoints that have modified. 0: clientRpcEndPoint, 1: internalEndPoint, 2:
-   *     mPPDataExchangeEndPoint, 3: dataRegionConsensusEndPoint, 4: schemaRegionConsensusEndPoint
+   * @return The set of TEndPoints that have modified.
    */
   public static Set<Integer> checkUpdatedTEndPointOfDataNode(
       TDataNodeLocation restartLocation, TDataNodeLocation recordLocation) {

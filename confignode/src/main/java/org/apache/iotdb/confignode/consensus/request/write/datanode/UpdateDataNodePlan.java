@@ -65,7 +65,7 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
+    if (!getType().equals(((UpdateDataNodePlan) o).getType())) {
       return false;
     }
     UpdateDataNodePlan that = (UpdateDataNodePlan) o;
@@ -74,6 +74,6 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), dataNodeConfiguration);
+    return Objects.hash(getType(), dataNodeConfiguration);
   }
 }
