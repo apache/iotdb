@@ -48,7 +48,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
@@ -88,7 +87,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -212,7 +210,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
-    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
+    LOGGER.info("Execute RegisterDataNodeRequest {} with result {}", req, resp);
 
     return resp;
   }
@@ -222,7 +220,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
-    LOGGER.info("Execute RestartDatanodeRequest {} with result {}", req, resp);
+    LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
 
     return resp;
   }
@@ -236,18 +234,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
     LOGGER.info(
         "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
-    return resp;
-  }
-
-  @Override
-  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) {
-    LOGGER.info("ConfigNode RPC Service start to update DataNode, req: {}", req);
-    UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(req.getDataNodeLocation());
-    TDataNodeRegisterResp resp =
-        ((DataNodeRegisterResp) configManager.updateDataNode(updateDataNodePlan))
-            .convertToRpcDataNodeRegisterResp();
-    LOGGER.info(
-        "ConfigNode RPC Service finished to update DataNode, req: {}, result: {}", req, resp);
     return resp;
   }
 

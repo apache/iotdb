@@ -93,8 +93,8 @@ struct TRuntimeConfiguration {
 }
 
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-  2: required string clusterName
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
 }
 
 struct TDataNodeRegisterResp {
@@ -113,10 +113,6 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-}
-
-struct TDataNodeUpdateReq {
-  1: required common.TDataNodeLocation dataNodeLocation
 }
 
 struct TDataNodeRemoveReq {
@@ -343,10 +339,10 @@ struct TClusterParameters {
 }
 
 struct TConfigNodeRegisterReq {
-  1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required TClusterParameters clusterParameters
+  1: required TClusterParameters clusterParameters
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TConfigNodeRegisterResp {
@@ -752,15 +748,6 @@ service IConfigNodeRPCService {
    *         NODE_DELETE_FAILED_ERROR if failed to submit the DataNodeRemoveProcedure
    */
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
-
-  /**
-   * Update the specified DataNode‘s location in the cluster when restart
-   *
-   * @return SUCCESS_STATUS if the DataNode updated successfully
-   *         DATANODE_NOT_EXIST if one of the DataNodes in the TDataNodeUpdateReq doesn't exist in the cluster
-   *         UPDATE_DATANODE_FAILED if failed to update the DataNode
-   */
-  TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req)
 
   /**
    * Report that the specified DataNode will be shutdown.

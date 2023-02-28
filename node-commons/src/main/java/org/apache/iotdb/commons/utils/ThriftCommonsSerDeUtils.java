@@ -83,6 +83,25 @@ public class ThriftCommonsSerDeUtils {
     return endPoint;
   }
 
+  public static void serializeTDataNodeConfiguration(
+      TDataNodeConfiguration dataNodeConfiguration, DataOutputStream stream) {
+    try {
+      dataNodeConfiguration.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+    }
+  }
+
+  public static TDataNodeConfiguration deserializeTDataNodeConfiguration(ByteBuffer buffer) {
+    TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
+    try {
+      dataNodeConfiguration.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TDataNodeConfiguration failed: ", e);
+    }
+    return dataNodeConfiguration;
+  }
+
   public static void serializeTDataNodeLocation(
       TDataNodeLocation dataNodeLocation, DataOutputStream stream) {
     try {
