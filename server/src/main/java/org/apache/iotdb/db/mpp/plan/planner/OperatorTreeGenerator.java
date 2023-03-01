@@ -2477,6 +2477,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // Otherwise, the first group will belong to the parent pipeline
           if (i == 0) {
             for (int j = startIndex; j < endIndex; j++) {
+              context.setDegreeOfParallelism(1);
               Operator childOperation = node.getChildren().get(j).accept(this, context);
               parentPipelineChildren.add(childOperation);
               afterwardsNodes.add(node.getChildren().get(j));
