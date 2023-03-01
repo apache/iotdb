@@ -100,7 +100,7 @@ The timestamp of the sampling output of each bucket is the timestamp of the firs
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_SIZE_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
+| EQUAL_SIZE_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`<br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
 
 Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`, and the test data is randomly sampled in equal buckets.
 
@@ -170,7 +170,7 @@ This function samples the input sequence with equal number of bucket outliers, t
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | The value range of `proportion` is `(0, 1]`, the default is `0.1`</br> The value of `type` is `avg` or `stendis` or `cos` or `prenextdis`, the default is `avg` </br>The value of `number` should be greater than 0, the default is `3`| INT32 / INT64 / FLOAT / DOUBLE | Returns outlier samples in equal buckets that match the sampling ratio and the number of samples in the bucket |
+| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | The value range of `proportion` is `(0, 1]`, the default is `0.1`<br> The value of `type` is `avg` or `stendis` or `cos` or `prenextdis`, the default is `avg` <br>The value of `number` should be greater than 0, the default is `3`| INT32 / INT64 / FLOAT / DOUBLE | Returns outlier samples in equal buckets that match the sampling ratio and the number of samples in the bucket |
 
 Parameter Description
 - `proportion`: sampling ratio
@@ -248,7 +248,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 -   the bottom point is the point with the **m**inimal value (if there are multiple such points, M4 returns one of them);
 -   the top point is the point with the **m**aximal value (if there are multiple such points, M4 returns one of them).
 
-<img src="https://user-images.githubusercontent.com/33376433/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
+<img src="/img/github/198178733-a0919d17-0663-4672-9c4f-1efad6f463c2.png" alt="image" style="zoom:50%;" />
 
 | Function Name | Allowed Input Series Data Types | Attributes                                                   | Output Series Data Type        | Series Data Type  Description                                |
 | ------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
@@ -261,7 +261,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 + `windowSize`: The number of points in a window. Int data type. **Required**.
 + `slidingStep`: Slide a window by the number of points. Int data type. Optional. If not set, default to the same as `windowSize`.
 
-<img src="https://user-images.githubusercontent.com/33376433/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
+<img src="/img/github/198181449-00d563c8-7bce-4ecd-a031-ec120ca42c3f.png" alt="image" style="zoom: 50%;" />
 
 *(image source: https://iotdb.apache.org/UserGuide/Master/Process-Data/UDF-User-Defined-Function.html#udtf-user-defined-timeseries-generating-function)*
 
@@ -272,7 +272,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 + `displayWindowBegin`: The starting position of the window (included). Long data type. Optional. If not set, default to Long.MIN_VALUE, meaning using the time of the first data point of the input time series as the starting position of the window.
 + `displayWindowEnd`: End time limit (excluded, essentially playing the same role as `WHERE time < displayWindowEnd`). Long data type. Optional. If not set, default to Long.MAX_VALUE, meaning there is no additional end time limit other than the end of the input time series itself.
 
-<img src="https://user-images.githubusercontent.com/33376433/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
+<img src="/img/github/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
 
 *(image source: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
 

@@ -19,15 +19,15 @@
 
 -->
 
-# 加载 TsFile
+## 加载 TsFile
 
-## 介绍
+### 介绍
 加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载 tsfile 文件。或者您也可以使用脚本的方式将tsfile加载进IoTDB。
 
-## 使用SQL加载
+### 使用SQL加载
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
-### 加载 tsfile 文件
+#### 加载 tsfile 文件
 
 加载 tsfile 文件的指令为：`load '<path/dir>' [sglevel=int][verify=true/false][onSuccess=delete/none]`
 
@@ -72,7 +72,7 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
 
 **注意**，如果`$IOTDB_HOME$/conf/iotdb-datanode.properties`中`enable_auto_create_schema=true`时会在加载tsfile的时候自动创建tsfile中的元数据，否则不会自动创建。
 
-## 使用脚本加载
+### 使用脚本加载
 
 若您在Windows环境中，请运行`$IOTDB_HOME/tools/load-tsfile.bat`，若为Linux或Unix，请运行`load-tsfile.sh`
 
@@ -88,7 +88,7 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
 --onSuccess 对成功加载的TsFile的处理方法，可选，默认为delete，成功加载之后删除源TsFile，设为none时会				保留源TsFile
 ```
 
-### 使用范例
+#### 使用范例
 
 假定服务器192.168.0.101:6667上运行一个IoTDB实例，想从将本地保存的TsFile备份文件夹D:\IoTDB\data中的所有的TsFile文件都加载进此IoTDB实例。
 
@@ -100,7 +100,7 @@ ONSUCCESS选项表示对于成功载入的tsfile的处置方式，默认为delet
 
 等待脚本执行完成之后，可以检查IoTDB实例中数据已经被正确加载
 
-### 常见问题
+#### 常见问题
 
 - 找不到或无法加载主类
   - 可能是由于未设置环境变量$IOTDB_HOME，请设置环境变量之后重试
