@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SeriesScanTraverseOperator extends AbstractSourceOperator
@@ -131,21 +132,26 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
               seriesPath.getDevice(), getGlobalTimeFilter(), true, false)) {
         satisfiedSeqFileIndexList[seqFileNum++] = i;
         minTime = Math.min(minTime, tsFileResource.getStartTime(seriesPath.getDevice()));
-        maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
-        if (!tsFileResource.isClosed()) {
+        if (tsFileResource.isClosed()) {
+          maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
+        } else {
           maxTime = Long.MAX_VALUE;
         }
       }
     }
+    if (seqFileNum == 0) {
+      childSourceOperator = Collections.emptyList();
+      return;
+    }
 
-    for (int i = 0; i < unSeqResources.size(); i++) {
-      TsFileResource tsFileResource = unSeqResources.get(i);
+    for (TsFileResource tsFileResource : unSeqResources) {
       if (tsFileResource != null
           && tsFileResource.isSatisfied(
               seriesPath.getDevice(), getGlobalTimeFilter(), false, false)) {
         minTime = Math.min(minTime, tsFileResource.getStartTime(seriesPath.getDevice()));
-        maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
-        if (!tsFileResource.isClosed()) {
+        if (tsFileResource.isClosed()) {
+          maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
+        } else {
           maxTime = Long.MAX_VALUE;
         }
       }
@@ -165,8 +171,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
         endTime = maxTime;
       }
       List<Integer> seqFileIndexList = new ArrayList<>();
-      AndFilter timeRangeFilter =
-          new AndFilter(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
+      AndFilter timeRangeFilter = getCurTimeRangeFilter(startTime, endTime);
       Filter newGlobalFilter =
           getGlobalTimeFilter() == null
               ? timeRangeFilter
@@ -178,25 +183,19 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
           && seqResources
               .get(satisfiedSeqFileIndexList[curSeqFile])
               .isSatisfied(seriesPath.getDevice(), newGlobalFilter, true, false)) {
-        int seqFileIndex = satisfiedSeqFileIndexList[curSeqFile];
-        curMinTime =
-            Math.min(
-                curMinTime, seqResources.get(seqFileIndex).getStartTime(seriesPath.getDevice()));
-        curMaxTime =
-            Math.max(curMaxTime, seqResources.get(seqFileIndex).getEndTime(seriesPath.getDevice()));
+        TsFileResource seqFileResource = seqResources.get(satisfiedSeqFileIndexList[curSeqFile]);
+        // update time range otherwise some points may be missed
+        curMinTime = Math.min(curMinTime, seqFileResource.getStartTime(seriesPath.getDevice()));
+        curMaxTime = Math.max(curMaxTime, seqFileResource.getEndTime(seriesPath.getDevice()));
         // make sure one tsFile can only be processed in one ScanOperator
         seqFileIndexList.add(satisfiedSeqFileIndexList[curSeqFile++]);
       }
       // make sure at least one tsFile can be processed in one ScanOperator
       if (seqFileIndexList.isEmpty()) {
         if (curSeqFile < seqFileNum) {
-          int seqFileIndex = satisfiedSeqFileIndexList[curSeqFile];
-          curMinTime =
-              Math.min(
-                  curMinTime, seqResources.get(seqFileIndex).getStartTime(seriesPath.getDevice()));
-          curMaxTime =
-              Math.max(
-                  curMaxTime, seqResources.get(seqFileIndex).getEndTime(seriesPath.getDevice()));
+          TsFileResource seqFileResource = seqResources.get(satisfiedSeqFileIndexList[curSeqFile]);
+          curMinTime = Math.min(curMinTime, seqFileResource.getStartTime(seriesPath.getDevice()));
+          curMaxTime = Math.max(curMaxTime, seqFileResource.getEndTime(seriesPath.getDevice()));
           seqFileIndexList.add(satisfiedSeqFileIndexList[curSeqFile++]);
           // if there is no more tsFile can be processed
         } else {
@@ -227,5 +226,9 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
 
   Filter getGlobalTimeFilter() {
     return seriesScanOptionsBuilder.getGlobalTimeFilter();
+  }
+
+  AndFilter getCurTimeRangeFilter(long startTime, long endTime) {
+    return new AndFilter(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
   }
 }
