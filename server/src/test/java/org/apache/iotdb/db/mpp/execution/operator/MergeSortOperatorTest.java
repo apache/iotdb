@@ -175,6 +175,7 @@ public class MergeSortOperatorTest {
           9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
+
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), MergeSortOperator.class.getSimpleName());
 
@@ -318,17 +319,22 @@ public class MergeSortOperatorTest {
               Arrays.asList(4, 5),
               tsDataTypes);
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(10),
-          Arrays.asList(
-              singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(10),
               Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+                  singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -785,6 +791,9 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               driverContext.getOperatorContexts().get(15),
@@ -796,17 +805,25 @@ public class MergeSortOperatorTest {
                       new SortItem(SortKey.DEVICE, deviceOrdering)),
                   null,
                   null));
+      mergeSortOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(16),
-          Arrays.asList(mergeSortOperator1, mergeSortOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(16),
+              Arrays.asList(mergeSortOperator1, mergeSortOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1227,16 +1244,21 @@ public class MergeSortOperatorTest {
                   : Arrays.asList(timeJoinOperator3, timeJoinOperator2),
               deviceColumnIndex,
               tsDataTypes);
-      return new MergeSortOperator(
-          driverContext.getOperatorContexts().get(12),
-          Arrays.asList(deviceViewOperator1, deviceViewOperator2),
-          tsDataTypes,
-          MergeSortComparator.getComparator(
-              Arrays.asList(
-                  new SortItem(SortKey.DEVICE, deviceOrdering),
-                  new SortItem(SortKey.TIME, timeOrdering)),
-              null,
-              null));
+      MergeSortOperator mergeSortOperator =
+          new MergeSortOperator(
+              driverContext.getOperatorContexts().get(12),
+              Arrays.asList(deviceViewOperator1, deviceViewOperator2),
+              tsDataTypes,
+              MergeSortComparator.getComparator(
+                  Arrays.asList(
+                      new SortItem(SortKey.DEVICE, deviceOrdering),
+                      new SortItem(SortKey.TIME, timeOrdering)),
+                  null,
+                  null));
+      mergeSortOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return mergeSortOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1529,6 +1551,7 @@ public class MergeSortOperatorTest {
               ImmutableList.of(sortOperator1, sortOperator2),
               dataTypes,
               comparator);
+      root.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int index = 0;
       // Time ASC
@@ -1623,12 +1646,12 @@ public class MergeSortOperatorTest {
     }
 
     @Override
-    public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    public Optional<TsBlock> getBatchResult() {
       return Optional.empty();
     }
 
     @Override
-    public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
     }
 
