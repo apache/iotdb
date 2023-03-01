@@ -1887,10 +1887,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 IdentitySinkOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
@@ -1922,10 +1919,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ShuffleHelperOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    // TODO implement pipeline division for shuffle sink
+    context.setDegreeOfParallelism(1);
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
@@ -2552,7 +2548,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           subContext.setISink(localSinkChannel);
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
-          int curChildPipelineNum = subContext.getPipelineNumber() - originPipeNum;
+          // OneByOneChild may be divided into more than dop pipelines, but the number of running
+          // actually is dop
+          int curChildPipelineNum =
+              Math.min(dopForChild, subContext.getPipelineNumber() - originPipeNum);
           childPipelineNums.add(curChildPipelineNum);
           sumOfChildPipelines += curChildPipelineNum;
           // If sumOfChildPipelines > dopForChild, we have to wait until some pipelines finish
