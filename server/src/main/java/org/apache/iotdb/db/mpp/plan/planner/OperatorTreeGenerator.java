@@ -1919,6 +1919,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ShuffleHelperOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
+    // TODO implement pipeline division for shuffle sink
+    context.setDegreeOfParallelism(1);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     checkArgument(
