@@ -19,39 +19,34 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class VotingLogList {
 
   private static final Logger logger = LoggerFactory.getLogger(VotingLogList.class);
-  private int quorumSize;
   private RaftMember member;
   private Map<Peer, Long> stronglyAcceptedIndices = new ConcurrentHashMap<>();
   private AtomicLong newCommitIndex = new AtomicLong(-1);
+  private boolean enableWeakAcceptance = false;
 
-  public VotingLogList(int quorumSize, RaftMember member) {
-    this.quorumSize = quorumSize;
+  public VotingLogList(RaftMember member) {
     this.member = member;
+    stronglyAcceptedIndices.put(member.getThisNode(), Long.MAX_VALUE);
   }
 
-  private boolean tryCommit() {
+  private boolean tryCommit(VotingEntry entry) {
     RaftLogManager logManager = member.getLogManager();
 
-    if (computeNewCommitIndex()
+    if (computeNewCommitIndex(entry)
         && logManager != null
         && newCommitIndex.get() > logManager.getCommitLogIndex()) {
       try {
@@ -65,15 +60,16 @@ public class VotingLogList {
     }
   }
 
-  public boolean computeNewCommitIndex() {
-    List<Entry<Peer, Long>> nodeIndices = new ArrayList<>(stronglyAcceptedIndices.entrySet());
-    if (nodeIndices.size() < quorumSize) {
+  public boolean computeNewCommitIndex(VotingEntry entry) {
+    long currLogIndex = entry.getEntry().getCurrLogIndex();
+    if (newCommitIndex.get() >= currLogIndex) {
       return false;
     }
-    nodeIndices.sort(Entry.comparingByValue());
-    Long value = nodeIndices.get(nodeIndices.size() - quorumSize).getValue();
-    long oldValue = newCommitIndex.getAndUpdate(oldV -> Math.max(value, oldV));
-    return value > oldValue;
+    if (entry.isStronglyAccepted(stronglyAcceptedIndices)) {
+      return currLogIndex > newCommitIndex.getAndUpdate(ov -> Math.max(ov, currLogIndex));
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -81,46 +77,72 @@ public class VotingLogList {
    * all entries whose index <= the accepted entry. If any entry is accepted by a quorum, remove it
    * from the list.
    *
-   * @param index
-   * @param term
-   * @param acceptingNode
    * @return the lastly removed entry if any.
    */
-  public void onStronglyAccept(long index, long term, Peer acceptingNode) {
-    logger.debug("{}-{} is strongly accepted by {}", index, term, acceptingNode);
+  public void onStronglyAccept(VotingEntry entry, Peer acceptingNode) {
+    logger.debug("{} is strongly accepted by {}", entry, acceptingNode);
+    long currLogIndex = entry.getEntry().getCurrLogIndex();
 
     Long newIndex =
         stronglyAcceptedIndices.compute(
             acceptingNode,
             (nid, oldIndex) -> {
               if (oldIndex == null) {
-                return index;
+                return currLogIndex;
               } else {
-                if (index > oldIndex) {
-                  return index;
+                if (currLogIndex > oldIndex) {
+                  return currLogIndex;
                 }
                 return oldIndex;
               }
             });
-    if (newIndex == index) {
-      tryCommit();
+    if (newIndex == currLogIndex) {
+      tryCommit(entry);
     }
-  }
-
-  public int totalAcceptedNodeNum(VotingLog log) {
-    long index = log.getEntry().getCurrLogIndex();
-    int num = log.getWeaklyAcceptedNodes().size();
-    for (Entry<Peer, Long> entry : stronglyAcceptedIndices.entrySet()) {
-      if (entry.getValue() >= index) {
-        num++;
-      }
-    }
-    return num;
   }
 
   public String report() {
     return String.format(
         "Nodes accepted indices: %s, new commitIndex: %d",
         stronglyAcceptedIndices, newCommitIndex.get());
+  }
+
+  public AcceptedType computeAcceptedType(VotingEntry votingEntry) {
+    if ((votingEntry.getEntry().getCurrLogIndex() == Long.MIN_VALUE)) {
+      return AcceptedType.NOT_ACCEPTED;
+    }
+
+    if (newCommitIndex.get() >= votingEntry.getEntry().getCurrLogIndex()) {
+      return AcceptedType.STRONGLY_ACCEPTED;
+    }
+
+    if (enableWeakAcceptance) {
+      int currNodeQuorumNum = votingEntry.currNodesQuorumNum();
+      int newNodeQuorumNum = votingEntry.newNodesQuorumNum();
+      int stronglyAcceptedNumByCurrNodes = votingEntry.stronglyAcceptedNumByCurrNodes(
+          stronglyAcceptedIndices);
+      int stronglyAcceptedNumByNewNodes = votingEntry.stronglyAcceptedNumByNewNodes(
+          stronglyAcceptedIndices);
+      int weaklyAcceptedNumByCurrNodes = votingEntry.weaklyAcceptedNumByCurrNodes(
+          stronglyAcceptedIndices);
+      int weaklyAcceptedNumByNewNodes = votingEntry.weaklyAcceptedNumByNewNodes(
+          stronglyAcceptedIndices);
+      if ((weaklyAcceptedNumByCurrNodes + stronglyAcceptedNumByCurrNodes) >= currNodeQuorumNum &&
+          (weaklyAcceptedNumByNewNodes + stronglyAcceptedNumByNewNodes) >= newNodeQuorumNum) {
+        return AcceptedType.WEAKLY_ACCEPTED;
+      }
+    }
+
+    return AcceptedType.NOT_ACCEPTED;
+  }
+
+  public void setEnableWeakAcceptance(boolean enableWeakAcceptance) {
+    this.enableWeakAcceptance = enableWeakAcceptance;
+  }
+
+  public enum AcceptedType {
+    NOT_ACCEPTED,
+    STRONGLY_ACCEPTED,
+    WEAKLY_ACCEPTED
   }
 }

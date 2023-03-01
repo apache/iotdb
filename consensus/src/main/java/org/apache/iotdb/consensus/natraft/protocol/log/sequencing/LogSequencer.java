@@ -20,8 +20,7 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.sequencing;
 
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
-import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 
 /**
  * LogSequencer assigns a unique index and associated term to a log entry and offers the entry to a
@@ -36,9 +35,7 @@ public interface LogSequencer {
    * @param e a log entry that is not yet indexed.
    * @return A SendLogRequest through which the caller can monitor the status of the sending entry.
    */
-  VotingLog sequence(Entry e);
-
-  void setLogManager(RaftLogManager logManager);
+  VotingEntry sequence(Entry e);
 
   void close();
 }

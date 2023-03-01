@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import org.apache.thrift.TApplicationException;
@@ -48,7 +48,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
   protected RaftMember member;
-  protected VotingLog log;
+  protected VotingEntry log;
   protected Peer directReceiver;
   protected int quorumSize;
 
@@ -56,10 +56,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
   @Override
   public void onComplete(AppendEntryResult response) {
-    if (log.isHasFailed()) {
-      return;
-    }
-
     Peer trueReceiver =
         response.isSetReceiver()
             ? new Peer(
@@ -77,7 +73,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       member
           .getVotingLogList()
           .onStronglyAccept(
-              log.getEntry().getCurrLogIndex(), log.getEntry().getCurrLogTerm(), trueReceiver);
+              log, trueReceiver);
 
       member.getStatus().getPeerMap().get(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
@@ -95,7 +91,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (log) {
-        log.getWeaklyAcceptedNodes().add(trueReceiver);
+        log.addWeaklyAcceptedNodes(trueReceiver);
         log.notifyAll();
       }
     } else {
@@ -114,7 +110,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
             log,
             trueReceiver,
             resp);
-        onFail(trueReceiver);
       }
     }
     // rejected because the receiver's logs are stale or the receiver has no cluster info, just
@@ -140,23 +135,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       logger.warn(
           "{}: Cannot append log {} to {}", member.getName(), log, directReceiver, exception);
     }
-    onFail(directReceiver);
   }
 
-  private void onFail(Peer trueReceiver) {
-    synchronized (log.getEntry()) {
-      log.getFailedNodes().add(trueReceiver);
-      if (log.getFailedNodes().size() > quorumSize) {
-        // quorum members have failed, there is no need to wait for others
-        logger.warn(
-            "{} failed because too many replicas have failed: {}", log, log.getFailedNodes());
-        log.setHasFailed(true);
-        log.getEntry().notifyAll();
-      }
-    }
-  }
 
-  public void setLog(VotingLog log) {
+  public void setLog(VotingEntry log) {
     this.log = log;
   }
 

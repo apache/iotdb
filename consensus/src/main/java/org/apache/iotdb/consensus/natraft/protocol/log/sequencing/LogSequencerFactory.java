@@ -25,5 +25,5 @@ import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 
 public interface LogSequencerFactory {
 
-  LogSequencer create(RaftMember member, RaftLogManager logManager, RaftConfig config);
+  LogSequencer create(RaftMember member, RaftConfig config);
 }

@@ -22,17 +22,15 @@ package org.apache.iotdb.consensus.natraft.protocol.log.sequencing;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
-import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
+import org.apache.iotdb.consensus.natraft.utils.LogUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller
@@ -42,35 +40,24 @@ public class SynchronousSequencer implements LogSequencer {
 
   private static final Logger logger = LoggerFactory.getLogger(SynchronousSequencer.class);
   private RaftMember member;
-  private RaftLogManager logManager;
   private RaftConfig config;
 
-  public SynchronousSequencer(RaftMember member, RaftLogManager logManager, RaftConfig config) {
+  public SynchronousSequencer(RaftMember member, RaftConfig config) {
     this.member = member;
-    this.logManager = logManager;
     this.config = config;
   }
 
-  private VotingLog enqueueEntry(VotingLog sendLogRequest) {
 
-    if (member.getAllNodes().size() > 1) {
-      member.getLogDispatcher().offer(sendLogRequest);
-    }
-    return sendLogRequest;
-  }
-
-  private static AtomicLong indexBlockCounter = new AtomicLong();
 
   @Override
-  public VotingLog sequence(Entry e) {
-    VotingLog sendLogRequest = null;
+  public VotingEntry sequence(Entry e) {
+    VotingEntry votingEntry = null;
 
     long startWaitingTime = System.currentTimeMillis();
-
+    RaftLogManager logManager = member.getLogManager();
     while (true) {
       try {
         logManager.getLock().writeLock().lock();
-        indexBlockCounter.decrementAndGet();
         Entry lastEntry = logManager.getLastEntry();
         long lastIndex = lastEntry.getCurrLogIndex();
         long lastTerm = lastEntry.getCurrLogTerm();
@@ -85,10 +72,10 @@ public class SynchronousSequencer implements LogSequencer {
           // logDispatcher will serialize log, and set log size, and we will use the size after it
           logManager.append(Collections.singletonList(e));
 
-          sendLogRequest = buildSendLogRequest(e);
+          votingEntry = LogUtils.buildVotingLog(e, member);
 
           if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
-            sendLogRequest = enqueueEntry(sendLogRequest);
+            votingEntry = LogUtils.enqueueEntry(votingEntry, member);
           }
           break;
         }
@@ -108,70 +95,18 @@ public class SynchronousSequencer implements LogSequencer {
     }
 
     if (config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance()) {
-      sendLogRequest = enqueueEntry(sendLogRequest);
+      votingEntry = LogUtils.enqueueEntry(votingEntry, member);
     }
 
-    return sendLogRequest;
+    return votingEntry;
   }
 
-  @Override
-  public void setLogManager(RaftLogManager logManager) {
-    this.logManager = logManager;
-  }
-
-  private VotingLog buildSendLogRequest(Entry e) {
-    VotingLog votingLog = member.buildVotingLog(e);
-
-    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(e, false);
-    votingLog.setAppendEntryRequest(appendEntryRequest);
-
-    return votingLog;
-  }
-
-  public AppendEntryRequest buildAppendEntryRequest(Entry e, boolean serializeNow) {
-    AppendEntryRequest request = buildAppendEntryRequestBasic(e, serializeNow);
-    request = buildAppendEntryRequestExtended(request, e, serializeNow);
-    return request;
-  }
-
-  protected AppendEntryRequest buildAppendEntryRequestBasic(Entry entry, boolean serializeNow) {
-    AppendEntryRequest request = new AppendEntryRequest();
-    request.setTerm(member.getStatus().getTerm().get());
-    if (serializeNow) {
-      ByteBuffer byteBuffer = entry.serialize();
-      entry.setByteSize(byteBuffer.array().length);
-      request.entry = byteBuffer;
-    }
-    try {
-      if (entry.getPrevTerm() != -1) {
-        request.setPrevLogTerm(entry.getPrevTerm());
-      } else {
-        request.setPrevLogTerm(logManager.getTerm(entry.getCurrLogIndex() - 1));
-      }
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
-    }
-    request.setLeader(member.getThisNode().getEndpoint());
-    request.setLeaderId(member.getThisNode().getNodeId());
-    // don't need lock because even if it's larger than the commitIndex when appending this log to
-    // logManager, the follower can handle the larger commitIndex with no effect
-    request.setLeaderCommit(logManager.getCommitLogIndex());
-    request.setPrevLogIndex(entry.getCurrLogIndex() - 1);
-    request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
-
-    return request;
-  }
-
-  protected AppendEntryRequest buildAppendEntryRequestExtended(
-      AppendEntryRequest request, Entry e, boolean serializeNow) {
-    return request;
-  }
 
   public static class Factory implements LogSequencerFactory {
 
     @Override
-    public LogSequencer create(RaftMember member, RaftLogManager logManager, RaftConfig config) {
-      return new SynchronousSequencer(member, logManager, config);
+    public LogSequencer create(RaftMember member, RaftConfig config) {
+      return new SynchronousSequencer(member, config);
     }
   }
 

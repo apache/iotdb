@@ -61,7 +61,8 @@ public abstract class Entry implements Comparable<Entry> {
   public enum Types {
     // DO CHECK LogParser when you add a new type of log
     CLIENT_REQUEST,
-    EMPTY
+    EMPTY,
+    CONFIG_CHANGE
   }
 
   public long getCurrLogIndex() {

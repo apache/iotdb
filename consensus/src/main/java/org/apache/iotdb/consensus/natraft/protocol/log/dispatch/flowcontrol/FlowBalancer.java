@@ -24,7 +24,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
 
 import org.slf4j.Logger;
@@ -88,7 +88,7 @@ public class FlowBalancer {
     double thisNodeFlow = flowMonitorManager.averageFlow(member.getThisNode(), windowsToUse);
     double assumedFlow = thisNodeFlow * overestimateFactor;
     logger.info("Flow of this node: {}", thisNodeFlow);
-    Map<Peer, BlockingQueue<VotingLog>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
+    Map<Peer, BlockingQueue<VotingEntry>> nodesLogQueuesMap = logDispatcher.getNodesLogQueuesMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length

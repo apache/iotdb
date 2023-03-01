@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -27,7 +30,7 @@ import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingLog;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
@@ -62,7 +65,9 @@ public class LogDispatcher {
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   protected RaftMember member;
   private RaftConfig config;
-  protected Map<Peer, BlockingQueue<VotingLog>> nodesLogQueuesMap = new HashMap<>();
+  protected List<Peer> allNodes;
+  protected List<Peer> newNodes;
+  protected Map<Peer, BlockingQueue<VotingEntry>> nodesLogQueuesMap = new HashMap<>();
   protected Map<Peer, Boolean> nodesEnabled;
   protected Map<Peer, RateLimiter> nodesRateLimiter = new HashMap<>();
   protected Map<Peer, Double> nodesRate = new HashMap<>();
@@ -82,7 +87,9 @@ public class LogDispatcher {
     if (!queueOrdered) {
       maxBatchSize = 1;
     }
-    createQueueAndBindingThreads();
+    this.allNodes = member.getAllNodes();
+    this.newNodes = member.getNewNodes();
+    createQueueAndBindingThreads(unionNodes());
   }
 
   public void updateRateLimiter() {
@@ -92,33 +99,51 @@ public class LogDispatcher {
     }
   }
 
-  void createQueueAndBindingThreads() {
-    for (Peer node : member.getAllNodes()) {
+  private Collection<Peer> unionNodes() {
+    if (newNodes == null) {
+      return allNodes;
+    }
+    Set<Peer> nodeUnion = new HashSet<>();
+    nodeUnion.addAll(allNodes);
+    nodeUnion.addAll(newNodes);
+    return nodeUnion;
+  }
+
+
+  void createQueue(Peer node) {
+    BlockingQueue<VotingEntry> logBlockingQueue;
+    logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
+    nodesLogQueuesMap.put(node, logBlockingQueue);
+    nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
+
+    for (int i = 0; i < bindingThreadNum; i++) {
+      executorServices
+          .computeIfAbsent(
+              node,
+              n -> createPool(node))
+          .submit(newDispatcherThread(node, logBlockingQueue));
+    }
+  }
+
+  ExecutorService createPool(Peer node) {
+    return IoTDBThreadPoolFactory.newCachedThreadPool(
+        "LogDispatcher-"
+            + member.getName()
+            + "-"
+            + node.getEndpoint().getIp()
+            + "-"
+            + node.getEndpoint().getPort()
+            + "-"
+            + node.getNodeId());
+  }
+
+  void createQueueAndBindingThreads(Collection<Peer> peers) {
+    for (Peer node : peers) {
       if (!node.equals(member.getThisNode())) {
-        BlockingQueue<VotingLog> logBlockingQueue;
-        logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
-        nodesLogQueuesMap.put(node, logBlockingQueue);
-        nodesRateLimiter.put(node, RateLimiter.create(Double.MAX_VALUE));
+       createQueue(node);
       }
     }
     updateRateLimiter();
-
-    for (int i = 0; i < bindingThreadNum; i++) {
-      for (Entry<Peer, BlockingQueue<VotingLog>> pair : nodesLogQueuesMap.entrySet()) {
-        executorServices
-            .computeIfAbsent(
-                pair.getKey(),
-                n ->
-                    IoTDBThreadPoolFactory.newCachedThreadPool(
-                        "LogDispatcher-"
-                            + member.getName()
-                            + "-"
-                            + pair.getKey().getEndpoint().getIp()
-                            + "-"
-                            + pair.getKey().getEndpoint().getPort()))
-            .submit(newDispatcherThread(pair.getKey(), pair.getValue()));
-      }
-    }
   }
 
   @TestOnly
@@ -134,18 +159,18 @@ public class LogDispatcher {
     resultHandlerThread.shutdownNow();
   }
 
-  protected boolean addToQueue(BlockingQueue<VotingLog> nodeLogQueue, VotingLog request) {
+  protected boolean addToQueue(BlockingQueue<VotingEntry> nodeLogQueue, VotingEntry request) {
     return nodeLogQueue.add(request);
   }
 
-  public void offer(VotingLog request) {
+  public void offer(VotingEntry request) {
 
-    for (Entry<Peer, BlockingQueue<VotingLog>> entry : nodesLogQueuesMap.entrySet()) {
+    for (Entry<Peer, BlockingQueue<VotingEntry>> entry : nodesLogQueuesMap.entrySet()) {
       if (nodesEnabled != null && !this.nodesEnabled.getOrDefault(entry.getKey(), false)) {
         continue;
       }
 
-      BlockingQueue<VotingLog> nodeLogQueue = entry.getValue();
+      BlockingQueue<VotingEntry> nodeLogQueue = entry.getValue();
       try {
         boolean addSucceeded = addToQueue(nodeLogQueue, request);
 
@@ -164,18 +189,18 @@ public class LogDispatcher {
     }
   }
 
-  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingLog> logBlockingQueue) {
+  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingEntry> logBlockingQueue) {
     return new DispatcherThread(node, logBlockingQueue);
   }
 
   protected class DispatcherThread implements Runnable {
 
     Peer receiver;
-    private final BlockingQueue<VotingLog> logBlockingDeque;
-    protected List<VotingLog> currBatch = new ArrayList<>();
+    private final BlockingQueue<VotingEntry> logBlockingDeque;
+    protected List<VotingEntry> currBatch = new ArrayList<>();
     private final String baseName;
 
-    protected DispatcherThread(Peer receiver, BlockingQueue<VotingLog> logBlockingDeque) {
+    protected DispatcherThread(Peer receiver, BlockingQueue<VotingEntry> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
       baseName = "LogDispatcher-" + member.getName() + "-" + receiver;
@@ -189,7 +214,7 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           synchronized (logBlockingDeque) {
-            VotingLog poll = logBlockingDeque.take();
+            VotingEntry poll = logBlockingDeque.take();
             currBatch.add(poll);
             if (maxBatchSize > 1) {
               while (!logBlockingDeque.isEmpty() && currBatch.size() < maxBatchSize) {
@@ -216,7 +241,7 @@ public class LogDispatcher {
     }
 
     protected void serializeEntries() throws InterruptedException {
-      for (VotingLog request : currBatch) {
+      for (VotingEntry request : currBatch) {
 
         request.getAppendEntryRequest().entry = request.getEntry().serialize();
         request.getEntry().setByteSize(request.getAppendEntryRequest().entry.limit());
@@ -224,7 +249,7 @@ public class LogDispatcher {
     }
 
     private void appendEntriesAsync(
-        List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingLog> currBatch) {
+        List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingEntry> currBatch) {
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       AsyncRaftServiceClient client = member.getClient(receiver.getEndpoint());
       try {
@@ -240,7 +265,7 @@ public class LogDispatcher {
     }
 
     protected AppendEntriesRequest prepareRequest(
-        List<ByteBuffer> logList, List<VotingLog> currBatch, int firstIndex) {
+        List<ByteBuffer> logList, List<VotingEntry> currBatch, int firstIndex) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       request.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
@@ -261,7 +286,7 @@ public class LogDispatcher {
       return request;
     }
 
-    private void sendLogs(List<VotingLog> currBatch) throws TException {
+    private void sendLogs(List<VotingEntry> currBatch) throws TException {
       int logIndex = 0;
       logger.debug(
           "send logs from index {} to {}",
@@ -293,7 +318,7 @@ public class LogDispatcher {
     }
 
     public AppendNodeEntryHandler getAppendNodeEntryHandler(
-        VotingLog log, Peer node, int quorumSize) {
+        VotingEntry log, Peer node, int quorumSize) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setDirectReceiver(node);
       handler.setLog(log);
@@ -306,9 +331,9 @@ public class LogDispatcher {
 
       private final List<AsyncMethodCallback<AppendEntryResult>> singleEntryHandlers;
 
-      private AppendEntriesHandler(List<VotingLog> batch) {
+      private AppendEntriesHandler(List<VotingEntry> batch) {
         singleEntryHandlers = new ArrayList<>(batch.size());
-        for (VotingLog sendLogRequest : batch) {
+        for (VotingEntry sendLogRequest : batch) {
           AppendNodeEntryHandler handler =
               getAppendNodeEntryHandler(sendLogRequest, receiver, sendLogRequest.getQuorumSize());
           singleEntryHandlers.add(handler);
@@ -335,7 +360,16 @@ public class LogDispatcher {
     return nodesRate;
   }
 
-  public Map<Peer, BlockingQueue<VotingLog>> getNodesLogQueuesMap() {
+  public Map<Peer, BlockingQueue<VotingEntry>> getNodesLogQueuesMap() {
     return nodesLogQueuesMap;
+  }
+
+  public void setNewNodes(List<Peer> newNodes) {
+    this.newNodes = newNodes;
+    for (Peer newNode : newNodes) {
+      if (!allNodes.contains(newNode)) {
+        createQueue(newNode);
+      }
+    }
   }
 }

@@ -126,6 +126,7 @@ public class RaftConsensus implements IConsensus {
                   config,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new ArrayList<>(),
+                  null,
                   consensusGroupId,
                   registry.apply(consensusGroupId),
                   clientManager);
@@ -204,7 +205,7 @@ public class RaftConsensus implements IConsensus {
           }
           RaftMember impl =
               new RaftMember(
-                  path, config, thisPeer, peers, groupId, registry.apply(groupId), clientManager);
+                  path, config, thisPeer, peers, null, groupId, registry.apply(groupId), clientManager);
           impl.start();
           return impl;
         });
