@@ -62,8 +62,8 @@ public class ConfigurableTByteBuffer extends TEndpointTransport {
     if (n > 0) {
       try {
         this.byteBuffer.get(buf, off, n);
-      } catch (BufferUnderflowException var6) {
-        throw new TTransportException("Unexpected end of input buffer", var6);
+      } catch (BufferUnderflowException e) {
+        throw new TTransportException("Unexpected end of input buffer", e);
       }
     }
 
@@ -73,8 +73,8 @@ public class ConfigurableTByteBuffer extends TEndpointTransport {
   public void write(byte[] buf, int off, int len) throws TTransportException {
     try {
       this.byteBuffer.put(buf, off, len);
-    } catch (BufferOverflowException var5) {
-      throw new TTransportException("Not enough room in output buffer", var5);
+    } catch (BufferOverflowException e) {
+      throw new TTransportException("Not enough room in output buffer", e);
     }
   }
 
