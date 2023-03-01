@@ -2398,6 +2398,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.EXTREME:
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.TIME_DURATION:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),

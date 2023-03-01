@@ -59,6 +59,7 @@ public class SqlConstant {
   public static final String DIFF = "diff";
 
   public static final String LAST = "last";
+  public static final String TIME_DURATION = "time_duration";
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
