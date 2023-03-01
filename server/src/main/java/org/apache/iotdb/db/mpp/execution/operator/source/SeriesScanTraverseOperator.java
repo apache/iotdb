@@ -161,7 +161,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     int splitNum = dop;
     if (seqFileNum < dop) {
       splitNum = seqFileNum;
-      childSourceOperator = childSourceOperator.subList(0, splitNum);
+      closeRedundantSourceOperator(splitNum);
     }
     long avgTime = (maxTime - minTime) / splitNum;
     long startTime = minTime, endTime = minTime + avgTime;
@@ -199,7 +199,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
           seqFileIndexList.add(satisfiedSeqFileIndexList[curSeqFile++]);
           // if there is no more tsFile can be processed
         } else {
-          childSourceOperator = childSourceOperator.subList(0, i);
+          closeRedundantSourceOperator(i);
           return;
         }
       }
@@ -224,11 +224,21 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     }
   }
 
-  Filter getGlobalTimeFilter() {
+  private Filter getGlobalTimeFilter() {
     return seriesScanOptionsBuilder.getGlobalTimeFilter();
   }
 
-  AndFilter getCurTimeRangeFilter(long startTime, long endTime) {
+  private AndFilter getCurTimeRangeFilter(long startTime, long endTime) {
     return new AndFilter(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
+  }
+
+  private void closeRedundantSourceOperator(int index) {
+    for (int i = index; i < childSourceOperator.size(); i++) {
+      scanOperatorList.get(i).setFinished(true);
+      // Maybe some pipeline have dependency on this pipeline, so we have to let it run
+      // But it will finish immediately that doesn't waste system resource
+      ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
+    }
+    childSourceOperator = childSourceOperator.subList(0, index);
   }
 }

@@ -152,6 +152,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public boolean hasNext() {
+    if (finished) {
+      return false;
+    }
     if (retainedTsBlock != null) {
       return true;
     }
@@ -198,6 +201,10 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   @Override
   public boolean isFinished() {
     return finished;
+  }
+
+  public void setFinished(boolean finished) {
+    this.finished = finished;
   }
 
   @Override
