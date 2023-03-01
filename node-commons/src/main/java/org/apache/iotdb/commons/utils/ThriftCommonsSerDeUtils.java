@@ -29,16 +29,18 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.rpc.ConfigurableTByteBuffer;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerDeUtils {
@@ -281,12 +283,8 @@ public class ThriftCommonsSerDeUtils {
     return schemaNode;
   }
 
-  private static TByteBuffer generateTByteBuffer(ByteBuffer buffer) throws TTransportException {
-    // TByteBuffer uses the default TConfiguration which limits the MaxMessageSize
-    // we use ByteBuffer.slice() to update the origin buffer if buffer.capacity() >= MaxMessageSize
-    if (buffer.capacity() >= THRIFT_DEFAULT_MAX_MESSAGE_SIZE) {
-      buffer.slice();
-    }
-    return new TByteBuffer(buffer);
+  private static ConfigurableTByteBuffer generateTByteBuffer(ByteBuffer buffer)
+      throws TTransportException {
+    return new ConfigurableTByteBuffer(buffer, defaultTConfiguration);
   }
 }
