@@ -91,8 +91,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.1.1. 集群运行状态
 
-#### 4.1.1. 集群运行状态
-
 | Metric                    | Tags                                            | Type      | Description                            |
 | ------------------------- | ----------------------------------------------- | --------- | -------------------------------------- |
 | config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
