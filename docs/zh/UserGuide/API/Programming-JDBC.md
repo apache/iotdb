@@ -56,7 +56,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 **注意：为了更快地插入，建议使用 executeBatch()**
 
-```Java
+```java
 import java.sql.*;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
