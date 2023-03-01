@@ -213,7 +213,7 @@ It costs 0.001s
 
 ## Count Devices
 
-* COUNT DEVICES <PathPattern>
+* COUNT DEVICES /<PathPattern/>
 
 The above statement is used to count the number of devices. At the same time, it is allowed to specify `PathPattern` to count the number of devices matching the `PathPattern`.
 
