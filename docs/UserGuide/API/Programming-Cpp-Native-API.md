@@ -137,7 +137,7 @@ Under the root path of iotdb:
     - To help CMake find your Boost libraries on windows, you should set `-DboostIncludeDir="C:\Program Files (x86)\boost_1_78_0" -DboostLibraryDir="C:\Program Files (x86)\boost_1_78_0\stage\lib"` to your mvn build command.
     ``
 
-If the compilation finishes successfully, the packaged zip file will be placed under `client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip`
+If the compilation finishes successfully, the packaged zip file will be placed under `client-cpp/target/client-cpp-1.1.0-SNAPSHOT-cpp-${os}.zip`
 
 
 ## Native APIs

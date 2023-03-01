@@ -457,19 +457,19 @@ thread information, class information, and the server's CPU usage.
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.metrics" through the "MBeans" tab, and you can
 view the specific values of all monitoring metrics in the sidebar.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://user-images.githubusercontent.com/46039728/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
 #### 5.1.2. Get other relevant data
 
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.service" through the "MBeans" tab, as shown in
 the image below, to understand the basic status of the service
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
 In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can use MXBean and expand
 the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ### 5.2. Prometheus
 
@@ -519,7 +519,7 @@ can be used to collect and store monitoring indicators, and Grafana can be used 
 
 The following picture describes the relationships among IoTDB, Prometheus and Grafana
 
-![iotdb_prometheus_grafana](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/iotdb_prometheus_grafana.png)
+![iotdb_prometheus_grafana](/img/UserGuide/System-Tools/Metrics/iotdb_prometheus_grafana.png)
 
 1. Along with running, IoTDB will collect its metrics continuously.
 2. Prometheus scrapes metrics from IoTDB at a constant interval (can be configured).
@@ -559,7 +559,7 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
-![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
+![Apache IoTDB Dashboard](/img/UserGuide/System-Tools/Metrics/dashboard.png)
 
 ##### 5.2.4.1. How to get Apache IoTDB Dashboard
 
