@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaRegionConstant;
 import org.apache.iotdb.lsm.engine.IRecoverable;
 import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.util.DiskFileNameDescriptor;
@@ -61,7 +61,7 @@ public class RecoverManager<T extends IRecoverable> {
     String[] flushTmpFileNames =
         Arrays.stream(flushFiles)
             .map(File::getName)
-            .filter(name -> name.endsWith(SchemaRegionConstant.TMP))
+            .filter(name -> name.endsWith(TagSchemaRegionConstant.TMP))
             .toArray(String[]::new);
     Integer[] flushTmpIDs =
         Arrays.stream(flushTmpFileNames)
@@ -77,7 +77,7 @@ public class RecoverManager<T extends IRecoverable> {
       File flushTmpFile = new File(flushDirPath + File.separator + flushTmpFileNames[i]);
       String flushFileName =
           flushTmpFileNames[i].substring(
-              0, flushTmpFileNames[i].length() - SchemaRegionConstant.TMP.length());
+              0, flushTmpFileNames[i].length() - TagSchemaRegionConstant.TMP.length());
       if (!walFileIDs.contains(flushTmpIDs[i])) {
         File flushFile = new File(flushDirPath + File.separator + flushFileName);
         flushTmpFile.renameTo(flushFile);

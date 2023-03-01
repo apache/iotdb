@@ -51,7 +51,7 @@ public class MemChunkGroupInsertion
   }
 
   /**
-   * the insert method corresponding to the MemCunkGroup node
+   * the insert method corresponding to the MemChunkGroup node
    *
    * @param memNode memory node
    * @param context insert request context

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaHeader;
 import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
@@ -62,8 +62,8 @@ public class ChunkGroupReaderTest {
 
   @Test
   public void testReadChunkIndex() throws IOException {
-    ChunkMeta chunkMeta = chunkGroupReader.readChunkIndex(chunkIndexOffset);
-    assertEquals(chunkMeta.getChunkIndexHeader().getSize(), 2);
+    ChunkIndex chunkIndex = chunkGroupReader.readChunkIndex(chunkIndexOffset);
+    assertEquals(chunkIndex.getChunkIndexHeader().getSize(), 2);
   }
 
   @Test
@@ -106,8 +106,8 @@ public class ChunkGroupReaderTest {
     chunkIndexEntries.add(serializeChunk2(fileOutput));
 
     ChunkMetaHeader chunkMetaHeader = new ChunkMetaHeader(2);
-    ChunkMeta chunkMeta = new ChunkMeta(chunkIndexEntries, chunkMetaHeader);
-    chunkIndexOffset = fileOutput.write(chunkMeta);
+    ChunkIndex chunkIndex = new ChunkIndex(chunkIndexEntries, chunkMetaHeader);
+    chunkIndexOffset = fileOutput.write(chunkIndex);
     fileOutput.close();
   }
 

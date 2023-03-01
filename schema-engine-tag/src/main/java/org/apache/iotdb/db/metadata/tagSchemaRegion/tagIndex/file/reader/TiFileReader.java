@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
@@ -53,7 +53,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   private Iterator<Integer> oneChunkDeviceIDsIterator;
 
-  private List<ChunkMeta> chunkIndices;
+  private List<ChunkIndex> chunkIndices;
 
   private Integer nextID;
 
@@ -163,18 +163,18 @@ public class TiFileReader implements IDiskIterator<Integer> {
    * @return a {@link org.roaringbitmap.RoaringBitmap roaring bitmap} instance
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  public RoaringBitmap readOneChunkDeviceID(List<ChunkMeta> chunkIndices, int index)
+  public RoaringBitmap readOneChunkDeviceID(List<ChunkIndex> chunkIndices, int index)
       throws IOException {
     if (chunkIndices.size() == 0) {
       return new RoaringBitmap();
     }
-    chunkIndices.sort(Comparator.comparingInt(ChunkMeta::getAllCount));
-    ChunkMeta baseChunkMeta = chunkIndices.get(0);
-    if (index >= baseChunkMeta.getChunkMetaEntries().size()) {
+    chunkIndices.sort(Comparator.comparingInt(ChunkIndex::getAllCount));
+    ChunkIndex baseChunkIndex = chunkIndices.get(0);
+    if (index >= baseChunkIndex.getChunkMetaEntries().size()) {
       return new RoaringBitmap();
     }
     ChunkReader chunkReader = new ChunkReader(tiFileInput);
-    ChunkMetaEntry baseChunkMetaEntry = baseChunkMeta.getChunkMetaEntries().get(index);
+    ChunkMetaEntry baseChunkMetaEntry = baseChunkIndex.getChunkMetaEntries().get(index);
     RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap(baseChunkMetaEntry.getOffset());
     if (chunkIndices.size() == 1) {
       return roaringBitmap;
@@ -209,10 +209,10 @@ public class TiFileReader implements IDiskIterator<Integer> {
    * @return A list saves all chunk indexes
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  public List<ChunkMeta> getChunkIndices(Map<String, String> tags, long tagKeyIndexOffset)
+  public List<ChunkIndex> getChunkIndices(Map<String, String> tags, long tagKeyIndexOffset)
       throws IOException {
     List<Long> chunkIndexOffsets = getChunkIndexOffsets(tags, tagKeyIndexOffset);
-    List<ChunkMeta> chunkIndices = new ArrayList<>();
+    List<ChunkIndex> chunkIndices = new ArrayList<>();
     for (long chunkIndexOffset : chunkIndexOffsets) {
       ChunkGroupReader chunkGroupReader = new ChunkGroupReader(tiFileInput);
       chunkIndices.add(chunkGroupReader.readChunkIndex(chunkIndexOffset));
@@ -340,7 +340,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
       if (chunkIndices.size() == 0) {
         return false;
       }
-      chunkIndices.sort(Comparator.comparingInt(ChunkMeta::getAllCount));
+      chunkIndices.sort(Comparator.comparingInt(ChunkIndex::getAllCount));
     }
     if (oneChunkDeviceIDsIterator != null) {
       if (oneChunkDeviceIDsIterator.hasNext()) {

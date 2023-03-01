@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
@@ -56,7 +56,7 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
     List<RoaringBitmap> roaringBitmaps =
         RoaringBitMapUtils.sliceRoaringBitMap(
             memNode.getRoaringBitmap(), request.getChunkMaxSize());
-    ChunkMeta chunkMeta = new ChunkMeta();
+    ChunkIndex chunkIndex = new ChunkIndex();
     int count = 0;
     for (RoaringBitmap roaringBitmap : roaringBitmaps) {
       Chunk chunk = ConvertUtils.getChunkFromRoaringBitMap(roaringBitmap);
@@ -66,11 +66,11 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
       ChunkMetaEntry chunkMetaEntry =
           ConvertUtils.getChunkIndexEntryFromRoaringBitMap(roaringBitmap);
       chunkMetaEntry.setOffset(fileOutput.write(chunk.getChunkHeader()));
-      chunkMeta.getChunkMetaEntries().add(chunkMetaEntry);
+      chunkIndex.getChunkMetaEntries().add(chunkMetaEntry);
       count++;
     }
-    chunkMeta.setChunkIndexHeader(new ChunkMetaHeader(count));
-    long offset = fileOutput.write(chunkMeta);
+    chunkIndex.setChunkIndexHeader(new ChunkMetaHeader(count));
+    long offset = fileOutput.write(chunkIndex);
     FlushResponse response = context.getResponse();
     response.addChunkOffset(memNode, offset);
   }

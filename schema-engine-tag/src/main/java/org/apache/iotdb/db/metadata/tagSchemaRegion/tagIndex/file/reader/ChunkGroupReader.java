@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
 
@@ -36,7 +36,7 @@ public class ChunkGroupReader implements IChunkGroupReader {
 
   private final ISSTableInputStream tiFileInput;
 
-  ChunkMeta chunkMeta;
+  ChunkIndex chunkIndex;
 
   // The deviceID output by the next iteration
   private Integer nextID;
@@ -63,11 +63,11 @@ public class ChunkGroupReader implements IChunkGroupReader {
    * @throws IOException Signals that an I/O exception has occurred.
    */
   @Override
-  public ChunkMeta readChunkIndex(long offset) throws IOException {
+  public ChunkIndex readChunkIndex(long offset) throws IOException {
     tiFileInput.position(offset);
-    ChunkMeta chunkMeta = new ChunkMeta();
-    tiFileInput.read(chunkMeta);
-    return chunkMeta;
+    ChunkIndex chunkIndex = new ChunkIndex();
+    tiFileInput.read(chunkIndex);
+    return chunkIndex;
   }
 
   /**
@@ -80,14 +80,14 @@ public class ChunkGroupReader implements IChunkGroupReader {
    */
   @Override
   public RoaringBitmap readAllDeviceID(long offset) throws IOException {
-    if (chunkMeta == null) {
-      chunkMeta = readChunkIndex(offset);
-      if (chunkMeta.getChunkMetaEntries().size() == 0) {
+    if (chunkIndex == null) {
+      chunkIndex = readChunkIndex(offset);
+      if (chunkIndex.getChunkMetaEntries().size() == 0) {
         return new RoaringBitmap();
       }
     }
     RoaringBitmap roaringBitmap = new RoaringBitmap();
-    for (ChunkMetaEntry chunkMetaEntry : chunkMeta.getChunkMetaEntries()) {
+    for (ChunkMetaEntry chunkMetaEntry : chunkIndex.getChunkMetaEntries()) {
       ChunkReader chunkReader = new ChunkReader(tiFileInput);
       roaringBitmap.or(chunkReader.readRoaringBitmap(chunkMetaEntry.getOffset()));
     }
@@ -109,9 +109,9 @@ public class ChunkGroupReader implements IChunkGroupReader {
     if (nextID != null) {
       return true;
     }
-    if (chunkMeta == null) {
-      chunkMeta = readChunkIndex(tiFileInput.position());
-      if (chunkMeta.getChunkMetaEntries().size() == 0) {
+    if (chunkIndex == null) {
+      chunkIndex = readChunkIndex(tiFileInput.position());
+      if (chunkIndex.getChunkMetaEntries().size() == 0) {
         return false;
       }
     }
@@ -124,9 +124,9 @@ public class ChunkGroupReader implements IChunkGroupReader {
         index++;
       }
     }
-    while (index < chunkMeta.getChunkMetaEntries().size()) {
+    while (index < chunkIndex.getChunkMetaEntries().size()) {
       chunkReader =
-          new ChunkReader(tiFileInput, chunkMeta.getChunkMetaEntries().get(index).getOffset());
+          new ChunkReader(tiFileInput, chunkIndex.getChunkMetaEntries().get(index).getOffset());
       if (chunkReader.hasNext()) {
         nextID = chunkReader.next();
         return true;

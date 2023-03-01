@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.util;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaRegionConstant;
 
 public class DiskFileNameDescriptor {
 
@@ -26,7 +26,7 @@ public class DiskFileNameDescriptor {
     return Integer.parseInt(
         fileName
             .substring(fileName.lastIndexOf("-") + 1)
-            .replaceFirst(SchemaRegionConstant.TMP, ""));
+            .replaceFirst(TagSchemaRegionConstant.TMP, ""));
   }
 
   public static String generateFlushFileName(String flushFilePrefix, int level, int fileID) {
@@ -34,11 +34,11 @@ public class DiskFileNameDescriptor {
   }
 
   public static String generateTmpFlushFileName(String flushFileName) {
-    return flushFileName + SchemaRegionConstant.TMP;
+    return flushFileName + TagSchemaRegionConstant.TMP;
   }
 
   public static String generateDeleteFlushFileName(String flushFilePrefix, int level, int fileID) {
-    return flushFilePrefix + "-" + SchemaRegionConstant.DELETE + "-" + level + "-" + fileID;
+    return flushFilePrefix + "-" + TagSchemaRegionConstant.DELETE + "-" + level + "-" + fileID;
   }
 
   public static String getFlushDeleteFileNameFromFlushFileName(String flushFileName) {
@@ -49,6 +49,6 @@ public class DiskFileNameDescriptor {
     }
     StringBuilder suffix = new StringBuilder();
     suffix.append(split[split.length - 2]).append("-").append(split[split.length - 1]);
-    return prefix + "-" + SchemaRegionConstant.DELETE + "-" + suffix;
+    return prefix + "-" + TagSchemaRegionConstant.DELETE + "-" + suffix;
   }
 }

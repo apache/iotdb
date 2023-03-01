@@ -28,17 +28,17 @@ import java.util.List;
 import java.util.Objects;
 
 /** Represents the chunk index structure in tifile */
-public class ChunkMeta implements IDiskEntry {
+public class ChunkIndex implements IDiskEntry {
   private List<ChunkMetaEntry> chunkMetaEntries;
 
   private ChunkMetaHeader chunkMetaHeader;
 
-  public ChunkMeta(List<ChunkMetaEntry> chunkIndexEntries, ChunkMetaHeader chunkMetaHeader) {
+  public ChunkIndex(List<ChunkMetaEntry> chunkIndexEntries, ChunkMetaHeader chunkMetaHeader) {
     this.chunkMetaEntries = chunkIndexEntries;
     this.chunkMetaHeader = chunkMetaHeader;
   }
 
-  public ChunkMeta() {
+  public ChunkIndex() {
     this.chunkMetaEntries = new ArrayList<>();
   }
 
@@ -113,7 +113,7 @@ public class ChunkMeta implements IDiskEntry {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ChunkMeta that = (ChunkMeta) o;
+    ChunkIndex that = (ChunkIndex) o;
     return Objects.equals(chunkMetaEntries, that.chunkMetaEntries)
         && Objects.equals(chunkMetaHeader, that.chunkMetaHeader);
   }

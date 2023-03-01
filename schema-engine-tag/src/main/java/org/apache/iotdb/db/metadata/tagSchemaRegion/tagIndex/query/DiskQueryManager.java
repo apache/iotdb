@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader.DiskDeviceIDReader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.manager.IDiskQueryManager;
@@ -79,8 +79,8 @@ public class DiskQueryManager implements IDiskQueryManager {
     return flushDir.list(
         (dir, name) ->
             name.startsWith(flushFilePrefix)
-                && !name.endsWith(SchemaRegionConstant.TMP)
-                && !name.contains(SchemaRegionConstant.DELETE));
+                && !name.endsWith(TagSchemaRegionConstant.TMP)
+                && !name.contains(TagSchemaRegionConstant.DELETE));
   }
 
   private Map<String, String> generateMap(QueryRequest<String> request) {
