@@ -27,7 +27,7 @@
 
 - 触发器中表示触发器属性的键值对。参考示例语句中 WITH 后的属性键值对。
 
-```SQL
+```sql
 # 以字符串形式表示键值对
 CREATE TRIGGER `alert-listener-sg1d1s1`
 AFTER INSERT
@@ -109,7 +109,7 @@ SHOW timeseries root.ln.** WHRER unit = c
 
 - 创建 Pipe 以及 PipeSink 时表示属性的键值对。
 
-```SQL
+```sql
 # 创建 PipeSink 时表示属性
 CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
 

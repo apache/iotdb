@@ -31,7 +31,7 @@ IoTDB 同步工具内嵌于 IoTDB 引擎，与下游接收端相连，下游支�
 
 ## 2.模型定义
 
-![pipe2.png](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Sync-Tool/pipe2.png?raw=true)
+![pipe2.png](/img/UserGuide/System-Tools/Sync-Tool/pipe2.png?raw=true)
 
 TsFile 同步工具实现了数据从 "流入-> IoTDB ->流出" 的闭环。假设目前有两台机器A和B都安装了IoTDB，希望将 A 上的数据不断同步至 B 中。为了更好地描述这个过程，我们引入以下概念。
 
@@ -124,7 +124,7 @@ IoTDB> DROP PIPE my_pipe
 
 - 显示当前所能支持的 PipeSink 类型。
 
-```Plain%20Text
+```
 IoTDB> SHOW PIPESINKTYPE
 IoTDB>
 +-----+
@@ -170,7 +170,7 @@ IoTDB>
 - 创建同步任务
   - 其中 select 语句目前仅支持`**`（即所有序列中的数据），from 语句目前仅支持`root`，where语句仅支持指定 time 的起始时间。起始时间的指定形式可以是 yyyy-mm-dd HH:MM:SS或时间戳。
 
-```Plain%20Text
+```
 IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS)]
 ```
 
@@ -227,7 +227,7 @@ IoTDB> DROP PIPE <PipeName>
     - ERROR 状态，这表明出现了网络连接正常但数据无法传输的问题，例如发送端 IP 不在接收端白名单中，或是发送端与接收端版本不兼容
     - 当出现 ERROR 状态时，建议 STOP PIPE 后查看 DataNode 日志，检查接收端配置或网络情况后重新 START PIPE
 
-```Plain%20Text
+```
 IoTDB> SHOW PIPES
 IoTDB>
 +-----------------------+--------+--------+-------------+---------+------------------------------------+-------+
@@ -287,7 +287,7 @@ IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>= 16485696
 
 启动Pipe
 
-```Plain%20Text
+```
 IoTDB> START PIPE p
 ```
 
@@ -301,7 +301,7 @@ IoTDB> SHOW PIPE p
 
 在发送端执行以下 SQL
 
-```SQL
+```sql
 CREATE DATABASE root.vehicle;
 CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE;
 CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN;
@@ -318,7 +318,7 @@ flush;
 
 在发送端和接受端执行查询，可查询到相同的结果
 
-```Plain%20Text
+```
 IoTDB> select ** from root.vehicle
 +-----------------------------+------------------+------------------+------------------+------------------+
 |             Time|root.vehicle.d0.s0|root.vehicle.d0.s1|root.vehicle.d1.s3|root.vehicle.d1.s2|

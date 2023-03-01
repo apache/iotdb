@@ -218,7 +218,7 @@ It costs 0.001s
 
 ## 统计设备数量
 
-* COUNT DEVICES <PathPattern>
+* COUNT DEVICES \<PathPattern\>
 
 上述语句用于统计设备的数量，同时允许指定`PathPattern` 用于统计匹配该`PathPattern` 的设备数量
 

@@ -27,7 +27,7 @@
 
 在 IoTDB 中，字符串是由**单引号（`'`）或双引号（`"`）字符括起来的字符序列**。示例如下：
 
-```Plain%20Text
+```
 'a string'
 "another string"
 ```
@@ -36,7 +36,7 @@
 
 - `INSERT` 或者 `SELECT` 中用于表达 `TEXT` 类型数据的场景。
 
-  ```SQL
+  ```sql
   # insert 示例
   insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
   insert into root.ln.wf02.wt02(timestamp,hardware) values(2, '\\')
@@ -55,7 +55,7 @@
 
 - `LOAD` / `REMOVE` / `SETTLE` 指令中的文件路径。
 
-  ```SQL
+  ```sql
   # load 示例
   LOAD 'examplePath'
   
@@ -68,14 +68,14 @@
 
 - 用户密码。
 
-  ```SQL
+  ```sql
   # 示例，write_pwd 即为用户密码
   CREATE USER ln_write_user 'write_pwd'
   ```
 
 - 触发器和 UDF 中的类全类名，示例如下：
 
-  ```SQL
+  ```sql
   # 触发器示例，AS 后使用字符串表示类全类名
   CREATE TRIGGER `alert-listener-sg1d1s1`
   AFTER INSERT
@@ -92,7 +92,7 @@
 
 - Select 子句中可以为结果集中的值指定别名，别名可以被定义为字符串或者标识符，示例如下：
 
-  ```SQL
+  ```sql
   select s1 as 'temperature', s2 as 'speed' from root.ln.wf01.wt01;
   
   # 表头如下所示
@@ -111,7 +111,7 @@
 
 字符串内使用引号的示例如下：
 
-```Plain%20Text
+```
 'string'  // string
 '"string"'  // "string"
 '""string""'  // ""string""
