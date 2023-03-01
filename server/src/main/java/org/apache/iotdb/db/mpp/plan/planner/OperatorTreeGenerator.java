@@ -2412,7 +2412,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // children after pipelining
     List<Operator> parentPipelineChildren = new ArrayList<>();
     int finalExchangeNum = context.getExchangeSumNum();
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode localChild : node.getChildren()) {
         Operator childOperation = localChild.accept(this, context);
@@ -2592,7 +2592,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int finalExchangeNum = context.getExchangeSumNum();
 
     // 1. divide every child to pipeline using the max dop
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode childSource : node.getChildren()) {
         Operator childOperation = childSource.accept(this, context);
@@ -2615,7 +2615,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LocalExecutionPlanContext subContext = context.createSubContext();
           // Only context.getDegreeOfParallelism() - 1 can be allocated to child
           int dopForChild = context.getDegreeOfParallelism() - 1;
-          if (childNode instanceof SeriesSourceNode) {
+          if (childNode instanceof SeriesSourceNode && node.getChildren().size() > 1) {
             subContext.setDegreeOfParallelism(1);
           } else {
             subContext.setDegreeOfParallelism(dopForChild);

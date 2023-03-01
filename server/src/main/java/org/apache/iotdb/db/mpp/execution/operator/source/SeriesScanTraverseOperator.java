@@ -132,6 +132,9 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
         satisfiedSeqFileIndexList[seqFileNum++] = i;
         minTime = Math.min(minTime, tsFileResource.getStartTime(seriesPath.getDevice()));
         maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
+        if (!tsFileResource.isClosed()) {
+          maxTime = Long.MAX_VALUE;
+        }
       }
     }
 
@@ -142,6 +145,9 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
               seriesPath.getDevice(), getGlobalTimeFilter(), false, false)) {
         minTime = Math.min(minTime, tsFileResource.getStartTime(seriesPath.getDevice()));
         maxTime = Math.max(maxTime, tsFileResource.getEndTime(seriesPath.getDevice()));
+        if (!tsFileResource.isClosed()) {
+          maxTime = Long.MAX_VALUE;
+        }
       }
     }
 
