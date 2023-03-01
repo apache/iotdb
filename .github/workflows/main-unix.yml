@@ -58,7 +58,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check -P site -P code-coverage
-      - name: IT Test
+      - name: UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         run: |
