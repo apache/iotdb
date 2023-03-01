@@ -34,8 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import java.io.File;
 import java.util.Arrays;
@@ -45,7 +43,6 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(Parameterized.class)
 public class TagSchemaRegionTest {
 
   private CompressionType compressionType;
@@ -67,29 +64,6 @@ public class TagSchemaRegionTest {
   private String schemaDir;
 
   private TagSchemaRegion tagSchemaRegion;
-
-  protected final TagSchemaRegionTestParams testParams;
-
-  @Parameterized.Parameters(name = "{0}")
-  public static List<TagSchemaRegionTestParams> getTestNodes() {
-    return Arrays.asList(
-        new TagSchemaRegionTestParams("MemoryMode"),
-        new TagSchemaRegionTestParams("NonMemoryMode")
-    );
-  }
-
-  protected static class TagSchemaRegionTestParams {
-    private final String testModeName;
-
-    private TagSchemaRegionTestParams(String testModeName) {
-      this.testModeName = testModeName;
-    }
-
-  }
-
-  public TagSchemaRegionTest(TagSchemaRegionTestParams testParams) {
-    this.testParams = testParams;
-  }
 
   @Before
   public void before() {
@@ -256,5 +230,4 @@ public class TagSchemaRegionTest {
             null);
     tagSchemaRegion.createAlignedTimeSeries(plan);
   }
-
 }
