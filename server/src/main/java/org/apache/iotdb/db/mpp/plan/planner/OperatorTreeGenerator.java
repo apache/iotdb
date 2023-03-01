@@ -402,6 +402,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             createNewPipelineForChildOperation(
                 context, subContext, seriesScanOperator, planNodeId, false);
         childSourceOperator.add(exchangeOperator);
+        context.setExchangeSumNum(context.getExchangeSumNum() + 1);
       }
     }
     SeriesScanTraverseOperator traverseOperator =
