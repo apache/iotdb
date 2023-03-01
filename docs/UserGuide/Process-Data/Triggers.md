@@ -306,7 +306,7 @@ When a user manages triggers, 4 types of authorities will be involved:
 * `START_TRIGGER`: Only users with this authority are allowed to start triggers. This authority is path dependent.
 * `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers. This authority is path dependent.
 
-For more information, refer to [Authority Management Statement](../Operation%20Manual/Administration.md).
+For more information, refer to [Authority Management Statement](../Administration-Management/Administration.md).
 
 
 
