@@ -41,19 +41,19 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, needSkip, lastIndex);
+        addIntInput(column, bitMap, lastIndex);
         return;
       case INT64:
-        addLongInput(column, needSkip, lastIndex);
+        addLongInput(column, bitMap, lastIndex);
         return;
       case FLOAT:
-        addFloatInput(column, needSkip, lastIndex);
+        addFloatInput(column, bitMap, lastIndex);
         return;
       case DOUBLE:
-        addDoubleInput(column, needSkip, lastIndex);
+        addDoubleInput(column, bitMap, lastIndex);
         return;
       case TEXT:
       case BOOLEAN:
