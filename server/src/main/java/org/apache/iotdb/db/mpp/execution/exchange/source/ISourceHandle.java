@@ -85,4 +85,6 @@ public interface ISourceHandle {
 
   /** Set max bytes this handle can reserve from memory pool */
   void setMaxBytesCanReserve(long maxBytesCanReserve);
+
+  void allowRunning();
 }

@@ -484,14 +484,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * sink map.
    */
   public ISinkChannel createLocalSinkChannelForPipeline(
-      DriverContext driverContext, String planNodeId) {
+      DriverContext driverContext, String planNodeId, boolean allowRunning) {
     LOGGER.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
             planNodeId,
             localMemoryManager);
-    queue.allowAddingTsBlock();
+    if (allowRunning) {
+      queue.allowAddingTsBlock();
+    }
     return new LocalSinkChannel(
         queue,
         new SinkListenerImpl(driverContext.getFragmentInstanceContext(), driverContext::failed));

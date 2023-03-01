@@ -49,7 +49,8 @@ public interface IMPPDataExchangeManager {
       String localPlanNodeId,
       FragmentInstanceContext instanceContext);
 
-  ISinkChannel createLocalSinkChannelForPipeline(DriverContext driverContext, String planNodeId);
+  ISinkChannel createLocalSinkChannelForPipeline(
+      DriverContext driverContext, String planNodeId, boolean allowRunning);
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
    * plan node of a local fragment instance in async manner.

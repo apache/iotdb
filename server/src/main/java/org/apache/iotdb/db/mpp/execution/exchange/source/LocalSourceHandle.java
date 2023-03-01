@@ -255,4 +255,8 @@ public class LocalSourceHandle implements ISourceHandle {
     // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
     // LocalSinkChannel
   }
+
+  public void allowRunning() {
+    queue.allowAddingTsBlock();
+  }
 }

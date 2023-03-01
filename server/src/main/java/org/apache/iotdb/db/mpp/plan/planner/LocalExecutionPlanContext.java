@@ -62,8 +62,8 @@ public class LocalExecutionPlanContext {
   private int degreeOfParallelism =
       IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
   // this is shared with all subContexts
-  private AtomicInteger nextPipelineId;
-  private List<PipelineDriverFactory> pipelineDriverFactories;
+  private final AtomicInteger nextPipelineId;
+  private final List<PipelineDriverFactory> pipelineDriverFactories;
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
 

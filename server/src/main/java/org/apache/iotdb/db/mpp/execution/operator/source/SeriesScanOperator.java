@@ -110,7 +110,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     }
   }
 
-  private final TsBlockBuilder builder;
+  private TsBlockBuilder builder;
   private boolean finished = false;
 
   public SeriesScanOperator(
@@ -125,6 +125,18 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         new SeriesScanUtil(seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
     this.maxReturnSize =
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
+  }
+
+  public SeriesScanOperator(OperatorContext context, PlanNodeId sourceId) {
+    this.sourceId = sourceId;
+    this.operatorContext = context;
+    this.maxReturnSize =
+        Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+  }
+
+  public void setSeriesScanUtils(SeriesScanUtil seriesScanUtil) {
+    this.seriesScanUtil = seriesScanUtil;
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
 

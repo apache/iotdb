@@ -72,6 +72,10 @@ public class SeriesScanOptions {
     return globalTimeFilter;
   }
 
+  public void setGlobalTimeFilter(Filter globalTimeFilter) {
+    this.globalTimeFilter = globalTimeFilter;
+  }
+
   public Filter getQueryFilter() {
     return queryFilter;
   }
@@ -125,6 +129,10 @@ public class SeriesScanOptions {
       return this;
     }
 
+    public Filter getGlobalTimeFilter() {
+      return globalTimeFilter;
+    }
+
     public Builder withQueryFilter(Filter queryFilter) {
       this.queryFilter = queryFilter;
       return this;
@@ -137,6 +145,14 @@ public class SeriesScanOptions {
 
     public Builder withOffset(long offset) {
       this.offset = offset;
+      return this;
+    }
+
+    public Builder withTTL(long dataTTL) {
+      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
+      if (this.queryFilter != null) {
+        this.queryFilter = updateFilterUsingTTL(queryFilter, dataTTL);
+      }
       return this;
     }
 
