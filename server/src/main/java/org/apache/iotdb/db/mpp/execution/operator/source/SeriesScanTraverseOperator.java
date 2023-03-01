@@ -214,8 +214,8 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
         ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
       }
       // update next time range
-      startTime = curMaxTime;
-      endTime = Math.min(curMaxTime + avgTime, maxTime);
+      startTime = curMaxTime + 1;
+      endTime = Math.min(startTime + avgTime, maxTime);
     }
   }
 
