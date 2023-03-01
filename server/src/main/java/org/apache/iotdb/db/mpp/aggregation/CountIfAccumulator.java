@@ -47,16 +47,15 @@ public class CountIfAccumulator implements Accumulator {
     this.ignoreNull = ignoreNull;
   }
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      // the input parameter 'needSkip' and 'lastIndex' effects on ControlColumn
-      if (needSkip != null && needSkip.isMarked(i)) {
+      // the input parameter 'bitMap' and 'lastIndex' effects on ControlColumn
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-
       if (column[1].isNull(i)) {
         if (!this.ignoreNull) {
           // data point segment was over, judge whether to count

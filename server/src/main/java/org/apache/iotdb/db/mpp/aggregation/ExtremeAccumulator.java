@@ -225,10 +225,9 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -250,10 +249,9 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -275,10 +273,9 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -300,10 +297,9 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {

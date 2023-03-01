@@ -33,20 +33,19 @@ public class CountAccumulator implements Accumulator {
 
   public CountAccumulator() {}
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
 
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     int curPositionCount = column[0].getPositionCount();
 
     if (!column[1].mayHaveNull()
         && lastIndex == curPositionCount - 1
-        && ((needSkip == null) || needSkip.isAllUnmarked())) {
+        && ((bitMap == null) || bitMap.isAllMarked())) {
       countValue += curPositionCount;
     } else {
       for (int i = 0; i <= lastIndex; i++) {
-        // skip null value in control column
-        if (needSkip != null && needSkip.isMarked(i)) {
+        if (bitMap != null && !bitMap.isMarked(i)) {
           continue;
         }
         if (!column[1].isNull(i)) {

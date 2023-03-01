@@ -40,21 +40,21 @@ public class MinValueAccumulator implements Accumulator {
     this.minResult = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, needSkip, lastIndex);
+        addIntInput(column, bitMap, lastIndex);
         return;
       case INT64:
-        addLongInput(column, needSkip, lastIndex);
+        addLongInput(column, bitMap, lastIndex);
         return;
       case FLOAT:
-        addFloatInput(column, needSkip, lastIndex);
+        addFloatInput(column, bitMap, lastIndex);
         return;
       case DOUBLE:
-        addDoubleInput(column, needSkip, lastIndex);
+        addDoubleInput(column, bitMap, lastIndex);
         return;
       case TEXT:
       case BOOLEAN:
@@ -223,10 +223,10 @@ public class MinValueAccumulator implements Accumulator {
     return minResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -242,10 +242,10 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -261,10 +261,9 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -280,10 +279,9 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {

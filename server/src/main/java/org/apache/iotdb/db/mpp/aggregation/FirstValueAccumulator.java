@@ -42,27 +42,27 @@ public class FirstValueAccumulator implements Accumulator {
     firstValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, needSkip, lastIndex);
+        addIntInput(column, bitMap, lastIndex);
         return;
       case INT64:
-        addLongInput(column, needSkip, lastIndex);
+        addLongInput(column, bitMap, lastIndex);
         return;
       case FLOAT:
-        addFloatInput(column, needSkip, lastIndex);
+        addFloatInput(column, bitMap, lastIndex);
         return;
       case DOUBLE:
-        addDoubleInput(column, needSkip, lastIndex);
+        addDoubleInput(column, bitMap, lastIndex);
         return;
       case TEXT:
-        addBinaryInput(column, needSkip, lastIndex);
+        addBinaryInput(column, bitMap, lastIndex);
         return;
       case BOOLEAN:
-        addBooleanInput(column, needSkip, lastIndex);
+        addBooleanInput(column, bitMap, lastIndex);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -252,10 +252,9 @@ public class FirstValueAccumulator implements Accumulator {
     return firstValue.getDataType();
   }
 
-  protected void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -273,10 +272,9 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -294,10 +292,9 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -315,10 +312,9 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -336,10 +332,9 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBooleanInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addBooleanInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -357,10 +352,9 @@ public class FirstValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBinaryInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addBinaryInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {

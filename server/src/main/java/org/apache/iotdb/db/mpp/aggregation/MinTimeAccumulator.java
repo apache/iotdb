@@ -34,13 +34,12 @@ public class MinTimeAccumulator implements Accumulator {
 
   public MinTimeAccumulator() {}
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public void addInput(Column[] column, BitMap needSkip, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {

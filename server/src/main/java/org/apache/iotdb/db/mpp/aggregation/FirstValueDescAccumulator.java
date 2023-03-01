@@ -36,10 +36,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
 
   // Don't break in advance
   @Override
-  protected void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -49,10 +48,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -62,10 +60,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -75,10 +72,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -88,10 +84,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addBooleanInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addBooleanInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {
@@ -101,10 +96,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addBinaryInput(Column[] column, BitMap needSkip, int lastIndex) {
+  protected void addBinaryInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
-      // skip null value in control column
-      if (needSkip != null && needSkip.isMarked(i)) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
       if (!column[1].isNull(i)) {

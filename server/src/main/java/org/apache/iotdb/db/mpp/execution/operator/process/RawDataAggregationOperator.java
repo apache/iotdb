@@ -159,21 +159,26 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       controlAndTimeColumn[0] = curWindow.getControlColumn(inputTsBlock);
       controlAndTimeColumn[1] = inputTsBlock.getTimeColumn();
 
-      BitMap needSkip = new BitMap(tsBlockSize);
+      BitMap needProcess = new BitMap(tsBlockSize);
       int lastIndexToProcess = -1;
+      boolean hasSkip = false;
 
       for (int i = 0; i < tsBlockSize; i++) {
         if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
-          needSkip.mark(i);
           lastIndexToProcess = i;
+          hasSkip = true;
           continue;
         }
         if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
           break;
         }
+        needProcess.mark(i);
         curWindow.mergeOnePoint(controlAndTimeColumn, i);
         lastIndexToProcess = i;
       }
+
+      // if no row needs to skip, just send a null parameter.
+      if (!hasSkip) needProcess = null;
 
       for (Aggregator aggregator : aggregators) {
         // Current agg method has been calculated
@@ -181,7 +186,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
           continue;
         }
 
-        aggregator.processTsBlock(inputTsBlock, needSkip, lastIndexToProcess);
+        aggregator.processTsBlock(inputTsBlock, needProcess, lastIndexToProcess);
       }
       int lastReadRowIndex = lastIndexToProcess + 1;
       // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
