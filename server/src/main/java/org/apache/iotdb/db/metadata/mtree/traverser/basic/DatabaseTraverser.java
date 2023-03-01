@@ -45,22 +45,22 @@ public abstract class DatabaseTraverser<R> extends Traverser<R> {
 
   @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
-    return node.isStorageGroup();
+    return node.isDatabase();
   }
 
   @Override
   protected boolean acceptInternalMatchedNode(IMNode node) {
-    return collectInternal && node.isStorageGroup();
+    return collectInternal && node.isDatabase();
   }
 
   @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    return !node.isStorageGroup();
+    return !node.isDatabase();
   }
 
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    return !node.isStorageGroup();
+    return !node.isDatabase();
   }
 
   public void setCollectInternal(boolean collectInternal) {

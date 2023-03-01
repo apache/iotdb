@@ -21,11 +21,11 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -71,7 +71,7 @@ public class SchemaFileLogTest {
   public void essentialLogTest() throws IOException, MetadataException {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    IStorageGroupMNode newSGNode = new StorageGroupEntityMNode(null, "newSG", 10000L);
+    IDatabaseMNode newSGNode = new AbstractDatabaseDeviceMNode(null, "newSG", 10000L);
     sf.updateStorageGroupNode(newSGNode);
 
     IMNode root = virtualTriangleMTree(5, "root.test");

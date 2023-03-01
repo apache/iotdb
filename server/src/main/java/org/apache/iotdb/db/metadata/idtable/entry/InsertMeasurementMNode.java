@@ -21,14 +21,14 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -73,7 +73,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IEntityMNode getParent() {
+  public IDeviceMNode getParent() {
     return null;
   }
 
@@ -211,7 +211,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public boolean isStorageGroup() {
+  public boolean isDatabase() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -231,12 +231,12 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IStorageGroupMNode getAsStorageGroupMNode() {
+  public IDatabaseMNode getAsDatabaseMNode() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
   @Override
-  public IEntityMNode getAsEntityMNode() {
+  public IDeviceMNode getAsEntityMNode() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 

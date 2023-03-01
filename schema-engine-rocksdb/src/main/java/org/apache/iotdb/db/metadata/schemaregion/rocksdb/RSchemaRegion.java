@@ -43,7 +43,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
@@ -620,7 +620,7 @@ public class RSchemaRegion implements ISchemaRegion {
                     // TODO: tags invert index update
                   }
                   readWriteHandler.executeBatch(batch);
-                  if (!deletedNode.getParent().isStorageGroup()) {
+                  if (!deletedNode.getParent().isDatabase()) {
                     parentNeedsToCheck.add(deletedNode.getParent());
                   }
                 }
@@ -643,7 +643,7 @@ public class RSchemaRegion implements ISchemaRegion {
           Stream<IMNode> parentStream = parentNeedsToCheck.parallelStream();
           parentStream.forEach(
               currentNode -> {
-                if (!currentNode.isStorageGroup()) {
+                if (!currentNode.isDatabase()) {
                   PartialPath parentPath = currentNode.getPartialPath();
                   int level = parentPath.getNodeLength();
                   int end = parentPath.getNodeLength() - 1;
@@ -653,7 +653,7 @@ public class RSchemaRegion implements ISchemaRegion {
                       readWriteHandler.deleteNode(
                           parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
                       IMNode parentNode = currentNode.getParent();
-                      if (!parentNode.isStorageGroup()) {
+                      if (!parentNode.isDatabase()) {
                         tempSet.add(currentNode.getParent());
                       }
                     } catch (Exception e) {

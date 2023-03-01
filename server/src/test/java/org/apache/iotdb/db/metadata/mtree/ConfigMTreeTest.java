@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -255,8 +255,7 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      IStorageGroupMNode storageGroupMNode =
-          root.getStorageGroupNodeByStorageGroupPath(pathList[i]);
+      IDatabaseMNode storageGroupMNode = root.getStorageGroupNodeByStorageGroupPath(pathList[i]);
       storageGroupMNode.setDataTTL(i);
       storageGroupMNode.setDataReplicationFactor(i);
       storageGroupMNode.setSchemaReplicationFactor(i);

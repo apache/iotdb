@@ -21,18 +21,22 @@ package org.apache.iotdb.db.metadata.mtree.snapshot;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.DatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -252,7 +256,7 @@ public class MemMTreeSnapshotUtil {
   private static class MNodeSerializer extends MNodeVisitor<Boolean, OutputStream> {
 
     @Override
-    public Boolean visitInternalMNode(InternalMNode node, OutputStream outputStream) {
+    public Boolean visitInternalMNode(BasicMNode node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
@@ -264,7 +268,7 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitStorageGroupMNode(StorageGroupMNode node, OutputStream outputStream) {
+    public Boolean visitStorageGroupMNode(AbstractDatabaseMNode node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
@@ -278,7 +282,7 @@ public class MemMTreeSnapshotUtil {
 
     @Override
     public Boolean visitStorageGroupEntityMNode(
-        StorageGroupEntityMNode node, OutputStream outputStream) {
+        AbstractDatabaseDeviceMNode node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
@@ -292,7 +296,7 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitEntityMNode(EntityMNode node, OutputStream outputStream) {
+    public Boolean visitDeviceMNode(IDeviceMNode node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
@@ -305,7 +309,7 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitMeasurementMNode(MeasurementMNode node, OutputStream outputStream) {
+    public Boolean visitMeasurementMNode(IMeasurementMNode node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
         ReadWriteIOUtils.write(node.getName(), outputStream);
@@ -320,7 +324,7 @@ public class MemMTreeSnapshotUtil {
       }
     }
 
-    private void serializeInternalBasicInfo(InternalMNode node, OutputStream outputStream)
+    private void serializeInternalBasicInfo(BasicMNode node, OutputStream outputStream)
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
@@ -331,33 +335,32 @@ public class MemMTreeSnapshotUtil {
 
   private static class MNodeDeserializer {
 
-    public InternalMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
+    public BasicMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      InternalMNode node = new InternalMNode(null, name);
+      BasicMNode node = new BasicMNode(null, name);
       deserializeInternalBasicInfo(node, inputStream);
       return node;
     }
 
-    public StorageGroupMNode deserializeStorageGroupMNode(InputStream inputStream)
-        throws IOException {
+    public DatabaseMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      StorageGroupMNode node = new StorageGroupMNode(null, name);
+      DatabaseMNode node = new DatabaseMNode(null, name);
       deserializeInternalBasicInfo(node, inputStream);
       return node;
     }
 
-    public StorageGroupEntityMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
+    public DatabaseDeviceMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
         throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      StorageGroupEntityMNode node = new StorageGroupEntityMNode(null, name, 0);
+      DatabaseDeviceMNode node = new DatabaseDeviceMNode(null, name, 0);
       deserializeInternalBasicInfo(node, inputStream);
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
 
-    public EntityMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
+    public DeviceMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      EntityMNode node = new EntityMNode(null, name);
+      DeviceMNode node = new DeviceMNode(null, name);
       deserializeInternalBasicInfo(node, inputStream);
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
@@ -375,7 +378,7 @@ public class MemMTreeSnapshotUtil {
       return node;
     }
 
-    private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
+    private void deserializeInternalBasicInfo(BasicMNode node, InputStream inputStream)
         throws IOException {
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));

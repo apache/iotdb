@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 
 import java.util.List;
 
@@ -39,7 +39,7 @@ public interface ICacheManager {
 
   void updateCacheStatusAfterPersist(IMNode node);
 
-  IStorageGroupMNode collectUpdatedStorageGroupMNodes();
+  IDatabaseMNode collectUpdatedStorageGroupMNodes();
 
   List<IMNode> collectVolatileMNodes();
 

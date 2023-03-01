@@ -22,18 +22,20 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.tree.ITreeNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 /** This interface defines a MNode's operation interfaces. */
-public interface IMNode extends ITreeNode {
+public interface IMNode<N extends IMNode<?>> extends ITreeNode {
 
   String getName();
 
   void setName(String name);
 
-  IMNode getParent();
+  N getParent();
 
-  void setParent(IMNode parent);
+  void setParent(N parent);
 
   String getFullPath();
 
@@ -43,48 +45,28 @@ public interface IMNode extends ITreeNode {
 
   boolean hasChild(String name);
 
-  IMNode getChild(String name);
+  N getChild(String name);
 
-  IMNode addChild(String name, IMNode child);
+  N addChild(String name, N child);
 
-  IMNode addChild(IMNode child);
+  N addChild(N child);
 
-  IMNode deleteChild(String name);
+  N deleteChild(String name);
 
   // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
   // newChild
-  void replaceChild(String oldChildName, IMNode newChildNode);
+  void replaceChild(String oldChildName, N newChildNode);
 
   // this method will move all the reference or value of current node's attributes to newMNode
-  void moveDataToNewMNode(IMNode newMNode);
+  void moveDataToNewMNode(N newMNode);
 
   IMNodeContainer getChildren();
 
   void setChildren(IMNodeContainer children);
 
-  boolean isUseTemplate();
-
-  void setUseTemplate(boolean useTemplate);
-
-  /** @return the logic id of template set or activated on this node, id>=-1 */
-  int getSchemaTemplateId();
-
-  /** @return the template id with current state, may be negative since unset or deactivation */
-  int getSchemaTemplateIdWithState();
-
-  void setSchemaTemplateId(int schemaTemplateId);
-
-  void preUnsetSchemaTemplate();
-
-  void rollbackUnsetSchemaTemplate();
-
-  boolean isSchemaTemplatePreUnset();
-
-  void unsetSchemaTemplate();
-
   boolean isAboveDatabase();
 
-  boolean isStorageGroup();
+  boolean isDatabase();
 
   boolean isEntity();
 
@@ -92,15 +74,11 @@ public interface IMNode extends ITreeNode {
 
   MNodeType getMNodeType(Boolean isConfig);
 
-  IStorageGroupMNode getAsStorageGroupMNode();
+  IDatabaseMNode getAsDatabaseMNode();
 
-  IEntityMNode getAsEntityMNode();
+  IDeviceMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
-
-  CacheEntry getCacheEntry();
-
-  void setCacheEntry(CacheEntry cacheEntry);
 
   <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
 }

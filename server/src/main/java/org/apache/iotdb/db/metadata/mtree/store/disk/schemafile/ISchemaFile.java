@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +41,7 @@ public interface ISchemaFile {
    * @param sgNode node to be updated
    * @return true if success
    */
-  boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException;
+  boolean updateStorageGroupNode(IDatabaseMNode sgNode) throws IOException;
 
   /**
    * Only database node along with its descendents could be flushed into schema file.

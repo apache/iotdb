@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 /** Used to fill the link list of MNode above database in IMTreeBelowSG */
-public class AboveDatabaseMNode extends InternalMNode {
+public class AboveDatabaseMNode extends BasicMNode {
   /**
    * Constructor of MNode.
    *

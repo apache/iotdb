@@ -16,34 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.measurement;
 
-import java.util.Map;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public interface IEntityMNode extends IMNode {
-
-  boolean addAlias(String alias, IMeasurementMNode child);
-
-  void deleteAliasChild(String alias);
-
-  Map<String, IMeasurementMNode> getAliasChildren();
-
-  void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren);
+/** This interface defines a MeasurementMNode's operation interfaces. */
+public interface IMeasurementMNode<N extends IMNode<?>> extends IMNode<N>, IMeasurementInfo {
 
   @Override
-  boolean isUseTemplate();
+  N getParent();
 
-  void setUseTemplate(boolean useTemplate);
-
-  boolean isPreDeactivateTemplate();
-
-  void preDeactivateTemplate();
-
-  void rollbackPreDeactivateTemplate();
-
-  void deactivateTemplate();
-
-  boolean isAligned();
-
-  void setAligned(boolean isAligned);
+  MeasurementPath getMeasurementPath();
 }

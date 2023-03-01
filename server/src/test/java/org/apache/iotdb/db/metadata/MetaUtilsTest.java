@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -43,22 +43,22 @@ public class MetaUtilsTest {
 
   @Test
   public void testGetMultiFullPaths() {
-    InternalMNode rootNode = new InternalMNode(null, "root");
+    BasicMNode rootNode = new BasicMNode(null, "root");
 
     // builds the relationship of root.a and root.aa
-    InternalMNode aNode = new InternalMNode(rootNode, "a");
+    BasicMNode aNode = new BasicMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
-    InternalMNode aaNode = new InternalMNode(rootNode, "aa");
+    BasicMNode aaNode = new BasicMNode(rootNode, "aa");
     rootNode.addChild(aaNode.getName(), aaNode);
 
     // builds the relationship of root.a.b and root.aa.bb
-    InternalMNode bNode = new InternalMNode(aNode, "b");
+    BasicMNode bNode = new BasicMNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
-    InternalMNode bbNode = new InternalMNode(aaNode, "bb");
+    BasicMNode bbNode = new BasicMNode(aaNode, "bb");
     aaNode.addChild(bbNode.getName(), bbNode);
 
     // builds the relationship of root.aa.bb.cc
-    InternalMNode ccNode = new InternalMNode(bbNode, "cc");
+    BasicMNode ccNode = new BasicMNode(bbNode, "cc");
     bbNode.addChild(ccNode.getName(), ccNode);
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);

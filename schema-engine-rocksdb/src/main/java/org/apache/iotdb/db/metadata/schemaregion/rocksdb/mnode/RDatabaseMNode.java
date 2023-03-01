@@ -22,15 +22,15 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
 
-public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupMNode {
+public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode {
 
   private long dataTTL;
 
@@ -39,14 +39,12 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
    *
    * @param fullPath
    */
-  public RStorageGroupMNode(
-      String fullPath, long dataTTL, RSchemaReadWriteHandler readWriteHandler) {
+  public RDatabaseMNode(String fullPath, long dataTTL, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
     this.dataTTL = dataTTL;
   }
 
-  public RStorageGroupMNode(
-      String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
+  public RDatabaseMNode(String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
     Object ttl = RSchemaUtils.parseNodeValue(value, RMNodeValueType.TTL);
     if (ttl == null) {
@@ -70,7 +68,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   }
 
   @Override
-  public boolean isStorageGroup() {
+  public boolean isDatabase() {
     return true;
   }
 

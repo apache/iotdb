@@ -21,11 +21,10 @@ package org.apache.iotdb.db.metadata.template;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -247,7 +246,7 @@ public class Template implements Serializable {
     synchronized (this) {
       IMeasurementMNode leafNode =
           MeasurementMNode.getMeasurementMNode(
-              (IEntityMNode) cur, pathNode[pathNode.length - 1], schema, null);
+              (IDeviceMNode) cur, pathNode[pathNode.length - 1], schema, null);
       if (cur == null) {
         directNodes.put(leafNode.getName(), leafNode);
       } else {
@@ -343,7 +342,7 @@ public class Template implements Serializable {
 
     IMNode cur = directNodes.get(pathNodes[0]);
     if (cur == null) {
-      cur = new EntityMNode(null, pathNodes[0]);
+      cur = new AbstractDeviceMNode(null, pathNodes[0]);
       directNodes.put(pathNodes[0], cur);
     }
 
@@ -353,7 +352,7 @@ public class Template implements Serializable {
 
     for (int i = 1; i <= pathNodes.length - 2; i++) {
       if (!cur.hasChild(pathNodes[i])) {
-        cur.addChild(pathNodes[i], new EntityMNode(cur, pathNodes[i]));
+        cur.addChild(pathNodes[i], new AbstractDeviceMNode(cur, pathNodes[i]));
       }
       cur = cur.getChild(pathNodes[i]);
 

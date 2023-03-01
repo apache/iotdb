@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -54,7 +54,7 @@ public class RecordUtilTests {
 
   @Test
   public void internalNodeTest() throws MetadataException {
-    IMNode oneNode = new InternalMNode(null, "abcd");
+    IMNode oneNode = new BasicMNode(null, "abcd");
     ICachedMNodeContainer.getCachedMNodeContainer(oneNode).setSegmentAddress(1234567L);
     oneNode.setUseTemplate(true);
     ByteBuffer buffer = RecordUtils.node2Buffer(oneNode);

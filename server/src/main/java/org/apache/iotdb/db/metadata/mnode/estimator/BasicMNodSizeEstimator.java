@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.mnode.estimator;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
   /**
@@ -99,9 +99,9 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
       }
     } else {
       size += INTERNAL_NODE_BASE_SIZE;
-      if (node.isStorageGroup()) {
+      if (node.isDatabase()) {
         size += STORAGE_GROUP_NODE_BASE_SIZE;
-        size += node.getAsStorageGroupMNode().getFullPath().length();
+        size += node.getAsDatabaseMNode().getFullPath().length();
       }
 
       if (node.isEntity()) {

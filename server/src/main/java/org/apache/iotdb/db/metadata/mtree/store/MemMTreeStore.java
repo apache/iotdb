@@ -23,12 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
@@ -36,6 +33,9 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
+import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -56,12 +56,12 @@ public class MemMTreeStore implements IMTreeStore {
   public MemMTreeStore(PartialPath rootPath, boolean isStorageGroup) {
     if (isStorageGroup) {
       this.root =
-          new StorageGroupMNode(
+          new AbstractDatabaseMNode(
               null,
               rootPath.getTailNode(),
               CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     } else {
-      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+      this.root = new BasicMNode(null, IoTDBConstant.PATH_ROOT);
     }
   }
 
@@ -69,12 +69,12 @@ public class MemMTreeStore implements IMTreeStore {
       PartialPath rootPath, boolean isStorageGroup, MemSchemaRegionStatistics regionStatistics) {
     if (isStorageGroup) {
       this.root =
-          new StorageGroupMNode(
+          new AbstractDatabaseMNode(
               null,
               rootPath.getTailNode(),
               CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     } else {
-      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+      this.root = new BasicMNode(null, IoTDBConstant.PATH_ROOT);
     }
     this.regionStatistics = regionStatistics;
   }
@@ -154,25 +154,25 @@ public class MemMTreeStore implements IMTreeStore {
   public void updateMNode(IMNode node) {}
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
-    IEntityMNode result = MNodeUtils.setToEntity(node);
+  public IDeviceMNode setToEntity(IMNode node) {
+    IDeviceMNode result = MNodeUtils.setToEntity(node);
     if (result != node) {
       requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
 
-    if (result.isStorageGroup()) {
+    if (result.isDatabase()) {
       root = result;
     }
     return result;
   }
 
   @Override
-  public IMNode setToInternal(IEntityMNode entityMNode) {
+  public IMNode setToInternal(IDeviceMNode entityMNode) {
     IMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
       releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
-    if (result.isStorageGroup()) {
+    if (result.isDatabase()) {
       root = result;
     }
     return result;
@@ -218,7 +218,7 @@ public class MemMTreeStore implements IMTreeStore {
 
   @Override
   public void clear() {
-    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    root = new BasicMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   @Override

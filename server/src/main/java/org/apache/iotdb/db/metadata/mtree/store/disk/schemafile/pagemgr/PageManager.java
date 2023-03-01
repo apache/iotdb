@@ -573,7 +573,7 @@ public abstract class PageManager implements IPageManager {
 
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
-    if (parent == null || parent.getChild(key).isStorageGroup()) {
+    if (parent == null || parent.getChild(key).isDatabase()) {
       throw new MetadataException("Root page shall not be migrated.");
     }
     long parSegAddr = parent.getParent() == null ? 0L : getNodeAddress(parent);

@@ -21,15 +21,15 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.CachedMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
@@ -77,14 +77,14 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       IMNodeSizeEstimator estimator = new CachedMNodeSizeEstimator();
       // schemaRegion1
       IMNode sg1 =
-          new StorageGroupEntityMNode(
+          new AbstractDatabaseDeviceMNode(
               null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg1.setFullPath("root.sg1");
       long size1 = estimator.estimateSize(sg1);
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
       IMNode sg2 =
-          new StorageGroupMNode(
+          new AbstractDatabaseMNode(
               null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg2.setFullPath("root.sg2");
       long size2 = estimator.estimateSize(sg2);
@@ -97,7 +97,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               : new CachedMNodeSizeEstimator();
       // schemaRegion1
       IMNode sg1 =
-          new StorageGroupEntityMNode(
+          new AbstractDatabaseDeviceMNode(
               null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg1.setFullPath("root.sg1");
       long size1 = estimator.estimateSize(sg1);
@@ -109,9 +109,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                   "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
               null);
       size1 += estimator.estimateSize(tmp);
-      tmp = new InternalMNode(sg1, "d1");
+      tmp = new BasicMNode(sg1, "d1");
       size1 += estimator.estimateSize(tmp);
-      tmp = new EntityMNode(tmp, "s2");
+      tmp = new AbstractDeviceMNode(tmp, "s2");
       size1 += estimator.estimateSize(tmp);
       size1 +=
           estimator.estimateSize(
@@ -124,11 +124,11 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
       IMNode sg2 =
-          new StorageGroupMNode(
+          new AbstractDatabaseMNode(
               null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg2.setFullPath("root.sg2");
       long size2 = estimator.estimateSize(sg2);
-      tmp = new EntityMNode(sg2, "d1");
+      tmp = new AbstractDeviceMNode(sg2, "d1");
       size2 += estimator.estimateSize(tmp);
       size2 +=
           estimator.estimateSize(
@@ -138,7 +138,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                   new MeasurementSchema(
                       "s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
                   null));
-      tmp = new EntityMNode(sg2, "d2");
+      tmp = new AbstractDeviceMNode(sg2, "d2");
       size2 += estimator.estimateSize(tmp);
       size2 +=
           estimator.estimateSize(

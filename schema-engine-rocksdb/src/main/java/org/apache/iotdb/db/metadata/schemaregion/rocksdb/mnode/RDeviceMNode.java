@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
@@ -33,7 +33,7 @@ import org.rocksdb.RocksDBException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class REntityMNode extends RInternalMNode implements IEntityMNode {
+public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
 
   private volatile boolean isAligned = false;
 
@@ -42,7 +42,7 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
    *
    * @param fullPath
    */
-  public REntityMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
+  public RDeviceMNode(String fullPath, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
   }
 
@@ -58,7 +58,7 @@ public class REntityMNode extends RInternalMNode implements IEntityMNode {
     }
   }
 
-  public REntityMNode(String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
+  public RDeviceMNode(String fullPath, byte[] value, RSchemaReadWriteHandler readWriteHandler) {
     super(fullPath, readWriteHandler);
     deserialize(value);
   }

@@ -34,11 +34,8 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -51,6 +48,9 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
@@ -105,7 +105,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
-  private volatile IStorageGroupMNode storageGroupMNode;
+  private volatile IDatabaseMNode storageGroupMNode;
   private final IMNode rootNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private final int levelOfSG;
@@ -116,7 +116,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       MemSchemaRegionStatistics regionStatistics) {
     store = new MemMTreeStore(storageGroupPath, true, regionStatistics);
-    this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode = store.getRoot().getAsDatabaseMNode();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
@@ -127,7 +127,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       MemMTreeStore store,
       Function<IMeasurementMNode, Map<String, String>> tagGetter) {
     this.store = store;
-    this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode = store.getRoot().getAsDatabaseMNode();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
@@ -139,7 +139,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     storageGroupMNode = null;
   }
 
-  protected void replaceStorageGroupMNode(IStorageGroupMNode newMNode) {
+  protected void replaceStorageGroupMNode(IDatabaseMNode newMNode) {
     this.storageGroupMNode.getParent().replaceChild(this.storageGroupMNode.getName(), newMNode);
     this.storageGroupMNode = newMNode;
   }
@@ -227,13 +227,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             device.getFullPath());
       }
 
-      IEntityMNode entityMNode;
+      IDeviceMNode entityMNode;
       if (device.isEntity()) {
         entityMNode = device.getAsEntityMNode();
       } else {
         entityMNode = store.setToEntity(device);
-        if (entityMNode.isStorageGroup()) {
-          replaceStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
       }
 
@@ -308,14 +308,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             devicePath.getFullPath());
       }
 
-      IEntityMNode entityMNode;
+      IDeviceMNode entityMNode;
       if (device.isEntity()) {
         entityMNode = device.getAsEntityMNode();
       } else {
         entityMNode = store.setToEntity(device);
         entityMNode.setAligned(true);
-        if (entityMNode.isStorageGroup()) {
-          replaceStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
       }
 
@@ -351,7 +351,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       childName = nodeNames[i];
       child = cur.getChild(childName);
       if (child == null) {
-        child = store.addChild(cur, childName, new InternalMNode(cur, childName));
+        child = store.addChild(cur, childName, new BasicMNode(cur, childName));
       }
       cur = child;
 
@@ -370,8 +370,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
     IMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
-      device =
-          store.addChild(deviceParent, deviceName, new InternalMNode(deviceParent, deviceName));
+      device = store.addChild(deviceParent, deviceName, new BasicMNode(deviceParent, deviceName));
     }
 
     if (device.isMeasurement()) {
@@ -438,7 +437,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
 
     IMeasurementMNode deletedNode = getMeasurementMNode(path);
-    IEntityMNode parent = deletedNode.getParent();
+    IDeviceMNode parent = deletedNode.getParent();
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
@@ -449,7 +448,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   /** Used when delete timeseries or deactivate template */
-  public void deleteEmptyInternalMNode(IEntityMNode entityMNode) {
+  public void deleteEmptyInternalMNode(IDeviceMNode entityMNode) {
     IMNode curNode = entityMNode;
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -466,8 +465,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
-          if (curNode.isStorageGroup()) {
-            replaceStorageGroupMNode(curNode.getAsStorageGroupMNode());
+          if (curNode.isDatabase()) {
+            replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
           }
         }
       }
@@ -476,7 +475,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     // delete all empty ancestors except database and MeasurementMNode
     while (isEmptyInternalMNode(curNode)) {
       // if current database has no time series, return the database name
-      if (curNode.isStorageGroup()) {
+      if (curNode.isDatabase()) {
         return;
       }
       store.deleteChild(curNode.getParent(), curNode.getName());
@@ -587,7 +586,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
-        child = store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        child = store.addChild(cur, nodeNames[i], new BasicMNode(cur, nodeNames[i]));
       }
       cur = child;
     }
@@ -686,7 +685,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       cur = cur.getChild(nodes[i]);
     }
 
-    IEntityMNode entityMNode;
+    IDeviceMNode entityMNode;
 
     synchronized (this) {
       for (String measurement : template.getSchemaMap().keySet()) {
@@ -708,8 +707,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         entityMNode = cur.getAsEntityMNode();
       } else {
         entityMNode = store.setToEntity(cur);
-        if (entityMNode.isStorageGroup()) {
-          replaceStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
       }
     }
@@ -729,7 +728,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       try (EntityUpdater updater =
           new EntityUpdater(rootNode, entry.getKey(), store, false) {
             @Override
-            protected void updateEntity(IEntityMNode node) throws MetadataException {
+            protected void updateEntity(IDeviceMNode node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
@@ -752,7 +751,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       try (EntityUpdater updater =
           new EntityUpdater(rootNode, entry.getKey(), store, false) {
             @Override
-            protected void updateEntity(IEntityMNode node) {
+            protected void updateEntity(IDeviceMNode node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
@@ -775,7 +774,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       try (EntityUpdater collector =
           new EntityUpdater(rootNode, entry.getKey(), store, false) {
             @Override
-            protected void updateEntity(IEntityMNode node) {
+            protected void updateEntity(IDeviceMNode node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
@@ -799,13 +798,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       cur = cur.getChild(nodes[i]);
     }
 
-    IEntityMNode entityMNode;
+    IDeviceMNode entityMNode;
     if (cur.isEntity()) {
       entityMNode = cur.getAsEntityMNode();
     } else {
       entityMNode = store.setToEntity(cur);
-      if (entityMNode.isStorageGroup()) {
-        replaceStorageGroupMNode(entityMNode.getAsStorageGroupMNode());
+      if (entityMNode.isDatabase()) {
+        replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
       }
     }
 
@@ -835,7 +834,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new EntityCollector<IDeviceSchemaInfo>(
             rootNode, showDevicesPlan.getPath(), store, showDevicesPlan.isPrefixMatch()) {
           @Override
-          protected IDeviceSchemaInfo collectEntity(IEntityMNode node) {
+          protected IDeviceSchemaInfo collectEntity(IDeviceMNode node) {
             PartialPath device = getPartialPathFromRootToNode(node);
             return new ShowDevicesResult(device.getFullPath(), node.isAligned());
           }

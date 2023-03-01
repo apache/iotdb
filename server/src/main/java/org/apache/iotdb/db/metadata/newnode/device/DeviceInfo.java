@@ -16,15 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.device;
 
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class EntityMNode extends InternalMNode implements IEntityMNode {
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
+
+public class DeviceInfo implements IDeviceInfo {
+
+  /**
+   * In EntityMNode of MTree in SchemaRegion, this field represents the template activated on this
+   * node. The normal usage value range is [0, Int.MaxValue], since this is implemented as auto inc
+   * id. The default value -1 means NON_TEMPLATE. This value will be set negative to implement some
+   * pre-delete features.
+   */
+  protected int schemaTemplateId = NON_TEMPLATE;
+
+  private volatile boolean useTemplate = false;
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -35,44 +47,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
   private volatile boolean isAligned = false;
-
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath().intern();
-    }
-    return fullPath;
-  }
-
-  /**
-   * Constructor of MNode.
-   *
-   * @param parent
-   * @param name
-   */
-  public EntityMNode(IMNode parent, String name) {
-    super(parent, name);
-  }
-
-  /** check whether the MNode has a child with the name */
-  @Override
-  public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name))
-        || (aliasChildren != null && aliasChildren.containsKey(name));
-  }
-
-  /** get the child with the name */
-  @Override
-  public IMNode getChild(String name) {
-    IMNode child = null;
-    if (children != null) {
-      child = children.get(name);
-    }
-    if (child != null) {
-      return child;
-    }
-    return aliasChildren == null ? null : aliasChildren.get(name);
-  }
 
   /** add an alias */
   @Override
@@ -124,6 +98,11 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public int getSchemaTemplateIdWithState() {
+    return schemaTemplateId;
+  }
+
+  @Override
   public boolean isPreDeactivateTemplate() {
     return schemaTemplateId < -1;
   }
@@ -149,6 +128,16 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
+  }
+
+  @Override
   public boolean isAligned() {
     return isAligned;
   }
@@ -156,33 +145,5 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @Override
   public void setAligned(boolean isAligned) {
     this.isAligned = isAligned;
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    if (newMNode.isEntity()) {
-      IEntityMNode newEntityMNode = newMNode.getAsEntityMNode();
-      newEntityMNode.setAligned(isAligned);
-      if (aliasChildren != null) {
-        newEntityMNode.setAliasChildren(aliasChildren);
-      }
-    }
-  }
-
-  @Override
-  public boolean isEntity() {
-    return true;
-  }
-
-  @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return MNodeType.DEVICE;
-  }
-
-  @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitEntityMNode(this, context);
   }
 }

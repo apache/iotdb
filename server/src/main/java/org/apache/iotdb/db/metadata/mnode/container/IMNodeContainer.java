@@ -22,4 +22,4 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.Map;
 
-public interface IMNodeContainer extends Map<String, IMNode> {}
+public interface IMNodeContainer<N extends IMNode<?>> extends Map<String, N> {}

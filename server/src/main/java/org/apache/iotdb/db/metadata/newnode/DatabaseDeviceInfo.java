@@ -16,30 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseInfo;
+import org.apache.iotdb.db.metadata.newnode.device.DeviceInfo;
 
-public class StorageGroupEntityMNode extends EntityMNode implements IStorageGroupMNode {
+public class DatabaseDeviceInfo extends DeviceInfo implements IDatabaseInfo {
   /**
    * when the data file in a database is older than dataTTL, it is considered invalid and will be
    * eventually deleted.
    */
   private long dataTTL;
-
-  public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
-    super(parent, name);
-    this.dataTTL = dataTTL;
-  }
-
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath().intern();
-    }
-    return fullPath;
-  }
 
   @Override
   public long getDataTTL() {
@@ -66,25 +54,5 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   @Override
   public TDatabaseSchema getStorageGroupSchema() {
     return null;
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-  }
-
-  @Override
-  public boolean isStorageGroup() {
-    return true;
-  }
-
-  @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return MNodeType.STORAGE_GROUP;
-  }
-
-  @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitStorageGroupEntityMNode(this, context);
   }
 }

@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
 // TODO: set R is IDeviceSchemaInfo
@@ -40,5 +40,5 @@ public abstract class EntityCollector<R> extends EntityTraverser<R> {
     return collectEntity(nextMatchedNode.getAsEntityMNode());
   }
 
-  protected abstract R collectEntity(IEntityMNode node);
+  protected abstract R collectEntity(IDeviceMNode node);
 }

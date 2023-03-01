@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.disk;
 
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 
 import org.junit.Test;
@@ -34,13 +34,13 @@ public class CachedMNodeContainerTest {
   public void testIterator() {
     CachedMNodeContainer container = new CachedMNodeContainer();
     Map<String, IMNode> childCache = new HashMap<>();
-    childCache.put("1", new InternalMNode(null, "1"));
-    childCache.put("2", new InternalMNode(null, "2"));
-    childCache.put("5", new InternalMNode(null, "5"));
+    childCache.put("1", new BasicMNode(null, "1"));
+    childCache.put("2", new BasicMNode(null, "2"));
+    childCache.put("5", new BasicMNode(null, "5"));
     container.loadChildrenFromDisk(childCache);
-    container.put("3", new InternalMNode(null, "3"));
-    container.put("4", new InternalMNode(null, "4"));
-    container.put("6", new InternalMNode(null, "6"));
+    container.put("3", new BasicMNode(null, "3"));
+    container.put("4", new BasicMNode(null, "4"));
+    container.put("6", new BasicMNode(null, "6"));
     container.updateMNode("5");
     container.updateMNode("6");
     Iterator<IMNode> iterator = container.getChildrenIterator();

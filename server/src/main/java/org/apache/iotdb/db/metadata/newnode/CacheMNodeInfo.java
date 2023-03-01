@@ -16,33 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-/** This interface defines a MeasurementMNode's operation interfaces. */
-public interface IMeasurementMNode extends IMNode {
+public class CacheMNodeInfo extends BasicMNodeInfo {
 
-  @Override
-  IEntityMNode getParent();
+  private CacheEntry cacheEntry;
 
-  MeasurementPath getMeasurementPath();
+  public CacheMNodeInfo(String name) {
+    super(name);
+  }
 
-  IMeasurementSchema getSchema();
+  public CacheEntry getCacheEntry() {
+    return cacheEntry;
+  }
 
-  TSDataType getDataType(String measurementId);
-
-  String getAlias();
-
-  void setAlias(String alias);
-
-  long getOffset();
-
-  void setOffset(long offset);
-
-  boolean isPreDeleted();
-
-  void setPreDeleted(boolean preDeleted);
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
+  }
 }

@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -86,12 +86,12 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
+  public IDeviceMNode setToEntity(IMNode node) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public IMNode setToInternal(IEntityMNode entityMNode) {
+  public IMNode setToInternal(IDeviceMNode entityMNode) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 

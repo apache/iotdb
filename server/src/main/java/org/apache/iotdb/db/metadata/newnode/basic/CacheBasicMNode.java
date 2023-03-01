@@ -16,19 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MNodeContainerMapImpl;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.CacheMNodeInfo;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
-import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class InternalMNode extends MNode {
+public class CacheBasicMNode implements ICacheMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
@@ -39,22 +51,73 @@ public class InternalMNode extends MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile IMNodeContainer children = null;
+  protected transient volatile IMNodeContainer<ICacheMNode> children = null;
 
-  /**
-   * This field is mainly used in cluster schema template features. In InternalMNode of ConfigMTree,
-   * this field represents the template set on this node. In EntityMNode of MTree in SchemaRegion,
-   * this field represents the template activated on this node. The normal usage value range is [0,
-   * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
-   * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
-   */
-  protected int schemaTemplateId = NON_TEMPLATE;
+  private ICacheMNode parent;
+  private CacheMNodeInfo cacheMNodeInfo;
 
-  private volatile boolean useTemplate = false;
+  /** from root to this node, only be set when used once for InternalMNode */
+  private String fullPath;
 
   /** Constructor of MNode. */
-  public InternalMNode(IMNode parent, String name) {
-    super(parent, name);
+  public CacheBasicMNode(ICacheMNode parent, String name) {
+    this.parent = parent;
+    this.cacheMNodeInfo = new CacheMNodeInfo(name);
+  }
+
+  @Override
+  public String getName() {
+    return cacheMNodeInfo.getName();
+  }
+
+  @Override
+  public void setName(String name) {
+    cacheMNodeInfo.setName(name);
+  }
+
+  @Override
+  public ICacheMNode getParent() {
+    return parent;
+  }
+
+  @Override
+  public void setParent(ICacheMNode parent) {
+    this.parent = parent;
+  }
+
+  @Override
+  public String getFullPath() {
+    if (fullPath == null) {
+      fullPath = concatFullPath();
+    }
+    return fullPath;
+  }
+
+  String concatFullPath() {
+    StringBuilder builder = new StringBuilder(getName());
+    ICacheMNode curr = this;
+    while (curr.getParent() != null) {
+      curr = curr.getParent();
+      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
+    }
+    return builder.toString();
+  }
+
+  @Override
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    ICacheMNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
   /** check whether the MNode has a child with the name */
@@ -65,8 +128,8 @@ public class InternalMNode extends MNode {
 
   /** get the child with the name */
   @Override
-  public IMNode getChild(String name) {
-    IMNode child = null;
+  public ICacheMNode getChild(String name) {
+    ICacheMNode child = null;
     if (children != null) {
       child = children.get(name);
     }
@@ -81,7 +144,7 @@ public class InternalMNode extends MNode {
    * @return the child of this node after addChild
    */
   @Override
-  public IMNode addChild(String name, IMNode child) {
+  public ICacheMNode addChild(String name, ICacheMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -90,12 +153,12 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = MNodeContainers.getNewMNodeContainer();
+          children = new MNodeContainerMapImpl<ICacheMNode>();
         }
       }
     }
     child.setParent(this);
-    IMNode existingChild = children.putIfAbsent(name, child);
+    ICacheMNode existingChild = children.putIfAbsent(name, child);
     return existingChild == null ? child : existingChild;
   }
 
@@ -111,7 +174,7 @@ public class InternalMNode extends MNode {
    * @return return the MNode already added
    */
   @Override
-  public IMNode addChild(IMNode child) {
+  public ICacheMNode addChild(ICacheMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -120,7 +183,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = MNodeContainers.getNewMNodeContainer();
+          children = new MNodeContainerMapImpl();
         }
       }
     }
@@ -132,7 +195,7 @@ public class InternalMNode extends MNode {
 
   /** delete a child */
   @Override
-  public IMNode deleteChild(String name) {
+  public ICacheMNode deleteChild(String name) {
     if (children != null) {
       return children.remove(name);
     }
@@ -146,7 +209,7 @@ public class InternalMNode extends MNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, IMNode newChildNode) {
+  public synchronized void replaceChild(String oldChildName, ICacheMNode newChildNode) {
     if (!oldChildName.equals(newChildNode.getName())) {
       throw new RuntimeException("New child's name must be the same as old child's name!");
     }
@@ -161,11 +224,8 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void moveDataToNewMNode(IMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
-
-    newMNode.setUseTemplate(useTemplate);
-    newMNode.setSchemaTemplateId(schemaTemplateId);
+  public void moveDataToNewMNode(ICacheMNode newMNode) {
+    newMNode.setParent(parent);
 
     if (children != null) {
       newMNode.setChildren(children);
@@ -187,53 +247,22 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public int getSchemaTemplateId() {
-    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
-  }
-
-  @Override
-  public int getSchemaTemplateIdWithState() {
-    return schemaTemplateId;
-  }
-
-  @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {
-    this.schemaTemplateId = schemaTemplateId;
-  }
-
-  /**
-   * In InternalMNode, schemaTemplateId represents the template set on this node. The pre unset
-   * mechanism is implemented by making this value negative. Since value 0 and -1 are all occupied,
-   * the available negative value range is [Int.MIN_VALUE, -2]. The value of a pre unset case equals
-   * the negative normal value minus 2. For example, if the id of set template is 0, then - 0 - 2 =
-   * -2 represents the pre unset operation of this template on this node.
-   */
-  @Override
-  public void preUnsetSchemaTemplate() {
-    if (this.schemaTemplateId > -1) {
-      this.schemaTemplateId = -schemaTemplateId - 2;
-    }
-  }
-
-  @Override
-  public void rollbackUnsetSchemaTemplate() {
-    if (schemaTemplateId < -1) {
-      schemaTemplateId = -schemaTemplateId - 2;
-    }
-  }
-
-  @Override
-  public boolean isSchemaTemplatePreUnset() {
-    return schemaTemplateId < -1;
-  }
-
-  @Override
-  public void unsetSchemaTemplate() {
-    this.schemaTemplateId = -1;
-  }
-
-  @Override
   public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
+  public boolean isDatabase() {
+    return false;
+  }
+
+  @Override
+  public boolean isEntity() {
+    return false;
+  }
+
+  @Override
+  public boolean isMeasurement() {
     return false;
   }
 
@@ -243,17 +272,32 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
+  public IDatabaseMNode<ICacheMNode> getAsDatabaseMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
+  public IDeviceMNode<ICacheMNode> getAsEntityMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public IMeasurementMNode<ICacheMNode> getAsMeasurementMNode() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitInternalMNode(this, context);
+  }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return cacheMNodeInfo.getCacheEntry();
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    cacheMNodeInfo.setCacheEntry(cacheEntry);
   }
 }

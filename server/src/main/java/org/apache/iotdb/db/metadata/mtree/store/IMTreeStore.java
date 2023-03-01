@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
@@ -34,16 +34,17 @@ import java.util.Map;
  *
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
-public interface IMTreeStore {
+public interface IMTreeStore<
+    N extends IMNode, DeviceN extends IDeviceMNode, MeasurementN extends IMeasurementMNode> {
 
   /**
    * Generate the ancestor nodes of storageGroupNode
    *
    * @return root node
    */
-  IMNode generatePrefix(PartialPath storageGroupPath);
+  N generatePrefix(PartialPath storageGroupPath);
 
-  IMNode getRoot();
+  N getRoot();
 
   /**
    * Check if parent has child
@@ -52,7 +53,7 @@ public interface IMTreeStore {
    * @param name name or alias
    * @return true if parent has a child whose name or alias matches the condition
    */
-  boolean hasChild(IMNode parent, String name) throws MetadataException;
+  boolean hasChild(N parent, String name) throws MetadataException;
 
   /**
    * Get child by name or alias
@@ -61,31 +62,31 @@ public interface IMTreeStore {
    * @param name name or alias
    * @return child node
    */
-  IMNode getChild(IMNode parent, String name) throws MetadataException;
+  N getChild(N parent, String name) throws MetadataException;
 
-  IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException;
+  IMNodeIterator getChildrenIterator(N parent) throws MetadataException;
 
   IMNodeIterator getTraverserIterator(
-      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      N parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException;
 
-  IMNode addChild(IMNode parent, String childName, IMNode child);
+  N addChild(N parent, String childName, N child);
 
-  void deleteChild(IMNode parent, String childName) throws MetadataException;
+  void deleteChild(N parent, String childName) throws MetadataException;
 
-  void updateMNode(IMNode node) throws MetadataException;
+  void updateMNode(N node) throws MetadataException;
 
-  IEntityMNode setToEntity(IMNode node) throws MetadataException;
+  DeviceN setToEntity(N node) throws MetadataException;
 
-  IMNode setToInternal(IEntityMNode entityMNode) throws MetadataException;
+  N setToInternal(DeviceN entityMNode) throws MetadataException;
 
-  void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException;
+  void setAlias(MeasurementN measurementMNode, String alias) throws MetadataException;
 
-  void pin(IMNode node) throws MetadataException;
+  void pin(N node) throws MetadataException;
 
-  void unPin(IMNode node);
+  void unPin(N node);
 
-  void unPinPath(IMNode node);
+  void unPinPath(N node);
 
   IMTreeStore getWithReentrantReadLock();
 

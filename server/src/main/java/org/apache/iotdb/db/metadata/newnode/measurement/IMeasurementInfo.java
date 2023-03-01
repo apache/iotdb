@@ -16,24 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.measurement;
 
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-/** This interface defines a StorageGroupMNode's operation interfaces. */
-public interface IStorageGroupMNode extends IMNode {
+public interface IMeasurementInfo {
 
-  long getDataTTL();
+  IMeasurementSchema getSchema();
 
-  void setDataTTL(long dataTTL);
+  TSDataType getDataType();
 
-  void setSchemaReplicationFactor(int schemaReplicationFactor);
+  String getAlias();
 
-  void setDataReplicationFactor(int dataReplicationFactor);
+  void setAlias(String alias);
 
-  void setTimePartitionInterval(long timePartitionInterval);
+  long getOffset();
 
-  void setStorageGroupSchema(TDatabaseSchema schema);
+  void setOffset(long offset);
 
-  TDatabaseSchema getStorageGroupSchema();
+  boolean isPreDeleted();
+
+  void setPreDeleted(boolean preDeleted);
 }

@@ -22,13 +22,13 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
@@ -96,13 +96,13 @@ public abstract class RMNode implements IMNode {
       if (value != null) {
         switch (type.getValue()) {
           case RSchemaConstants.NODE_TYPE_SG:
-            node = new RStorageGroupMNode(keyName, value, readWriteHandler);
+            node = new RDatabaseMNode(keyName, value, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_INTERNAL:
             node = new RInternalMNode(keyName, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_ENTITY:
-            node = new REntityMNode(keyName, value, readWriteHandler);
+            node = new RDeviceMNode(keyName, value, readWriteHandler);
             return node;
           case RSchemaConstants.NODE_TYPE_MEASUREMENT:
             node = new RMeasurementMNode(keyName, value, readWriteHandler);
@@ -189,7 +189,7 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public boolean isStorageGroup() {
+  public boolean isDatabase() {
     return false;
   }
 
@@ -204,18 +204,18 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public IStorageGroupMNode getAsStorageGroupMNode() {
-    if (isStorageGroup()) {
-      return (IStorageGroupMNode) this;
+  public IDatabaseMNode getAsDatabaseMNode() {
+    if (isDatabase()) {
+      return (IDatabaseMNode) this;
     } else {
       throw new UnsupportedOperationException("Wrong MNode Type");
     }
   }
 
   @Override
-  public IEntityMNode getAsEntityMNode() {
+  public IDeviceMNode getAsEntityMNode() {
     if (isEntity()) {
-      return (IEntityMNode) this;
+      return (IDeviceMNode) this;
     } else {
       throw new UnsupportedOperationException("Wrong MNode Type");
     }

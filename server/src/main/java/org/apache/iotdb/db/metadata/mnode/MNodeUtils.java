@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+
 public class MNodeUtils {
 
   /**
@@ -28,18 +33,18 @@ public class MNodeUtils {
    * @param node node to be transformed
    * @return generated entityMNode
    */
-  public static IEntityMNode setToEntity(IMNode node) {
-    IEntityMNode entityMNode;
+  public static IDeviceMNode setToEntity(IMNode node) {
+    IDeviceMNode entityMNode;
     if (node.isEntity()) {
       entityMNode = node.getAsEntityMNode();
     } else {
-      if (node.isStorageGroup()) {
+      if (node.isDatabase()) {
         entityMNode =
-            new StorageGroupEntityMNode(
-                node.getParent(), node.getName(), node.getAsStorageGroupMNode().getDataTTL());
+            new AbstractDatabaseDeviceMNode(
+                node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL());
         node.moveDataToNewMNode(entityMNode);
       } else {
-        entityMNode = new EntityMNode(node.getParent(), node.getName());
+        entityMNode = new AbstractDeviceMNode(node.getParent(), node.getName());
         if (node.getParent() != null) {
           node.getParent().replaceChild(node.getName(), entityMNode);
         } else {
@@ -58,15 +63,15 @@ public class MNodeUtils {
    * @param entityMNode node to be transformed
    * @return generated NoEntity node
    */
-  public static IMNode setToInternal(IEntityMNode entityMNode) {
+  public static IMNode setToInternal(IDeviceMNode entityMNode) {
     IMNode node;
     IMNode parent = entityMNode.getParent();
-    if (entityMNode.isStorageGroup()) {
+    if (entityMNode.isDatabase()) {
       node =
-          new StorageGroupMNode(
-              parent, entityMNode.getName(), entityMNode.getAsStorageGroupMNode().getDataTTL());
+          new AbstractDatabaseMNode(
+              parent, entityMNode.getName(), entityMNode.getAsDatabaseMNode().getDataTTL());
     } else {
-      node = new InternalMNode(parent, entityMNode.getName());
+      node = new BasicMNode(parent, entityMNode.getName());
     }
 
     if (parent != null) {

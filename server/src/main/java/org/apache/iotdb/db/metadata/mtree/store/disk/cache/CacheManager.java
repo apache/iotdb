@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -158,7 +158,7 @@ public abstract class CacheManager implements ICacheManager {
     IMNode parent = node.getParent();
     IMNode current = node;
     CacheEntry cacheEntry = getCacheEntry(parent);
-    while (!current.isStorageGroup() && isInNodeCache(cacheEntry)) {
+    while (!current.isDatabase() && isInNodeCache(cacheEntry)) {
       removeFromNodeCache(cacheEntry);
       current = parent;
       parent = parent.getParent();
@@ -176,7 +176,7 @@ public abstract class CacheManager implements ICacheManager {
   public void updateCacheStatusAfterUpdate(IMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     if (!cacheEntry.isVolatile()) {
-      if (!node.isStorageGroup()) {
+      if (!node.isDatabase()) {
         synchronized (cacheEntry) {
           // the status change affects the subTre collect in nodeBuffer
           cacheEntry.setVolatile(true);
@@ -200,8 +200,8 @@ public abstract class CacheManager implements ICacheManager {
    * @param node
    */
   private void addToBufferAfterUpdate(IMNode node) {
-    if (node.isStorageGroup()) {
-      nodeBuffer.setUpdatedStorageGroupMNode(node.getAsStorageGroupMNode());
+    if (node.isDatabase()) {
+      nodeBuffer.setUpdatedStorageGroupMNode(node.getAsDatabaseMNode());
       return;
     }
 
@@ -237,7 +237,7 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
     IMNode tmp = node;
-    while (!tmp.isStorageGroup() && !isInNodeCache(getCacheEntry(tmp))) {
+    while (!tmp.isDatabase() && !isInNodeCache(getCacheEntry(tmp))) {
       addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
     }
@@ -266,8 +266,8 @@ public abstract class CacheManager implements ICacheManager {
    * @return null if not exist
    */
   @Override
-  public IStorageGroupMNode collectUpdatedStorageGroupMNodes() {
-    IStorageGroupMNode storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
+  public IDatabaseMNode collectUpdatedStorageGroupMNodes() {
+    IDatabaseMNode storageGroupMNode = nodeBuffer.getUpdatedStorageGroupMNode();
     nodeBuffer.setUpdatedStorageGroupMNode(null);
     return storageGroupMNode;
   }
@@ -425,7 +425,7 @@ public abstract class CacheManager implements ICacheManager {
     // do pin MNode in memory
     if (!cacheEntry.isPinned()) {
       IMNode parent = node.getParent();
-      if (!node.isStorageGroup()) {
+      if (!node.isDatabase()) {
         getCacheEntry(parent).pin();
       }
     }
@@ -463,7 +463,7 @@ public abstract class CacheManager implements ICacheManager {
       }
     }
 
-    if (isPinStatusChanged && !node.isStorageGroup()) {
+    if (isPinStatusChanged && !node.isDatabase()) {
       doUnPin(node.getParent());
     }
 
@@ -527,7 +527,7 @@ public abstract class CacheManager implements ICacheManager {
 
     private static final int MAP_NUM = 17;
 
-    private IStorageGroupMNode updatedStorageGroupMNode;
+    private IDatabaseMNode updatedStorageGroupMNode;
     private Map<CacheEntry, IMNode>[] maps = new Map[MAP_NUM];
 
     NodeBuffer() {
@@ -536,11 +536,11 @@ public abstract class CacheManager implements ICacheManager {
       }
     }
 
-    public IStorageGroupMNode getUpdatedStorageGroupMNode() {
+    public IDatabaseMNode getUpdatedStorageGroupMNode() {
       return updatedStorageGroupMNode;
     }
 
-    public void setUpdatedStorageGroupMNode(IStorageGroupMNode updatedStorageGroupMNode) {
+    public void setUpdatedStorageGroupMNode(IDatabaseMNode updatedStorageGroupMNode) {
       this.updatedStorageGroupMNode = updatedStorageGroupMNode;
     }
 

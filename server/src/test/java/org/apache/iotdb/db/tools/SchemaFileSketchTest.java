@@ -22,13 +22,13 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.tools.schema.SchemaFileSketchTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -145,9 +145,9 @@ public class SchemaFileSketchTest {
   }
 
   private IMNode getFlatTree(int flatSize, String id) {
-    IMNode root = new InternalMNode(null, "root");
-    IMNode test = new InternalMNode(root, "test");
-    IMNode internalNode = new StorageGroupEntityMNode(null, "vRoot1", 0L);
+    IMNode root = new BasicMNode(null, "root");
+    IMNode test = new BasicMNode(root, "test");
+    IMNode internalNode = new AbstractDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;

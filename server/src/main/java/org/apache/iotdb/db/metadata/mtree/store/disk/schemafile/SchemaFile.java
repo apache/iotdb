@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
+import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -176,11 +176,12 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              new StorageGroupEntityMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              new AbstractDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL),
+              0L);
     } else {
       resNode =
           setNodeAddress(
-              new StorageGroupMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              new AbstractDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     }
     resNode.setFullPath(storageGroupName);
     resNode.setSchemaTemplateId(sgNodeTemplateIdWithState);
@@ -189,7 +190,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException {
+  public boolean updateStorageGroupNode(IDatabaseMNode sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
     this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
@@ -199,7 +200,7 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void delete(IMNode node) throws IOException, MetadataException {
-    if (node.isStorageGroup()) {
+    if (node.isDatabase()) {
       // should clear this file
       clear();
     } else {
@@ -211,7 +212,7 @@ public class SchemaFile implements ISchemaFile {
   public void writeMNode(IMNode node) throws MetadataException, IOException {
     long curSegAddr = getNodeAddress(node);
 
-    if (node.isStorageGroup()) {
+    if (node.isDatabase()) {
       isEntity = node.isEntity();
       setNodeAddress(node, lastSGAddr);
     } else {

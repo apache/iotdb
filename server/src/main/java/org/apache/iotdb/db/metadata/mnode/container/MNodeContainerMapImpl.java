@@ -22,5 +22,5 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MNodeContainerMapImpl extends ConcurrentHashMap<String, IMNode>
-    implements IMNodeContainer {}
+public class MNodeContainerMapImpl<T extends IMNode<?>> extends ConcurrentHashMap<String, T>
+    implements IMNodeContainer<T> {}

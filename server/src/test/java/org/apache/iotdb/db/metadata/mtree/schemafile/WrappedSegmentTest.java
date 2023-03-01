@@ -20,15 +20,15 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -102,7 +102,7 @@ public class WrappedSegmentTest {
   }
 
   private IMNode virtualFlatMTree(int childSize) {
-    IMNode internalNode = new EntityMNode(null, "vRoot1");
+    IMNode internalNode = new AbstractDeviceMNode(null, "vRoot1");
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
@@ -157,7 +157,7 @@ public class WrappedSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(500);
     ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    IMNode mNode = new InternalMNode(null, "m");
+    IMNode mNode = new BasicMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = 0; i < test.length; i++) {
@@ -191,7 +191,7 @@ public class WrappedSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(500);
     ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    IMNode mNode = new InternalMNode(null, "m");
+    IMNode mNode = new BasicMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = test.length - 1; i >= 0; i--) {

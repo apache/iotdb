@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Iterator;
@@ -43,7 +43,7 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   private boolean skipPreDeletedSchema = false;
 
   protected AbstractTraverserIterator(
-      IMTreeStore store, IEntityMNode parent, Map<Integer, Template> templateMap)
+      IMTreeStore store, IDeviceMNode parent, Map<Integer, Template> templateMap)
       throws MetadataException {
     this.directChildrenIterator = store.getChildrenIterator(parent);
     if (templateMap != null && parent.isUseTemplate()) {
@@ -59,7 +59,7 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   }
 
   private Template getActivatedSchemaTemplate(
-      IEntityMNode node, Map<Integer, Template> templateMap) {
+      IDeviceMNode node, Map<Integer, Template> templateMap) {
     // new cluster, the used template is directly recorded as template id in device mnode
     if (node.getSchemaTemplateId() != NON_TEMPLATE) {
       if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {

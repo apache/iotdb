@@ -20,12 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -188,9 +188,9 @@ public class RecordUtils {
       boolean isAligned = isAligned(bitFlag);
 
       if (nodeType == 0) {
-        resNode = new InternalMNode(null, nodeName);
+        resNode = new BasicMNode(null, nodeName);
       } else {
-        resNode = new EntityMNode(null, nodeName);
+        resNode = new AbstractDeviceMNode(null, nodeName);
         resNode.getAsEntityMNode().setAligned(isAligned);
       }
 
@@ -293,7 +293,7 @@ public class RecordUtils {
                   ? ""
                   : node.getAsMeasurementMNode().getAlias()));
       builder.append(
-          String.format("type: %s, ", node.getAsMeasurementMNode().getDataType("").toString()));
+          String.format("type: %s, ", node.getAsMeasurementMNode().getDataType().toString()));
       builder.append(
           String.format(
               "encoding: %s, ",

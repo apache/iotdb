@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 
 public abstract class EntityUpdater extends EntityTraverser<Void> implements Updater {
   /**
@@ -61,5 +61,5 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
     }
   }
 
-  protected abstract void updateEntity(IEntityMNode node) throws MetadataException;
+  protected abstract void updateEntity(IDeviceMNode node) throws MetadataException;
 }
