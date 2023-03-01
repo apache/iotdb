@@ -199,26 +199,32 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    // only update query operation's timeout because we will never limit write operation's execution
-    // time
-    if (isQuery()) {
-      long currentTime = System.currentTimeMillis();
-      long remainTime = context.getTimeOut() - (currentTime - context.getStartTime());
-      if (remainTime <= 0) {
-        throw new QueryTimeoutRuntimeException(
-            context.getStartTime(), currentTime, context.getTimeOut());
-      }
-      context.setTimeOut(remainTime);
-    }
-
+    // check timeout for query first
+    checkTimeOutForQuery();
     doLogicalPlan();
     doDistributedPlan();
+    // update timeout after finishing plan stage
+    context.setTimeOut(
+        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
+
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
     PerformanceOverviewMetricsManager.getInstance().recordPlanCost(System.nanoTime() - startTime);
     schedule();
+  }
+
+  private void checkTimeOutForQuery() {
+    // only check query operation's timeout because we will never limit write operation's execution
+    // time
+    if (isQuery()) {
+      long currentTime = System.currentTimeMillis();
+      if (currentTime >= context.getTimeOut() + context.getStartTime()) {
+        throw new QueryTimeoutRuntimeException(
+            context.getStartTime(), currentTime, context.getTimeOut());
+      }
+    }
   }
 
   private ExecutionResult retry() {
@@ -316,6 +322,8 @@ public class QueryExecution implements IQueryExecution {
       logger.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
+    // check timeout after building logical plan because it could be time-consuming in some cases.
+    checkTimeOutForQuery();
   }
 
   // Generate the distributed plan and split it into fragments
@@ -333,6 +341,9 @@ public class QueryExecution implements IQueryExecution {
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
     }
+    // check timeout after building distribution plan because it could be time-consuming in some
+    // cases.
+    checkTimeOutForQuery();
   }
 
   private String printFragmentInstances(List<FragmentInstance> instances) {
