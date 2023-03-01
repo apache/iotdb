@@ -45,8 +45,6 @@ import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerDeUtils {
 
-  private static final long THRIFT_DEFAULT_MAX_MESSAGE_SIZE = 104857600;
-
   private ThriftCommonsSerDeUtils() {
     // Empty constructor
   }
