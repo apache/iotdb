@@ -43,6 +43,8 @@ import java.nio.ByteBuffer;
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerDeUtils {
 
+  private static final long THRIFT_DEFAULT_MAX_MESSAGE_SIZE = 104857600;
+
   private ThriftCommonsSerDeUtils() {
     // Empty constructor
   }
@@ -55,13 +57,13 @@ public class ThriftCommonsSerDeUtils {
 
   private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TByteBuffer(buffer);
+    TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
   private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TByteBuffer(buffer);
+    TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
@@ -277,5 +279,14 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TSchemaNode failed: ", e);
     }
     return schemaNode;
+  }
+
+  private static TByteBuffer generateTByteBuffer(ByteBuffer buffer) throws TTransportException {
+    // TByteBuffer uses the default TConfiguration which limits the MaxMessageSize
+    // we use ByteBuffer.slice() to update the origin buffer if buffer.capacity() >= MaxMessageSize
+    if (buffer.capacity() >= THRIFT_DEFAULT_MAX_MESSAGE_SIZE) {
+      buffer.slice();
+    }
+    return new TByteBuffer(buffer);
   }
 }
