@@ -128,7 +128,7 @@ Apache NiFi 包含以下功能：
 | Username      | IoTDB 的用户名                                                                     | null   | true     |
 | Password      | IoTDB 的密码                                                                      | null   | true     |
 | Record Writer | 指定一个 Record Writer controller service 来写入数据。                                   | null   | true     |
-| iotdb-query        | 需要执行的IoTDB query <bbr>。 Note: 如果有连入侧的连接那么查询会从FlowFile的内容中提取，否则使用当前配置的属性        | null      | false     |
+| iotdb-query        | 需要执行的IoTDB query <br>。 Note: 如果有连入侧的连接那么查询会从FlowFile的内容中提取，否则使用当前配置的属性        | null      | false     |
 | iotdb-query-chunk-size  | 返回的结果可以进行分块，数据流中会返回一批按设置大小切分的数据，而不是一个单一的响应. 分块查询可以返回无限量的行。 注意: 数据分块只有在设置不为0时启用 | 0         | false     |
 
 

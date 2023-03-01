@@ -31,7 +31,7 @@
 
 由于通配符 * 在查询表达式中也可以表示乘法符号，下述例子用于帮助您区分两种情况：
 
-```SQL
+```sql
 # 创建时间序列 root.sg.`a*b`
 create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
 # 请注意，如标识符部分所述，a*b包含特殊字符，需要用``括起来使用
@@ -62,7 +62,7 @@ select a*b from root.sg
 
 - 创建时间序列时，如下情况需要使用反引号对特殊节点名进行引用：
 
-```SQL
+```sql
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","www.`baidu.com"]
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
@@ -72,7 +72,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 
 依次执行示例中语句后，执行 show timeseries，结果如下：
 
-```SQL
+```sql
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                 timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +---------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -83,7 +83,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 
 - 插入数据时，如下情况需要使用反引号对特殊节点名进行引用：
 
-```SQL
+```sql
 # 路径结点名中包含特殊字符
 insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
 
@@ -93,7 +93,7 @@ insert into root.sg(timestamp, `111`) values (1, 2);
 
 - 查询数据时，如下情况需要使用反引号对特殊节点名进行引用：
 
-```SQL
+```sql
 # 路径结点名中包含特殊字符
 select a from root.sg.`www.``baidu.com`;
 
@@ -103,7 +103,7 @@ select `111` from root.sg
 
 结果集分别为：
 
-```SQL
+```sql
 # select a from root.sg.`www.``baidu.com` 结果集
 +-----------------------------+---------------------------+
 |                         Time|root.sg.`www.``baidu.com`.a|

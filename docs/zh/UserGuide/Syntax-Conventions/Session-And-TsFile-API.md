@@ -25,7 +25,7 @@
 
 1. 以创建时间序列 createTimeseries 为例：
 
-```Java
+```java
 public void createTimeseries(
     String path,
     TSDataType dataType,
@@ -36,7 +36,7 @@ public void createTimeseries(
 
 如果您希望创建时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`，您使用的 SQL 语句应该如下所示：
 
-```SQL
+```sql
 create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN,compressor=SNAPPY;
 
 # 路径结点名中包含特殊字符，时间序列各结点为["root","sg","a.`\"b"]
@@ -48,7 +48,7 @@ create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN,compressor=SN
 
 您在调用 createTimeseries 方法时，应该按照如下方法赋值 path 字符串，保证 path 字符串内容与使用 SQL 时一致：
 
-```Java
+```java
 // 时间序列 root.sg.a
 String path = "root.sg.a";
 
@@ -61,7 +61,7 @@ String path = "root.sg.`111`";
 
 2. 以插入数据 insertRecord 为例：
 
-```Java
+```java
 public void insertRecord(
     String deviceId,
     long time,
@@ -73,13 +73,13 @@ public void insertRecord(
 
 如果您希望向时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`中插入数据，您使用的 SQL 语句应该如下所示：
 
-```SQL
+```sql
 insert into root.sg(timestamp, a, `a.``"b`, `111`) values (1, 2, 2, 2);
 ```
 
 您在调用 insertRecord 方法时，应该按照如下方法赋值 deviceId 和 measurements：
 
-```Java
+```java
 // deviceId 为 root.sg
 String deviceId = "root.sg";
 
@@ -90,7 +90,7 @@ List<String> measurementList = Arrays.asList(measurements);
 
 3. 以查询数据 executeRawDataQuery 为例：
 
-```Java
+```java
 public SessionDataSet executeRawDataQuery(
     List<String> paths, 
     long startTime, 
@@ -100,7 +100,7 @@ public SessionDataSet executeRawDataQuery(
 
 如果您希望查询时间序列 root.sg.a，root.sg.\`a.\`\`"b\`，root.sg.\`111\`的数据，您使用的 SQL 语句应该如下所示：
 
-```SQL
+```sql
 select a from root.sg
 
 # 路径结点名中包含特殊字符
@@ -112,7 +112,7 @@ select `111` from root.sg
 
 您在调用 executeRawDataQuery 方法时，应该按照如下方法赋值 paths：
 
-```Java
+```java
 // paths
 String[] paths = new String[]{"root.sg.a", "root.sg.`a.``\"b`", "root.sg.`111`"};
 List<String> pathList = Arrays.asList(paths);

@@ -135,7 +135,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
     </center>
 
 There are three typical examples of frequency reduction aggregation: 
@@ -426,7 +426,7 @@ The devices `d1` and `d2` belong to the workshop `d1` in `Beijing`.
 `d8` and `d9` are under maintenance, and don't belong to any workshops, so they have no tags.
 
 
-```SQL
+```sql
 CREATE DATABASE root.factory1;
 create timeseries root.factory1.d1.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d2.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
@@ -483,7 +483,7 @@ insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 
 If the user wants to know the average temperature of each workshop, he can query like this
 
-```SQL
+```sql
 SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS(city);
 ```
 
@@ -517,7 +517,7 @@ So the aggregation by the tag `city` should be done first, and then by the tag `
 
 SQL
 
-```SQL
+```sql
 SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS(city, workshop);
 ```
 
@@ -547,7 +547,7 @@ For example, a user wants to know the average temperature of the devices in each
 
 SQL
 
-```SQL
+```sql
 SELECT avg(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop);
 ```
 

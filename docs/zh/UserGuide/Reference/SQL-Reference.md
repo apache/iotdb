@@ -1197,7 +1197,7 @@ Note: DateTime Type can support several types, see Chapter 3 Datetime section fo
 ```
 PrecedenceEqualOperator : EQUAL | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN
 ```
-Timeseries : ROOT [DOT <LayerName>]* DOT <SensorName>
+Timeseries : ROOT [DOT \<LayerName\>]* DOT \<SensorName\>
 LayerName : Identifier
 SensorName : Identifier
 eg. root.ln.wf01.wt01.status
@@ -1206,7 +1206,7 @@ Note: Timeseries must be start with `root`(case insensitive) and end with sensor
 ```
 
 ```
-PrefixPath : ROOT (DOT <LayerName>)*
+PrefixPath : ROOT (DOT \<LayerName\>)*
 LayerName : Identifier | STAR
 eg. root.sgcc
 eg. root.*

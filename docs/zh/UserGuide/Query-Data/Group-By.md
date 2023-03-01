@@ -33,7 +33,7 @@
 
 下图中指出了这三个参数的含义：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
 接下来，我们给出几个典型例子：
 
@@ -416,7 +416,7 @@ IoTDB 支持通过 `GROUP BY TAGS` 语句根据时间序列中定义的标签的
 其中，设备 `d1`、`d2` 在 `Beijing` 的 `w1` 车间， `d3`、`d4` 在 `Beijing` 的 `w2` 车间，`d5`、`d6` 在 `Shanghai` 的 `w1` 车间，`d7` 在 `Shanghai` 的 `w2` 车间。
 `d8` 和 `d9` 设备目前处于调试阶段，还未被分配到具体的城市和车间，所以其相应的标签值为空值。
 
-```SQL
+```sql
 create database root.factory1;
 create timeseries root.factory1.d1.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
 create timeseries root.factory1.d2.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
@@ -473,7 +473,7 @@ insert into root.factory1.d9(time, temperature) values(3000, 52.1);
 
 用户想统计该工厂每个地区的设备的温度的平均值，可以使用如下查询语句
 
-```SQL
+```sql
 SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS(city);
 ```
 
@@ -504,7 +504,7 @@ It costs 0.231s
 
 SQL 语句如下
 
-```SQL
+```sql
 SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS(city, workshop);
 ```
 
@@ -534,7 +534,7 @@ It costs 0.027s
 
 SQL 语句如下
 
-```SQL
+```sql
 SELECT AVG(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS(city, workshop);
 ```
 

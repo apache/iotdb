@@ -52,7 +52,7 @@
 
 **在用反引号引用的标识符中，可以通过双写反引号的方式使用反引号，即 ` 可以表示为 ``**，示例如下：
 
-```SQL
+```sql
 # 创建模板 t1`t
 create schema template `t1``t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
