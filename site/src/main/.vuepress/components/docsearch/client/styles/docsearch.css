@@ -1,0 +1,25 @@
+@media (min-width: 751px) {
+  #docsearch-container {
+    /* use min-width to avoid layout shift after initializing docsearch */
+    /* the value will vary according to the length of the `buttonText` */
+    /* current value is for the default `buttonText` */
+    min-width: 171.36px;
+  }
+}
+
+@media (max-width: 750px) {
+  .DocSearch-Container {
+    /* fix the search modal on mobile */
+    position: fixed;
+  }
+  #docsearch-container {
+    /* use min-width to avoid layout shift after initializing docsearch */
+    min-width: 52px;
+  }
+}
+
+@media print {
+  #docsearch-container {
+    display: none;
+  }
+}
