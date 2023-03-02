@@ -382,8 +382,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PlanNodeId planNodeId = new PlanNodeId(String.format("%s-%d", node.getPlanNodeId(), i));
       // the first split belongs to parentPipeline
       LocalExecutionPlanContext subContext = (i == 0) ? context : context.createSubContext();
-      OperatorContext scanOperatorContext = null;
-      AbstractDataSourceOperator scanOperator = null;
+      OperatorContext scanOperatorContext;
+      AbstractDataSourceOperator scanOperator;
       if (node instanceof SeriesScanNode) {
         scanOperatorContext =
             subContext
@@ -393,7 +393,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     planNodeId,
                     SeriesScanOperator.class.getSimpleName());
         scanOperator = new SeriesScanOperator(scanOperatorContext, planNodeId);
-      } else if (node instanceof AlignedSeriesScanNode) {
+      } else {
         scanOperatorContext =
             subContext
                 .getDriverContext()

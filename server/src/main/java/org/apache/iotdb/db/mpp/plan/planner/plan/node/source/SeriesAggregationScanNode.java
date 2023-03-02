@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
-
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
@@ -113,6 +112,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     return groupByTimeParameter;
   }
 
+  @Override
   public MeasurementPath getSeriesPath() {
     return (MeasurementPath) seriesPath;
   }

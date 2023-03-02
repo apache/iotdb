@@ -134,6 +134,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
+  @Override
   public void setSeriesScanUtil(SeriesScanUtil seriesScanUtil) {
     this.seriesScanUtil = seriesScanUtil;
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());

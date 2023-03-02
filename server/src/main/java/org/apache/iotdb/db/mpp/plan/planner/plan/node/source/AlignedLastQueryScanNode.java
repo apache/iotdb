@@ -146,6 +146,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     return new AlignedLastQueryScanNode(planNodeId, partialPath);
   }
 
+  @Override
   public AlignedPath getSeriesPath() {
     return alignedPath;
   }

@@ -71,6 +71,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
+  @Override
   public MeasurementPath getSeriesPath() {
     return (MeasurementPath) seriesPath;
   }
