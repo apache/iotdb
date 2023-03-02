@@ -180,16 +180,16 @@ export default {
   },
   methods: {
     addRoutes1() {
-      this.$router.push('/zh/Download/');
+      window.location.href = '/zh//Download/';
     },
     addRoutes2() {
-      this.$router.push('/zh/UserGuide/Master/QuickStart/QuickStart.html');
+      window.location.href = '/zh//UserGuide/Master/QuickStart/QuickStart.html';
     },
   },
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .project-name {
   font-size: 20px;line-height:23px;margin: 10px 0 20px 0;font-family: 'Arimo', sans-serif;
       text-transform: uppercase;
