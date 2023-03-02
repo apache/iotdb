@@ -40,7 +40,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {
@@ -115,7 +114,6 @@ public class MemoryPool {
   private final long maxBytes;
   private final long maxBytesPerFragmentInstance;
 
-  private final ReentrantLock memoryReserveLock = new ReentrantLock(false);
   private final AtomicLong remainingBytes;
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
