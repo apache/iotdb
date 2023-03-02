@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
@@ -101,7 +102,7 @@ import java.util.function.Function;
  *   <li>Interfaces and Implementation for Template check
  * </ol>
  */
-public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
+public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -115,7 +116,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       PartialPath storageGroupPath,
       Function<IMeasurementMNode, Map<String, String>> tagGetter,
       MemSchemaRegionStatistics regionStatistics) {
-    store = new MemMTreeStore(storageGroupPath, true, regionStatistics);
+    store = new MemMTreeStore(storageGroupPath, regionStatistics);
     this.storageGroupMNode = store.getRoot().getAsDatabaseMNode();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
@@ -483,8 +484,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
   }
 
-  @Override
-  public boolean isEmptyInternalMNode(IMNode node) {
+  private boolean isEmptyInternalMNode(IMNode node) {
     return !IoTDBConstant.PATH_ROOT.equals(node.getName())
         && !node.isMeasurement()
         && !node.isUseTemplate()
@@ -733,7 +733,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 node.preDeactivateTemplate();
-                store.updateMNode(node);
               }
             }
           }) {

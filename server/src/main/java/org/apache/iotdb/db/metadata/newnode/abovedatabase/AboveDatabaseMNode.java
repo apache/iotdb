@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode.iterator;
+package org.apache.iotdb.db.metadata.newnode.abovedatabase;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.BasicMNode;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 
-import java.util.Iterator;
-
-public interface IMNodeIterator<N extends IMNode<?>> extends Iterator<N> {
-
-  void close();
+public class AboveDatabaseMNode extends AbstractAboveDatabaseMNode<IMemMNode, BasicMNode>
+    implements IMemMNode {
+  public AboveDatabaseMNode(IMemMNode parent, String name) {
+    this.basicMNode = new BasicMNode(parent, name);
+  }
 }

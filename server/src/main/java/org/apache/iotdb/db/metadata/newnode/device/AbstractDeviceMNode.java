@@ -39,6 +39,10 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
     this.deviceInfo = new DeviceInfo();
   }
 
+  public BasicNode getBasicMNode() {
+    return basicMNode;
+  }
+
   @Override
   public String getName() {
     return basicMNode.getName();
@@ -110,12 +114,12 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<N> children) {
     basicMNode.setChildren(children);
   }
 
@@ -192,6 +196,11 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   @Override
   public void setUseTemplate(boolean useTemplate) {
     deviceInfo.setUseTemplate(useTemplate);
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    deviceInfo.setSchemaTemplateId(schemaTemplateId);
   }
 
   @Override

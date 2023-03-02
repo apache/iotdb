@@ -288,7 +288,7 @@ public class CacheBasicMNode implements ICacheMNode {
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitInternalMNode(this, context);
+    return visitor.visitBasicMNode(this, context);
   }
 
   @Override

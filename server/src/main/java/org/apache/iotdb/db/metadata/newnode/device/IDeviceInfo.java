@@ -36,6 +36,8 @@ public interface IDeviceInfo {
 
   void setUseTemplate(boolean useTemplate);
 
+  void setSchemaTemplateId(int schemaTemplateId);
+
   /** @return the logic id of template set or activated on this node, id>=-1 */
   int getSchemaTemplateId();
 

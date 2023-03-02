@@ -60,9 +60,9 @@ public interface IMNode<N extends IMNode<?>> extends ITreeNode {
   // this method will move all the reference or value of current node's attributes to newMNode
   void moveDataToNewMNode(N newMNode);
 
-  IMNodeContainer getChildren();
+  IMNodeContainer<N> getChildren();
 
-  void setChildren(IMNodeContainer children);
+  void setChildren(IMNodeContainer<N> children);
 
   boolean isAboveDatabase();
 
@@ -74,11 +74,11 @@ public interface IMNode<N extends IMNode<?>> extends ITreeNode {
 
   MNodeType getMNodeType(Boolean isConfig);
 
-  IDatabaseMNode getAsDatabaseMNode();
+  IDatabaseMNode<N> getAsDatabaseMNode();
 
-  IDeviceMNode getAsEntityMNode();
+  IDeviceMNode<N> getAsEntityMNode();
 
-  IMeasurementMNode getAsMeasurementMNode();
+  IMeasurementMNode<N> getAsMeasurementMNode();
 
   <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
 }

@@ -39,6 +39,10 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
     this.databaseInfo = new DatabaseInfo(name);
   }
 
+  public BasicNode getBasicMNode() {
+    return basicMNode;
+  }
+
   @Override
   public String getName() {
     return basicMNode.getName();
@@ -161,7 +165,7 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitStorageGroupMNode(this, context);
+    return visitor.visitDatabaseMNode(this, context);
   }
 
   @Override

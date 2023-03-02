@@ -16,39 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.newnode.measurement;
+package org.apache.iotdb.db.metadata.newnode.abovedatabase;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
+    implements IMNode<N> {
 
-public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
-    implements IMeasurementMNode<N> {
-
-  private static final Logger logger = LoggerFactory.getLogger(AbstractMeasurementMNode.class);
-
-  private final MeasurementInfo measurementInfo;
   protected BasicNode basicMNode;
-
-  /** @param alias alias of measurementName */
-  public AbstractMeasurementMNode(IMeasurementSchema schema, String alias) {
-    this.measurementInfo = new MeasurementInfo(schema, alias);
-  }
-
-  public BasicNode getBasicMNode() {
-    return basicMNode;
-  }
 
   @Override
   public String getName() {
@@ -73,61 +55,9 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
     basicMNode.setParent(parent);
   }
 
-  /**
-   * get MeasurementPath of this node
-   *
-   * @return MeasurementPath
-   */
-  @Override
-  public MeasurementPath getMeasurementPath() {
-    MeasurementPath result = new MeasurementPath(getPartialPath(), getSchema());
-    result.setUnderAlignedEntity(getParent().getAsEntityMNode().isAligned());
-    return result;
-  }
-
-  @Override
-  public IMeasurementSchema getSchema() {
-    return measurementInfo.getSchema();
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return measurementInfo.getDataType();
-  }
-
-  @Override
-  public long getOffset() {
-    return measurementInfo.getOffset();
-  }
-
-  @Override
-  public void setOffset(long offset) {
-    measurementInfo.setOffset(offset);
-  }
-
-  @Override
-  public String getAlias() {
-    return measurementInfo.getAlias();
-  }
-
-  @Override
-  public void setAlias(String alias) {
-    measurementInfo.setAlias(alias);
-  }
-
-  @Override
-  public boolean isPreDeleted() {
-    return measurementInfo.isPreDeleted();
-  }
-
-  @Override
-  public void setPreDeleted(boolean preDeleted) {
-    measurementInfo.setPreDeleted(preDeleted);
-  }
-
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitMeasurementMNode(this, context);
+    throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
@@ -147,49 +77,47 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
 
   @Override
   public boolean hasChild(String name) {
-    return false;
+    return basicMNode.hasChild(name);
   }
 
   @Override
   public N getChild(String name) {
-    logger.warn("current node {} is a MeasurementMNode, can not get child {}", getName(), name);
-    throw new RuntimeException(
-        String.format(
-            "current node %s is a MeasurementMNode, can not get child %s", getName(), name));
+    return basicMNode.getChild(name);
   }
 
   @Override
   public N addChild(String name, N child) {
-    // Do nothing
-    return null;
+    return basicMNode.addChild(name, child);
   }
 
   @Override
   public N addChild(N child) {
-    return null;
+    return basicMNode.addChild(child);
   }
 
   @Override
   public N deleteChild(String name) {
-    return null;
+    return basicMNode.deleteChild(name);
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {}
+  public void replaceChild(String oldChildName, N newChildNode) {
+    basicMNode.replaceChild(oldChildName, newChildNode);
+  }
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
-    basicMNode.moveDataToNewMNode(newMNode);
+    // TODO
   }
 
   @Override
-  public IMNodeContainer getChildren() {
-    return MNodeContainers.emptyMNodeContainer();
+  public IMNodeContainer<N> getChildren() {
+    return basicMNode.getChildren();
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
-    // Do nothing
+  public void setChildren(IMNodeContainer<N> children) {
+    basicMNode.setChildren(children);
   }
 
   @Override
@@ -204,17 +132,17 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
 
   @Override
   public boolean isEntity() {
-    return false;
-  }
-
-  @Override
-  public boolean isMeasurement() {
     return true;
   }
 
   @Override
+  public boolean isMeasurement() {
+    return false;
+  }
+
+  @Override
   public MNodeType getMNodeType(Boolean isConfig) {
-    return MNodeType.MEASUREMENT;
+    return MNodeType.INTERNAL;
   }
 
   @Override

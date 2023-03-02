@@ -24,8 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 /** This interface defines a MeasurementMNode's operation interfaces. */
 public interface IMeasurementMNode<N extends IMNode<?>> extends IMNode<N>, IMeasurementInfo {
 
-  @Override
-  N getParent();
+  N getAsMNode();
 
   MeasurementPath getMeasurementPath();
 }

@@ -34,8 +34,7 @@ import java.util.Map;
  *
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
-public interface IMTreeStore<
-    N extends IMNode, DeviceN extends IDeviceMNode, MeasurementN extends IMeasurementMNode> {
+public interface IMTreeStore<N extends IMNode<?>> {
 
   /**
    * Generate the ancestor nodes of storageGroupNode
@@ -64,9 +63,9 @@ public interface IMTreeStore<
    */
   N getChild(N parent, String name) throws MetadataException;
 
-  IMNodeIterator getChildrenIterator(N parent) throws MetadataException;
+  IMNodeIterator<N> getChildrenIterator(N parent) throws MetadataException;
 
-  IMNodeIterator getTraverserIterator(
+  IMNodeIterator<N> getTraverserIterator(
       N parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException;
 
@@ -76,11 +75,11 @@ public interface IMTreeStore<
 
   void updateMNode(N node) throws MetadataException;
 
-  DeviceN setToEntity(N node) throws MetadataException;
+  IDeviceMNode<N> setToEntity(N node) throws MetadataException;
 
-  N setToInternal(DeviceN entityMNode) throws MetadataException;
+  N setToInternal(IDeviceMNode<N> entityMNode) throws MetadataException;
 
-  void setAlias(MeasurementN measurementMNode, String alias) throws MetadataException;
+  void setAlias(IMeasurementMNode<N> measurementMNode, String alias) throws MetadataException;
 
   void pin(N node) throws MetadataException;
 

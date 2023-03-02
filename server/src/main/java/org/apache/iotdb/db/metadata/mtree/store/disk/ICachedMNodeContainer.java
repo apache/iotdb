@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.util.Iterator;
 import java.util.Map;
 
-public interface ICachedMNodeContainer extends IMNodeContainer {
+public interface ICachedMNodeContainer extends IMNodeContainer<ICacheMNode> {
 
   long getSegmentAddress();
 
@@ -41,23 +41,23 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   boolean hasChildInBuffer(String name);
 
-  Iterator<IMNode> getChildrenIterator();
+  Iterator<ICacheMNode> getChildrenIterator();
 
-  Iterator<IMNode> getChildrenBufferIterator();
+  Iterator<ICacheMNode> getChildrenBufferIterator();
 
-  Iterator<IMNode> getNewChildBufferIterator();
+  Iterator<ICacheMNode> getNewChildBufferIterator();
 
-  Map<String, IMNode> getChildCache();
+  Map<String, ICacheMNode> getChildCache();
 
-  Map<String, IMNode> getNewChildBuffer();
+  Map<String, ICacheMNode> getNewChildBuffer();
 
-  Map<String, IMNode> getUpdatedChildBuffer();
+  Map<String, ICacheMNode> getUpdatedChildBuffer();
 
-  void loadChildrenFromDisk(Map<String, IMNode> children);
+  void loadChildrenFromDisk(Map<String, ICacheMNode> children);
 
-  void addChildToCache(IMNode node);
+  void addChildToCache(ICacheMNode node);
 
-  void appendMNode(IMNode node);
+  void appendMNode(ICacheMNode node);
 
   void updateMNode(String name);
 
@@ -65,8 +65,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   void evictMNode(String name);
 
-  static ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
-    IMNodeContainer container = node.getChildren();
+  static ICachedMNodeContainer getCachedMNodeContainer(ICacheMNode node) {
+    IMNodeContainer<ICacheMNode> container = node.getChildren();
     if (container.equals(MNodeContainers.emptyMNodeContainer())) {
       container = new CachedMNodeContainer();
       node.setChildren(container);
@@ -74,7 +74,7 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
     return (ICachedMNodeContainer) container;
   }
 
-  static ICachedMNodeContainer getBelongedContainer(IMNode node) {
+  static ICachedMNodeContainer getBelongedContainer(ICacheMNode node) {
     return (ICachedMNodeContainer) node.getParent().getChildren();
   }
 }

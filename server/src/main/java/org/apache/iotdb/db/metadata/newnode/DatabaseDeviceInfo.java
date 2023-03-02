@@ -55,4 +55,7 @@ public class DatabaseDeviceInfo extends DeviceInfo implements IDatabaseInfo {
   public TDatabaseSchema getStorageGroupSchema() {
     return null;
   }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {}
 }

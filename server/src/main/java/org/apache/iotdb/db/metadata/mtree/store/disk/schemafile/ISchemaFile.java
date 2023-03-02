@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 
 import java.io.File;
@@ -33,7 +33,7 @@ public interface ISchemaFile {
    *
    * @return node instance, <b>template name as hash code</b>
    */
-  IMNode init() throws MetadataException;
+  ICacheMNode init() throws MetadataException;
 
   /**
    * Modify header of schema file corresponding to the database node synchronously
@@ -41,16 +41,16 @@ public interface ISchemaFile {
    * @param sgNode node to be updated
    * @return true if success
    */
-  boolean updateStorageGroupNode(IDatabaseMNode sgNode) throws IOException;
+  boolean updateStorageGroupNode(IDatabaseMNode<ICacheMNode> sgNode) throws IOException;
 
   /**
    * Only database node along with its descendents could be flushed into schema file.
    *
    * @param node
    */
-  void writeMNode(IMNode node) throws MetadataException, IOException;
+  void writeMNode(ICacheMNode node) throws MetadataException, IOException;
 
-  void delete(IMNode node) throws IOException, MetadataException;
+  void delete(ICacheMNode node) throws IOException, MetadataException;
 
   void close() throws IOException;
 
@@ -58,9 +58,10 @@ public interface ISchemaFile {
 
   void sync() throws IOException;
 
-  IMNode getChildNode(IMNode parent, String childName) throws MetadataException, IOException;
+  ICacheMNode getChildNode(ICacheMNode parent, String childName)
+      throws MetadataException, IOException;
 
-  Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException;
+  Iterator<ICacheMNode> getChildren(ICacheMNode parent) throws MetadataException, IOException;
 
   boolean createSnapshot(File snapshotDir);
 }

@@ -89,17 +89,17 @@ public class ConfigMTreeTest {
   public void testAddAndPathExist() throws MetadataException {
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath(path1)));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
   }
 
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
+      assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
+      assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1.s1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -122,9 +122,9 @@ public class ConfigMTreeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-    assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
+    assertFalse(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d1")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop")));
+    assertTrue(root.isDatabaseAlreadySet(new PartialPath("root.laptop.d2")));
   }
 
   @Test
@@ -255,7 +255,7 @@ public class ConfigMTreeTest {
         };
     for (int i = 0; i < pathList.length; i++) {
       root.setStorageGroup(pathList[i]);
-      IDatabaseMNode storageGroupMNode = root.getStorageGroupNodeByStorageGroupPath(pathList[i]);
+      IDatabaseMNode storageGroupMNode = root.getDatabaseNodeByDatabasePath(pathList[i]);
       storageGroupMNode.setDataTTL(i);
       storageGroupMNode.setDataReplicationFactor(i);
       storageGroupMNode.setSchemaReplicationFactor(i);
@@ -271,7 +271,7 @@ public class ConfigMTreeTest {
 
     for (int i = 0; i < pathList.length; i++) {
       TDatabaseSchema storageGroupSchema =
-          newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
+          newTree.getDatabaseNodeByDatabasePath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());

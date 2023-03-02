@@ -138,6 +138,11 @@ public class DeviceInfo implements IDeviceInfo {
   }
 
   @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    this.schemaTemplateId = schemaTemplateId;
+  }
+
+  @Override
   public boolean isAligned() {
     return isAligned;
   }

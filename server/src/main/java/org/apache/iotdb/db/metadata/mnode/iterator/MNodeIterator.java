@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 
 import java.util.Iterator;
 
-public class MNodeIterator implements IMNodeIterator {
+public class MNodeIterator<N extends IMNode<?>> implements IMNodeIterator<N> {
 
-  private Iterator<IMNode> iterator;
+  private Iterator<N> iterator;
 
-  public MNodeIterator(Iterator<IMNode> iterator) {
+  public MNodeIterator(Iterator<N> iterator) {
     this.iterator = iterator;
   }
 
@@ -37,7 +38,7 @@ public class MNodeIterator implements IMNodeIterator {
   }
 
   @Override
-  public IMNode next() {
+  public N next() {
     return iterator.next();
   }
 

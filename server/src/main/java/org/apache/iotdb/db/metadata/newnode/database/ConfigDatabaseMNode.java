@@ -53,4 +53,9 @@ public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, Con
   public void unsetSchemaTemplate() {
     basicMNode.unsetSchemaTemplate();
   }
+
+  @Override
+  public IConfigMNode getAsMNode() {
+    return this;
+  }
 }

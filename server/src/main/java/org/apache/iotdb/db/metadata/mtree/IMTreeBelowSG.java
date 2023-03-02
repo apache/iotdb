@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public interface IMTreeBelowSG {
+public interface IMTreeBelowSG<N extends IMNode<?>> {
   void clear();
 
   /**
@@ -44,7 +44,7 @@ public interface IMTreeBelowSG {
    */
   boolean createSnapshot(File snapshotDir);
 
-  IMeasurementMNode createTimeseries(
+  IMeasurementMNode<N> createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -63,7 +63,7 @@ public interface IMTreeBelowSG {
    * @param encodings encodings list
    * @param compressors compressor
    */
-  List<IMeasurementMNode> createAlignedTimeseries(
+  List<IMeasurementMNode<N>> createAlignedTimeseries(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,
@@ -89,9 +89,7 @@ public interface IMTreeBelowSG {
    *
    * @param path Format: root.node(.node)+
    */
-  IMeasurementMNode deleteTimeseries(PartialPath path) throws MetadataException;
-
-  boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
+  IMeasurementMNode<N> deleteTimeseries(PartialPath path) throws MetadataException;
 
   /**
    * Construct schema black list via setting matched timeseries to pre deleted.
@@ -130,14 +128,14 @@ public interface IMTreeBelowSG {
   Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException;
 
-  void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException;
+  void setAlias(IMeasurementMNode<N> measurementMNode, String alias) throws MetadataException;
 
   /**
    * Add an interval path to MTree. This is only used for automatically creating schema
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
+  N getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
   /**
    * Fetch all measurement path
@@ -156,9 +154,9 @@ public interface IMTreeBelowSG {
    *
    * @return last node in given seriesPath
    */
-  IMNode getNodeByPath(PartialPath path) throws MetadataException;
+  N getNodeByPath(PartialPath path) throws MetadataException;
 
-  IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
+  IMeasurementMNode<N> getMeasurementMNode(PartialPath path) throws MetadataException;
 
   long countAllMeasurement() throws MetadataException;
 

@@ -21,7 +21,8 @@ package org.apache.iotdb.db.metadata.newnode.database;
 import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 
-public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode> {
+public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode>
+    implements IMemMNode {
 
   public DatabaseMNode(IMemMNode parent, String name) {
     super(name);
@@ -32,5 +33,10 @@ public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode> 
   public DatabaseMNode(IMemMNode parent, String name, long dataTTL) {
     this(parent, name);
     setDataTTL(dataTTL);
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    return this;
   }
 }

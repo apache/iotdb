@@ -21,14 +21,11 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
-import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.ICacheMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.ICacheMNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
@@ -36,10 +33,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.abovedatabase.CacheAboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -56,8 +52,7 @@ import java.util.NoSuchElementException;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
-public class CachedMTreeStore
-    implements IMTreeStore<ICacheMNode, CacheDeviceMNode, CacheMeasurementMNode> {
+public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
@@ -96,11 +91,11 @@ public class CachedMTreeStore
   public ICacheMNode generatePrefix(PartialPath storageGroupPath) {
     String[] nodes = storageGroupPath.getNodes();
     // nodes[0] must be root
-    IMNode res = new AboveDatabaseMNode(null, nodes[0]);
+    ICacheMNode res = new CacheAboveDatabaseMNode(null, nodes[0]);
     ICacheMNode cur = res;
     ICacheMNode child;
     for (int i = 1; i < nodes.length - 1; i++) {
-      child = new AboveDatabaseMNode(cur, nodes[i]);
+      child = new CacheAboveDatabaseMNode(cur, nodes[i]);
       cur.addChild(nodes[i], child);
       cur = child;
     }
@@ -226,11 +221,12 @@ public class CachedMTreeStore
 
   // getChildrenIterator will take readLock, must call iterator.close() after usage
   @Override
-  public ICacheMNodeIterator getChildrenIterator(ICacheMNode parent) throws MetadataException {
+  public IMNodeIterator<ICacheMNode> getChildrenIterator(ICacheMNode parent)
+      throws MetadataException {
     return getChildrenIterator(parent, true);
   }
 
-  final ICacheMNodeIterator getChildrenIterator(ICacheMNode parent, boolean needLock)
+  final IMNodeIterator<ICacheMNode> getChildrenIterator(ICacheMNode parent, boolean needLock)
       throws MetadataException {
     try {
       return new CachedMNodeIterator(parent, needLock);
@@ -240,13 +236,13 @@ public class CachedMTreeStore
   }
 
   @Override
-  public ICacheMNodeIterator getTraverserIterator(
+  public IMNodeIterator<ICacheMNode> getTraverserIterator(
       ICacheMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
     return getTraverserIterator(this, parent, templateMap, skipPreDeletedSchema);
   }
 
-  final ICacheMNodeIterator getTraverserIterator(
+  final IMNodeIterator<ICacheMNode> getTraverserIterator(
       IMTreeStore store,
       ICacheMNode parent,
       Map<Integer, Template> templateMap,
@@ -335,42 +331,43 @@ public class CachedMTreeStore
   }
 
   @Override
-  public IDeviceMNode setToEntity(ICacheMNode node) {
-    IDeviceMNode result = MNodeUtils.setToEntity(node);
+  public IDeviceMNode<ICacheMNode> setToEntity(ICacheMNode node) {
+    IDeviceMNode<ICacheMNode> result = MNodeUtils.setToEntity(node);
     if (result != node) {
-      memManager.updatePinnedSize(ICacheMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
-    updateMNode(result);
+    updateMNode(result.getAsMNode());
     return result;
   }
 
   @Override
-  public ICacheMNode setToInternal(IDeviceMNode entityMNode) {
+  public ICacheMNode setToInternal(IDeviceMNode<ICacheMNode> entityMNode) {
     ICacheMNode result = MNodeUtils.setToInternal(entityMNode);
     if (result != entityMNode) {
-      memManager.updatePinnedSize(-ICacheMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
     updateMNode(result);
     return result;
   }
 
   @Override
-  public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
+  public void setAlias(IMeasurementMNode<ICacheMNode> measurementMNode, String alias)
+      throws MetadataException {
     String existingAlias = measurementMNode.getAlias();
     if (existingAlias == null && alias == null) {
       return;
     }
 
     measurementMNode.setAlias(alias);
-    updateMNode(measurementMNode);
+    updateMNode(measurementMNode.getAsMNode());
 
     if (existingAlias != null && alias != null) {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
       memManager.updatePinnedSize(
-          -(ICacheMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
+          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(ICacheMNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -585,7 +582,7 @@ public class CachedMTreeStore
    * Since any node R/W operation may change the memory status, thus it should be controlled during
    * iterating child nodes.
    */
-  private class CachedMNodeIterator implements ICacheMNodeIterator {
+  private class CachedMNodeIterator implements IMNodeIterator {
     ICacheMNode parent;
     Iterator<ICacheMNode> iterator;
     Iterator<ICacheMNode> bufferIterator;

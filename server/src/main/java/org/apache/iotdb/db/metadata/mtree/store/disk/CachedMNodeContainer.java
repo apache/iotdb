@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -37,16 +37,16 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private long segmentAddress = -1;
 
-  private Map<String, IMNode> childCache = null;
-  private Map<String, IMNode> newChildBuffer = null;
-  private Map<String, IMNode> updatedChildBuffer = null;
+  private Map<String, ICacheMNode> childCache = null;
+  private Map<String, ICacheMNode> newChildBuffer = null;
+  private Map<String, ICacheMNode> updatedChildBuffer = null;
 
   @Override
   public int size() {
     return getSize(childCache) + getSize(newChildBuffer) + getSize(updatedChildBuffer);
   }
 
-  private int getSize(Map<String, IMNode> map) {
+  private int getSize(Map<String, ICacheMNode> map) {
     return map == null ? 0 : map.size();
   }
 
@@ -55,7 +55,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return isEmpty(childCache) && isEmpty(newChildBuffer) && isEmpty(updatedChildBuffer);
   }
 
-  private boolean isEmpty(Map<String, IMNode> map) {
+  private boolean isEmpty(Map<String, ICacheMNode> map) {
     return map == null || map.isEmpty();
   }
 
@@ -66,7 +66,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         || containsKey(updatedChildBuffer, key);
   }
 
-  private boolean containsKey(Map<String, IMNode> map, Object key) {
+  private boolean containsKey(Map<String, ICacheMNode> map, Object key) {
     return map != null && map.containsKey(key);
   }
 
@@ -77,13 +77,13 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         || containsValue(updatedChildBuffer, value);
   }
 
-  private boolean containsValue(Map<String, IMNode> map, Object value) {
+  private boolean containsValue(Map<String, ICacheMNode> map, Object value) {
     return map != null && map.containsValue(value);
   }
 
   @Override
-  public IMNode get(Object key) {
-    IMNode result = get(childCache, key);
+  public ICacheMNode get(Object key) {
+    ICacheMNode result = get(childCache, key);
     if (result != null) {
       return result;
     }
@@ -94,13 +94,13 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return get(updatedChildBuffer, key);
   }
 
-  private IMNode get(Map<String, IMNode> map, Object key) {
+  private ICacheMNode get(Map<String, ICacheMNode> map, Object key) {
     return map == null ? null : map.get(key);
   }
 
   @Nullable
   @Override
-  public synchronized IMNode put(String key, IMNode value) {
+  public synchronized ICacheMNode put(String key, ICacheMNode value) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -109,9 +109,9 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Nullable
   @Override
-  public synchronized IMNode putIfAbsent(String key, IMNode value) {
+  public synchronized ICacheMNode putIfAbsent(String key, ICacheMNode value) {
 
-    IMNode node = get(key);
+    ICacheMNode node = get(key);
     if (node == null) {
       if (newChildBuffer == null) {
         newChildBuffer = new ConcurrentHashMap<>();
@@ -123,8 +123,8 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized IMNode remove(Object key) {
-    IMNode result = remove(childCache, key);
+  public synchronized ICacheMNode remove(Object key) {
+    ICacheMNode result = remove(childCache, key);
     if (result == null) {
       result = remove(newChildBuffer, key);
     }
@@ -134,12 +134,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return result;
   }
 
-  private IMNode remove(Map<String, IMNode> map, Object key) {
+  private ICacheMNode remove(Map<String, ICacheMNode> map, Object key) {
     return map == null ? null : map.remove(key);
   }
 
   @Override
-  public synchronized void putAll(@Nonnull Map<? extends String, ? extends IMNode> m) {
+  public synchronized void putAll(@Nonnull Map<? extends String, ? extends ICacheMNode> m) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -163,42 +163,42 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return result;
   }
 
-  private Set<String> keySet(Map<String, IMNode> map) {
+  private Set<String> keySet(Map<String, ICacheMNode> map) {
     return map == null ? Collections.emptySet() : map.keySet();
   }
 
   @Nonnull
   @Override
-  public Collection<IMNode> values() {
-    Collection<IMNode> result = new ArrayList<>();
+  public Collection<ICacheMNode> values() {
+    Collection<ICacheMNode> result = new ArrayList<>();
     result.addAll(getValues(childCache));
     result.addAll(getValues(newChildBuffer));
     result.addAll(getValues(updatedChildBuffer));
     return result;
   }
 
-  private Collection<IMNode> getValues(Map<String, IMNode> map) {
+  private Collection<ICacheMNode> getValues(Map<String, ICacheMNode> map) {
     return map == null ? Collections.emptyList() : map.values();
   }
 
   @Nonnull
   @Override
-  public Set<Entry<String, IMNode>> entrySet() {
-    Set<Entry<String, IMNode>> result = new HashSet<>();
+  public Set<Entry<String, ICacheMNode>> entrySet() {
+    Set<Entry<String, ICacheMNode>> result = new HashSet<>();
     result.addAll(entrySet(childCache));
     result.addAll(entrySet(newChildBuffer));
     result.addAll(entrySet(updatedChildBuffer));
     return result;
   }
 
-  private Set<Entry<String, IMNode>> entrySet(Map<String, IMNode> map) {
+  private Set<Entry<String, ICacheMNode>> entrySet(Map<String, ICacheMNode> map) {
     return map == null ? Collections.emptySet() : map.entrySet();
   }
 
   @Nullable
   @Override
-  public synchronized IMNode replace(String key, IMNode value) {
-    IMNode replacedOne = replace(childCache, key, value);
+  public synchronized ICacheMNode replace(String key, ICacheMNode value) {
+    ICacheMNode replacedOne = replace(childCache, key, value);
     if (replacedOne == null) {
       replacedOne = replace(newChildBuffer, key, value);
     }
@@ -208,7 +208,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return replacedOne;
   }
 
-  private IMNode replace(Map<String, IMNode> map, String key, IMNode value) {
+  private ICacheMNode replace(Map<String, ICacheMNode> map, String key, ICacheMNode value) {
     return map == null ? null : map.replace(key, value);
   }
 
@@ -251,37 +251,37 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public Iterator<IMNode> getChildrenIterator() {
+  public Iterator<ICacheMNode> getChildrenIterator() {
     return new CachedMNodeContainerIterator();
   }
 
   @Override
-  public Iterator<IMNode> getChildrenBufferIterator() {
+  public Iterator<ICacheMNode> getChildrenBufferIterator() {
     return new BufferIterator();
   }
 
   @Override
-  public Iterator<IMNode> getNewChildBufferIterator() {
+  public Iterator<ICacheMNode> getNewChildBufferIterator() {
     return getNewChildBuffer().values().iterator();
   }
 
   @Override
-  public Map<String, IMNode> getChildCache() {
+  public Map<String, ICacheMNode> getChildCache() {
     return childCache == null ? Collections.emptyMap() : childCache;
   }
 
   @Override
-  public Map<String, IMNode> getNewChildBuffer() {
+  public Map<String, ICacheMNode> getNewChildBuffer() {
     return newChildBuffer == null ? Collections.emptyMap() : newChildBuffer;
   }
 
   @Override
-  public Map<String, IMNode> getUpdatedChildBuffer() {
+  public Map<String, ICacheMNode> getUpdatedChildBuffer() {
     return updatedChildBuffer == null ? Collections.emptyMap() : updatedChildBuffer;
   }
 
   @Override
-  public synchronized void loadChildrenFromDisk(Map<String, IMNode> children) {
+  public synchronized void loadChildrenFromDisk(Map<String, ICacheMNode> children) {
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
@@ -289,7 +289,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized void addChildToCache(IMNode node) {
+  public synchronized void addChildToCache(ICacheMNode node) {
     String name = node.getName();
     if (containsKey(name)) {
       return;
@@ -301,7 +301,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized void appendMNode(IMNode node) {
+  public synchronized void appendMNode(ICacheMNode node) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -310,7 +310,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void updateMNode(String name) {
-    IMNode node = remove(childCache, name);
+    ICacheMNode node = remove(childCache, name);
     if (node != null) {
       if (updatedChildBuffer == null) {
         updatedChildBuffer = new ConcurrentHashMap<>();
@@ -321,7 +321,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void moveMNodeToCache(String name) {
-    IMNode node = remove(newChildBuffer, name);
+    ICacheMNode node = remove(newChildBuffer, name);
     if (node == null) {
       node = remove(updatedChildBuffer, name);
     }
@@ -340,17 +340,17 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     StringBuilder builder = new StringBuilder();
     builder.append("CachedMNodeContainer:{");
     builder.append("childCache:[");
-    for (IMNode node : getValues(childCache)) {
+    for (ICacheMNode node : getValues(childCache)) {
       builder.append(node.getName()).append(",");
     }
     builder.append("];");
     builder.append("newChildBuffer:[");
-    for (IMNode node : getValues(newChildBuffer)) {
+    for (ICacheMNode node : getValues(newChildBuffer)) {
       builder.append(node.getName()).append(",");
     }
     builder.append("];");
     builder.append("updateChildBuffer:[");
-    for (IMNode node : getValues(updatedChildBuffer)) {
+    for (ICacheMNode node : getValues(updatedChildBuffer)) {
       builder.append(node.getName()).append(",");
     }
     builder.append("];");
@@ -358,9 +358,9 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return builder.toString();
   }
 
-  private class CachedMNodeContainerIterator implements Iterator<IMNode> {
+  private class CachedMNodeContainerIterator implements Iterator<ICacheMNode> {
 
-    Iterator<IMNode> iterator;
+    Iterator<ICacheMNode> iterator;
     byte status = 0;
 
     CachedMNodeContainerIterator() {
@@ -381,7 +381,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
 
     @Override
-    public IMNode next() {
+    public ICacheMNode next() {
       return iterator.next();
     }
 
@@ -401,10 +401,10 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
   }
 
-  private class BufferIterator implements Iterator<IMNode> {
-    Iterator<IMNode> iterator;
-    Iterator<IMNode> newBufferIterator;
-    Iterator<IMNode> updateBufferIterator;
+  private class BufferIterator implements Iterator<ICacheMNode> {
+    Iterator<ICacheMNode> iterator;
+    Iterator<ICacheMNode> newBufferIterator;
+    Iterator<ICacheMNode> updateBufferIterator;
     byte status = 0;
 
     BufferIterator() {
@@ -427,7 +427,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
 
     @Override
-    public IMNode next() {
+    public ICacheMNode next() {
       return iterator.next();
     }
 

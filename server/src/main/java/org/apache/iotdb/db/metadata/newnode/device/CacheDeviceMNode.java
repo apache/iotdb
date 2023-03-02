@@ -38,4 +38,9 @@ public class CacheDeviceMNode extends AbstractDeviceMNode<ICacheMNode, CacheBasi
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
   }
+
+  @Override
+  public ICacheMNode getAsMNode() {
+    return this;
+  }
 }

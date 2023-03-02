@@ -21,9 +21,14 @@ package org.apache.iotdb.db.metadata.newnode.device;
 import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 
-public class DeviceMNode extends AbstractDeviceMNode<IMemMNode, BasicMNode> {
+public class DeviceMNode extends AbstractDeviceMNode<IMemMNode, BasicMNode> implements IMemMNode {
 
   public DeviceMNode(IMemMNode parent, String name) {
     this.basicMNode = new BasicMNode(parent, name);
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    return this;
   }
 }

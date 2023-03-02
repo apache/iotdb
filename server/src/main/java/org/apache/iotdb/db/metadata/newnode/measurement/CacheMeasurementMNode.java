@@ -28,7 +28,7 @@ public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode,
 
   public CacheMeasurementMNode(
       ICacheMNode parent, String name, IMeasurementSchema schema, String alias) {
-    super(parent, name, schema, alias);
+    super(schema, alias);
     this.basicMNode = new CacheBasicMNode(parent, name);
   }
 
@@ -40,5 +40,10 @@ public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode,
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
+  }
+
+  @Override
+  public ICacheMNode getAsMNode() {
+    return this;
   }
 }

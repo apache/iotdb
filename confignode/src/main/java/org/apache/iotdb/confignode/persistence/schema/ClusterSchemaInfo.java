@@ -134,7 +134,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       // Set StorageGroupSchema
       mTree
-          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .getDatabaseNodeByDatabasePath(partialPathName)
           .setStorageGroupSchema(storageGroupSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -161,7 +161,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath partialPathName = new PartialPath(alterSchema.getName());
 
       TDatabaseSchema currentSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(partialPathName).getStorageGroupSchema();
       // TODO: Support alter other fields
       if (alterSchema.isSetMinSchemaRegionGroupNum()) {
         currentSchema.setMinSchemaRegionGroupNum(alterSchema.getMinSchemaRegionGroupNum());
@@ -195,7 +195,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
 
       mTree
-          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .getDatabaseNodeByDatabasePath(partialPathName)
           .setStorageGroupSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -264,7 +264,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
-            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
+            mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -288,7 +288,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       if (!matchedPaths.isEmpty()) {
         for (PartialPath path : matchedPaths) {
           mTree
-              .getStorageGroupNodeByStorageGroupPath(path)
+              .getDatabaseNodeByDatabasePath(path)
               .getStorageGroupSchema()
               .setTTL(plan.getTTL());
         }
@@ -311,9 +311,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
+            .getDatabaseNodeByDatabasePath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(plan.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -334,9 +334,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
+            .getDatabaseNodeByDatabasePath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(plan.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -357,9 +357,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
+      if (mTree.isDatabaseAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
+            .getDatabaseNodeByDatabasePath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(plan.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -389,7 +389,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           plan.getMaxRegionGroupNumMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
         TDatabaseSchema storageGroupSchema =
-            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+            mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema();
         storageGroupSchema.setMaxSchemaRegionGroupNum(entry.getValue().getLeft());
         storageGroupSchema.setMaxDataRegionGroupNum(entry.getValue().getRight());
       }
@@ -435,7 +435,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public boolean isDatabaseExisted(String databaseName) throws IllegalPathException {
     databaseReadWriteLock.readLock().lock();
     try {
-      return mTree.isStorageGroupAlreadySet(new PartialPath(databaseName));
+      return mTree.isDatabaseAlreadySet(new PartialPath(databaseName));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -450,7 +450,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void checkContainsStorageGroup(String storageName) throws MetadataException {
     databaseReadWriteLock.readLock().lock();
     try {
-      mTree.checkStorageGroupAlreadySet(new PartialPath(storageName));
+      mTree.checkDatabaseAlreadySet(new PartialPath(storageName));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
@@ -468,7 +468,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       return mTree
-          .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
+          .getDatabaseNodeByDatabasePath(new PartialPath(storageGroup))
           .getStorageGroupSchema();
     } catch (MetadataException e) {
       throw new DatabaseNotExistsException(storageGroup);
@@ -492,7 +492,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
         for (PartialPath path : matchedPaths) {
           schemaMap.put(
-              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+              path.getFullPath(), mTree.getDatabaseNodeByPath(path).getStorageGroupSchema());
         }
       }
     } catch (MetadataException e) {
@@ -515,7 +515,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       PartialPath path = new PartialPath(database);
       TDatabaseSchema storageGroupSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMinSchemaRegionGroupNum();
@@ -543,7 +543,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       PartialPath path = new PartialPath(database);
       TDatabaseSchema storageGroupSchema =
-          mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();
+          mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMaxSchemaRegionGroupNum();
@@ -878,7 +878,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getStorageGroupSchema());
       }
     } catch (MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);

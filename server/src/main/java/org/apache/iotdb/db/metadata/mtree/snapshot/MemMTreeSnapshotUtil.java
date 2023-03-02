@@ -23,18 +23,19 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.DatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.AbstractMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
@@ -108,9 +109,9 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  public static IMNode loadSnapshot(
+  public static IMemMNode loadSnapshot(
       File snapshotDir,
-      Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     File snapshot =
@@ -131,17 +132,17 @@ public class MemMTreeSnapshotUtil {
     inorderSerialize(store.getRoot(), store, outputStream);
   }
 
-  private static void inorderSerialize(IMNode root, MemMTreeStore store, OutputStream outputStream)
-      throws IOException {
+  private static void inorderSerialize(
+      IMemMNode root, MemMTreeStore store, OutputStream outputStream) throws IOException {
     MNodeSerializer serializer = new MNodeSerializer();
     if (!root.accept(serializer, outputStream)) {
       throw new IOException(SERIALIZE_ERROR_INFO);
     }
 
-    Deque<IMNodeIterator> stack = new ArrayDeque<>();
+    Deque<IMNodeIterator<IMemMNode>> stack = new ArrayDeque<>();
     stack.push(store.getChildrenIterator(root));
-    IMNode node;
-    IMNodeIterator iterator;
+    IMemMNode node;
+    IMNodeIterator<IMemMNode> iterator;
     while (!stack.isEmpty()) {
       iterator = stack.peek();
       if (iterator.hasNext()) {
@@ -158,22 +159,22 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static IMNode deserializeFrom(
+  private static IMemMNode deserializeFrom(
       InputStream inputStream,
-      Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     byte version = ReadWriteIOUtils.readByte(inputStream);
     return inorderDeserialize(inputStream, measurementProcess, regionStatistics);
   }
 
-  private static IMNode inorderDeserialize(
+  private static IMemMNode inorderDeserialize(
       InputStream inputStream,
-      Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     MNodeDeserializer deserializer = new MNodeDeserializer();
-    Deque<IMNode> ancestors = new ArrayDeque<>();
+    Deque<IMemMNode> ancestors = new ArrayDeque<>();
     Deque<Integer> restChildrenNum = new ArrayDeque<>();
     deserializeMNode(
         ancestors,
@@ -183,7 +184,7 @@ public class MemMTreeSnapshotUtil {
         measurementProcess,
         regionStatistics);
     int childrenNum;
-    IMNode root = ancestors.peek();
+    IMemMNode root = ancestors.peek();
     while (!ancestors.isEmpty()) {
       childrenNum = restChildrenNum.pop();
       if (childrenNum == 0) {
@@ -203,15 +204,15 @@ public class MemMTreeSnapshotUtil {
   }
 
   private static void deserializeMNode(
-      Deque<IMNode> ancestors,
+      Deque<IMemMNode> ancestors,
       Deque<Integer> restChildrenNum,
       MNodeDeserializer deserializer,
       InputStream inputStream,
-      Consumer<IMeasurementMNode> measurementProcess,
+      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
-    IMNode node;
+    IMemMNode node;
     int childrenNum;
     switch (type) {
       case INTERNAL_MNODE_TYPE:
@@ -256,10 +257,10 @@ public class MemMTreeSnapshotUtil {
   private static class MNodeSerializer extends MNodeVisitor<Boolean, OutputStream> {
 
     @Override
-    public Boolean visitInternalMNode(BasicMNode node, OutputStream outputStream) {
+    public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
-        serializeInternalBasicInfo(node, outputStream);
+        serializeBasicMNode(node, outputStream);
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -268,10 +269,11 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitStorageGroupMNode(AbstractDatabaseMNode node, OutputStream outputStream) {
+    public Boolean visitDatabaseMNode(
+        AbstractDatabaseMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
-        serializeInternalBasicInfo(node, outputStream);
+        serializeBasicMNode(node.getBasicMNode(), outputStream);
         // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
@@ -281,11 +283,11 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitStorageGroupEntityMNode(
-        AbstractDatabaseDeviceMNode node, OutputStream outputStream) {
+    public Boolean visitDatabaseDeviceMNode(
+        AbstractDatabaseDeviceMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
-        serializeInternalBasicInfo(node, outputStream);
+        serializeBasicMNode(node.getBasicMNode(), outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
         // database node in schemaRegion doesn't store any database schema
         return true;
@@ -296,10 +298,11 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitDeviceMNode(IDeviceMNode node, OutputStream outputStream) {
+    public Boolean visitDeviceMNode(
+        AbstractDeviceMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
-        serializeInternalBasicInfo(node, outputStream);
+        serializeBasicMNode(node.getBasicMNode(), outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
         return true;
       } catch (IOException e) {
@@ -309,7 +312,8 @@ public class MemMTreeSnapshotUtil {
     }
 
     @Override
-    public Boolean visitMeasurementMNode(IMeasurementMNode node, OutputStream outputStream) {
+    public Boolean visitMeasurementMNode(
+        AbstractMeasurementMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
         ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
         ReadWriteIOUtils.write(node.getName(), outputStream);
@@ -324,12 +328,11 @@ public class MemMTreeSnapshotUtil {
       }
     }
 
-    private void serializeInternalBasicInfo(BasicMNode node, OutputStream outputStream)
-        throws IOException {
+    private void serializeBasicMNode(IMNode<?> node, OutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
-      ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
+      ReadWriteIOUtils.write(0, outputStream); // for compatibly
+      ReadWriteIOUtils.write(false, outputStream); // for compatibly
     }
   }
 
@@ -345,7 +348,7 @@ public class MemMTreeSnapshotUtil {
     public DatabaseMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DatabaseMNode node = new DatabaseMNode(null, name);
-      deserializeInternalBasicInfo(node, inputStream);
+      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
       return node;
     }
 
@@ -353,7 +356,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DatabaseDeviceMNode node = new DatabaseDeviceMNode(null, name, 0);
-      deserializeInternalBasicInfo(node, inputStream);
+      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
@@ -361,7 +364,7 @@ public class MemMTreeSnapshotUtil {
     public DeviceMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DeviceMNode node = new DeviceMNode(null, name);
-      deserializeInternalBasicInfo(node, inputStream);
+      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
@@ -380,8 +383,8 @@ public class MemMTreeSnapshotUtil {
 
     private void deserializeInternalBasicInfo(BasicMNode node, InputStream inputStream)
         throws IOException {
-      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-      node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
+      ReadWriteIOUtils.readInt(inputStream); // for compatibly
+      ReadWriteIOUtils.readBool(inputStream); // for compatibly
     }
   }
 }

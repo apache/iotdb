@@ -19,21 +19,24 @@
 
 package org.apache.iotdb.db.metadata.mnode.visitor;
 
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.AbstractMeasurementMNode;
 
 public abstract class MNodeVisitor<R, C> {
 
-  public abstract R visitInternalMNode(BasicMNode node, C context);
+  public abstract R visitBasicMNode(IMNode<?> node, C context);
 
-  public abstract R visitStorageGroupMNode(AbstractDatabaseMNode node, C context);
+  public abstract R visitDatabaseMNode(
+      AbstractDatabaseMNode<?, ? extends IMNode<?>> node, C context);
 
-  public abstract R visitStorageGroupEntityMNode(AbstractDatabaseDeviceMNode node, C context);
+  public abstract R visitDatabaseDeviceMNode(
+      AbstractDatabaseDeviceMNode<?, ? extends IMNode<?>> node, C context);
 
-  public abstract R visitDeviceMNode(IDeviceMNode node, C context);
+  public abstract R visitDeviceMNode(AbstractDeviceMNode<?, ? extends IMNode<?>> node, C context);
 
-  public abstract R visitMeasurementMNode(IMeasurementMNode node, C context);
+  public abstract R visitMeasurementMNode(
+      AbstractMeasurementMNode<?, ? extends IMNode<?>> node, C context);
 }

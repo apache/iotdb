@@ -41,6 +41,10 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
     this.databaseDeviceInfo = new DatabaseDeviceInfo();
   }
 
+  public BasicNode getBasicMNode() {
+    return basicMNode;
+  }
+
   @Override
   public String getName() {
     return basicMNode.getName();
@@ -163,7 +167,7 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitStorageGroupEntityMNode(this, context);
+    return visitor.visitDatabaseDeviceMNode(this, context);
   }
 
   @Override
@@ -221,6 +225,11 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
   @Override
   public void setUseTemplate(boolean useTemplate) {
     databaseDeviceInfo.setUseTemplate(useTemplate);
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    databaseDeviceInfo.setSchemaTemplateId(schemaTemplateId);
   }
 
   @Override

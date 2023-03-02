@@ -45,4 +45,9 @@ public class CacheDatabaseMNode extends AbstractDatabaseMNode<ICacheMNode, Cache
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
   }
+
+  @Override
+  public ICacheMNode getAsMNode() {
+    return this;
+  }
 }

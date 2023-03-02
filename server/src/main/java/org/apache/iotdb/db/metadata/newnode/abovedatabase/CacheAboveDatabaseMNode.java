@@ -16,22 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.abovedatabase;
 
-/** Used to fill the link list of MNode above database in IMTreeBelowSG */
-public class AboveDatabaseMNode extends BasicMNode {
-  /**
-   * Constructor of MNode.
-   *
-   * @param parent
-   * @param name
-   */
-  public AboveDatabaseMNode(IMNode parent, String name) {
-    super(parent, name);
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+
+public class CacheAboveDatabaseMNode
+    extends AbstractAboveDatabaseMNode<ICacheMNode, CacheBasicMNode> implements ICacheMNode {
+
+  public CacheAboveDatabaseMNode(ICacheMNode parent, String name) {
+    this.basicMNode = new CacheBasicMNode(parent, name);
   }
 
   @Override
-  public boolean isAboveDatabase() {
-    return true;
+  public CacheEntry getCacheEntry() {
+    throw new UnsupportedOperationException("Wrong MNode Type");
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    throw new UnsupportedOperationException("Wrong MNode Type");
   }
 }

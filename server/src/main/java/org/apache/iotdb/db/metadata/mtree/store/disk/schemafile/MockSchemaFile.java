@@ -20,15 +20,15 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.io.File;
@@ -44,40 +44,40 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContaine
 public class MockSchemaFile implements ISchemaFile {
 
   private PartialPath storageGroupPath;
-  private IDatabaseMNode storageGroupMNode;
+  private IDatabaseMNode<ICacheMNode> storageGroupMNode;
 
   private long fileTail = 0;
-  private final Map<Long, Map<String, IMNode>> mockFile = new HashMap<>();
+  private final Map<Long, Map<String, ICacheMNode>> mockFile = new HashMap<>();
 
   public MockSchemaFile(PartialPath storageGroupPath) {
     this.storageGroupPath = storageGroupPath;
   }
 
   @Override
-  public IMNode init() {
+  public ICacheMNode init() {
     storageGroupMNode =
-        new AbstractDatabaseMNode(
+        new CacheDatabaseMNode(
             null,
             storageGroupPath.getTailNode(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
-    writeMNode(storageGroupMNode);
-    return cloneMNode(storageGroupMNode);
+    writeMNode(storageGroupMNode.getAsMNode());
+    return cloneMNode(storageGroupMNode.getAsMNode());
   }
 
   @Override
-  public boolean updateStorageGroupNode(IDatabaseMNode sgNode) throws IOException {
-    this.storageGroupMNode = cloneMNode(sgNode).getAsDatabaseMNode();
+  public boolean updateStorageGroupNode(IDatabaseMNode<ICacheMNode> sgNode) throws IOException {
+    this.storageGroupMNode = cloneMNode(sgNode.getAsMNode()).getAsDatabaseMNode();
     return true;
   }
 
   @Override
-  public IMNode getChildNode(IMNode parent, String childName) {
-    Map<String, IMNode> segment = getSegment(parent);
-    IMNode result = null;
+  public ICacheMNode getChildNode(ICacheMNode parent, String childName) {
+    Map<String, ICacheMNode> segment = getSegment(parent);
+    ICacheMNode result = null;
     if (segment != null) {
       result = cloneMNode(segment.get(childName));
       if (result == null && parent.isEntity()) {
-        for (IMNode node : segment.values()) {
+        for (ICacheMNode node : segment.values()) {
           if (node.isMeasurement() && childName.equals(node.getAsMeasurementMNode().getAlias())) {
             result = cloneMNode(node);
             break;
@@ -89,9 +89,9 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public Iterator<IMNode> getChildren(IMNode parent) {
+  public Iterator<ICacheMNode> getChildren(ICacheMNode parent) {
 
-    Map<String, IMNode> segment = getSegment(parent);
+    Map<String, ICacheMNode> segment = getSegment(parent);
     if (segment == null) {
       return Collections.emptyIterator();
     }
@@ -104,7 +104,7 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void writeMNode(IMNode parent) {
+  public void writeMNode(ICacheMNode parent) {
     ICachedMNodeContainer container = getCachedMNodeContainer(parent);
     long address = container.getSegmentAddress();
     if (container.isVolatile()) {
@@ -115,8 +115,8 @@ public class MockSchemaFile implements ISchemaFile {
     write(address, container.getNewChildBuffer());
   }
 
-  private void write(long address, Map<String, IMNode> nodeMap) {
-    for (IMNode node : nodeMap.values()) {
+  private void write(long address, Map<String, ICacheMNode> nodeMap) {
+    for (ICacheMNode node : nodeMap.values()) {
       if (!node.isMeasurement()) {
         ICachedMNodeContainer container = getCachedMNodeContainer(node);
         if (container.isVolatile()) {
@@ -128,19 +128,19 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void delete(IMNode targetNode) {
-    IMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
+  public void delete(ICacheMNode targetNode) {
+    ICacheMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
     if (removedNode == null || removedNode.isMeasurement()) {
       return;
     }
     deleteMNodeRecursively(removedNode);
   }
 
-  private void deleteMNodeRecursively(IMNode node) {
+  private void deleteMNodeRecursively(ICacheMNode node) {
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    Map<String, IMNode> removedSegment = mockFile.remove(container.getSegmentAddress());
+    Map<String, ICacheMNode> removedSegment = mockFile.remove(container.getSegmentAddress());
     if (removedSegment != null) {
-      for (IMNode child : removedSegment.values()) {
+      for (ICacheMNode child : removedSegment.values()) {
         deleteMNodeRecursively(child);
       }
     }
@@ -157,11 +157,11 @@ public class MockSchemaFile implements ISchemaFile {
     mockFile.clear();
   }
 
-  private long getSegmentAddress(IMNode node) {
+  private long getSegmentAddress(ICacheMNode node) {
     return getCachedMNodeContainer(node).getSegmentAddress();
   }
 
-  private Map<String, IMNode> getSegment(IMNode node) {
+  private Map<String, ICacheMNode> getSegment(ICacheMNode node) {
     return mockFile.get(getSegmentAddress(node));
   }
 
@@ -171,14 +171,14 @@ public class MockSchemaFile implements ISchemaFile {
     return address;
   }
 
-  static IMNode cloneMNode(IMNode node) {
+  static ICacheMNode cloneMNode(ICacheMNode node) {
     if (node == null) {
       return null;
     }
     if (node.isMeasurement()) {
-      IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
-      IMeasurementMNode result =
-          MeasurementMNode.getMeasurementMNode(
+      IMeasurementMNode<ICacheMNode> measurementMNode = node.getAsMeasurementMNode();
+      CacheMeasurementMNode result =
+          new CacheMeasurementMNode(
               null,
               measurementMNode.getName(),
               measurementMNode.getSchema(),
@@ -186,41 +186,40 @@ public class MockSchemaFile implements ISchemaFile {
       result.setOffset(measurementMNode.getOffset());
       return result;
     } else if (node.isDatabase() && node.isEntity()) {
-      AbstractDatabaseDeviceMNode result =
-          new AbstractDatabaseDeviceMNode(
+      CacheDatabaseDeviceMNode result =
+          new CacheDatabaseDeviceMNode(
               null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
       result.setAligned(node.getAsEntityMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isEntity()) {
-      IDeviceMNode result = new AbstractDeviceMNode(null, node.getName());
+      CacheDeviceMNode result = new CacheDeviceMNode(null, node.getName());
       result.setAligned(node.getAsEntityMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDatabase()) {
-      AbstractDatabaseMNode result =
-          new AbstractDatabaseMNode(null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
+      CacheDatabaseMNode result =
+          new CacheDatabaseMNode(null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
       cloneInternalMNodeData(node, result);
       return result;
     } else {
-      BasicMNode result = new BasicMNode(null, node.getName());
+      CacheBasicMNode result = new CacheBasicMNode(null, node.getName());
       cloneInternalMNodeData(node, result);
       return result;
     }
   }
 
-  private static void cloneInternalMNodeData(IMNode node, IMNode result) {
-    result.setUseTemplate(node.isUseTemplate());
+  private static void cloneInternalMNodeData(ICacheMNode node, ICacheMNode result) {
     ICachedMNodeContainer container = new CachedMNodeContainer();
     container.setSegmentAddress((getCachedMNodeContainer(node)).getSegmentAddress());
     result.setChildren(container);
   }
 
-  private class MockSchemaFileIterator implements Iterator<IMNode> {
+  private class MockSchemaFileIterator implements Iterator<ICacheMNode> {
 
-    Iterator<IMNode> iterator;
+    Iterator<ICacheMNode> iterator;
 
-    MockSchemaFileIterator(Iterator<IMNode> iterator) {
+    MockSchemaFileIterator(Iterator<ICacheMNode> iterator) {
       this.iterator = iterator;
     }
 
@@ -230,7 +229,7 @@ public class MockSchemaFile implements ISchemaFile {
     }
 
     @Override
-    public IMNode next() {
+    public ICacheMNode next() {
       return cloneMNode(iterator.next());
     }
   }
