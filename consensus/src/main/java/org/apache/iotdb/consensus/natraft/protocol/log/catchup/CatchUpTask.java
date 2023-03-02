@@ -299,7 +299,7 @@ public class CatchUpTask implements Runnable {
   }
 
   private void doSnapshot() {
-    raftMember.getLogManager().takeSnapshot();
+    raftMember.getLogManager().takeSnapshot(raftMember);
     snapshot = raftMember.getLogManager().getSnapshot(peerInfo.getMatchIndex());
     if (logger.isInfoEnabled()) {
       logger.info(

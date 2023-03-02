@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -89,7 +91,7 @@ public class LogDispatcher {
     }
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
-    createQueueAndBindingThreads(unionNodes());
+    createQueueAndBindingThreads(unionNodes(allNodes, newNodes));
   }
 
   public void updateRateLimiter() {
@@ -99,15 +101,7 @@ public class LogDispatcher {
     }
   }
 
-  private Collection<Peer> unionNodes() {
-    if (newNodes == null) {
-      return allNodes;
-    }
-    Set<Peer> nodeUnion = new HashSet<>();
-    nodeUnion.addAll(allNodes);
-    nodeUnion.addAll(newNodes);
-    return nodeUnion;
-  }
+
 
 
   void createQueue(Peer node) {

@@ -144,7 +144,7 @@ public class RaftMember {
   /**
    * the nodes that belong to the same raft group as thisNode.
    */
-  protected List<Peer> allNodes;
+  protected volatile List<Peer> allNodes;
   protected volatile List<Peer> newNodes;
 
   protected ConsensusGroupId groupId;
@@ -1015,7 +1015,7 @@ public class RaftMember {
 
     DirectorySnapshot directorySnapshot;
     try {
-      directorySnapshot = new DirectorySnapshot(null, null);
+      directorySnapshot = new DirectorySnapshot();
       directorySnapshot.deserialize(snapshotBytes);
       directorySnapshot.setSource(source);
       directorySnapshot.setMemberName(name);
@@ -1140,6 +1140,11 @@ public class RaftMember {
     return newNodes;
   }
 
+  public void setNewNodes(List<Peer> newNodes) {
+    logDispatcher.setNewNodes(this.newNodes);
+    this.newNodes = newNodes;
+  }
+
   public AsyncRaftServiceClient getHeartbeatClient(TEndPoint node) {
     try {
       return clientManager.borrowClient(node);
@@ -1158,7 +1163,7 @@ public class RaftMember {
     }
   }
 
-  public TSStatus changeConfig(List<Peer> newConfig) {
+  public TSStatus changeConfig(List<Peer> newNodes) {
     TSStatus tsStatus = ensureLeader(null);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return tsStatus;
@@ -1168,11 +1173,11 @@ public class RaftMember {
     VotingEntry votingEntry;
     try {
       logManager.getLock().writeLock().lock();
-      if (newNodes != null) {
+      if (this.newNodes != null) {
         return new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode()).setMessage(
             "Last configuration change in progress");
       }
-      ConfigChangeEntry e = new ConfigChangeEntry(oldNodes, newConfig);
+      ConfigChangeEntry e = new ConfigChangeEntry(oldNodes, newNodes);
       Entry lastEntry = logManager.getLastEntry();
       long lastIndex = lastEntry.getCurrLogIndex();
       long lastTerm = lastEntry.getCurrLogTerm();
@@ -1184,15 +1189,14 @@ public class RaftMember {
       logManager.append(Collections.singletonList(e));
       votingEntry = LogUtils.buildVotingLog(e, this);
 
-      logDispatcher.setNewNodes(newNodes);
-      this.newNodes = newNodes;
+      setNewNodes(newNodes);
 
       logDispatcher.offer(votingEntry);
     } finally {
       logManager.getLock().writeLock().unlock();
     }
 
-    List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, newNodes);
+    List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, this.newNodes);
     for (Peer addedNode : addedNodes) {
       catchUp(addedNode, 0);
     }

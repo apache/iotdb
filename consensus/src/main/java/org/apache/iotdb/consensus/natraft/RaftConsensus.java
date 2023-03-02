@@ -179,6 +179,28 @@ public class RaftConsensus implements IConsensus {
     }
   }
 
+
+  public boolean createNewMemberIfAbsent(ConsensusGroupId groupId, Peer thisPeer,
+      List<Peer> peers, List<Peer> newPeers) {
+    AtomicBoolean exist = new AtomicBoolean(true);
+    stateMachineMap.computeIfAbsent(
+        groupId,
+        k -> {
+          exist.set(false);
+          String path = buildPeerDir(groupId);
+          File file = new File(path);
+          if (!file.mkdirs()) {
+            logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+          }
+          RaftMember impl =
+              new RaftMember(
+                  path, config, thisPeer, peers, newPeers, groupId, registry.apply(groupId), clientManager);
+          impl.start();
+          return impl;
+        });
+    return !exist.get();
+  }
+
   @Override
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     int consensusGroupSize = peers.size();
@@ -193,23 +215,8 @@ public class RaftConsensus implements IConsensus {
           .setException(new IllegalPeerEndpointException(thisNode, peers))
           .build();
     }
-    AtomicBoolean exist = new AtomicBoolean(true);
-    stateMachineMap.computeIfAbsent(
-        groupId,
-        k -> {
-          exist.set(false);
-          String path = buildPeerDir(groupId);
-          File file = new File(path);
-          if (!file.mkdirs()) {
-            logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
-          }
-          RaftMember impl =
-              new RaftMember(
-                  path, config, thisPeer, peers, null, groupId, registry.apply(groupId), clientManager);
-          impl.start();
-          return impl;
-        });
-    if (exist.get()) {
+
+    if (!createNewMemberIfAbsent(groupId, thisPeer, peers, null)) {
       return ConsensusGenericResponse.newBuilder()
           .setException(new ConsensusGroupAlreadyExistException(groupId))
           .build();
@@ -296,5 +303,14 @@ public class RaftConsensus implements IConsensus {
 
   public RaftMember getMember(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
+  }
+
+
+  public int getThisNodeId() {
+    return thisNodeId;
+  }
+
+  public TEndPoint getThisNode() {
+    return thisNode;
   }
 }

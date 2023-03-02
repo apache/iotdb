@@ -47,59 +47,36 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
   private String memberName;
   private Peer voter;
   private long currTerm;
-  private AtomicInteger requiredVoteNum;
-  private AtomicBoolean terminated;
-  // when set to true, the elector wins the election
-  private AtomicBoolean electionValid;
-  private AtomicInteger failingVoteCounter;
+  private ElectionState electionState;
 
   public ElectionRespHandler(
       RaftMember raftMember,
       Peer voter,
       long currTerm,
-      AtomicInteger requiredVoteNum,
-      AtomicBoolean terminated,
-      AtomicBoolean electionValid,
-      AtomicInteger failingVoteCounter) {
+      ElectionState electionState) {
     this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
-    this.requiredVoteNum = requiredVoteNum;
-    this.terminated = terminated;
-    this.electionValid = electionValid;
+    this.electionState = electionState;
     this.memberName = raftMember.getName();
-    this.failingVoteCounter = failingVoteCounter;
   }
 
   @Override
   public void onComplete(Long resp) {
     long voterResp = resp;
 
-    if (terminated.get()) {
-      // a voter has rejected this election, which means the term or the log id falls behind
-      // this node is not able to be the leader
-      logger.info(
-          "{}: Terminated election received a election response {} from {}",
-          memberName,
-          voterResp,
-          voter);
+    if (electionState.isAccepted() || electionState.isRejected()) {
       return;
     }
 
     if (voterResp == RESPONSE_AGREE) {
-      long remaining = requiredVoteNum.decrementAndGet();
+      electionState.onAccept(voter);
       logger.info(
-          "{}: Received a grant vote from {}, remaining votes to succeed: {}",
+          "{}: Received a grant vote from {}",
           memberName,
-          voter,
-          remaining);
-      if (remaining == 0) {
+          voter);
+      if (electionState.isAccepted()) {
         // the election is valid
-        electionValid.set(true);
-        terminated.set(true);
-        synchronized (terminated) {
-          terminated.notifyAll();
-        }
         logger.info("{}: Election {} is won", memberName, currTerm);
       }
       // still need more votes
@@ -121,8 +98,7 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
             voterResp);
         raftMember.stepDown(voterResp, null);
         // the election is rejected
-        terminated.set(true);
-        terminated.notifyAll();
+        electionState.setRejected(true);
       }
     }
   }
@@ -141,12 +117,6 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
   }
 
   private void onFail() {
-    int failingVoteRemaining = failingVoteCounter.decrementAndGet();
-    if (failingVoteRemaining <= 0) {
-      synchronized (terminated) {
-        // wake up heartbeat thread to start the next election
-        terminated.notifyAll();
-      }
-    }
+    electionState.onReject(voter);
   }
 }

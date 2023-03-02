@@ -21,11 +21,16 @@ package org.apache.iotdb.consensus.natraft.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
@@ -56,7 +61,8 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
     this.consensus = consensus;
   }
 
-  public void handleClientExit() {}
+  public void handleClientExit() {
+  }
 
   private RaftMember getMember(TConsensusGroupId groupId) throws TException {
     RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(groupId));
@@ -64,6 +70,44 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       throw new NoMemberException("No such member of: " + groupId);
     }
     return member;
+  }
+
+  private ConfigChangeEntry findFirstConfigChangeEntry(AppendEntriesRequest request)
+      throws UnknownLogTypeException {
+    ConfigChangeEntry configChangeEntry = null;
+    for (ByteBuffer entryBuffer : request.entries) {
+      Entry entry = LogParser.getINSTANCE().parse(entryBuffer);
+      if (entry instanceof ConfigChangeEntry) {
+        configChangeEntry = (ConfigChangeEntry) entry;
+        break;
+      }
+    }
+    return configChangeEntry;
+  }
+
+  /**
+   * Get the associated member or create it using the last config change entry in the request (if
+   * any).
+   */
+  private RaftMember getMemberOrCreate(TConsensusGroupId tgroupId, AppendEntriesRequest request)
+      throws TException {
+    ConsensusGroupId groupId = Factory.createFromTConsensusGroupId(tgroupId);
+    RaftMember member = consensus.getMember(groupId);
+    if (member == null) {
+      try {
+        ConfigChangeEntry lastConfigChangeEntry = findFirstConfigChangeEntry(request);
+        if (lastConfigChangeEntry != null) {
+          Peer thisPeer = new Peer(groupId, consensus.getThisNodeId(), consensus.getThisNode());
+          consensus.createNewMemberIfAbsent(groupId, thisPeer, lastConfigChangeEntry.getOldPeers(),
+              lastConfigChangeEntry.getNewPeers());
+          return consensus.getMember(groupId);
+        }
+      } catch (UnknownLogTypeException e) {
+        throw new TException(e.getMessage());
+      }
+
+    }
+    throw new NoMemberException("No such member of: " + tgroupId);
   }
 
   @Override
@@ -89,7 +133,7 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   public void appendEntries(
       AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
       throws TException {
-    RaftMember member = getMember(request.groupId);
+    RaftMember member = getMemberOrCreate(request.groupId, request);
     try {
       resultHandler.onComplete(member.appendEntries(request));
     } catch (UnknownLogTypeException e) {

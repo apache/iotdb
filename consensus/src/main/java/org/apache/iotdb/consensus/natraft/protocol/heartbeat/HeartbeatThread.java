@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
+import java.util.Collections;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
+import org.apache.iotdb.consensus.natraft.utils.NodeUtils;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
 
@@ -166,7 +168,9 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: End elections", memberName);
   }
 
-  /** Send each node (except the local node) in the group of the member a heartbeat. */
+  /**
+   * Send each node (except the local node) in the group of the member a heartbeat.
+   */
   protected void sendHeartbeats() {
     try {
       localMember.getLogManager().getLock().readLock().lock();
@@ -182,7 +186,9 @@ public class HeartbeatThread implements Runnable {
     sendHeartbeats(localMember.getAllNodes());
   }
 
-  /** Send each node (except the local node) in list a heartbeat. */
+  /**
+   * Send each node (except the local node) in list a heartbeat.
+   */
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Peer> nodes) {
     logger.debug(
@@ -266,13 +272,6 @@ public class HeartbeatThread implements Runnable {
       return;
     }
 
-    int quorumNum = localMember.getAllNodes().size() / 2;
-    // set to true when the election has a result (rejected or succeeded)
-    AtomicBoolean electionTerminated = new AtomicBoolean(false);
-    // set to true when the election is won
-    AtomicBoolean electionValid = new AtomicBoolean(false);
-    // a decreasing vote counter
-    AtomicInteger quorum = new AtomicInteger(quorumNum);
     long nextTerm;
     try {
       localMember.getLogManager().getLock().writeLock().lock();
@@ -287,11 +286,10 @@ public class HeartbeatThread implements Runnable {
     }
 
     // the number of votes needed to become a leader,
-    // quorumNum should be equal to localMember.getAllNodes().size() / 2 + 1,
+    // currNodeQuorumNum should be equal to localMember.getAllNodes().size() / 2 + 1,
     // but since it doesn’t need to vote for itself here, it directly decreases 1
-    logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
-    // NOTICE, failingVoteCounter should be equal to quorumNum + 1
-    AtomicInteger failingVoteCounter = new AtomicInteger(quorumNum + 1);
+    logger.info("{}: Election {} starts", memberName, nextTerm);
+    // NOTICE, failingVoteCounter should be equal to currNodeQuorumNum + 1
 
     electionRequest.setTerm(nextTerm);
     electionRequest.setElector(localMember.getThisNode().getEndpoint());
@@ -300,21 +298,20 @@ public class HeartbeatThread implements Runnable {
     electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
     electionRequest.setGroupId(localMember.getRaftGroupId().convertToTConsensusGroupId());
 
+    ElectionState electionState = new ElectionState(localMember.getAllNodes(),
+        localMember.getNewNodes());
+
     requestVote(
-        localMember.getAllNodes(),
+        electionState,
         electionRequest,
-        nextTerm,
-        quorum,
-        electionTerminated,
-        electionValid,
-        failingVoteCounter);
+        nextTerm);
 
     try {
       logger.info(
           "{}: Wait for {}ms until election time out", memberName, config.getElectionTimeoutMs());
-      synchronized (electionTerminated) {
-        electionWaitObject = electionTerminated;
-        electionTerminated.wait(config.getElectionTimeoutMs());
+      synchronized (electionState) {
+        electionWaitObject = electionState;
+        electionState.wait(config.getElectionTimeoutMs());
       }
       electionWaitObject = null;
     } catch (InterruptedException e) {
@@ -323,8 +320,7 @@ public class HeartbeatThread implements Runnable {
     }
 
     // if the election times out, the remaining votes do not matter
-    electionTerminated.set(true);
-    if (electionValid.get()) {
+    if (electionState.isAccepted()) {
       logger.info("{}: Election {} accepted", memberName, nextTerm);
       localMember.getStatus().setRole(RaftRole.LEADER);
       localMember.getStatus().getLeader().set(localMember.getThisNode());
@@ -332,44 +328,31 @@ public class HeartbeatThread implements Runnable {
   }
 
   /**
-   * Request a vote from each of the "nodes". Each for vote will decrease the counter "quorum" and
-   * when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true. Any
-   * against vote will set the flag "electionTerminated" to true and ends the election.
-   *
-   * @param nodes
-   * @param request
-   * @param nextTerm the term of the election
-   * @param quorum
-   * @param electionTerminated
-   * @param electionValid
+   * Request a vote from each of the "currNodes". Each for vote will decrease the counter "quorum"
+   * and when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true.
+   * Any against vote will set the flag "electionTerminated" to true and ends the election.
    */
   @SuppressWarnings("java:S2445")
   private void requestVote(
-      Collection<Peer> nodes,
+      ElectionState electionState,
       ElectionRequest request,
-      long nextTerm,
-      AtomicInteger quorum,
-      AtomicBoolean electionTerminated,
-      AtomicBoolean electionValid,
-      AtomicInteger failingVoteCounter) {
-    synchronized (nodes) {
-      // avoid concurrent modification
-      for (Peer node : nodes) {
-        if (node.equals(localMember.getThisNode())) {
-          continue;
-        }
+      long nextTerm) {
 
-        ElectionRespHandler handler =
-            new ElectionRespHandler(
-                localMember,
-                node,
-                nextTerm,
-                quorum,
-                electionTerminated,
-                electionValid,
-                failingVoteCounter);
-        requestVoteAsync(node, handler, request);
+    Collection<Peer> peers = NodeUtils.unionNodes(electionState.getCurrNodes(),
+        electionState.getNewNodes());
+    // avoid concurrent modification
+    for (Peer node : peers) {
+      if (node.equals(localMember.getThisNode())) {
+        continue;
       }
+
+      ElectionRespHandler handler =
+          new ElectionRespHandler(
+              localMember,
+              node,
+              nextTerm,
+              electionState);
+      requestVoteAsync(node, handler, request);
     }
   }
 

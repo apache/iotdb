@@ -77,4 +77,12 @@ public class ConfigChangeEntry extends Entry {
       newPeers.add(Peer.deserialize(buffer));
     }
   }
+
+  public List<Peer> getNewPeers() {
+    return newPeers;
+  }
+
+  public List<Peer> getOldPeers() {
+    return oldPeers;
+  }
 }

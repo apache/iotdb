@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.HardState;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
@@ -199,7 +200,7 @@ public abstract class RaftLogManager {
    *
    * @throws IOException timeout exception
    */
-  public abstract void takeSnapshot();
+  public abstract void takeSnapshot(RaftMember member);
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.

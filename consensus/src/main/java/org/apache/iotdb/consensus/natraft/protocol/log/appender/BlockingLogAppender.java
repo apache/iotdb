@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.appender;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.natraft.utils.Response;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
@@ -60,7 +61,7 @@ public class BlockingLogAppender implements LogAppender {
    * and append "log" to it. Otherwise report a log mismatch.
    *
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   public AppendEntryResult appendEntry(AppendEntryRequest request, Entry log) {
     long resp = checkPrevLogIndex(request.prevLogIndex);
@@ -106,7 +107,9 @@ public class BlockingLogAppender implements LogAppender {
     return result;
   }
 
-  /** Wait until all logs before "prevLogIndex" arrive or a timeout is reached. */
+  /**
+   * Wait until all logs before "prevLogIndex" arrive or a timeout is reached.
+   */
   private boolean waitForPrevLog(long prevLogIndex) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
@@ -151,7 +154,7 @@ public class BlockingLogAppender implements LogAppender {
    *
    * @param logs append logs
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   public AppendEntryResult appendEntries(AppendEntriesRequest request, List<Entry> logs) {
     logger.debug(
@@ -171,18 +174,21 @@ public class BlockingLogAppender implements LogAppender {
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
     }
 
+    ConfigChangeEntry lastConfigEntry = null;
+    for (Entry log : logs) {
+      if (log instanceof ConfigChangeEntry) {
+        lastConfigEntry = ((ConfigChangeEntry) log);
+      }
+    }
+
     AppendEntryResult result = new AppendEntryResult();
     long startWaitingTime = System.currentTimeMillis();
     while (true) {
-      synchronized (logManager) {
-        // TODO: Consider memory footprint to execute a precise rejection
-        if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
-            <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-          resp =
-              logManager.maybeAppend(
-                  request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
-          break;
-        }
+      if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
+          <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
+        resp = lastConfigEntry == null ? appendWithoutConfigChange(request, logs, result)
+            : appendWithConfigChange(request, logs, result, lastConfigEntry);
+        break;
       }
 
       try {
@@ -197,6 +203,46 @@ public class BlockingLogAppender implements LogAppender {
       }
     }
 
+    return result;
+  }
+
+  protected long appendWithConfigChange(AppendEntriesRequest request, List<Entry> logs,
+      AppendEntryResult result, ConfigChangeEntry configChangeEntry) {
+    long resp;
+    try {
+      logManager.getLock().writeLock().lock();
+      resp =
+          logManager.maybeAppend(
+              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+
+      if (resp != -1) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "{} append a new log list {}, commit to {}",
+              member.getName(),
+              logs,
+              request.leaderCommit);
+        }
+
+        result.status = Response.RESPONSE_STRONG_ACCEPT;
+        result.setLastLogIndex(logManager.getLastLogIndex());
+        result.setLastLogTerm(logManager.getLastLogTerm());
+        member.setNewNodes(configChangeEntry.getNewPeers());
+      } else {
+        // the incoming log points to an illegal position, reject it
+        result.status = Response.RESPONSE_LOG_MISMATCH;
+      }
+    } finally {
+      logManager.getLock().writeLock().unlock();
+    }
+    return resp;
+  }
+
+  protected long appendWithoutConfigChange(AppendEntriesRequest request, List<Entry> logs,
+      AppendEntryResult result) {
+    long resp =
+        logManager.maybeAppend(
+            request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
     if (resp != -1) {
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -213,7 +259,7 @@ public class BlockingLogAppender implements LogAppender {
       // the incoming log points to an illegal position, reject it
       result.status = Response.RESPONSE_LOG_MISMATCH;
     }
-    return result;
+    return resp;
   }
 
   @Override

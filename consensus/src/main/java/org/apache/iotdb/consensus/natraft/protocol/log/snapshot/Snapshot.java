@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.snapshot;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 
 import java.nio.ByteBuffer;
@@ -35,6 +40,7 @@ public abstract class Snapshot {
 
   protected long lastLogIndex;
   protected long lastLogTerm;
+  protected List<Peer> currNodes;
 
   public abstract ByteBuffer serialize();
 
@@ -70,5 +76,38 @@ public abstract class Snapshot {
   @Override
   public String toString() {
     return String.format("%d-%d", lastLogIndex, lastLogTerm);
+  }
+
+  public List<Peer> getCurrNodes() {
+    return currNodes;
+  }
+
+  public void setCurrNodes(List<Peer> currNodes) {
+    this.currNodes = currNodes;
+  }
+
+  protected void serializeBase(DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeLong(lastLogIndex);
+      dataOutputStream.writeLong(lastLogTerm);
+
+      dataOutputStream.writeInt(currNodes.size());
+      for (Peer currNode : currNodes) {
+        currNode.serialize(dataOutputStream);
+      }
+    } catch (IOException e) {
+      // unreachable
+    }
+  }
+
+  protected void deserializeBase(ByteBuffer buffer) {
+    lastLogIndex = buffer.getLong();
+    lastLogTerm = buffer.getLong();
+
+    int size = buffer.getInt();
+    currNodes = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      currNodes.add(Peer.deserialize(buffer));
+    }
   }
 }

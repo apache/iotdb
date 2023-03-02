@@ -4,13 +4,16 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.snapshot;
 
+import java.io.DataOutputStream;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,43 +37,40 @@ public class DirectorySnapshot extends Snapshot {
   private TEndPoint source;
   private String memberName;
 
-  public DirectorySnapshot(File directory, List<Path> filePaths) {
+  public DirectorySnapshot() {
+
+  }
+
+  public DirectorySnapshot(File directory, List<Path> filePaths, List<Peer> peers) {
     this.directory = directory;
     this.filePaths = filePaths;
+    this.currNodes = peers;
   }
 
   @Override
   public ByteBuffer serialize() {
 
-    byte[] rootBytes = directory.getAbsolutePath().getBytes(StandardCharsets.UTF_8);
-    int bufferSize = Long.BYTES * 2 + rootBytes.length + Integer.BYTES * 2;
-    byte[][] filePathBytes = new byte[filePaths.size()][];
-    for (int i = 0; i < filePaths.size(); i++) {
-      Path path = filePaths.get(i);
-      byte[] bytes = path.toString().getBytes(StandardCharsets.UTF_8);
-      filePathBytes[i] = bytes;
-      bufferSize += Integer.BYTES;
-      bufferSize += bytes.length;
-    }
+    PublicBAOS baos = new PublicBAOS();
+    DataOutputStream dataOutputStream = new DataOutputStream(baos);
 
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-    buffer.putLong(lastLogIndex);
-    buffer.putLong(lastLogTerm);
-    buffer.putInt(rootBytes.length);
-    buffer.put(rootBytes);
-    buffer.putInt(filePaths.size());
-    for (byte[] relativeFileByte : filePathBytes) {
-      buffer.putInt(relativeFileByte.length);
-      buffer.put(relativeFileByte);
+    serializeBase(dataOutputStream);
+
+    try {
+      dataOutputStream.writeBytes(directory.getAbsolutePath());
+      dataOutputStream.writeInt(filePaths.size());
+      for (Path filePath : filePaths) {
+        dataOutputStream.writeBytes(filePath.toString());
+      }
+    } catch (IOException e) {
+      // unreachable
     }
-    buffer.flip();
-    return buffer;
+    return ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    lastLogIndex = buffer.getLong();
-    lastLogTerm = buffer.getLong();
+    deserializeBase(buffer);
+
     int size = buffer.getInt();
     byte[] bytes = new byte[size];
     buffer.get(bytes);

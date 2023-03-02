@@ -20,7 +20,9 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
@@ -53,7 +55,7 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
   }
 
   @Override
-  public void takeSnapshot() {
+  public void takeSnapshot(RaftMember member) {
     latestSnapshotDir =
         new File(
             config.getStorageDir()
@@ -61,17 +63,19 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
                 + getName()
                 + "-snapshot-"
                 + System.currentTimeMillis());
+    List<Peer> currNodes;
     try {
       lock.readLock().lock();
       snapshotIndex = getAppliedIndex();
       snapshotTerm = getAppliedTerm();
+      currNodes = member.getAllNodes();
     } finally {
       lock.readLock().unlock();
     }
     stateMachine.takeSnapshot(latestSnapshotDir);
     List<Path> snapshotFiles = stateMachine.getSnapshotFiles(latestSnapshotDir);
     snapshotFiles.addAll(IOUtils.collectPaths(latestSnapshotDir));
-    directorySnapshot = new DirectorySnapshot(latestSnapshotDir, snapshotFiles);
+    directorySnapshot = new DirectorySnapshot(latestSnapshotDir, snapshotFiles, currNodes);
     directorySnapshot.setLastLogIndex(snapshotIndex);
     directorySnapshot.setLastLogTerm(snapshotTerm);
   }
