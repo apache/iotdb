@@ -24,7 +24,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -81,12 +80,6 @@ public class Aggregator {
     } finally {
       QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
-  }
-
-  // This method is only used by SlidingWindowAggregator
-  public void processTsBlock(TsBlock tsBlock) {
-    throw new UnsupportedOperationException(
-        "processTsBlock(TsBLock) is only supported in SlidingWindow");
   }
 
   // Used for AggregateOperator
@@ -151,10 +144,5 @@ public class Aggregator {
 
   public boolean hasFinalResult() {
     return accumulator.hasFinalResult();
-  }
-
-  // used for SlidingWindowAggregator
-  public void updateTimeRange(TimeRange curTimeRange) {
-    reset();
   }
 }
