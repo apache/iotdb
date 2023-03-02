@@ -819,7 +819,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    operatorContext.setMaxRunTime(context.getTimeSliceAllocator().getMaxRunTime(operatorContext));
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
     List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
     genSortInformation(
