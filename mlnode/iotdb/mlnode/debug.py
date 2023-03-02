@@ -1,5 +1,5 @@
-from data.data_factory import create_forecasting_dataset
-from data.data_source import DataSource
+from datats.data_factory import create_forecasting_dataset
+from datats.data_source import DataSource
 from algorithm.model_factory import create_forecast_model
 from iotdb.Session import Session
 from torch.utils.data import DataLoader

@@ -26,6 +26,9 @@ support_forecasting_model.extend(DLinear.support_model_names)
 support_forecasting_model.extend(NBeats.support_model_names)
 
 
+"""
+Common configs for All forecating model
+"""
 def _common_cfg(**kwargs):
     return {
         'task_type': 'm',
@@ -36,6 +39,9 @@ def _common_cfg(**kwargs):
         **kwargs
     }
 
+"""
+Task configs, which is all 'multivariate forecasting' currently
+"""
 support_common_cfgs = {
     # univariate forecasting
     's': _common_cfg(
@@ -67,6 +73,7 @@ def list_model():
     """
     return support_forecasting_model
 
+
 def create_forecast_model(
         model_name,
         task_type='m',
@@ -76,6 +83,10 @@ def create_forecast_model(
         output_vars=1,
         **kwargs,
 ):
+    """ 
+    Factory method for all support forecasting model
+    The given args is com
+    """
     if not is_model(model_name):
         raise RuntimeError('Unknown model (%s)' % model_name)
     if task_type not in ['s', 'ms', 'm']:
@@ -97,5 +108,5 @@ def create_forecast_model(
 
 
 def load_model(model, checkpoint_path):
-    # TODO
+    # TODO, this duty should covered by model_stroager
     return model

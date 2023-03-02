@@ -26,6 +26,9 @@ from typing import Tuple
 __all__ = ['NBeats', 'nbeats', 'nbeats_s', 'nbeats_t']
 
 
+"""
+Specific configs for NBeats
+"""
 def _model_cfg(**kwargs):
     return {
         'model_name': 'nbeats',
@@ -38,6 +41,9 @@ def _model_cfg(**kwargs):
         **kwargs
     }
 
+"""
+Specific configs for NBeats variants
+"""
 support_model_cfgs = {
     'nbeats': _model_cfg(
         model_name='nbeats',
