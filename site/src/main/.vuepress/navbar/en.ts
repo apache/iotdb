@@ -42,8 +42,8 @@ export const enNavbar = navbar([
     children: [
       { text: 'About', link: '/Community/About' },
       { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb' },
-      { text: 'People', link: '/Community/Community-Project  Committers' },
-      { text: 'Powered  By', link: '/Community/Community-Powered  By' },
+      { text: 'People', link: '/Community/Community-Project-Committers' },
+      { text: 'Powered  By', link: '/Community/Community-Powered-By' },
       { text: 'Resources', link: '/Community/Materials' },
       { text: 'Feedback', link: '/Community/Feedback' },
     ],
