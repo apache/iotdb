@@ -17,9 +17,4 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
-
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
-});
+export * from './types.js';

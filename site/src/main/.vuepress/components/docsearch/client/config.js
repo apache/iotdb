@@ -17,9 +17,12 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
 
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
+import { defineClientConfig } from '@vuepress/client';
+import { Docsearch } from './components/index';
+
+export default defineClientConfig({
+  enhance({ app }) {
+    app.component('Docsearch', Docsearch);
+  },
 });
