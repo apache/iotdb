@@ -93,42 +93,7 @@ public class ExpressionUtils {
       UnaryExpression expression, List<Expression> childExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression childExpression : childExpressions) {
-      switch (expression.getExpressionType()) {
-        case IS_NULL:
-          resultExpressions.add(
-              new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot()));
-          break;
-        case IN:
-          resultExpressions.add(
-              new InExpression(
-                  childExpression,
-                  ((InExpression) expression).isNotIn(),
-                  ((InExpression) expression).getValues()));
-          break;
-        case LIKE:
-          resultExpressions.add(
-              new LikeExpression(
-                  childExpression,
-                  ((LikeExpression) expression).getPatternString(),
-                  ((LikeExpression) expression).getPattern()));
-          break;
-        case LOGIC_NOT:
-          resultExpressions.add(new LogicNotExpression(childExpression));
-          break;
-        case NEGATION:
-          resultExpressions.add(new NegationExpression(childExpression));
-          break;
-        case REGEXP:
-          resultExpressions.add(
-              new RegularExpression(
-                  childExpression,
-                  ((RegularExpression) expression).getPatternString(),
-                  ((RegularExpression) expression).getPattern()));
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + expression.getExpressionType());
-      }
+      resultExpressions.add(reconstructUnaryExpression(expression, childExpression));
     }
     return resultExpressions;
   }
@@ -173,49 +138,7 @@ public class ExpressionUtils {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression le : leftExpressions) {
       for (Expression re : rightExpressions) {
-        switch (expressionType) {
-          case ADDITION:
-            resultExpressions.add(new AdditionExpression(le, re));
-            break;
-          case SUBTRACTION:
-            resultExpressions.add(new SubtractionExpression(le, re));
-            break;
-          case MULTIPLICATION:
-            resultExpressions.add(new MultiplicationExpression(le, re));
-            break;
-          case DIVISION:
-            resultExpressions.add(new DivisionExpression(le, re));
-            break;
-          case MODULO:
-            resultExpressions.add(new ModuloExpression(le, re));
-            break;
-          case LESS_THAN:
-            resultExpressions.add(new LessThanExpression(le, re));
-            break;
-          case LESS_EQUAL:
-            resultExpressions.add(new LessEqualExpression(le, re));
-            break;
-          case GREATER_THAN:
-            resultExpressions.add(new GreaterThanExpression(le, re));
-            break;
-          case GREATER_EQUAL:
-            resultExpressions.add(new GreaterEqualExpression(le, re));
-            break;
-          case EQUAL_TO:
-            resultExpressions.add(new EqualToExpression(le, re));
-            break;
-          case NON_EQUAL:
-            resultExpressions.add(new NonEqualExpression(le, re));
-            break;
-          case LOGIC_AND:
-            resultExpressions.add(new LogicAndExpression(le, re));
-            break;
-          case LOGIC_OR:
-            resultExpressions.add(new LogicOrExpression(le, re));
-            break;
-          default:
-            throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-        }
+        resultExpressions.add(reconstructBinaryExpression(expressionType, le, re));
       }
     }
     return resultExpressions;
@@ -273,16 +196,7 @@ public class ExpressionUtils {
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          switch (expression.getExpressionType()) {
-            case BETWEEN:
-              resultExpressions.add(
-                  new BetweenExpression(
-                      fe, se, te, ((BetweenExpression) expression).isNotBetween()));
-              break;
-            default:
-              throw new IllegalArgumentException(
-                  "unsupported expression type: " + expression.getExpressionType());
-          }
+          resultExpressions.add(reconstructTernaryExpression(expression, fe, se, te));
         }
     }
     return resultExpressions;
