@@ -156,6 +156,10 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    if (!threads.isEmpty()) {
+      // we don't need to serialize request when replicaNum is 1.
+      request.buildSerializedRequests();
+    }
     synchronized (this) {
       threads.forEach(
           thread -> {

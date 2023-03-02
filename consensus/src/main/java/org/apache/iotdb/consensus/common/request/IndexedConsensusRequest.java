@@ -54,6 +54,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     this.syncIndex = syncIndex;
   }
 
+  public void buildSerializedRequests() {
+    this.requests.forEach(
+        r -> {
+          ByteBuffer buffer = r.serializeToByteBuffer();
+          this.serializedRequests.add(buffer);
+          this.serializedSize += buffer.capacity();
+        });
+  }
+
   @Override
   public ByteBuffer serializeToByteBuffer() {
     throw new UnsupportedOperationException();
