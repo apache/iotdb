@@ -182,16 +182,16 @@ export default {
   },
   methods: {
     addRoutes1() {
-      this.$router.push('/Download/');
+      window.location.href = '/Download/';
     },
     addRoutes2() {
-      this.$router.push('/UserGuide/Master/QuickStart/QuickStart.html');
+      window.location.href = '/UserGuide/Master/QuickStart/QuickStart.html';
     },
   },
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 
   .project-name {
     font-size: 20px;
