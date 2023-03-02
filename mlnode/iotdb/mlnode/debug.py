@@ -61,30 +61,30 @@ if __name__ == '__main__':
 # import torch
 
 # def default_configs():
-    configs = argparse.Namespace(
-        freq='h',
-        seq_len=96,
-        pred_len=96,
+    # configs = argparse.Namespace(
+    #     freq='h',
+    #     seq_len=96,
+    #     pred_len=96,
 
-        output_attention=False,
-        d_model=512,
+    #     output_attention=False,
+    #     d_model=512,
 
-        n_heads=8,
-        e_layers=2,
-        d_layers=1,
-        d_ff=2048,
-        dropout=0.05,
-        activation='gelu',
-        p_hidden_dims=[64, 64],
-        individual = 'True',
-        num_series=7,
+    #     n_heads=8,
+    #     e_layers=2,
+    #     d_layers=1,
+    #     d_ff=2048,
+    #     dropout=0.05,
+    #     activation='gelu',
+    #     p_hidden_dims=[64, 64],
+    #     individual = 'True',
+    #     num_series=7,
 
-        learning_rate = 0.0001,
-        batch_size=32,
-        num_workers=0,
-        epochs=10,
-        lradj='type1',
-    )
+    #     learning_rate = 0.0001,
+    #     batch_size=32,
+    #     num_workers=0,
+    #     epochs=10,
+    #     lradj='type1',
+    # )
 #     configs.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #     configs.device = 'cpu'
 #     return configs

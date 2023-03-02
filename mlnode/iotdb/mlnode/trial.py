@@ -26,13 +26,12 @@ import numpy as np
 import pandas as pd
 import multiprocessing as mp
 
-from algorithm.forecast.models.DLinear import DLinear
-from algorithm.forecast.utils import parseModelConfig
-from data_provider.build_dataset_debug import debug_dataset
-from data_provider.offline_dataset import data_transform, timestamp_transform
+from algorithm import model_factory
+from datats import data_factory
+from debug import debug_dataset, debug_model
+from datats.utils.timefeatures import data_transform, timestamp_transform
 from model_storager import modelStorager
-
-# from iotdb.data.utils import parseDataConfig, data_provider
+from torch.utils.data import DataLoader
 
 
 def parseConfig(config):
@@ -43,6 +42,7 @@ def parseConfig(config):
     config.gpu = 0
 
     config.model_type = 'DLinear'
+    config.batch_size = 32
 
     return config
 
@@ -50,28 +50,29 @@ def parseConfig(config):
 class BasicTrial(object):
     def __init__(self, configs):
         self.configs = parseConfig(configs)
-        self.model = self._build_model()
+        self.model, self.model_cfg = self._build_model()
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
-        self.dataset, self.dataloader, self.val_dataset, self.val_loader = self._build_data()
+        self.dataset, self.dataloader = self._build_data()
 
         self.model_id = configs.model_id
         self.trial_id = configs.trial_id
 
 
     def _build_model(self): # MODEL Factory
-        model_type = self.configs.model_type
-        model_config = parseModelConfig(self.configs)
-        model = eval(model_type)(model_config)
-
-        return model
+        model, model_cfg = debug_model()        
+        return model, model_cfg
 
 
     def _build_data(self): # virtual method
-        # data_config = parseDataConfig(self.config)
-        # dataset, dataloader = data_provider(data_config)
-        dataset, dataloader, testset, testloader = debug_dataset()
-        return dataset, dataloader, testset, testloader
+        train_dataset, train_cfg = debug_dataset()
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=self.configs.batch_size,
+            shuffle=True,
+            drop_last=True
+        )
+        return train_dataset, train_loader
 
 
     def _acquire_device(self):
@@ -111,7 +112,6 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -configs.pred_len:, :]).float()
-            dec_inp = torch.cat([batch_y[:, :configs.label_len, :], dec_inp], dim=1).float().to(configs.device)
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
             outputs = outputs[:, -configs.pred_len:]
@@ -144,7 +144,6 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -configs.pred_len:, :]).float()
-            dec_inp = torch.cat([batch_y[:, :configs.label_len, :], dec_inp], dim=1).float().to(configs.device)
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
             outputs = outputs[:, -configs.pred_len:]
@@ -164,10 +163,10 @@ class ForecastingTrainingTrial(BasicTrial):
         best_loss = np.inf
         for epoch in range(self.configs.epochs):
             train_loss = self.train(self.model, optimizer, criterion, self.dataloader, self.configs, epoch) 
-            val_loss = self.validate(self.model, criterion, self.val_loader, self.configs, epoch)
+            val_loss = self.validate(self.model, criterion, self.dataloader, self.configs, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelStorager.save_model(self.model, self.model_id, 1)
+                modelStorager.save_model(self.model, self.model_cfg, self.model_id, 1)
         return best_loss
         
 
@@ -183,7 +182,7 @@ class ForecastingInferenceTrial(BasicTrial):
         self.input_len = args.seq_len
         self.output_len = args.pred_len
         self.data, self.data_stamp = data_transform(data_raw) # suppose data is in pandas.dataframe format, col 0 is timestamp
-        self.model = modelManager.load_best_model_by_id(self.model_id)
+        self.model = modelStorager.load_best_model_by_id(self.model_id)
 
 
     def data_align(self, data, data_stamp):
@@ -237,9 +236,16 @@ class ForecastingInferenceTrial(BasicTrial):
         
 
 if __name__ == '__main__':
-    from datafactory.build_dataset_debug import *
-    configs = default_configs()
-    data = debug_inference_data()
+    configs = argparse.Namespace(
+        model_id = 1,
+        trial_id = 1,
+        learning_rate = 0.0001,
+        batch_size=32,
+        epochs=10,
+        lradj='type1',
+        device='cpu',
+        pred_len = 96,
+        seq_len = 96
+    )
     trial = ForecastingTrainingTrial(configs)
-    # trial = ForecastingInferenceTrial(configs, data)
     trial.start()
