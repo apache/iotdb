@@ -31,12 +31,10 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 public class SeriesScanTraverseOperator extends AbstractSourceOperator
@@ -45,8 +43,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
   private final PartialPath seriesPath;
   private final Ordering scanOrder;
   private List<Operator> childSourceOperator;
-  private Iterator<Operator> childOperatorIterator;
-  private Operator curChildOperator;
+  private int curChildIndex;
 
   private final List<AbstractDataSourceOperator> scanOperatorList;
   private final boolean isAligned;
@@ -73,24 +70,24 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (!childOperatorIterator.hasNext()) {
+    if (!isCurChildValid()) {
       return NOT_BLOCKED;
     }
-    return curChildOperator.isBlocked();
+    return childSourceOperator.get(curChildIndex).isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    if (!curChildOperator.hasNextWithTimer() && childOperatorIterator.hasNext()) {
-      curChildOperator = childOperatorIterator.next();
+    if (!childSourceOperator.get(curChildIndex).hasNextWithTimer()) {
+      getNextChildIndex();
       return null;
     }
-    return curChildOperator.nextWithTimer();
+    return childSourceOperator.get(curChildIndex).nextWithTimer();
   }
 
   @Override
   public boolean hasNext() {
-    return curChildOperator.hasNext() || childOperatorIterator.hasNext();
+    return isCurChildValid();
   }
 
   @Override
@@ -227,11 +224,11 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       endTime = Math.min(startTime + avgTime, maxTime);
     }
 
-    // update childOperatorIterator
+    // initialize first child index
     if (scanOrder.isAscending()) {
-      this.childOperatorIterator = childSourceOperator.iterator();
+      curChildIndex = 0;
     } else {
-      this.childOperatorIterator = Lists.reverse(childSourceOperator).iterator();
+      curChildIndex = childSourceOperator.size() - 1;
     }
   }
 
@@ -253,7 +250,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       scanOperatorList.get(i).setFinished(true);
       ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
     }
-    childSourceOperator = childSourceOperator.subList(0, index);
+    childSourceOperator = new ArrayList<>(childSourceOperator.subList(0, index));
   }
 
   private SeriesScanUtil createSeriesScanUtil(SeriesScanOptions scanOptions) {
@@ -263,6 +260,22 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     } else {
       return new SeriesScanUtil(
           seriesPath, scanOrder, scanOptions, operatorContext.getInstanceContext());
+    }
+  }
+
+  private void getNextChildIndex() {
+    if (scanOrder.isAscending()) {
+      curChildIndex++;
+    } else {
+      curChildIndex--;
+    }
+  }
+
+  private boolean isCurChildValid() {
+    if (scanOrder.isAscending()) {
+      return curChildIndex < childSourceOperator.size();
+    } else {
+      return curChildIndex >= 0;
     }
   }
 }
