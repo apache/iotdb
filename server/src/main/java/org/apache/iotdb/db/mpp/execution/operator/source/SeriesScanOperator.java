@@ -111,7 +111,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   private TsBlockBuilder builder;
-  private boolean finished = false;
 
   public SeriesScanOperator(
       OperatorContext context,
@@ -135,7 +134,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
-  public void setSeriesScanUtils(SeriesScanUtil seriesScanUtil) {
+  public void setSeriesScanUtil(SeriesScanUtil seriesScanUtil) {
     this.seriesScanUtil = seriesScanUtil;
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
@@ -196,15 +195,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     }
-  }
-
-  @Override
-  public boolean isFinished() {
-    return finished;
-  }
-
-  public void setFinished(boolean finished) {
-    this.finished = finished;
   }
 
   @Override

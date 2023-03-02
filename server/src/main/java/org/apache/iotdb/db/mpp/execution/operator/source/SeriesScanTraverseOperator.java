@@ -45,7 +45,8 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
   private List<Operator> childSourceOperator;
   private int curChildIndex = 0;
 
-  private final List<SeriesScanOperator> scanOperatorList;
+  private final List<AbstractDataSourceOperator> scanOperatorList;
+  private final boolean isAligned;
   private final SeriesScanOptions.Builder seriesScanOptionsBuilder;
   private final int dop;
 
@@ -54,8 +55,9 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       PartialPath seriesPath,
       Ordering scanOrder,
       List<Operator> childSourceOperator,
-      List<SeriesScanOperator> scanOperatorList,
-      SeriesScanOptions.Builder seriesScanOptionsBuilder) {
+      List<AbstractDataSourceOperator> scanOperatorList,
+      SeriesScanOptions.Builder seriesScanOptionsBuilder,
+      boolean isAligned) {
     this.operatorContext = operatorContext;
     this.seriesPath = seriesPath;
     this.scanOrder = scanOrder;
@@ -63,6 +65,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     this.scanOperatorList = scanOperatorList;
     this.dop = childSourceOperator.size();
     this.seriesScanOptionsBuilder = seriesScanOptionsBuilder;
+    this.isAligned = isAligned;
   }
 
   @Override
@@ -209,12 +212,10 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
         timeRangeFilter.setRight(TimeFilter.ltEq(curMaxTime));
       }
       scanOptions.setGlobalTimeFilter(newGlobalFilter);
-      SeriesScanUtil seriesScanUtil =
-          new SeriesScanUtil(
-              seriesPath, scanOrder, scanOptions, operatorContext.getInstanceContext());
+      SeriesScanUtil seriesScanUtil = createSeriesScanUtil(scanOptions);
       seriesScanUtil.initQueryDataSource(
           dataSource, seqFileIndexList, dataSource.getUnSeqFileOrderIndex());
-      scanOperatorList.get(i).setSeriesScanUtils(seriesScanUtil);
+      scanOperatorList.get(i).setSeriesScanUtil(seriesScanUtil);
       if (childSourceOperator.get(i) instanceof ExchangeOperator) {
         ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
       }
@@ -232,13 +233,26 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     return new AndFilter(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
   }
 
+  /**
+   * Close seriesScanOperator from @index. Since the pipeline have been submitted, and some
+   * pipelines may have dependency on this pipeline, so we have to let it run. But it will finish
+   * immediately that won't waste system resource.
+   */
   private void closeRedundantSourceOperator(int index) {
     for (int i = index; i < childSourceOperator.size(); i++) {
       scanOperatorList.get(i).setFinished(true);
-      // Maybe some pipeline have dependency on this pipeline, so we have to let it run
-      // But it will finish immediately that doesn't waste system resource
       ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
     }
     childSourceOperator = childSourceOperator.subList(0, index);
+  }
+
+  private SeriesScanUtil createSeriesScanUtil(SeriesScanOptions scanOptions) {
+    if (isAligned) {
+      return new AlignedSeriesScanUtil(
+          seriesPath, scanOrder, scanOptions, operatorContext.getInstanceContext());
+    } else {
+      return new SeriesScanUtil(
+          seriesPath, scanOrder, scanOptions, operatorContext.getInstanceContext());
+    }
   }
 }

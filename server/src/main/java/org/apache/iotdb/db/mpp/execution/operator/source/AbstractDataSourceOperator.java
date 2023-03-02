@@ -23,10 +23,26 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
 public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
     implements DataSourceOperator {
+
   protected SeriesScanUtil seriesScanUtil;
+
+  protected boolean finished = false;
 
   @Override
   public void initQueryDataSource(QueryDataSource dataSource) {
     seriesScanUtil.initQueryDataSource(dataSource);
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished;
+  }
+
+  public void setSeriesScanUtil(SeriesScanUtil seriesScanUtil) {
+    this.seriesScanUtil = seriesScanUtil;
+  }
+
+  public void setFinished(boolean finished) {
+    this.finished = finished;
   }
 }

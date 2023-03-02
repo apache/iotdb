@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -46,21 +45,16 @@ public class LastQueryScanNode extends SeriesSourceNode {
           ColumnHeaderConstant.VALUE,
           ColumnHeaderConstant.DATATYPE);
 
-  // The path of the target series which will be scanned.
-  private final MeasurementPath seriesPath;
-
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
   public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath) {
-    super(id);
-    this.seriesPath = seriesPath;
+    super(id, seriesPath);
   }
 
   public LastQueryScanNode(
       PlanNodeId id, MeasurementPath seriesPath, TRegionReplicaSet regionReplicaSet) {
-    super(id);
-    this.seriesPath = seriesPath;
+    super(id, seriesPath);
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -78,7 +72,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
   }
 
   public MeasurementPath getSeriesPath() {
-    return seriesPath;
+    return (MeasurementPath) seriesPath;
   }
 
   @Override
@@ -96,7 +90,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new LastQueryScanNode(getPlanNodeId(), (MeasurementPath) seriesPath, regionReplicaSet);
   }
 
   @Override
@@ -154,11 +148,6 @@ public class LastQueryScanNode extends SeriesSourceNode {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryScanNode(planNodeId, partialPath);
-  }
-
-  @Override
-  public PartialPath getPartitionPath() {
-    return seriesPath;
   }
 
   @Override

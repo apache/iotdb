@@ -62,8 +62,6 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
 
-  protected boolean finished = false;
-
   private final long cachedRawDataSize;
   private final long maxReturnSize;
 
