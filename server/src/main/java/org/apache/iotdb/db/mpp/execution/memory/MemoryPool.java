@@ -170,35 +170,29 @@ public class MemoryPool {
     }
 
     ListenableFuture<Void> result;
-    memoryReserveLock.lock();
-    try {
-      if (remainingBytes.get() < bytesToReserve
-          || maxBytesCanReserve
-                  - queryMemoryReservations
-                      .getOrDefault(queryId, Collections.emptyMap())
-                      .getOrDefault(fragmentInstanceId, Collections.emptyMap())
-                      .getOrDefault(planNodeId, 0L)
-              < bytesToReserve) {
-        LOGGER.debug(
-            "Blocked reserve request: {} bytes memory for planNodeId{}",
-            bytesToReserve,
-            planNodeId);
-        result =
-            MemoryReservationFuture.create(
-                queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
-        memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
-        return new Pair<>(result, Boolean.FALSE);
-      } else {
-        remainingBytes.addAndGet(-bytesToReserve);
-        queryMemoryReservations
-            .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-            .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-            .merge(planNodeId, bytesToReserve, Long::sum);
-        result = Futures.immediateFuture(null);
-        return new Pair<>(result, Boolean.TRUE);
-      }
-    } finally {
-      memoryReserveLock.unlock();
+    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+    long queryRemainingBytes =
+        maxBytesCanReserve
+            - queryMemoryReservations
+                .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+                .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+                .merge(planNodeId, bytesToReserve, Long::sum);
+    if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+      result = Futures.immediateFuture(null);
+      return new Pair<>(result, Boolean.TRUE);
+    } else {
+      LOGGER.debug(
+          "Blocked reserve request: {} bytes memory for planNodeId{}", bytesToReserve, planNodeId);
+      remainingBytes.addAndGet(bytesToReserve);
+      queryMemoryReservations
+          .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+          .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+          .merge(planNodeId, -bytesToReserve, Long::sum);
+      result =
+          MemoryReservationFuture.create(
+              queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
+      memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
+      return new Pair<>(result, Boolean.FALSE);
     }
   }
 
@@ -217,25 +211,22 @@ public class MemoryPool {
         "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
         bytesToReserve);
 
-    memoryReserveLock.lock();
-    try {
-      if (remainingBytes.get() < bytesToReserve
-          || maxBytesCanReserve
-                  - queryMemoryReservations
-                      .getOrDefault(queryId, Collections.emptyMap())
-                      .getOrDefault(fragmentInstanceId, Collections.emptyMap())
-                      .getOrDefault(planNodeId, 0L)
-              < bytesToReserve) {
-        return false;
-      }
-      remainingBytes.addAndGet(-bytesToReserve);
+    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+    long queryRemainingBytes =
+        maxBytesCanReserve
+            - queryMemoryReservations
+                .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+                .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+                .merge(planNodeId, bytesToReserve, Long::sum);
+    if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+      return true;
+    } else {
+      remainingBytes.addAndGet(bytesToReserve);
       queryMemoryReservations
           .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
           .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-          .merge(planNodeId, bytesToReserve, Long::sum);
-      return true;
-    } finally {
-      memoryReserveLock.unlock();
+          .merge(planNodeId, -bytesToReserve, Long::sum);
+      return false;
     }
   }
 
@@ -313,28 +304,22 @@ public class MemoryPool {
       String curQueryId = future.getQueryId();
       String curFragmentInstanceId = future.getFragmentInstanceId();
       String curPlanNodeId = future.getPlanNodeId();
-      // check total reserved bytes in memory pool
-      memoryReserveLock.lock();
-      try {
-        if (remainingBytes.get() < bytesToReserve
-            || future.getMaxBytesCanReserve()
-                    - queryMemoryReservations
-                        .getOrDefault(curQueryId, Collections.emptyMap())
-                        .getOrDefault(curFragmentInstanceId, Collections.emptyMap())
-                        .getOrDefault(curPlanNodeId, 0L)
-                < bytesToReserve) {
-          continue;
-        }
-        // check total reserved bytes of one Sink/Source handle
-        remainingBytes.addAndGet(-bytesToReserve);
+      long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+      long queryRemainingBytes =
+          future.getMaxBytesCanReserve()
+              - queryMemoryReservations
+                  .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
+                  .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
+                  .merge(curPlanNodeId, bytesToReserve, Long::sum);
+      if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+        futureList.add(future);
+        iterator.remove();
+      } else {
+        remainingBytes.addAndGet(bytesToReserve);
         queryMemoryReservations
             .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
             .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
-            .merge(curPlanNodeId, bytesToReserve, Long::sum);
-        futureList.add(future);
-        iterator.remove();
-      } finally {
-        memoryReserveLock.unlock();
+            .merge(curPlanNodeId, -bytesToReserve, Long::sum);
       }
     }
 
