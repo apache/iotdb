@@ -31,10 +31,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -288,7 +286,6 @@ public class MemoryPool {
     Validate.notNull(queryReservedBytes);
     remainingBytes.addAndGet(bytes);
 
-    List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
     if (memoryReservationFutures.isEmpty()) {
       return;
     }
@@ -311,7 +308,7 @@ public class MemoryPool {
                     .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
                     .merge(curPlanNodeId, bytesToReserve, Long::sum);
         if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
-          futureList.add(future);
+          future.set(null);
           iterator.remove();
         } else {
           remainingBytes.addAndGet(bytesToReserve);
@@ -320,23 +317,6 @@ public class MemoryPool {
               .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
               .merge(curPlanNodeId, -bytesToReserve, Long::sum);
         }
-      }
-    }
-
-    // why we need to put this outside MemoryPool's lock?
-    // If we put this block inside the MemoryPool's lock, we will get deadlock case like the
-    // following:
-    // Assuming that thread-A: LocalSourceHandle.receive() -> A-SharedTsBlockQueue.remove() ->
-    // MemoryPool.free() (hold MemoryPool's lock) -> future.set(null) -> try to get
-    // B-SharedTsBlockQueue's lock
-    // thread-B: LocalSourceHandle.receive() -> B-SharedTsBlockQueue.remove() (hold
-    // B-SharedTsBlockQueue's lock) -> try to get MemoryPool's lock
-    for (MemoryReservationFuture<Void> future : futureList) {
-      try {
-        future.set(null);
-      } catch (Throwable t) {
-        // ignore it, because we still need to notify other future
-        LOGGER.warn("error happened while trying to free memory: ", t);
       }
     }
   }
