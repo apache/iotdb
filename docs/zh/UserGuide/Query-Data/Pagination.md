@@ -33,7 +33,7 @@
 注意：
 - 当 `rowOffset` 超过结果集的大小时，返回空结果集。
 - 当 `rowLimit` 超过结果集的大小时，返回所有查询结果。
-- 当 `rowLimit` 和 `rowOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+- 当 `rowLimit` 和 `rowOffset` 不是正整数，或超过 `INT64` 允许的最大值时，系统将提示错误。
 
 我们将通过以下示例演示如何使用 `LIMIT` 和 `OFFSET` 子句。
 
@@ -161,7 +161,7 @@ It costs 0.016s
 - 仅用于控制值列，对时间列和设备列无效。
 - 当 `seriesOffset` 超过结果集的大小时，返回空结果集。
 - 当 `seriesLimit` 超过结果集的大小时，返回所有查询结果。
-- 当 `seriesLimit` 和 `seriesOffset` 不是正整数，或超过 `INT32` 允许的最大值时，系统将提示错误。
+- 当 `seriesLimit` 和 `seriesOffset` 不是正整数，或超过 `INT64` 允许的最大值时，系统将提示错误。
 
 我们将通过以下示例演示如何使用 `SLIMIT` 和 `SOFFSET` 子句。
 
