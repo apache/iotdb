@@ -45,6 +45,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   private final boolean[] noMoreTsBlocks;
   private final MergeSortHeap mergeSortHeap;
   private final Comparator<MergeSortKey> comparator;
+  private final long maxRuntime;
 
   private boolean finished;
 
@@ -59,6 +60,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
   }
 
   @Override
@@ -85,7 +87,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   @Override
   public TsBlock next() {
     // start stopwatch
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long startTime = System.nanoTime();
 
     // 1. fill consumed up TsBlock
