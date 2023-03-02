@@ -30,6 +30,7 @@ def default_configs():
         num_workers=0,
         epochs=10,
         lradj='type1',
+        model_id=1
     )
     configs.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     configs.device = 'cpu'

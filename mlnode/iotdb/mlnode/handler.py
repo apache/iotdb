@@ -25,7 +25,7 @@ from utils.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 
 from manager import Manager
-from data.build_dataset_debug import *
+from datafactory.build_dataset_debug import *
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200

@@ -2,7 +2,7 @@ import multiprocessing as mp
 
 from subprocess import call
 from trial import ForecastingTrainingTrial, ForecastingInferenceTrial
-from data.build_dataset_debug import *
+from datafactory.build_dataset_debug import *
 
 import psutil
 import sys
@@ -11,7 +11,7 @@ import time
 import signal
 import optuna
 
-class Objective: # TODO: 重命名
+class TrainingTrialObjective:
     def __init__(self, configs):
         self.configs = configs
     
@@ -31,7 +31,7 @@ def _create_training_task(configs, task_map, task_id):
 
 def _create_tunning_task(configs, task_map, task_id):
     study = optuna.create_study(direction='minimize')
-    study.optimize(Objective(configs), n_trials=20)
+    study.optimize(TrainingTrialObjective(configs), n_trials=20)
     pid = os.getpid()
     task_map[task_id][pid] = 'finished'
 

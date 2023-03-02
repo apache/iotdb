@@ -28,16 +28,11 @@ import multiprocessing as mp
 
 from algorithm.forecast.models.DLinear import DLinear
 from algorithm.forecast.utils import parseModelConfig
-from data_provider.build_dataset_debug import debug_dataset
-from data_provider.offline_dataset import data_transform, timestamp_transform
+from datafactory.build_dataset_debug import debug_dataset
+from datafactory.offline_dataset import data_transform, timestamp_transform
 from ModelManager import modelManager
 
-# from iotdb.data.utils import parseDataConfig, data_provider
-
-
 def parseConfig(config):
-    # config = argparse.Namespace(**config)
-    
     # default config
     config.use_gpu = False
     config.use_multi_gpu = False
@@ -185,7 +180,7 @@ class ForecastingInferenceTrial(BasicTrial):
         self.input_len = args.seq_len
         self.output_len = args.pred_len
         self.data, self.data_stamp = data_transform(data_raw) # suppose data is in pandas.dataframe format, col 0 is timestamp
-        self.model = torch.load('ModelData/1/1/checkpoint.pth')
+        self.model = modelManager.load_best_model_by_id(self.model_id)
 
 
     def data_align(self, data, data_stamp):
@@ -239,7 +234,7 @@ class ForecastingInferenceTrial(BasicTrial):
         
 
 if __name__ == '__main__':
-    from data_provider.build_dataset_debug import *
+    from datafactory.build_dataset_debug import *
     configs = default_configs()
     data = debug_inference_data()
     trial = ForecastingTrainingTrial(configs)

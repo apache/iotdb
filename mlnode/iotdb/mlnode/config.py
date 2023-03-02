@@ -39,6 +39,9 @@ class MLNodeConfig(object):
         # Target DataNode to be connected by MLNode
         self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10730)
 
+        # Compacity of MLNode Training Trial Pool
+        self.__process_pool_num: int = 20
+
     def get_mn_rpc_address(self) -> str:
         return self.__mn_rpc_address
 
@@ -62,6 +65,12 @@ class MLNodeConfig(object):
 
     def set_mn_target_data_node(self, mn_target_data_node: str) -> None:
         self.__mn_target_data_node = parse_endpoint_url(mn_target_data_node)
+
+    def get_mn_process_pool_num(self) -> int:
+        return self.__process_pool_num
+    
+    def set_mn_process_pool_num(self, process_pool_num: int) -> None:
+        self.__process_pool_num = process_pool_num
 
 
 class MLNodeDescriptor(object):
@@ -95,6 +104,10 @@ class MLNodeDescriptor(object):
 
             if file_configs.mn_target_data_node is not None:
                 self.__config.set_mn_target_data_node(file_configs.mn_target_data_node)
+
+            if file_configs.process_pool_num is not None:
+                self.__config.set_mn_process_pool_num(file_configs.process_pool_num)
+
         except BadNodeUrlError:
             logger.warn("Cannot load MLNode conf file, use default configuration.")
         except Exception as e:
