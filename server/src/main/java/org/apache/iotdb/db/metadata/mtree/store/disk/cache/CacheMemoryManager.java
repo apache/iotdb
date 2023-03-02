@@ -117,6 +117,7 @@ public class CacheMemoryManager {
                   tryExecuteMemoryRelease();
                 }
               } catch (Throwable throwable) {
+                hasReleaseTask = false;
                 logger.error("Something wrong happened during MTree release.", throwable);
               }
             }
@@ -135,6 +136,7 @@ public class CacheMemoryManager {
                   tryFlushVolatileNodes();
                 }
               } catch (Throwable throwable) {
+                hasFlushTask = false;
                 logger.error("Something wrong happened during MTree flush.", throwable);
               }
             }
