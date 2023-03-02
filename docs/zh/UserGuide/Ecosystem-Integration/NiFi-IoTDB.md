@@ -18,9 +18,9 @@
     under the License.
 
 -->
-# nifi-iotdb-bundle
+## nifi-iotdb-bundle
 
-## Apache NiFi简介
+### Apache NiFi简介
 
 Apache NiFi 是一个易用的、功能强大的、可靠的数据处理和分发系统。
 
@@ -46,11 +46,11 @@ Apache NiFi 包含以下功能：
     * 多租户授权和策略管理
     * 包括TLS和SSH的加密通信的标准协议
 
-## PutIoTDBRecord
+### PutIoTDBRecord
 
 这是一个用于数据写入的处理器。它使用配置的 Record Reader 将传入 FlowFile 的内容读取为单独的记录，并使用本机接口将它们写入 Apache IoTDB。
 
-### PutIoTDBRecord的配置项
+#### PutIoTDBRecord的配置项
 
 | 配置项        | 描述                                                                                                                                                            | 默认值 | 是否必填 |
 | ------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------| ------ | -------- |
@@ -65,7 +65,7 @@ Apache NiFi 包含以下功能：
 | Aligned       | 是否使用 aligned 接口？<br />这个配置可以通过 Attributes 的表达式来更新。                                                                                                            | false  | false    |
 | MaxRowNumber  | 指定 tablet 的最大行数。<br />这个配置可以通过 Attributes 的表达式来更新。                                                                                                            | 1024   | false    |
 
-### Flowfile 的推断数据类型
+#### Flowfile 的推断数据类型
 
 如果要使用推断类型，需要注意以下几点：
 
@@ -75,7 +75,7 @@ Apache NiFi 包含以下功能：
 4. 除`Time` 以外的列必须以 `root.` 开头。
 5. 支持的数据类型有： `INT`，`LONG`， `FLOAT`， `DOUBLE`， `BOOLEAN`， `TEXT`。
 
-### 通过配置项自定义 schema
+#### 通过配置项自定义 schema
 
 如上所述，通过配置项来自定义 schema 比起推断的 schema来说，是一种更加灵活和强大的方式。
 
@@ -108,18 +108,18 @@ Apache NiFi 包含以下功能：
 6. 支持的 `encoding` 有： `PLAIN`， `DICTIONARY`， `RLE`， `DIFF`， `TS_2DIFF`， `BITMAP`， `GORILLA_V1`， `REGULAR`， `GORILLA`。
 7. 支持的 `compressionType` 有： `UNCOMPRESSED`， `SNAPPY`， `GZIP`， `LZO`， `SDT`， `PAA`， `PLA`， `LZ4`。
 
-## Relationships
+### Relationships
 
 | relationship | 描述                    |
 | ------------ | ----------------------- |
 | success      | 数据能被正确的写入。    |
 | failure      | schema 或者数据有异常。 |
 
-## QueryIoTDBRecord
+### QueryIoTDBRecord
 
 这是一个用于数据读取的处理器。它通过读取 FlowFile 的内容中的SQL 查询来对IoTDB的原生接口进行访问，并将查询结果用Record Writer写入 flowfile。
 
-### QueryIoTDBRecord的配置项
+#### QueryIoTDBRecord的配置项
 
 | 配置项        | 描述                                                                             | 默认值 | 是否必填 |
 | ------------- |--------------------------------------------------------------------------------| ------ | -------- |
@@ -128,11 +128,11 @@ Apache NiFi 包含以下功能：
 | Username      | IoTDB 的用户名                                                                     | null   | true     |
 | Password      | IoTDB 的密码                                                                      | null   | true     |
 | Record Writer | 指定一个 Record Writer controller service 来写入数据。                                   | null   | true     |
-| iotdb-query        | 需要执行的IoTDB query <bbr>。 Note: 如果有连入侧的连接那么查询会从FlowFile的内容中提取，否则使用当前配置的属性        | null      | false     |
+| iotdb-query        | 需要执行的IoTDB query <br>。 Note: 如果有连入侧的连接那么查询会从FlowFile的内容中提取，否则使用当前配置的属性        | null      | false     |
 | iotdb-query-chunk-size  | 返回的结果可以进行分块，数据流中会返回一批按设置大小切分的数据，而不是一个单一的响应. 分块查询可以返回无限量的行。 注意: 数据分块只有在设置不为0时启用 | 0         | false     |
 
 
-## Relationships
+### Relationships
 
 | relationship | 描述                    |
 | ------------ | ----------------------- |

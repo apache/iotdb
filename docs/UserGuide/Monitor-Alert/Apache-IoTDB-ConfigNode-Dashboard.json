@@ -9,7 +9,7 @@
       "pluginName": "Prometheus"
     }
   ],
-  "__elements": {},
+  "__elements": [],
   "__requires": [
     {
       "type": "panel",
@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "9.3.6"
+      "version": "8.4.2"
     },
     {
       "type": "panel",
@@ -75,6 +75,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
+  "iteration": 1677661158938,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -92,10 +93,6 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "The current status of cluster ConfigNodes",
       "fieldConfig": {
         "defaults": {
@@ -270,7 +267,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "node_num{type=\"ConfigNode\"}",
+          "exemplar": true,
+          "expr": "node_num{instance=\"$instance\", type=\"ConfigNode\"}",
+          "interval": "",
           "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
@@ -325,7 +324,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "9.3.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -346,10 +345,6 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "The total disk space of current ConfigNode",
       "fieldConfig": {
         "defaults": {
@@ -391,7 +386,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "9.3.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -399,7 +394,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "sys_disk_total_space",
+          "exemplar": true,
+          "expr": "sys_disk_total_space{instance=\"$instance\"}",
+          "interval": "",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -409,10 +406,6 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "Bar of current ConfigNode",
       "fieldConfig": {
         "defaults": {
@@ -464,7 +457,7 @@
         },
         "showUnfilled": true
       },
-      "pluginVersion": "9.3.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -484,8 +477,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "1- sys_disk_free_space / sys_disk_total_space",
+          "exemplar": true,
+          "expr": "1- sys_disk_free_space{instance=\"$instance\"} / sys_disk_total_space{instance=\"$instance\"}",
           "hide": false,
+          "interval": "",
           "legendFormat": "disk",
           "range": true,
           "refId": "D"
@@ -496,8 +491,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
+          "exemplar": true,
           "expr": "1 - process_free_mem{instance=\"$instance\"} / process_total_mem{instance=\"$instance\"}",
           "hide": false,
+          "interval": "",
           "legendFormat": "process memory",
           "range": true,
           "refId": "B"
@@ -520,10 +517,6 @@
       "type": "bargauge"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "The current status of cluster DataNodes",
       "fieldConfig": {
         "defaults": {
@@ -638,7 +631,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "node_num{type=\"DataNode\"}",
+          "exemplar": true,
+          "expr": "node_num{instance=\"$instance\", type=\"DataNode\"}",
+          "interval": "",
           "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
@@ -693,7 +688,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "9.3.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -757,7 +752,7 @@
         "text": {},
         "textMode": "auto"
       },
-      "pluginVersion": "9.3.6",
+      "pluginVersion": "8.4.2",
       "targets": [
         {
           "datasource": {
@@ -785,10 +780,6 @@
       "id": 49,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of cluster ConfigNodes",
           "fieldConfig": {
             "defaults": {
@@ -829,7 +820,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -837,7 +828,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "sum by(type) (node_num{type=\"ConfigNode\"})",
+              "exemplar": true,
+              "expr": "sum by(type) (node_num{type=\"ConfigNode\", instance=\"$instance\"})",
+              "interval": "",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -847,10 +840,6 @@
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The status history of cluster ConfigNodes",
           "fieldConfig": {
             "defaults": {
@@ -858,8 +847,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -989,7 +976,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "node_num{type=\"ConfigNode\"}",
+              "exemplar": true,
+              "expr": "node_num{type=\"ConfigNode\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -1013,10 +1002,6 @@
       "id": 51,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of cluster DataNodes",
           "fieldConfig": {
             "defaults": {
@@ -1057,7 +1042,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -1065,7 +1050,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "sum by(type) (node_num{type=\"DataNode\"})",
+              "exemplar": true,
+              "expr": "sum by(type) (node_num{type=\"DataNode\", instance=\"$instance\"})",
+              "interval": "",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -1075,10 +1062,6 @@
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The status history of cluster DataNodes",
           "fieldConfig": {
             "defaults": {
@@ -1086,8 +1069,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1217,7 +1198,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "node_num{type=\"DataNode\"}",
+              "exemplar": true,
+              "expr": "node_num{type=\"DataNode\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -1227,10 +1210,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of SchemaRegions in each DataNode",
           "fieldConfig": {
             "defaults": {
@@ -1238,8 +1217,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1308,7 +1285,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num_in_data_node{type=\"SchemaRegion\"}",
+              "exemplar": true,
+              "expr": "region_num_in_data_node{type=\"SchemaRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1318,10 +1297,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of SchemaRegionGroup leadere in each DataNodes",
           "fieldConfig": {
             "defaults": {
@@ -1329,8 +1304,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1399,7 +1372,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_group_leader_num_in_data_node{type=\"SchemaRegion\"}",
+              "exemplar": true,
+              "expr": "region_group_leader_num_in_data_node{type=\"SchemaRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1409,10 +1384,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of DataRegions in each DataNode",
           "fieldConfig": {
             "defaults": {
@@ -1420,8 +1391,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1490,7 +1459,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num_in_data_node{type=\"DataRegion\"}",
+              "exemplar": true,
+              "expr": "region_num_in_data_node{type=\"DataRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1500,10 +1471,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of DataRegionGroup leaders in each DataNode",
           "fieldConfig": {
             "defaults": {
@@ -1511,8 +1478,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1581,7 +1546,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num_in_data_node{type=\"DataRegion\"}",
+              "exemplar": true,
+              "expr": "region_num_in_data_node{type=\"DataRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1605,10 +1572,6 @@
       "id": 53,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of cluster Databases",
           "fieldConfig": {
             "defaults": {
@@ -1649,7 +1612,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -1657,7 +1620,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "database_num",
+              "exemplar": true,
+              "expr": "database_num{instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -1667,10 +1632,6 @@
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of SeriesSlots in each Database",
           "fieldConfig": {
             "defaults": {
@@ -1678,8 +1639,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1748,7 +1707,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "series_slot_num_in_database",
+              "exemplar": true,
+              "expr": "series_slot_num_in_database{instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1758,10 +1719,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of SchemaRegionGroups in each Database",
           "fieldConfig": {
             "defaults": {
@@ -1769,8 +1726,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1839,7 +1794,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_group_num_in_database{type=\"SchemaRegion\"}",
+              "exemplar": true,
+              "expr": "region_group_num_in_database{type=\"SchemaRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1849,10 +1806,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of DataRegionGroups in each DataNode",
           "fieldConfig": {
             "defaults": {
@@ -1860,8 +1813,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -1930,7 +1881,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_group_num_in_database{type=\"DataRegion\"}",
+              "exemplar": true,
+              "expr": "region_group_num_in_database{type=\"DataRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{name}}",
               "range": true,
               "refId": "A"
@@ -1954,10 +1907,6 @@
       "id": 81,
       "panels": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of cluster SchemaRegions",
           "fieldConfig": {
             "defaults": {
@@ -1998,7 +1947,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -2006,7 +1955,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "sum by(type) (region_num{type=\"SchemaRegion\"})",
+              "exemplar": true,
+              "expr": "sum by(type) (region_num{type=\"SchemaRegion\", instance=\"$instance\"})",
+              "interval": "",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -2016,10 +1967,6 @@
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The current status of cluster SchemaRegions",
           "fieldConfig": {
             "defaults": {
@@ -2134,7 +2081,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num{type=\"SchemaRegion\"}",
+              "exemplar": true,
+              "expr": "region_num{type=\"SchemaRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -2144,10 +2093,6 @@
           "type": "piechart"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The status history of cluster SchemaRegions",
           "fieldConfig": {
             "defaults": {
@@ -2155,8 +2100,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -2290,7 +2233,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num{type=\"SchemaRegion\"}",
+              "exemplar": true,
+              "expr": "region_num{type=\"SchemaRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -2300,10 +2245,6 @@
           "type": "timeseries"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The number of cluster DataRegions",
           "fieldConfig": {
             "defaults": {
@@ -2344,7 +2285,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -2352,7 +2293,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "sum by (type) (region_num{type=\"DataRegion\"})",
+              "exemplar": true,
+              "expr": "sum by (type) (region_num{type=\"DataRegion\", instance=\"$instance\"})",
+              "interval": "",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -2362,10 +2305,6 @@
           "type": "stat"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The current status of cluster DataRegions",
           "fieldConfig": {
             "defaults": {
@@ -2481,7 +2420,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num{type=\"DataRegion\"}",
+              "exemplar": true,
+              "expr": "region_num{type=\"DataRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -2491,10 +2432,6 @@
           "type": "piechart"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
           "description": "The status history of cluster DataRegions",
           "fieldConfig": {
             "defaults": {
@@ -2502,8 +2439,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -2633,7 +2568,9 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "builder",
-              "expr": "region_num{type=\"DataRegion\"}",
+              "exemplar": true,
+              "expr": "region_num{type=\"DataRegion\", instance=\"$instance\"}",
+              "interval": "",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -2650,7 +2587,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "lfuOmw1Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -2709,7 +2646,7 @@
             },
             "textMode": "auto"
           },
-          "pluginVersion": "9.3.6",
+          "pluginVersion": "8.4.2",
           "targets": [
             {
               "datasource": {
@@ -2738,8 +2675,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "axisSoftMax": 0,
@@ -2843,8 +2778,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "axisSoftMax": 0,
@@ -2935,8 +2868,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3052,8 +2983,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3187,8 +3116,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3304,8 +3231,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3406,8 +3331,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3507,8 +3430,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3609,8 +3530,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3748,8 +3667,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3839,8 +3756,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -3978,8 +3893,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -4069,8 +3982,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -4170,7 +4081,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "lfuOmw1Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -4182,7 +4093,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "lfuOmw1Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -4239,8 +4150,7 @@
                 "mode": "percentage",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "#EAB839",
@@ -4342,8 +4252,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4437,8 +4346,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4531,8 +4439,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4621,8 +4528,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4717,8 +4623,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4810,8 +4715,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               }
@@ -4904,8 +4808,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4995,8 +4898,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -5048,7 +4950,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "lfuOmw1Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -5058,7 +4960,7 @@
     }
   ],
   "refresh": "15s",
-  "schemaVersion": 37,
+  "schemaVersion": 35,
   "style": "dark",
   "tags": [
     "Apache-IoTDB",
@@ -5114,7 +5016,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {
@@ -5128,8 +5030,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "yesterday dashboard",
-  "uid": "TbEVYRw7T666",
+  "title": "Apache IoTDB ConfigNode Dashboard",
+  "uid": "4WkTYkx4z",
   "version": 1,
   "weekStart": ""
 }
