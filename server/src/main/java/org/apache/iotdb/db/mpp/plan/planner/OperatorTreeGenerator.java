@@ -427,7 +427,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             childSourceOperator,
             scanOperatorList,
             seriesScanOptionsBuilder,
-            node instanceof AlignedSeriesScanNode);
+            (node instanceof AlignedSeriesScanNode));
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(traverseOperator);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return traverseOperator;
