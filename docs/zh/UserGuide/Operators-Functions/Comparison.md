@@ -19,9 +19,9 @@
 
 -->
 
-# 比较运算符和函数
+## 比较运算符和函数
 
-## 基本比较运算符
+### 基本比较运算符
 
 - 输入数据类型： `INT32`, `INT64`, `FLOAT`, `DOUBLE`。
 - 注意：会将所有数据转换为`DOUBLE`类型后进行比较。`==`和`!=`可以直接比较两个`BOOLEAN`。
@@ -57,7 +57,7 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 +-----------------------------+-----------+-----------+----------------+--------------------------+---------------------------+------------------------------------------------+
 ```
 
-## `BETWEEN ... AND ...` 运算符
+### `BETWEEN ... AND ...` 运算符
 
 |运算符                       |含义|
 |----------------------------|-----------|
@@ -74,7 +74,7 @@ select temperature from root.sg1.d1 where temperature between 36.5 and 40;
 select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
 ```
 
-## 模糊匹配运算符
+### 模糊匹配运算符
 
 对于 TEXT 类型的数据，支持使用 `Like` 和 `Regexp` 运算符对数据进行模糊匹配
 
@@ -89,7 +89,7 @@ select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
 
 返回类型：`BOOLEAN`
 
-### 使用 `Like` 进行模糊匹配
+#### 使用 `Like` 进行模糊匹配
 
 **匹配规则：**
 
@@ -123,7 +123,7 @@ Total line number = 1
 It costs 0.002s
 ```
 
-### 使用 `Regexp` 进行模糊匹配
+#### 使用 `Regexp` 进行模糊匹配
 
 需要传入的过滤条件为 **Java 标准库风格的正则表达式**。
 
@@ -180,7 +180,7 @@ select b, b like '1%', b regexp '[0-2]' from root.test;
 +-----------------------------+-----------+-------------------------+--------------------------+
 ```
 
-## `IS NULL` 运算符
+### `IS NULL` 运算符
 
 |运算符                       |含义|
 |----------------------------|-----------|
@@ -199,7 +199,7 @@ select code from root.sg1.d1 where temperature is null;
 select code from root.sg1.d1 where temperature is not null;
 ```
 
-## `IN` 运算符
+### `IN` 运算符
 
 |运算符                       |含义|
 |----------------------------|-----------|
@@ -245,7 +245,7 @@ select a, a in (1, 2) from root.test;
 +-----------------------------+-----------+--------------------+
 ```
 
-## 条件函数 
+### 条件函数 
 
 条件函数针对每个数据点进行条件判断，返回布尔值。
 

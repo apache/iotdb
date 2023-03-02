@@ -121,7 +121,7 @@ This command is used to display all ongoing queries, here are usage scenarios：
 
 ### Grammar
 
-```SQL
+```sql
 SHOW QUERIES | (QUERY PROCESSLIST)
 [WHERE whereCondition]
 [ORDER BY sortKey {ASC | DESC}]
@@ -153,7 +153,7 @@ Note：
 #### Example1：Obtain all current queries whose execution time is longer than 30 seconds
 
 SQL string：
-```SQL
+```sql
 SHOW QUERIES WHERE ElapsedTime > 30
 ```
 
@@ -173,12 +173,12 @@ SQL result：
 #### Example2：Obtain the Top5 queries in the current execution time
 
 SQL string：
-```SQL
+```sql
 SHOW QUERIES limit 5
 ```
 
 Equivalent to
-```SQL
+```sql
 SHOW QUERIES ORDER BY ElapsedTime DESC limit 5
 ```
 

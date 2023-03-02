@@ -68,7 +68,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
-        .setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(testElectionTimeoutMaxMs);
+        .setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(testElectionTimeoutMaxMs);
 
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);

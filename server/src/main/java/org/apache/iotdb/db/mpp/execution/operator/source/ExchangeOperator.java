@@ -37,11 +37,30 @@ public class ExchangeOperator implements SourceOperator {
 
   private ListenableFuture<?> isBlocked = NOT_BLOCKED;
 
+  private long maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
   public ExchangeOperator(
       OperatorContext operatorContext, ISourceHandle sourceHandle, PlanNodeId sourceId) {
     this.operatorContext = operatorContext;
     this.sourceHandle = sourceHandle;
     this.sourceId = sourceId;
+  }
+
+  /**
+   * For ExchangeOperator in pipeline, the maxReturnSize is equal to the maxReturnSize of the child
+   * operator.
+   *
+   * @param maxReturnSize max return size of child operator
+   */
+  public ExchangeOperator(
+      OperatorContext operatorContext,
+      ISourceHandle sourceHandle,
+      PlanNodeId sourceId,
+      long maxReturnSize) {
+    this.operatorContext = operatorContext;
+    this.sourceHandle = sourceHandle;
+    this.sourceId = sourceId;
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override
@@ -66,12 +85,12 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return maxReturnSize;
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return maxReturnSize;
   }
 
   @Override

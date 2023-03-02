@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,20 +41,22 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeMPPDataExchangeServiceClient.class);
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager;
 
   public AsyncDataNodeMPPDataExchangeServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager)
       throws IOException {
     super(
-        protocolFactory,
+        property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
+        TNonblockingSocketWrapper.wrap(
+            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
@@ -85,6 +86,11 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     clientManager.clear(endpoint);
   }
 
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
   /**
    * return self, the method doesn't need to be called by the user and will be triggered after the
    * RPC is finished.
@@ -103,7 +109,9 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+      if (printLogWhenEncounterException) {
+        logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+      }
       return false;
     }
   }
@@ -134,8 +142,7 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
         throws Exception {
       return new DefaultPooledObject<>(
           new AsyncDataNodeMPPDataExchangeServiceClient(
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+              thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));

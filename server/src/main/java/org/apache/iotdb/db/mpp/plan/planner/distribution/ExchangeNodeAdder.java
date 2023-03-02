@@ -124,7 +124,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                     new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
                 exchangeNode.setChild(child);
                 exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-                context.exchangeNodes.add(exchangeNode);
+                context.hasExchangeNode = true;
                 newNode.addChild(exchangeNode);
               } else {
                 newNode.addChild(child);
@@ -288,13 +288,18 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       // For align by device,
       // if dataRegions of children are the same, we set child's dataRegion to this node,
       // else we set the selected mostlyUsedDataRegion to this node
+      boolean inSame = nodeDistributionIsSame(visitedChildren, context);
       dataRegion =
-          nodeDistributionIsSame(visitedChildren, context)
+          inSame
               ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).region
               : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
           newNode.getPlanNodeId(),
-          new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
+          new NodeDistribution(
+              inSame
+                  ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
+                  : NodeDistributionType.SAME_WITH_SOME_CHILD,
+              dataRegion));
     } else {
       // TODO For align by time, we keep old logic for now
       dataRegion = calculateDataRegionByChildren(visitedChildren, context);
@@ -324,7 +329,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                 new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
             exchangeNode.setChild(child);
             exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-            context.exchangeNodes.add(exchangeNode);
+            context.hasExchangeNode = true;
             newNode.addChild(exchangeNode);
           } else {
             newNode.addChild(child);
@@ -345,7 +350,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
           new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
       exchangeNode.setChild(child);
       exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-      context.exchangeNodes.add(exchangeNode);
+      context.hasExchangeNode = true;
       newNode.addChild(exchangeNode);
     }
     return newNode;
