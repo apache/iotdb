@@ -17,9 +17,7 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
-
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
-});
+// you can change colors here
+// old: #D513A5
+$theme-color: #495ad4;
+// $content-width: 1080px;

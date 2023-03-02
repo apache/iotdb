@@ -17,9 +17,9 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
+import { type ReadingTimeLocaleConfig } from 'vuepress-plugin-reading-time2';
 
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
-});
+declare const READING_TIME_LOCALES: ReadingTimeLocaleConfig;
+
+// eslint-disable-next-line import/prefer-default-export
+export const readingTimeLocales = READING_TIME_LOCALES;

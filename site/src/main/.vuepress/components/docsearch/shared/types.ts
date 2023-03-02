@@ -17,9 +17,21 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
+import type { DocSearchProps } from '@docsearch/react';
+import type { LocaleConfig } from '@vuepress/shared';
 
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
-});
+export type DocsearchLocaleData = Pick<
+DocSearchProps,
+| 'appId'
+| 'apiKey'
+| 'indexName'
+| 'placeholder'
+| 'searchParameters'
+| 'disableUserPersonalization'
+| 'initialQuery'
+| 'translations'
+>;
+
+export interface DocsearchOptions extends DocsearchLocaleData {
+  locales?: LocaleConfig<DocsearchLocaleData>
+}

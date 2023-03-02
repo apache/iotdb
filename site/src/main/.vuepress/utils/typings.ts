@@ -17,9 +17,20 @@
   under the License.
  */
 
-const ghpages = require('gh-pages');
+export interface PageCategory {
+  /**
+   * Category name
+   *
+   * 分类名称
+   */
+  name: string;
 
-ghpages.publish('docs/.vuepress/dist', {
-  branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git',
-});
+  /**
+   * Category path
+   *
+   * 分类路径
+   */
+  path?: string;
+}
+
+export type PageTag = PageCategory;
