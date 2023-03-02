@@ -275,22 +275,22 @@ select s1, s2 into root.sg_copy.d1(t1, t2), aligned root.sg_copy.d2(t1, t2) from
 - 当查询的序列不存在或查询的序列不存在数据，则不会自动创建目标序列。
 
 ### 应用举例
-
+  
 #### 实现 IoTDB 内部 ETL
 对原始数据进行 ETL 处理后写入新序列。
 ```shell
-IOTDB > SELECT preprocess_udf(*) INTO ::(preprocessed_${3}) FROM root.sg.*;
-+-------------------------------+---------------------------+--------+
-|                  source column|          target timeseries| written|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s1)| root.sg.d1.preprocessed_s1|    8000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d1.s2)| root.sg.d1.preprocessed_s1|   10000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s1)| root.sg.d2.preprocessed_s1|   11000|
-+-------------------------------+---------------------------+--------+
-|  preprocess_udf(root.sg.d2.s2)| root.sg.d2.preprocessed_s1|    9000|
-+-------------------------------+---------------------------+--------+
+IOTDB > SELECT preprocess_udf(s1, s2) INTO ::(preprocessed_s1, preprocessed_s2) FROM root.sg.* ALIGN BY DEIVCE;
++--------------+-------------------+---------------------------+--------+
+| source device|      source column|          target timeseries| written|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s1)| root.sg.d1.preprocessed_s1|    8000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d1| preprocess_udf(s2)| root.sg.d1.preprocessed_s2|   10000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s1)| root.sg.d2.preprocessed_s1|   11000|
++--------------+-------------------+---------------------------+--------+
+|    root.sg.d2| preprocess_udf(s2)| root.sg.d2.preprocessed_s2|    9000|
++--------------+-------------------+---------------------------+--------+
 ```
 以上语句使用自定义函数对数据进行预处理，将预处理后的结果持久化存储到新序列中。
 
