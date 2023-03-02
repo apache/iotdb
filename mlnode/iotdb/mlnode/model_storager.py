@@ -8,6 +8,7 @@ from pylru import lrucache
 ML_MODEL_DIR = 'ml_models'
 CACHESIZE=30
 
+
 # TODO: Concurrency
 class ModelStorager(object):
     def __init__(self, root_path='ml_models', cache_size=30):
@@ -58,10 +59,17 @@ class ModelStorager(object):
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
-    def send_model():
+    def send_model(): #TODO: inference on db in future
         pass
 
 
 
 modelStorager = ModelStorager(root_path=ML_MODEL_DIR, cache_size=CACHESIZE)
 
+# Usage:
+
+# modelStorager.save_model(nn.Module, model_config, model_id, trial_id)
+# model(TorchScript.ScriptModule), model_cfg(Dict) = modelStorager.load_model(model_config, model_id, trial_id)
+# output = model(torch.randn(3, input_len, input_vars))
+# modelStorager.delect_model(model_id, trial_id)
+# modelStorager.delect_trial(trial_id)

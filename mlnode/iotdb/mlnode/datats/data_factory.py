@@ -25,6 +25,20 @@ def create_forecasting_dataset(
     data_source=None,
     **kwargs,
 ):
+    """ 
+    Factory method for all support dataset
+    currently implement WindowDataset, TimeSeriesDataset
+    for specific dataset configs, see __dataset_cfg
+
+    Args:
+        dataset_type: available choice in ['window', 'timeseries']
+        datasource: offline multi-variate time series for a while (all pre-fetched in memory)
+
+    Returns:
+        model: torch.nn.Module
+        model_config: dict of model configurations
+    """
+    
     if dataset_type not in support_dataset_cfgs.keys():
         raise RuntimeError('Unknown dataset type (%s)' % dataset_type)
 
