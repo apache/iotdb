@@ -126,7 +126,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -147,7 +146,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final int RETRY_INTERVAL_MS = 1000;
 
-  private final long connectionTimeout;
+  private final ThriftClientProperty property;
 
   private IConfigNodeRPCService.Iface client;
 
@@ -167,17 +166,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   ConfigRegionId configRegionId = ConfigNodeInfo.CONFIG_REGION_ID;
 
-  TProtocolFactory protocolFactory;
-
   public ConfigNodeClient(
       List<TEndPoint> configNodes,
-      TProtocolFactory protocolFactory,
-      long connectionTimeout,
+      ThriftClientProperty property,
       ClientManager<ConfigRegionId, ConfigNodeClient> clientManager)
       throws TException {
     this.configNodes = configNodes;
-    this.protocolFactory = protocolFactory;
-    this.connectionTimeout = connectionTimeout;
+    this.property = property;
     this.clientManager = clientManager;
 
     init();
@@ -198,7 +193,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // As there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
+              endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs());
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -207,7 +202,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throw new TException(e);
     }
 
-    client = new IConfigNodeRPCService.Client(protocolFactory.getProtocol(transport));
+    client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
   private void waitAndReconnect() throws TException {
@@ -281,6 +276,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public void invalidateAll() {
     clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+  }
+
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return property.isPrintLogWhenEncounterException();
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
@@ -1974,10 +1974,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
               ConfigNodeClient.class.getConstructor(
-                  List.class, TProtocolFactory.class, long.class, clientManager.getClass()),
+                  List.class, thriftClientProperty.getClass(), clientManager.getClass()),
               ConfigNodeInfo.getInstance().getLatestConfigNodes(),
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+              thriftClientProperty,
               clientManager));
     }
 

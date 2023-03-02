@@ -2346,7 +2346,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // children after pipelining
     List<Operator> parentPipelineChildren = new ArrayList<>();
     int finalExchangeNum = context.getExchangeSumNum();
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode localChild : node.getChildren()) {
         Operator childOperation = localChild.accept(this, context);
@@ -2411,6 +2411,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // Otherwise, the first group will belong to the parent pipeline
           if (i == 0) {
             for (int j = startIndex; j < endIndex; j++) {
+              context.setDegreeOfParallelism(1);
               Operator childOperation = node.getChildren().get(j).accept(this, context);
               parentPipelineChildren.add(childOperation);
               afterwardsNodes.add(node.getChildren().get(j));
@@ -2515,7 +2516,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int finalExchangeNum = context.getExchangeSumNum();
 
     // 1. divide every child to pipeline using the max dop
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode childSource : node.getChildren()) {
         Operator childOperation = childSource.accept(this, context);
