@@ -42,8 +42,8 @@ export const zhNavbar = navbar([
     children: [
       { text: '关于社区', link: '/zh/Community/About' },
       { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb' },
-      { text: '开发人员', link: '/zh/Community/Community-Project Committers' },
-      { text: '技术支持', link: '/zh/Community/Community-Powered By' },
+      { text: '开发人员', link: '/zh/Community/Community-Project-Committers' },
+      { text: '技术支持', link: '/zh/Community/Community-Powered-By' },
       { text: '活动与报告', link: '/Community/Materials' },
       { text: '交流与反馈', link: '/zh/Community/Feedback' },
     ],

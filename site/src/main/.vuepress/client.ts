@@ -20,6 +20,7 @@ import { defineClientConfig } from '@vuepress/client';
 import ElementPlus from 'element-plus';
 import IoTDB from './components/IoTDB.vue';
 import IoTDBZH from './components/IoTDBZH.vue';
+import Contributor from './components/Contributor.vue';
 import 'element-plus/dist/index.css';
 
 export default defineClientConfig({
@@ -27,6 +28,7 @@ export default defineClientConfig({
   enhance: ({ app }) => {
     app.use(ElementPlus);
     app.component('IoTDB', IoTDB);
+    app.component('Contributor', Contributor);
     app.component('IoTDBZH', IoTDBZH);
   },
 });
