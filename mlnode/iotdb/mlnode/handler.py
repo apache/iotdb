@@ -49,6 +49,8 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def create_training_task(self, req: TCreateTrainingTaskReq):
+        # TODO: parse_request
+        
         config = default_configs()
         self.taskManager.create_single_training_task_pool(config)
         return get_status(TSStatusCode.SUCCESS_STATUS, "")

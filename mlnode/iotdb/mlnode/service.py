@@ -37,7 +37,6 @@ class RPCService(threading.Thread):
         transport = TSocket.TServerSocket(host=config.get_mn_rpc_address(), port=config.get_mn_rpc_port())
         transport_factory = TTransport.TBufferedTransportFactory()
         protocol_factory = TCompactProtocol.TCompactProtocolFactory()
-
         self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
 
     def run(self) -> None:
