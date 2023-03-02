@@ -57,7 +57,7 @@ public class Template implements Serializable {
   private boolean isDirectAligned;
   private Map<String, IMeasurementSchema> schemaMap;
 
-  private transient Map<String, IMNode> directNodes;
+  private transient Map<String, IMNode<?>> directNodes;
 
   private transient int rehashCode;
 

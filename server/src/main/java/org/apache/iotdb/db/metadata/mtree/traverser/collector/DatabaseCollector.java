@@ -26,19 +26,19 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 
 // This class implements database path collection function.
-public abstract class DatabaseCollector<R> extends DatabaseTraverser<R> {
+public abstract class DatabaseCollector<R, N extends IMNode<N>> extends DatabaseTraverser<R, N> {
   protected DatabaseCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
+  protected R generateResult(N nextMatchedNode) {
     collectDatabase(nextMatchedNode.getAsDatabaseMNode());
     return null;
   }
 
   // TODO: make collectDatabase return R
-  protected abstract void collectDatabase(IDatabaseMNode node);
+  protected abstract void collectDatabase(IDatabaseMNode<N> node);
 }

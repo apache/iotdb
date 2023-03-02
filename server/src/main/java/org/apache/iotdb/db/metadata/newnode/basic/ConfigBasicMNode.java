@@ -286,6 +286,11 @@ public class ConfigBasicMNode implements IConfigMNode {
   }
 
   @Override
+  public void setSchemaTemplateId(int id) {
+    configMNodeInfo.setSchemaTemplateId(id);
+  }
+
+  @Override
   public int getSchemaTemplateId() {
     return configMNodeInfo.getSchemaTemplateId();
   }

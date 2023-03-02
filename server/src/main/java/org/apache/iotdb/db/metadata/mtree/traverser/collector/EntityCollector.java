@@ -27,18 +27,18 @@ import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
 // TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
+public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTraverser<R, N> {
 
   protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
+  protected R generateResult(N nextMatchedNode) {
     return collectEntity(nextMatchedNode.getAsEntityMNode());
   }
 
-  protected abstract R collectEntity(IDeviceMNode node);
+  protected abstract R collectEntity(IDeviceMNode<N> node);
 }

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-public abstract class DatabaseTraverser<R> extends Traverser<R> {
+public abstract class DatabaseTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
   protected boolean collectInternal = false;
 
@@ -38,28 +38,28 @@ public abstract class DatabaseTraverser<R> extends Traverser<R> {
    * @throws MetadataException path does not meet the expected rules
    */
   public DatabaseTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
+  protected boolean acceptFullMatchedNode(N node) {
     return node.isDatabase();
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptInternalMatchedNode(N node) {
     return collectInternal && node.isDatabase();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return !node.isDatabase();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isDatabase();
   }
 

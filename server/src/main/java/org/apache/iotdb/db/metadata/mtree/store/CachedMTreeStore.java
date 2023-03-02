@@ -446,7 +446,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
   }
 
   @Override
-  public IMTreeStore getWithReentrantReadLock() {
+  public IMTreeStore<ICacheMNode> getWithReentrantReadLock() {
     return new ReentrantReadOnlyCachedMTreeStore(this);
   }
 

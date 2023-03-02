@@ -41,8 +41,9 @@ import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -533,7 +534,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     try {
-      IMeasurementMNode leafMNode;
+      IMeasurementMNode<IMemMNode> leafMNode;
 
       // using try-catch to restore seriesNumberMonitor's state while create failed
       try {
@@ -619,7 +620,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       List<TSEncoding> encodings = plan.getEncodings();
       List<Map<String, String>> tagsList = plan.getTagsList();
       List<Map<String, String>> attributesList = plan.getAttributesList();
-      List<IMeasurementMNode> measurementMNodeList;
+      List<IMeasurementMNode<IMemMNode>> measurementMNodeList;
 
       // using try-catch to restore seriesNumberMonitor's state while create failed
       try {
@@ -728,7 +729,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(true);
   }
 
@@ -776,7 +777,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
@@ -786,14 +787,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(false);
   }
 
   /** @param path full path from root to leaf node */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
@@ -811,9 +812,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
+  private IMemMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
-    IMNode node = mtree.getDeviceNodeWithAutoCreating(path);
+    IMemMNode node = mtree.getDeviceNodeWithAutoCreating(path);
     writeToMLog(SchemaRegionWritePlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
@@ -854,7 +855,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param offset offset in the tag file
    */
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setOffset(offset);
 
     if (isRecovering) {
@@ -867,11 +868,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void changeAlias(PartialPath path, String alias) throws MetadataException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(path);
+    IDeviceMNode<IMemMNode> device = leafMNode.getParent().getAsEntityMNode();
     if (leafMNode.getAlias() != null) {
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      device.deleteAliasChild(leafMNode.getAlias());
     }
-    leafMNode.getParent().addAlias(alias, leafMNode);
+    device.addAlias(alias, leafMNode);
     mtree.setAlias(leafMNode, alias);
 
     try {
@@ -898,7 +900,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
 
     // upsert alias
     upsertAlias(alias, fullPath, leafMNode);
@@ -922,16 +924,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
   }
 
-  private void upsertAlias(String alias, PartialPath fullPath, IMeasurementMNode leafMNode)
+  private void upsertAlias(
+      String alias, PartialPath fullPath, IMeasurementMNode<IMemMNode> leafMNode)
       throws MetadataException, IOException {
     // upsert alias
     if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
+      IDeviceMNode<IMemMNode> deviceMNode = leafMNode.getParent().getAsEntityMNode();
+      if (!deviceMNode.addAlias(alias, leafMNode)) {
         throw new MetadataException("The alias already exists.");
       }
 
       if (leafMNode.getAlias() != null) {
-        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+        deviceMNode.deleteAliasChild(leafMNode.getAlias());
       }
 
       mtree.setAlias(leafMNode, alias);
@@ -950,7 +954,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
 
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
@@ -973,7 +977,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
@@ -998,7 +1002,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, just do nothing.
     if (leafMNode.getOffset() != -1) {
       tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
@@ -1016,7 +1020,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
@@ -1039,7 +1043,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
@@ -1051,7 +1055,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void removeFromTagInvertedIndex(IMeasurementMNode node) throws IOException {
+  private void removeFromTagInvertedIndex(IMeasurementMNode<IMemMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
   // endregion

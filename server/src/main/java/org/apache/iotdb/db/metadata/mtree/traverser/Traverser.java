@@ -48,13 +48,13 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
  */
-public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
+public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisitor<N, R> {
 
   private static final Logger logger = LoggerFactory.getLogger(Traverser.class);
 
-  protected IMTreeStore store;
+  protected IMTreeStore<N> store;
 
-  protected IMNode startNode;
+  protected N startNode;
   protected String[] nodes;
 
   // measurement in template should be processed only if templateMap is not null
@@ -77,7 +77,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    * @param isPrefixMatch prefix match or not
    * @throws MetadataException path does not meet the expected rules
    */
-  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  protected Traverser(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
     this.store = store.getWithReentrantReadLock();
@@ -107,23 +107,26 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   }
 
   @Override
-  protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
-    IMNode child = null;
+  protected N getChild(N parent, String childName) throws MetadataException {
+    N child = null;
     if (parent.isAboveDatabase()) {
       child = parent.getChild(childName);
     } else {
       if (templateMap != null
           && !templateMap.isEmpty() // this task will cover some timeseries represented by template
-          && parent.getSchemaTemplateId() != NON_TEMPLATE // the device is using template
+          && (parent.isEntity()
+              && parent.getAsEntityMNode().getSchemaTemplateId()
+                  != NON_TEMPLATE) // the device is using template
           && !(skipPreDeletedSchema
               && parent
                   .getAsEntityMNode()
                   .isPreDeactivateTemplate())) { // the template should not skip
-        Template template = templateMap.get(parent.getSchemaTemplateId());
+        int templateId = parent.getAsEntityMNode().getSchemaTemplateId();
+        Template template = templateMap.get(templateId);
         // if null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage
         if (template != null) {
-          child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
+          child = templateMap.get(templateId).getDirectNode(childName);
         }
       }
     }
@@ -134,7 +137,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   }
 
   @Override
-  protected void releaseNode(IMNode node) {
+  protected void releaseNode(N node) {
     if (!node.isAboveDatabase() && !node.isDatabase()) {
       // In any case we can call store#inpin directly because the unpin method will not do anything
       // if it is an IMNode in template or in memory mode.
@@ -143,17 +146,17 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   }
 
   @Override
-  protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
+  protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
     if (parent.isAboveDatabase()) {
-      return new MNodeIterator(parent.getChildren().values().iterator());
+      return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
       return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }
   }
 
   @Override
-  protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
-    ((IMNodeIterator) nodeIterator).close();
+  protected void releaseNodeIterator(Iterator<N> nodeIterator) {
+    ((IMNodeIterator<N>) nodeIterator).close();
   }
 
   @Override

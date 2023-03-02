@@ -87,7 +87,7 @@ public interface IMTreeStore<N extends IMNode<?>> {
 
   void unPinPath(N node);
 
-  IMTreeStore getWithReentrantReadLock();
+  IMTreeStore<N> getWithReentrantReadLock();
 
   void clear();
 

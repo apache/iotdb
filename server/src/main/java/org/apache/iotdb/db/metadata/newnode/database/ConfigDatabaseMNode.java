@@ -30,6 +30,11 @@ public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, Con
   }
 
   @Override
+  public void setSchemaTemplateId(int id) {
+    basicMNode.setSchemaTemplateId(id);
+  }
+
+  @Override
   public int getSchemaTemplateId() {
     return basicMNode.getSchemaTemplateId();
   }

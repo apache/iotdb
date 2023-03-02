@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -29,7 +29,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import java.io.File;
 import java.util.Map;
 
-public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
+public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICacheMNode> {
   private final CachedMTreeStore store;
   private final long readLockStamp;
 
@@ -39,84 +39,84 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNode generatePrefix(PartialPath storageGroupPath) {
+  public ICacheMNode generatePrefix(PartialPath storageGroupPath) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public IMNode getRoot() {
+  public ICacheMNode getRoot() {
     return store.getRoot();
   }
 
   @Override
-  public boolean hasChild(IMNode parent, String name) throws MetadataException {
+  public boolean hasChild(ICacheMNode parent, String name) throws MetadataException {
     return store.hasChild(parent, name, false);
   }
 
   @Override
-  public IMNode getChild(IMNode parent, String name) throws MetadataException {
+  public ICacheMNode getChild(ICacheMNode parent, String name) throws MetadataException {
     return store.getChild(parent, name, false);
   }
 
   @Override
-  public IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException {
+  public IMNodeIterator getChildrenIterator(ICacheMNode parent) throws MetadataException {
     return store.getChildrenIterator(parent, false);
   }
 
   @Override
-  public IMNodeIterator getTraverserIterator(
-      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+  public IMNodeIterator<ICacheMNode> getTraverserIterator(
+      ICacheMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
     return store.getTraverserIterator(this, parent, templateMap, skipPreDeletedSchema);
   }
 
   @Override
-  public IMNode addChild(IMNode parent, String childName, IMNode child) {
+  public ICacheMNode addChild(ICacheMNode parent, String childName, ICacheMNode child) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public void deleteChild(IMNode parent, String childName) {
+  public void deleteChild(ICacheMNode parent, String childName) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public void updateMNode(IMNode node) {
+  public void updateMNode(ICacheMNode node) {
     store.updateMNode(node, false);
   }
 
   @Override
-  public IDeviceMNode setToEntity(IMNode node) {
+  public IDeviceMNode<ICacheMNode> setToEntity(ICacheMNode node) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public IMNode setToInternal(IDeviceMNode entityMNode) {
+  public ICacheMNode setToInternal(IDeviceMNode<ICacheMNode> entityMNode) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public void setAlias(IMeasurementMNode measurementMNode, String alias) {
+  public void setAlias(IMeasurementMNode<ICacheMNode> measurementMNode, String alias) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 
   @Override
-  public void pin(IMNode node) throws MetadataException {
+  public void pin(ICacheMNode node) throws MetadataException {
     store.pin(node, false);
   }
 
   @Override
-  public void unPin(IMNode node) {
+  public void unPin(ICacheMNode node) {
     store.unPin(node, false);
   }
 
   @Override
-  public void unPinPath(IMNode node) {
+  public void unPinPath(ICacheMNode node) {
     store.unPinPath(node, false);
   }
 
   @Override
-  public IMTreeStore getWithReentrantReadLock() {
+  public IMTreeStore<ICacheMNode> getWithReentrantReadLock() {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
   }
 

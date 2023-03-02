@@ -21,6 +21,9 @@ package org.apache.iotdb.db.metadata.newnode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public interface IConfigMNode extends IMNode<IConfigMNode> {
+
+  void setSchemaTemplateId(int id);
+
   int getSchemaTemplateId();
 
   void preUnsetSchemaTemplate();

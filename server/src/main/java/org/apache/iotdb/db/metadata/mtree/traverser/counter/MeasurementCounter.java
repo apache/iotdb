@@ -25,17 +25,18 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 
 // This class implement measurement counter.
-public class MeasurementCounter extends MeasurementTraverser<Void> implements Counter {
+public class MeasurementCounter<N extends IMNode<N>> extends MeasurementTraverser<Void, N>
+    implements Counter {
   private int count;
 
   public MeasurementCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected Void generateResult(IMNode nextMatchedNode) {
+  protected Void generateResult(N nextMatchedNode) {
     count++;
     return null;
   }

@@ -33,6 +33,10 @@ public class ConfigMNodeInfo extends BasicMNodeInfo {
     super(name);
   }
 
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    this.schemaTemplateId = schemaTemplateId;
+  }
+
   /**
    * In InternalMNode, schemaTemplateId represents the template set on this node. The pre unset
    * mechanism is implemented by making this value negative. Since value 0 and -1 are all occupied,

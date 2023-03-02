@@ -26,18 +26,18 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import java.util.HashSet;
 import java.util.Set;
 
-public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
+public abstract class MNodeAboveSGCollector<T, N extends IMNode<N>> extends MNodeCollector<T, N> {
 
   protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
 
   protected MNodeAboveSGCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     if (node.isDatabase()) {
       involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;
@@ -47,7 +47,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     if (node.isDatabase()) {
       involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;

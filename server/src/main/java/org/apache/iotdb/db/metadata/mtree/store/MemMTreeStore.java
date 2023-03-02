@@ -52,13 +52,12 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private IMemMNode root;
 
-  public MemMTreeStore(
-      PartialPath rootPath,  MemSchemaRegionStatistics regionStatistics) {
-      this.root =
-          new DatabaseMNode(
-              null,
-              rootPath.getTailNode(),
-              CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+  public MemMTreeStore(PartialPath rootPath, MemSchemaRegionStatistics regionStatistics) {
+    this.root =
+        new DatabaseMNode(
+            null,
+            rootPath.getTailNode(),
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     this.regionStatistics = regionStatistics;
   }
 
@@ -195,7 +194,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public void unPinPath(IMemMNode node) {}
 
   @Override
-  public IMTreeStore getWithReentrantReadLock() {
+  public IMTreeStore<IMemMNode> getWithReentrantReadLock() {
     return this;
   }
 

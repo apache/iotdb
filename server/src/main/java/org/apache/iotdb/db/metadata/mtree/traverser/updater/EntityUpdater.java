@@ -25,7 +25,8 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 
-public abstract class EntityUpdater extends EntityTraverser<Void> implements Updater {
+public abstract class EntityUpdater<N extends IMNode<N>> extends EntityTraverser<Void, N>
+    implements Updater {
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
    *
@@ -35,13 +36,13 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
    * @param isPrefixMatch prefix match or not
    * @throws MetadataException path does not meet the expected rules
    */
-  public EntityUpdater(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public EntityUpdater(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected Void generateResult(IMNode nextMatchedNode) {
+  protected Void generateResult(N nextMatchedNode) {
     try {
       updateEntity(nextMatchedNode.getAsEntityMNode());
     } catch (MetadataException e) {
@@ -61,5 +62,5 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
     }
   }
 
-  protected abstract void updateEntity(IDeviceMNode node) throws MetadataException;
+  protected abstract void updateEntity(IDeviceMNode<N> node) throws MetadataException;
 }

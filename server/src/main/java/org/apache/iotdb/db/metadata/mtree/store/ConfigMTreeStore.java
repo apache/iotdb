@@ -18,138 +18,124 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
-import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.abovedatabase.AboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Map;
-import java.util.function.Consumer;
-
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
-public class ConfigMTreeStore implements IMTreeStore<IConfigMNode>{
+public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
 
-    private IConfigMNode root;
+  private IConfigMNode root;
 
-    // Only used for ConfigMTree
-    public ConfigMTreeStore() {
-        this.root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
+  // Only used for ConfigMTree
+  public ConfigMTreeStore() {
+    this.root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
+  }
+
+  @Override
+  public IConfigMNode generatePrefix(PartialPath storageGroupPath) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IConfigMNode getRoot() {
+    return root;
+  }
+
+  @Override
+  public boolean hasChild(IConfigMNode parent, String name) {
+    return parent.hasChild(name);
+  }
+
+  @Override
+  public IConfigMNode getChild(IConfigMNode parent, String name) {
+    return parent.getChild(name);
+  }
+
+  @Override
+  public IMNodeIterator<IConfigMNode> getChildrenIterator(IConfigMNode parent) {
+    return new MNodeIterator<>(parent.getChildren().values().iterator());
+  }
+
+  @Override
+  public IMNodeIterator<IConfigMNode> getTraverserIterator(
+      IConfigMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      throws MetadataException {
+    if (parent.isEntity()) {
+      AbstractTraverserIterator iterator =
+          new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+      iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
+      return iterator;
+    } else {
+      return getChildrenIterator(parent);
     }
+  }
 
-    @Override
-    public IConfigMNode generatePrefix(PartialPath storageGroupPath) {
-        throw new UnsupportedOperationException();
+  @Override
+  public IConfigMNode addChild(IConfigMNode parent, String childName, IConfigMNode child) {
+    return parent.addChild(childName, child);
+  }
+
+  @Override
+  public void deleteChild(IConfigMNode parent, String childName) {
+    parent.deleteChild(childName);
+  }
+
+  @Override
+  public void updateMNode(IConfigMNode node) {}
+
+  @Override
+  public IDeviceMNode<IConfigMNode> setToEntity(IConfigMNode node) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IConfigMNode setToInternal(IDeviceMNode<IConfigMNode> entityMNode) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setAlias(IMeasurementMNode<IConfigMNode> measurementMNode, String alias) {
+    String existingAlias = measurementMNode.getAlias();
+    if (existingAlias == null && alias == null) {
+      return;
     }
+    measurementMNode.setAlias(alias);
+  }
 
-    @Override
-    public IConfigMNode getRoot() {
-        return root;
-    }
+  @Override
+  public void pin(IConfigMNode node) {}
 
-    @Override
-    public boolean hasChild(IConfigMNode parent, String name) {
-        return parent.hasChild(name);
-    }
+  @Override
+  public void unPin(IConfigMNode node) {}
 
-    @Override
-    public IConfigMNode getChild(IConfigMNode parent, String name) {
-        return parent.getChild(name);
-    }
+  @Override
+  public void unPinPath(IConfigMNode node) {}
 
-    @Override
-    public IMNodeIterator<IConfigMNode> getChildrenIterator(IConfigMNode parent) {
-        return new MNodeIterator<>(parent.getChildren().values().iterator());
-    }
+  @Override
+  public IMTreeStore getWithReentrantReadLock() {
+    return this;
+  }
 
-    @Override
-    public IMNodeIterator<IConfigMNode> getTraverserIterator(
-            IConfigMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
-            throws MetadataException {
-        if (parent.isEntity()) {
-            AbstractTraverserIterator iterator =
-                    new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
-            iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
-            return iterator;
-        } else {
-            return getChildrenIterator(parent);
-        }
-    }
+  @Override
+  public void clear() {
+    root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
+  }
 
-    @Override
-    public IConfigMNode addChild(IConfigMNode parent, String childName, IConfigMNode child) {
-        return parent.addChild(childName, child);
-    }
-
-    @Override
-    public void deleteChild(IConfigMNode parent, String childName) {
-        parent.deleteChild(childName);
-    }
-
-    @Override
-    public void updateMNode(IConfigMNode node) {}
-
-    @Override
-    public IDeviceMNode<IConfigMNode> setToEntity(IConfigMNode node) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public IConfigMNode setToInternal(IDeviceMNode<IConfigMNode> entityMNode) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setAlias(IMeasurementMNode<IConfigMNode> measurementMNode, String alias) {
-        String existingAlias = measurementMNode.getAlias();
-        if (existingAlias == null && alias == null) {
-            return;
-        }
-        measurementMNode.setAlias(alias);
-    }
-
-    @Override
-    public void pin(IConfigMNode node) {}
-
-    @Override
-    public void unPin(IConfigMNode node) {}
-
-    @Override
-    public void unPinPath(IConfigMNode node) {}
-
-    @Override
-    public IMTreeStore getWithReentrantReadLock() {
-        return this;
-    }
-
-    @Override
-    public void clear() {
-        root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
-    }
-
-    @Override
-    public boolean createSnapshot(File snapshotDir) {
-        throw new UnsupportedOperationException();
-    }
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    throw new UnsupportedOperationException();
+  }
 }

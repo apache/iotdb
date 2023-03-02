@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 
 import java.util.Iterator;
 

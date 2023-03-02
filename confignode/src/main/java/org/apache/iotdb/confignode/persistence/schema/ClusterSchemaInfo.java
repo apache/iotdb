@@ -194,9 +194,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getMaxDataRegionGroupNum());
       }
 
-      mTree
-          .getDatabaseNodeByDatabasePath(partialPathName)
-          .setStorageGroupSchema(currentSchema);
+      mTree.getDatabaseNodeByDatabasePath(partialPathName).setStorageGroupSchema(currentSchema);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -263,8 +261,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(),
-            mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema());
+            path.getFullPath(), mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -287,10 +284,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       if (!matchedPaths.isEmpty()) {
         for (PartialPath path : matchedPaths) {
-          mTree
-              .getDatabaseNodeByDatabasePath(path)
-              .getStorageGroupSchema()
-              .setTTL(plan.getTTL());
+          mTree.getDatabaseNodeByDatabasePath(path).getStorageGroupSchema().setTTL(plan.getTTL());
         }
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
