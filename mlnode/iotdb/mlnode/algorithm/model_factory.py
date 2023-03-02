@@ -27,7 +27,7 @@ support_forecasting_model.extend(NBeats.support_model_names)
 
 
 """
-Common configs for All forecating model
+Common configs for all forecating model with default values
 """
 def _common_cfg(**kwargs):
     return {
@@ -84,8 +84,18 @@ def create_forecast_model(
         **kwargs,
 ):
     """ 
-    Factory method for all support forecasting model
-    The given args is com
+    Factory method for all support forecasting models
+    the given arguments is common configs shared by all forecasting models 
+    for specific model configs, see __model_cfg in `algorithm/models/MODELNAME.py`
+
+    Args:
+        model_name: see available models by `list_model`
+        input_len: time length of model input 
+        pred_len: time length of model output
+
+    Returns:
+        model: torch.nn.Module
+        model_config: dict of model configurations
     """
     if not is_model(model_name):
         raise RuntimeError('Unknown model (%s)' % model_name)

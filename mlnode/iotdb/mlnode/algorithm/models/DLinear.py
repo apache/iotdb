@@ -26,7 +26,7 @@ __all__ = ['DLinear', 'dlinear', 'dlinear_individual']
 
 
 """
-Specific configs for DLinear
+Specific configs for DLinear with default values
 """
 def _model_cfg(**kwargs):
     return {

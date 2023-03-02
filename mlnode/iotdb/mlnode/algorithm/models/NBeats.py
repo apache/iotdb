@@ -27,7 +27,7 @@ __all__ = ['NBeats', 'nbeats', 'nbeats_s', 'nbeats_t']
 
 
 """
-Specific configs for NBeats
+Specific configs for NBeats with default values
 """
 def _model_cfg(**kwargs):
     return {

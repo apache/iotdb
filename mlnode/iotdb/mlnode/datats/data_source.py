@@ -21,6 +21,18 @@ import pandas as pd
 
 
 class DataSource(object):
+    """
+    Pre-fetched in multi-variate time series in memory
+
+    Args:
+        type: available choice in ['file', 'sql', 'thrift']
+        filename: for file type, the file location in `csv` format
+        session and sql: for sql type
+
+    Returns:
+        self.data: time seires value (Numpy.Array)
+        self.data_stamp: timestamp value 
+    """
     def __init__(self, type='file', filename=None, session=None, sql=None, **kwargs):
         self.type = type
         self.data = None
