@@ -25,6 +25,9 @@ from .layers.decomp_layer import SeriesDecomp
 __all__ = ['DLinear', 'dlinear', 'dlinear_individual']
 
 
+"""
+Specific configs for DLinear
+"""
 def _model_cfg(**kwargs):
     return {
         'model_name': 'dlinear',
@@ -33,6 +36,10 @@ def _model_cfg(**kwargs):
         **kwargs
     }
 
+
+"""
+Specific configs for DLinear variants
+"""
 support_model_cfgs = {
     'dlinear': _model_cfg(
         model_name='dlinear',
