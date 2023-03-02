@@ -297,29 +297,31 @@ public class MemoryPool {
     Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
-      if (future.isCancelled() || future.isDone()) {
-        continue;
-      }
-      long bytesToReserve = future.getBytesToReserve();
-      String curQueryId = future.getQueryId();
-      String curFragmentInstanceId = future.getFragmentInstanceId();
-      String curPlanNodeId = future.getPlanNodeId();
-      long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
-      long queryRemainingBytes =
-          future.getMaxBytesCanReserve()
-              - queryMemoryReservations
-                  .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
-                  .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
-                  .merge(curPlanNodeId, bytesToReserve, Long::sum);
-      if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
-        futureList.add(future);
-        iterator.remove();
-      } else {
-        remainingBytes.addAndGet(bytesToReserve);
-        queryMemoryReservations
-            .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
-            .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
-            .merge(curPlanNodeId, -bytesToReserve, Long::sum);
+      synchronized (future) {
+        if (future.isCancelled() || future.isDone()) {
+          continue;
+        }
+        long bytesToReserve = future.getBytesToReserve();
+        String curQueryId = future.getQueryId();
+        String curFragmentInstanceId = future.getFragmentInstanceId();
+        String curPlanNodeId = future.getPlanNodeId();
+        long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+        long queryRemainingBytes =
+            future.getMaxBytesCanReserve()
+                - queryMemoryReservations
+                    .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
+                    .merge(curPlanNodeId, bytesToReserve, Long::sum);
+        if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+          futureList.add(future);
+          iterator.remove();
+        } else {
+          remainingBytes.addAndGet(bytesToReserve);
+          queryMemoryReservations
+              .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
+              .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
+              .merge(curPlanNodeId, -bytesToReserve, Long::sum);
+        }
       }
     }
 
