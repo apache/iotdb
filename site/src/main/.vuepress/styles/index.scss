@@ -25,6 +25,10 @@
 .theme-hope-content {
   max-width: unset;
 }
+.el-popover.el-popper {
+  text-align: start !important;
+  word-break: break-word !important;
+}
 
 // #app {
 //   --code-bg-color: #282c34;
