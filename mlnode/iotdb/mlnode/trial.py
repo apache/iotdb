@@ -30,7 +30,7 @@ from algorithm.forecast.models.DLinear import DLinear
 from algorithm.forecast.utils import parseModelConfig
 from data_provider.build_dataset_debug import debug_dataset
 from data_provider.offline_dataset import data_transform, timestamp_transform
-from ModelManager import modelManager
+from model_storager import modelStorager
 
 # from iotdb.data.utils import parseDataConfig, data_provider
 
@@ -169,7 +169,7 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss = self.validate(self.model, criterion, self.val_loader, self.configs, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelManager.save_model(self.model, self.model_id, 1)
+                modelStorager.save_model(self.model, self.model_id, 1)
         return best_loss
         
 
