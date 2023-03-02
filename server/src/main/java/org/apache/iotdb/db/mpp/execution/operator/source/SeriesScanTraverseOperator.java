@@ -31,10 +31,12 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public class SeriesScanTraverseOperator extends AbstractSourceOperator
@@ -43,7 +45,8 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
   private final PartialPath seriesPath;
   private final Ordering scanOrder;
   private List<Operator> childSourceOperator;
-  private int curChildIndex = 0;
+  private Iterator<Operator> childOperatorIterator;
+  private Operator curChildOperator;
 
   private final List<AbstractDataSourceOperator> scanOperatorList;
   private final boolean isAligned;
@@ -70,24 +73,24 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (curChildIndex >= childSourceOperator.size()) {
+    if (!childOperatorIterator.hasNext()) {
       return NOT_BLOCKED;
     }
-    return childSourceOperator.get(curChildIndex).isBlocked();
+    return curChildOperator.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    if (!childSourceOperator.get(curChildIndex).hasNextWithTimer()) {
-      curChildIndex++;
+    if (!curChildOperator.hasNextWithTimer() && childOperatorIterator.hasNext()) {
+      curChildOperator = childOperatorIterator.next();
       return null;
     }
-    return childSourceOperator.get(curChildIndex).nextWithTimer();
+    return curChildOperator.nextWithTimer();
   }
 
   @Override
   public boolean hasNext() {
-    return curChildIndex < childSourceOperator.size();
+    return curChildOperator.hasNext() || childOperatorIterator.hasNext();
   }
 
   @Override
@@ -222,6 +225,13 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       // update next time range
       startTime = curMaxTime + 1;
       endTime = Math.min(startTime + avgTime, maxTime);
+    }
+
+    // update childOperatorIterator
+    if (scanOrder.isAscending()) {
+      this.childOperatorIterator = childSourceOperator.iterator();
+    } else {
+      this.childOperatorIterator = Lists.reverse(childSourceOperator).iterator();
     }
   }
 
