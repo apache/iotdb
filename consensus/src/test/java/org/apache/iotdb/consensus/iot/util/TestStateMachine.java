@@ -117,11 +117,8 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
       ByteBuffer buffer = innerRequest.serializeToByteBuffer();
       transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
     }
-    IndexedConsensusRequest request =
-        new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest);
-    request.buildSerializedRequests();
     requestSets.add(
-        request,
+        new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest),
         indexedConsensusRequest.getSearchIndex() != ConsensusReqReader.DEFAULT_SEARCH_INDEX);
   }
 
