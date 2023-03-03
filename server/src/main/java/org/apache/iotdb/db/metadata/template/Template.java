@@ -57,13 +57,10 @@ public class Template implements Serializable {
   private boolean isDirectAligned;
   private Map<String, IMeasurementSchema> schemaMap;
 
-  private transient Map<String, IMNode<?>> directNodes;
-
   private transient int rehashCode;
 
   public Template() {
     schemaMap = new HashMap<>();
-    directNodes = new HashMap<>();
   }
 
   public Template(
@@ -88,7 +85,6 @@ public class Template implements Serializable {
     schemaMap = new HashMap<>();
     this.name = name;
     isDirectAligned = false;
-    directNodes = new HashMap<>();
     rehashCode = 0;
 
     for (int i = 0; i < measurements.size(); i++) {

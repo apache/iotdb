@@ -33,8 +33,8 @@ public class MNodeUtils {
    * @param node node to be transformed
    * @return generated entityMNode
    */
-  public static IDeviceMNode setToEntity(IMNode node) {
-    IDeviceMNode entityMNode;
+  public static<N extends IMNode<N>> IDeviceMNode<N> setToEntity(IMNode<N> node) {
+    IDeviceMNode<N> entityMNode;
     if (node.isEntity()) {
       entityMNode = node.getAsEntityMNode();
     } else {
@@ -44,6 +44,7 @@ public class MNodeUtils {
                 node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL());
         node.moveDataToNewMNode(entityMNode);
       } else {
+        // basic node
         entityMNode = new AbstractDeviceMNode(node.getParent(), node.getName());
         if (node.getParent() != null) {
           node.getParent().replaceChild(node.getName(), entityMNode);
@@ -63,9 +64,9 @@ public class MNodeUtils {
    * @param entityMNode node to be transformed
    * @return generated NoEntity node
    */
-  public static IMNode setToInternal(IDeviceMNode entityMNode) {
-    IMNode node;
-    IMNode parent = entityMNode.getParent();
+  public static<N extends IMNode<N>> IMNode<N> setToInternal(IDeviceMNode<N> entityMNode) {
+    IMNode<N> node;
+    IMNode<N> parent = entityMNode.getParent();
     if (entityMNode.isDatabase()) {
       node =
           new AbstractDatabaseMNode(
