@@ -19,9 +19,9 @@
 
 -->
 
-# 数据类型
+## 数据类型
 
-## 基本数据类型
+### 基本数据类型
 
 IoTDB 支持以下六种数据类型：
 
@@ -32,7 +32,7 @@ IoTDB 支持以下六种数据类型：
 * DOUBLE（双精度浮点数）
 * TEXT（字符串）
 
-### 浮点数精度配置
+#### 浮点数精度配置
 
 对于 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) ，可以在创建序列时通过 `MAX_POINT_NUMBER` 属性指定浮点数的小数点后位数。
 
@@ -43,7 +43,7 @@ CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=FLOAT, ENCODING=RLE, 'MAX_POI
 
 若不指定，系统会按照配置文件 `iotdb-common.properties` 中的 [float_precision](../Reference/Common-Config-Manual.md) 项配置（默认为 2 位）。
 
-### 数据类型兼容性
+#### 数据类型兼容性
 
 当写入数据的类型与序列注册的数据类型不一致时，
 - 如果序列数据类型不兼容写入数据类型，系统会给出错误提示。
@@ -60,11 +60,11 @@ CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=FLOAT, ENCODING=RLE, 'MAX_POI
 | DOUBLE       | INT32 INT64 FLOAT DOUBLE |
 | TEXT         | TEXT                     |
 
-## 时间戳类型
+### 时间戳类型
 
 时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳。
 
-### 绝对时间戳
+#### 绝对时间戳
 
 IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIME 类型（包含 DATETIME-INPUT, DATETIME-DISPLAY 两个小类）。
 
@@ -136,7 +136,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
 
 </div>
 
-### 相对时间戳
+#### 相对时间戳
 
   相对时间是指与服务器时间```now()```和```DATETIME```类型时间相差一定时间间隔的时间。
   形式化定义为：

@@ -98,7 +98,7 @@ public class IoTDBShutdownHook extends Thread {
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
     boolean isReportSuccess = false;
     try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       isReportSuccess =
           client.reportDataNodeShutdown(DataNode.generateDataNodeLocation()).getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode();

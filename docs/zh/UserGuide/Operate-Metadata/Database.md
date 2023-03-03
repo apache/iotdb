@@ -19,11 +19,12 @@
 
 -->
 
-# 数据库管理
+# 元数据操作
+## 数据库管理
 
 数据库（Database）可以被视为关系数据库中的Database。
 
-## 创建数据库
+### 创建数据库
 
 我们可以根据存储模型建立相应的数据库。如下所示：
 
@@ -41,7 +42,7 @@ Database 节点名只支持中英文字符、数字、下划线的组合，如�
 
 还需注意，如果在 Windows 系统上部署，database 名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-## 查看数据库
+### 查看数据库
 
 在 database 创建后，我们可以使用 [SHOW DATABASES](../Reference/SQL-Reference.md) 语句和 [SHOW DATABASES \<PathPattern>](../Reference/SQL-Reference.md) 来查看 database，SQL 语句如下所示：
 
@@ -64,7 +65,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-## 删除数据库
+### 删除数据库
 
 用户可以使用`DELETE DATABASE <PathPattern>`语句删除该路径模式匹配的所有的数据库。在删除的过程中，需要注意的是数据库的数据也会被删除。
 
@@ -75,7 +76,7 @@ IoTDB > DELETE DATABASE root.sgcc
 IoTDB > DELETE DATABASE root.**
 ```
 
-## 统计数据库数量
+### 统计数据库数量
 
 用户可以使用`COUNT DATABASES <PathPattern>`语句统计数据库的数量，允许指定`PathPattern` 用来统计匹配该`PathPattern` 的数据库的数量
 

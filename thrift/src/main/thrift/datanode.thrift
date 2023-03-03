@@ -63,6 +63,8 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TGetDataBlockResponse {
@@ -73,6 +75,8 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
+  // index of upstream SinkHandle
+  4: required i32 index
 }
 
 struct TNewDataBlockEvent {
@@ -409,7 +413,7 @@ struct TFetchWindowBatchResp {
 struct TRecordModelMetricsReq {
   1: required string modelId
   2: required string trialId
-  3: required list<string> metrics
+  3: required list<common.EvaluateMetric> metrics
   4: required i64 timestamp
   5: required list<double> values
 }

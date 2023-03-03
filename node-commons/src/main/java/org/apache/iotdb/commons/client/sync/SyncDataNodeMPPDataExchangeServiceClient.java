@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
@@ -40,23 +39,26 @@ import java.net.SocketException;
 public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.Client
     implements ThriftClient, AutoCloseable {
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager;
 
   public SyncDataNodeMPPDataExchangeServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager)
       throws TTransportException {
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
-                    connectionTimeout))));
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endpoint.getIp(),
+                        endpoint.getPort(),
+                        property.getConnectionTimeoutMs()))));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
@@ -87,6 +89,11 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
   }
 
   @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  @Override
   public String toString() {
     return String.format("SyncDataNodeMPPDataExchangeServiceClient{%s}", endpoint);
   }
@@ -113,9 +120,8 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeMPPDataExchangeServiceClient.class,
               SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
-                  TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
               endpoint,
               clientManager));
     }

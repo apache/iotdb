@@ -36,14 +36,14 @@ import java.util.Objects;
  */
 public class OffsetNode extends SingleChildProcessNode {
 
-  private final int offset;
+  private final long offset;
 
-  public OffsetNode(PlanNodeId id, int offset) {
+  public OffsetNode(PlanNodeId id, long offset) {
     super(id);
     this.offset = offset;
   }
 
-  public OffsetNode(PlanNodeId id, PlanNode child, int offset) {
+  public OffsetNode(PlanNodeId id, PlanNode child, long offset) {
     super(id, child);
     this.offset = offset;
   }
@@ -76,12 +76,12 @@ public class OffsetNode extends SingleChildProcessNode {
   }
 
   public static OffsetNode deserialize(ByteBuffer byteBuffer) {
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
+    long offset = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new OffsetNode(planNodeId, offset);
   }
 
-  public int getOffset() {
+  public long getOffset() {
     return offset;
   }
 

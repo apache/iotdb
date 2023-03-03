@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DeleteDatabasePlan;
@@ -106,7 +107,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -136,7 +137,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigNodeRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.junit.Assert.assertEquals;
@@ -166,14 +167,22 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void UpdateDataNodePlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
     dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
-    UpdateDataNodePlan plan0 = new UpdateDataNodePlan(dataNodeLocation);
+    TNodeResource dataNodeResource = new TNodeResource();
+    dataNodeResource.setCpuCoreNum(16);
+    dataNodeResource.setMaxMemory(2022213861);
+
+    TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
+    dataNodeConfiguration.setLocation(dataNodeLocation);
+    dataNodeConfiguration.setResource(dataNodeResource);
+
+    UpdateDataNodePlan plan0 = new UpdateDataNodePlan(dataNodeConfiguration);
     UpdateDataNodePlan plan1 =
         (UpdateDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
@@ -751,15 +760,15 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
-    DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
-    deleteStorageGroupProcedure.setDeleteSgSchema(new TDatabaseSchema("root.sg"));
+    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure();
+    deleteDatabaseProcedure.setDeleteSgSchema(new TDatabaseSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
-    updateProcedurePlan0.setProcedure(deleteStorageGroupProcedure);
+    updateProcedurePlan0.setProcedure(deleteDatabaseProcedure);
     UpdateProcedurePlan updateProcedurePlan1 =
         (UpdateProcedurePlan)
             ConfigPhysicalPlan.Factory.create(updateProcedurePlan0.serializeToByteBuffer());
     Procedure proc = updateProcedurePlan1.getProcedure();
-    Assert.assertEquals(proc, deleteStorageGroupProcedure);
+    Assert.assertEquals(proc, deleteDatabaseProcedure);
 
     // test procedure equals CreateRegionGroupsProcedure
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
@@ -796,11 +805,11 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void UpdateProcedurePlanTest() throws IOException {
     UpdateProcedurePlan req0 = new UpdateProcedurePlan();
-    DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
+    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure();
     TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
     tDatabaseSchema.setName("root.sg");
-    deleteStorageGroupProcedure.setDeleteSgSchema(tDatabaseSchema);
-    req0.setProcedure(deleteStorageGroupProcedure);
+    deleteDatabaseProcedure.setDeleteSgSchema(tDatabaseSchema);
+    req0.setProcedure(deleteDatabaseProcedure);
     UpdateProcedurePlan req1 =
         (UpdateProcedurePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -1174,7 +1183,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void GetRegionIdPlanTest() throws IOException {
     GetRegionIdPlan getRegionIdPlan0 =
         new GetRegionIdPlan(
-            "root.test", ConfigNodeRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+            "root.test", ConfigRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
     GetRegionIdPlan getRegionIdPlan1 =
         (GetRegionIdPlan)
             ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
@@ -1334,5 +1343,21 @@ public class ConfigPhysicalPlanSerDeTest {
         (UnsetSchemaTemplatePlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan.getTemplateId(), deserializedPlan.getTemplateId());
     Assert.assertEquals(plan.getPath(), deserializedPlan.getPath());
+  }
+
+  @Test
+  public void PollSpecificRegionMaintainTaskPlanTest() throws IOException {
+    Set<TConsensusGroupId> regionIdSet =
+        new HashSet<>(
+            Arrays.asList(
+                new TConsensusGroupId(SchemaRegion, 1),
+                new TConsensusGroupId(DataRegion, 2),
+                new TConsensusGroupId(DataRegion, 3)));
+    PollSpecificRegionMaintainTaskPlan plan = new PollSpecificRegionMaintainTaskPlan(regionIdSet);
+
+    PollSpecificRegionMaintainTaskPlan deserializedPlan =
+        (PollSpecificRegionMaintainTaskPlan)
+            ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(deserializedPlan.getRegionIdSet(), regionIdSet);
   }
 }

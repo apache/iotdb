@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
-  private AtomicLong thriftConnectionNumber;
+  private final AtomicLong thriftConnectionNumber;
 
   public ConfigNodeRPCServiceHandlerMetrics(AtomicLong thriftConnectionNumber) {
     this.thriftConnectionNumber = thriftConnectionNumber;
@@ -38,7 +38,7 @@ public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.THRIFT_CONNECTIONS.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         thriftConnectionNumber,
         AtomicLong::get,
         Tag.NAME.toString(),

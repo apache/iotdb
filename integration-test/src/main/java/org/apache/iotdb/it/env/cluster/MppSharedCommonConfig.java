@@ -73,16 +73,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    cnConfig.setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
-    dnConfig.setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
-    cnConfig.setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
-    dnConfig.setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+    cnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
+    dnConfig.setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(maxMs);
     return this;
   }
 
