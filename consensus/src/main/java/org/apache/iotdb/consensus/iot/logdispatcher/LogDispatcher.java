@@ -156,26 +156,26 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
-      // we don't need to serialize request when replicaNum is 1.
       request.buildSerializedRequests();
-    }
-    synchronized (this) {
-      threads.forEach(
-          thread -> {
-            logger.debug(
-                "{}->{}: Push a log to the queue, where the queue length is {}",
-                impl.getThisNode().getGroupId(),
-                thread.getPeer().getEndpoint().getIp(),
-                thread.getPendingEntriesSize());
-            if (!thread.offer(request)) {
+      synchronized (this) {
+        threads.forEach(
+            thread -> {
               logger.debug(
-                  "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
+                  "{}->{}: Push a log to the queue, where the queue length is {}",
                   impl.getThisNode().getGroupId(),
-                  thread.getPeer(),
-                  request.getSearchIndex());
-            }
-          });
+                  thread.getPeer().getEndpoint().getIp(),
+                  thread.getPendingEntriesSize());
+              if (!thread.offer(request)) {
+                logger.debug(
+                    "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
+                    impl.getThisNode().getGroupId(),
+                    thread.getPeer(),
+                    request.getSearchIndex());
+              }
+            });
+      }
     }
   }
 
@@ -514,6 +514,7 @@ public class LogDispatcher {
           }
         }
         targetIndex = data.getSearchIndex() + 1;
+        data.buildSerializedRequests();
         // construct request from wal
         logBatches.addTLogEntry(
             new TLogEntry(data.getSerializedRequests(), data.getSearchIndex(), true));
