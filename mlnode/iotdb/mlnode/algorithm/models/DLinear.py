@@ -30,7 +30,6 @@ Specific configs for DLinear with default values
 """
 def _model_cfg(**kwargs):
     return {
-        'model_name': 'dlinear',
         'individual': False,
         'kernel_size': 25,
         **kwargs
@@ -42,10 +41,8 @@ Specific configs for DLinear variants
 """
 support_model_cfgs = {
     'dlinear': _model_cfg(
-        model_name='dlinear',
         individual=False),
     'dlinear_individual': _model_cfg(
-        model_name='dlinear_individual',
         individual=True)
 }
 
@@ -65,7 +62,6 @@ class DLinear(nn.Module):
         input_vars=1,
         output_vars=1,
         task_type='m', # TODO, support ms
-        **kwargs
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -107,16 +103,16 @@ class DLinear(nn.Module):
         return x.permute(0,2,1) # to [Batch, Output length, Channel]
 
 
-def dlinear(kernel_size=25, **kwargs):
+def dlinear(common_config, kernel_size=25):
     cfg = support_model_cfgs['dlinear']
+    cfg.update(**common_config)
     cfg['kernel_size']=kernel_size
-    cfg.update(**kwargs)
     return DLinear(**cfg), cfg
 
 
-def dlinear_individual(kernel_size=25, **kwargs):
+def dlinear_individual(common_config, kernel_size=25):
     cfg = support_model_cfgs['dlinear_individual']
+    cfg.update(**common_config)
     cfg['kernel_size']=kernel_size
-    cfg.update(**kwargs)
     return DLinear(**cfg), cfg
 

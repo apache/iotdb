@@ -33,7 +33,7 @@ def _common_cfg(**kwargs):
     return {
         'task_type': 'm',
         'input_len': 96,
-        'pred_len': 96, 
+        'pred_len': 96,
         'input_vars': 1,
         'output_vars': 1,
         **kwargs
@@ -110,9 +110,10 @@ def create_forecast_model(
 
     create_fn = eval(model_name)
     model, model_config = create_fn(
-        **common_cfg, 
+        common_config=common_cfg, 
         **kwargs
     )
+    model_config['model_name']=model_name
 
     return model, model_config
 

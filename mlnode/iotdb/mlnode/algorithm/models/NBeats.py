@@ -23,7 +23,7 @@ import numpy as np
 from typing import Tuple
 
 
-__all__ = ['NBeats', 'nbeats', 'nbeats_s', 'nbeats_t']
+__all__ = ['NBeats', 'nbeats'] #, 'nbeats_s', 'nbeats_t']
 
 
 """
@@ -31,13 +31,12 @@ Specific configs for NBeats with default values
 """
 def _model_cfg(**kwargs):
     return {
-        'model_name': 'nbeats',
         'block_type': 'g',
         'd_model': 128,
         'inner_layers': 4,
         'outer_layers': 4,
-        'harmonics': 4,
-        'degree_of_polynomial': 3,
+        # 'harmonics': 4,
+        # 'degree_of_polynomial': 3,
         **kwargs
     }
 
@@ -46,16 +45,13 @@ Specific configs for NBeats variants
 """
 support_model_cfgs = {
     'nbeats': _model_cfg(
-        model_name='nbeats',
         block_type='g'),
-    'nbeats_s': _model_cfg(
-        model_name='nbeats_s',
-        harmonics=4,
-        block_type='s'),
-    'nbeats_t': _model_cfg(
-        model_name='nbeats_t',
-        degree_of_polynomial=3,
-        block_type='t')
+    # 'nbeats_s': _model_cfg(
+    #     harmonics=4,
+    #     block_type='s'),
+    # 'nbeats_t': _model_cfg(
+    #     degree_of_polynomial=3,
+    #     block_type='t')
 }
 
 
@@ -64,7 +60,7 @@ class GenericBasis(nn.Module):
     Generic basis function.
     """
 
-    def __init__(self, backcast_size: int, forecast_size: int, **kwargs):
+    def __init__(self, backcast_size: int, forecast_size: int):
         super().__init__()
         self.backcast_size = backcast_size
         self.forecast_size = forecast_size
@@ -73,57 +69,57 @@ class GenericBasis(nn.Module):
         return theta[:, :self.backcast_size], theta[:, -self.forecast_size:]
 
 
-class TrendBasis(nn.Module):
-    """
-    Trend basis function.
-    """
-    def __init__(self, degree_of_polynomial: int, backcast_size: int, forecast_size: int, **kwargs):
-        super().__init__()
-        polynomial_size = degree_of_polynomial + 1
-        self.backcast_basis = nn.Parameter(
-            torch.tensor(np.concatenate([np.power(np.arange(backcast_size, dtype=float) / backcast_size, i)[None, :]
-                                    for i in range(polynomial_size)]), dtype=torch.float32), requires_grad=False)
-        self.forecast_basis = nn.Parameter(
-            torch.tensor(np.concatenate([np.power(np.arange(forecast_size, dtype=float) / forecast_size, i)[None, :]
-                                    for i in range(polynomial_size)]), dtype=torch.float32), requires_grad=False)
+# class TrendBasis(nn.Module):
+#     """
+#     Trend basis function.
+#     """
+#     def __init__(self, degree_of_polynomial: int, backcast_size: int, forecast_size):
+#         super().__init__()
+#         polynomial_size = degree_of_polynomial + 1
+#         self.backcast_basis = nn.Parameter(
+#             torch.tensor(np.concatenate([np.power(np.arange(backcast_size, dtype=float) / backcast_size, i)[None, :]
+#                                     for i in range(polynomial_size)]), dtype=torch.float32), requires_grad=False)
+#         self.forecast_basis = nn.Parameter(
+#             torch.tensor(np.concatenate([np.power(np.arange(forecast_size, dtype=float) / forecast_size, i)[None, :]
+#                                     for i in range(polynomial_size)]), dtype=torch.float32), requires_grad=False)
 
-    def forward(self, theta):
-        cut_point = self.forecast_basis.shape[0]
-        backcast = torch.einsum('bp,pt->bt', theta[:, cut_point:], self.backcast_basis)
-        forecast = torch.einsum('bp,pt->bt', theta[:, :cut_point], self.forecast_basis)
-        return backcast, forecast
+#     def forward(self, theta):
+#         cut_point = self.forecast_basis.shape[0]
+#         backcast = torch.einsum('bp,pt->bt', theta[:, cut_point:], self.backcast_basis)
+#         forecast = torch.einsum('bp,pt->bt', theta[:, :cut_point], self.forecast_basis)
+#         return backcast, forecast
 
 
-class SeasonalityBasis(nn.Module):
-    """
-    Seasonality basis function.
-    """
-    def __init__(self, harmonics: int, backcast_size: int, forecast_size: int, **kwargs):
-        super().__init__()
-        frequency = np.append(np.zeros(1, dtype=float),
-                                        np.arange(harmonics, harmonics / 2 * forecast_size,
-                                                    dtype=float) / harmonics)[None, :]
-        backcast_grid = -2 * np.pi * (
-                np.arange(backcast_size, dtype=float)[:, None] / forecast_size) * frequency
-        forecast_grid = 2 * np.pi * (
-                np.arange(forecast_size, dtype=float)[:, None] / forecast_size) * frequency
+# class SeasonalityBasis(nn.Module):
+#     """
+#     Seasonality basis function.
+#     """
+#     def __init__(self, harmonics: int, backcast_size: int, forecast_size: int):
+#         super().__init__()
+#         frequency = np.append(np.zeros(1, dtype=float),
+#                                         np.arange(harmonics, harmonics / 2 * forecast_size,
+#                                                     dtype=float) / harmonics)[None, :]
+#         backcast_grid = -2 * np.pi * (
+#                 np.arange(backcast_size, dtype=float)[:, None] / forecast_size) * frequency
+#         forecast_grid = 2 * np.pi * (
+#                 np.arange(forecast_size, dtype=float)[:, None] / forecast_size) * frequency
 
-        backcast_cos_template = torch.tensor(np.transpose(np.cos(backcast_grid)), dtype=torch.float32)
-        backcast_sin_template = torch.tensor(np.transpose(np.sin(backcast_grid)), dtype=torch.float32)
-        backcast_template = torch.cat([backcast_cos_template, backcast_sin_template], dim=0)
+#         backcast_cos_template = torch.tensor(np.transpose(np.cos(backcast_grid)), dtype=torch.float32)
+#         backcast_sin_template = torch.tensor(np.transpose(np.sin(backcast_grid)), dtype=torch.float32)
+#         backcast_template = torch.cat([backcast_cos_template, backcast_sin_template], dim=0)
 
-        forecast_cos_template = torch.tensor(np.transpose(np.cos(forecast_grid)), dtype=torch.float32)
-        forecast_sin_template = torch.tensor(np.transpose(np.sin(forecast_grid)), dtype=torch.float32)
-        forecast_template = torch.cat([forecast_cos_template, forecast_sin_template], dim=0)
+#         forecast_cos_template = torch.tensor(np.transpose(np.cos(forecast_grid)), dtype=torch.float32)
+#         forecast_sin_template = torch.tensor(np.transpose(np.sin(forecast_grid)), dtype=torch.float32)
+#         forecast_template = torch.cat([forecast_cos_template, forecast_sin_template], dim=0)
 
-        self.backcast_basis = nn.Parameter(backcast_template, requires_grad=False)
-        self.forecast_basis = nn.Parameter(forecast_template, requires_grad=False)
+#         self.backcast_basis = nn.Parameter(backcast_template, requires_grad=False)
+#         self.forecast_basis = nn.Parameter(forecast_template, requires_grad=False)
 
-    def forward(self, theta):
-        cut_point = self.forecast_basis.shape[0]
-        backcast = torch.einsum('bp,pt->bt', theta[:, cut_point:], self.backcast_basis)
-        forecast = torch.einsum('bp,pt->bt', theta[:, :cut_point], self.forecast_basis)
-        return backcast, forecast
+#     def forward(self, theta):
+#         cut_point = self.forecast_basis.shape[0]
+#         backcast = torch.einsum('bp,pt->bt', theta[:, cut_point:], self.backcast_basis)
+#         forecast = torch.einsum('bp,pt->bt', theta[:, :cut_point], self.forecast_basis)
+#         return backcast, forecast
 
 
 class NBeatsBlock(nn.Module):
@@ -194,22 +190,22 @@ class NBeats(nn.Module):
         d_model=128,
         inner_layers=4,
         outer_layers=4,
-        harmonics=4,
-        degree_of_polynomial=3,
+        # harmonics=4,
+        # degree_of_polynomial=3,
         input_len=96, 
         pred_len=96, 
         input_vars=1,
         output_vars=1,
         task_type='m', # TODO, support ms
-        **kwargs
     ):
         super(NBeats, self).__init__()
         block_dict = {
             'g': GenericBasis,
-            't': TrendBasis,
-            's': SeasonalityBasis,
+            # 't': TrendBasis,
+            # 's': SeasonalityBasis,
         }
         self.enc_in = input_vars
+
         self.block = block_dict[block_type]
         
 
@@ -217,8 +213,9 @@ class NBeats(nn.Module):
                                                              theta_size=input_len + pred_len,
                                                              basis_function=self.block(backcast_size=input_len,
                                                                                         forecast_size=pred_len,
-                                                                                        harmonics=harmonics,
-                                                                                        degree_of_polynomial=degree_of_polynomial),
+                                                                                        # harmonics=harmonics,
+                                                                                        # degree_of_polynomial=degree_of_polynomial
+                                                                                        ),
                                                              layers=inner_layers,
                                                              layer_size=d_model)
                                                  for _ in range(outer_layers)]))
@@ -232,30 +229,30 @@ class NBeats(nn.Module):
         return torch.stack(res, dim=-1) # to [Batch, Output length, Channel]
 
 
-def nbeats(d_model=128, inner_layers=4, outer_layers=4, **kwargs):
+def nbeats(common_config, d_model=128, inner_layers=4, outer_layers=4):
     cfg = support_model_cfgs['nbeats']
+    cfg.update(**common_config)
     cfg['d_model']=d_model
     cfg['inner_layers']=inner_layers
     cfg['outer_layers']=outer_layers
-    cfg.update(**kwargs)
     return NBeats(**cfg), cfg
 
-#TODO: test model usability
-def nbeats_s(d_model=128, inner_layers=4, outer_layers=4, harmonics=4, **kwargs):
-    cfg = support_model_cfgs['nbeats_s']
-    cfg['d_model']=d_model
-    cfg['inner_layers']=inner_layers
-    cfg['outer_layers']=outer_layers
-    cfg['harmonics']=harmonics
-    cfg.update(**kwargs)
-    return NBeats(**cfg), cfg
+# #TODO: test model usability
+# def nbeats_s(d_model=128, inner_layers=4, outer_layers=4, harmonics=4, **kwargs):
+#     cfg = support_model_cfgs['nbeats_s']
+#     cfg['d_model']=d_model
+#     cfg['inner_layers']=inner_layers
+#     cfg['outer_layers']=outer_layers
+#     cfg['harmonics']=harmonics
+#     cfg.update(**kwargs)
+#     return NBeats(**cfg), cfg
 
-#TODO: test model usability
-def nbeats_t(d_model=128, inner_layers=4, outer_layers=4, degree_of_polynomial=3, **kwargs):
-    cfg = support_model_cfgs['nbeats_t']
-    cfg['d_model']=d_model
-    cfg['inner_layers']=inner_layers
-    cfg['outer_layers']=outer_layers
-    cfg['degree_of_polynomial']=degree_of_polynomial
-    cfg.update(**kwargs)
-    return NBeats(**cfg), cfg
+# #TODO: test model usability
+# def nbeats_t(d_model=128, inner_layers=4, outer_layers=4, degree_of_polynomial=3, **kwargs):
+#     cfg = support_model_cfgs['nbeats_t']
+#     cfg['d_model']=d_model
+#     cfg['inner_layers']=inner_layers
+#     cfg['outer_layers']=outer_layers
+#     cfg['degree_of_polynomial']=degree_of_polynomial
+#     cfg.update(**kwargs)
+#     return NBeats(**cfg), cfg

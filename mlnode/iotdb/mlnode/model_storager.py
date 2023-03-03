@@ -18,12 +18,16 @@ class ModelStorager(object):
         self._loaded_model_cache = lrucache(cache_size)
 
     def save_model(self, model, model_config, model_id, trial_id):
+        """
+        Return: True if successfully saved
+        """
         fold_path = f'{self.root_path}/mid_{model_id}/'
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
         torch.jit.save(torch.jit.script(model), 
             f'{fold_path}/tid_{trial_id}.pt', 
             _extra_files={'model_config': json.dumps(model_config)})
+        return os.path.exists(f'{fold_path}/tid_{trial_id}.pt')
 
     def load_model(self, model_id, trial_id):
         file_path = f'{self.root_path}/mid_{model_id}/tid_{trial_id}.pt'
@@ -45,6 +49,9 @@ class ModelStorager(object):
             del self._loaded_model_cache[key]
 
     def delete_trial(self, model_id, trial_id):
+        """
+        Return: True if successfully deleted
+        """
         file_path = f'{self.root_path}/mid_{model_id}/tid_{trial_id}.pt'
         self._remove_from_cache(file_path)
         if os.path.exists(file_path):    
@@ -52,6 +59,9 @@ class ModelStorager(object):
         return not os.path.exists(file_path)
 
     def delete_model(self, model_id):
+        """
+        Return: True if successfully deleted
+        """
         folder_path = f'{self.root_path}/mid_{model_id}/'
         for file_name in os.listdir(folder_path):
             self._remove_from_cache(f'{folder_path}/{file_name}')
