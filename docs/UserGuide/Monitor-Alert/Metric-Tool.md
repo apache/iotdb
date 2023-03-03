@@ -265,26 +265,39 @@ carefully evaluated. The current Core-level metrics are as follows:
 | region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
 | region | name="{ip}:{port}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
 
-#### 4.2.2. IoTConsensus
+#### 4.2.2. RatisConsensus
 
-| Metric       | Tags                                                                                   | Type      | Description                                                           |
-| ------------ | -------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
-| mutli_leader | name="logDispatcher-{IP}:{Port}", region="{region}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
+| Metric                | Tags                        | Type  | Description                                     |
+| --------------------- | --------------------------- | ----- | ----------------------------------------------- |
+| ratis_consensus_write | stage="checkWriteCondition" | Timer | The time cost in checking write condition stage |
+| ratis_consensus_write | stage="totalConsensusWrite" | Timer | The total write time cost                       |
+| ratis_consensus_write | stage="writeLocally"        | Timer | The time cost of writing locally stage          |
+| ratis_consensus_write | stage="writeRemotely"       | Timer | The time cost of writing remotely stage         |
+| ratis_consensus_write | stage="writeStateMachine"   | Timer | The  time cost of writing state machine stage   |
+| ratis_consensus_read  | stage="checkReadCondition"  | Timer | The time cost of checking read condition stage  |
+| ratis_consensus_read  | stage="submitReadRequest"   | Timer | The time cost of submitting read request stage  |
+| ratis_consensus_read  | stage="totalConsensusRead"  | Timer | The total read time cost                        |
+
+#### 4.2.3. IoTConsensus
+
+| Metric       | Tags                                                         | Type      | Description                                                  |
+| ------------ | ------------------------------------------------------------ | --------- | ------------------------------------------------------------ |
+| mutli_leader | name="logDispatcher-{IP}:{Port}", region="{region}", type="currentSyncIndex" | AutoGauge | The sync index of synchronization thread in replica group    |
 | mutli_leader | name="logDispatcher-{IP}:{Port}", region="{region}", type="cachedRequestInMemoryQueue" | AutoGauge | The size of cache requests of synchronization thread in replica group |
-| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="searchIndex"                   | AutoGauge | The write process of main process in replica group                    |
-| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="safeIndex"                     | AutoGauge | The sync index of replica group                                       |
-| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="syncLag"                       | AutoGauge | The sync lag of replica group                                         |
-| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromWAL"             | AutoGauge | The number of logEntries from wal in Batch                            |
-| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromQueue"           | AutoGauge | The number of logEntries from queue in Batch                          |
-| stage        | name="iot_consensus", region="{region}", type="getStateMachineLock"                    | Histogram | The time consumed to get statemachine lock in main process            |
-| stage        | name="iot_consensus", region="{region}", type="checkingBeforeWrite"                    | Histogram | The time consumed to precheck before write in main process            |
-| stage        | name="iot_consensus", region="{region}", type="writeStateMachine"                      | Histogram | The time consumed to write statemachine in main process               |
-| stage        | name="iot_consensus", region="{region}", type="offerRequestToQueue"                    | Histogram | The time consumed to try to offer request to queue in main process    |
-| stage        | name="iot_consensus", region="{region}", type="consensusWrite"                         | Histogram | The time consumed to the whole write in main process                  |
-| stage        | name="iot_consensus", region="{region}", type="constructBatch"                         | Histogram | The time consumed to construct batch in synchronization thread        |
-| stage        | name="iot_consensus", region="{region}", type="syncLogTimePerRequest"                  | Histogram | The time consumed to sync log in asynchronous callback process        |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="searchIndex" | AutoGauge | The write process of main process in replica group           |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="safeIndex" | AutoGauge | The sync index of replica group                              |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="syncLag" | AutoGauge | The sync lag of replica group                                |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromWAL" | AutoGauge | The number of logEntries from wal in Batch                   |
+| mutli_leader | name="IoTConsensusServerImpl", region="{region}", type="LogEntriesFromQueue" | AutoGauge | The number of logEntries from queue in Batch                 |
+| stage        | name="iot_consensus", region="{region}", type="getStateMachineLock" | Histogram | The time consumed to get statemachine lock in main process   |
+| stage        | name="iot_consensus", region="{region}", type="checkingBeforeWrite" | Histogram | The time consumed to precheck before write in main process   |
+| stage        | name="iot_consensus", region="{region}", type="writeStateMachine" | Histogram | The time consumed to write statemachine in main process      |
+| stage        | name="iot_consensus", region="{region}", type="offerRequestToQueue" | Histogram | The time consumed to try to offer request to queue in main process |
+| stage        | name="iot_consensus", region="{region}", type="consensusWrite" | Histogram | The time consumed to the whole write in main process         |
+| stage        | name="iot_consensus", region="{region}", type="constructBatch" | Histogram | The time consumed to construct batch in synchronization thread |
+| stage        | name="iot_consensus", region="{region}", type="syncLogTimePerRequest" | Histogram | The time consumed to sync log in asynchronous callback process |
 
-#### 4.2.3. Cache
+#### 4.2.4. Cache
 
 | Metric    | Tags                               | Type      | Description                                                              |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
@@ -299,7 +312,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
 | cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
 
-#### 4.2.4. Memory
+#### 4.2.5. Memory
 
 | Metric | Tags                                 | Type      | Description                                                        |
 | ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
@@ -310,7 +323,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | mem    | name="IoTConsensusSync"              | AutoGauge | The memory usage of IoTConsensus SyncStatus, Unit: byte            |
 | mem    | name="schema_region_total_usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
 
-#### 4.2.5. Compaction
+#### 4.2.6. Compaction
 
 | Metric                | Tags                                                | Type    | Description                            |
 | --------------------- | --------------------------------------------------- | ------- | -------------------------------------- |
@@ -320,7 +333,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | The number of inner sequence compction |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | The number of corss compction          |
 
-#### 4.2.6. IoTDB Process
+#### 4.2.7. IoTDB Process
 
 | Metric                | Tags           | Type      | Description                                 |
 | --------------------- | -------------- | --------- | ------------------------------------------- |
@@ -329,20 +342,20 @@ carefully evaluated. The current Core-level metrics are as follows:
 | process_threads_count | name="process" | AutoGauge | The number of thread of IoTDB process       |
 | process_status        | name="process" | AutoGauge | The status of IoTDB process, 1=live, 0=dead |
 
-#### 4.2.7. JVM Class
+#### 4.2.8. JVM Class
 
 | Metric                       | Tags | Type      | Description                  |
 | ---------------------------- | ---- | --------- | ---------------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | The number of unloaded class |
 | jvm_classes_loaded_classes   |      | AutoGauge | The number of loaded class   |
 
-#### 4.2.8. JVM Compilation
+#### 4.2.9. JVM Compilation
 
 | Metric                  | Tags                                          | Type      | Description                      |
 | ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
 
-#### 4.2.9. Query Planning
+#### 4.2.10. Query Planning
 
 | Metric          | Tags                         | Type  | Description                                         |
 | --------------- | ---------------------------- | ----- | --------------------------------------------------- |
@@ -352,14 +365,14 @@ carefully evaluated. The current Core-level metrics are as follows:
 | query_plan_cost | stage="partition_fetcher"    | Timer | The partition information fetching time-consuming   |
 | query_plan_cost | stage="schema_fetcher"       | Timer | The schema information fetching time-consuming      |
 
-#### 4.2.10. Plan Dispatcher
+#### 4.2.11. Plan Dispatcher
 
 | Metric     | Tags                      | Type  | Description                                                  |
 | ---------- | ------------------------- | ----- | ------------------------------------------------------------ |
 | dispatcher | stage="wait_for_dispatch" | Timer | The distribution plan dispatcher time-consuming              |
 | dispatcher | stage="dispatch_read"     | Timer | The distribution plan dispatcher time-consuming (only query) |
 
-#### 4.2.11. Query Resource
+#### 4.2.12. Query Resource
 
 | Metric         | Tags                     | Type | Description                                |
 | -------------- | ------------------------ | ---- | ------------------------------------------ |
@@ -368,7 +381,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | query_resource | type="flushing_memtable" | Rate | The access frequency of flushing memtables |
 | query_resource | type="working_memtable"  | Rate | The access frequency of working memtables  |
 
-#### 4.2.12. Data Exchange
+#### 4.2.13. Data Exchange
 
 | Metric              | Tags                                                                   | Type      | Description                                                     |
 | ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
@@ -382,7 +395,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
 
-#### 4.2.13. Query Task Schedule
+#### 4.2.14. Query Task Schedule
 
 | Metric           | Tags                           | Type      | Description                                      |
 | ---------------- | ------------------------------ | --------- | ------------------------------------------------ |
@@ -391,7 +404,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
 | driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
 
-#### 4.2.14. Query Execution
+#### 4.2.15. Query Execution
 
 | Metric                   | Tags                                                                                | Type    | Description                                                                             |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------- |
