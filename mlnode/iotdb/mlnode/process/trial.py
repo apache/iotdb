@@ -18,6 +18,7 @@
 
 
 import os
+import sys
 import torch
 import argparse
 import time
@@ -25,6 +26,8 @@ import time
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+
+sys.path.append("..")
 
 from algorithm import model_factory
 from datats import data_factory
@@ -34,56 +37,55 @@ from model_storager import modelStorager
 from torch.utils.data import DataLoader
 
 
-def parseConfig(config):
-    # default config
-    config.use_gpu = False
-    config.use_multi_gpu = False
-    config.devices = [0]
-    config.gpu = 0
+def parseTrialConfig(**kwargs):
+    return {
+        "batch_size": 32,
+        "learning_rate": 0.0001,
+        "epochs": 10,
+        "use_gpu": False,
+        "devices": [0],
+        "use_multi_gpu": False,
+        "gpu": 0,
+        "seq_len": 96,
+        "pred_len": 96,
+        **kwargs
+    }
 
-    config.model_type = 'DLinear'
-    config.batch_size = 32
+def parseModelConfig(**kwargs):
+    return {
+        **kwargs
+    }
 
-    return config
-
+def parseDataConfig(**kwargs):
+    return {
+        **kwargs
+    }
 
 class BasicTrial(object):
-    def __init__(self, configs):
-        self.configs = parseConfig(configs)
+    def __init__(self, configs, model_configs, data_configs):
+        self.trial_configs = parseTrialConfig(**configs)
         self.model, self.model_cfg = self._build_model()
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
         self.dataset, self.dataloader = self._build_data()
 
-        self.model_id = configs.model_id
-        self.trial_id = configs.trial_id
+        self.model_id = configs["model_id"]
+        self.trial_id = configs["trial_id"]
 
 
-    def _build_model(self): # MODEL Factory
-        model, model_cfg = debug_model()        
-        return model, model_cfg
+    def _build_model(self): 
+        raise NotImplementedError
 
-
-    def _build_data(self): # virtual method
-        train_dataset, train_cfg = debug_dataset()
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=self.configs.batch_size,
-            shuffle=True,
-            drop_last=True
-        )
-        return train_dataset, train_loader
-
+    def _build_data(self): 
+        raise NotImplementedError
 
     def _acquire_device(self):
-        if self.configs.use_gpu:
+        if self.trial_configs["use_gpu"]:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(
-                self.configs.gpu) if not self.configs.use_multi_gpu else self.configs.devices
-            device = torch.device('cuda:{}'.format(self.configs.gpu))
-            # print('Use GPU: cuda:{}'.format(self.configs.gpu))
+                self.trial_configs["gpu"]) if not self.trial_configs["use_multi_gpu"] else self.trial_configs["devices"]
+            device = torch.device('cuda:{}'.format(self.trial_configs["gpu"]))
         else:
             device = torch.device('cpu')
-            # print('Use CPU')
         return device
 
 
@@ -92,10 +94,24 @@ class BasicTrial(object):
 
 
 class ForecastingTrainingTrial(BasicTrial):
-    def __init__(self, args):
-        super(ForecastingTrainingTrial, self).__init__(args)
+    def __init__(self, trial_configs, model_configs, data_configs):
+        super(ForecastingTrainingTrial, self).__init__(trial_configs, model_configs, data_configs)
+
+    def _build_model(self): # MODEL Factory
+        model, model_cfg = debug_model()        
+        return model, model_cfg
+    
+    def _build_data(self): # virtual method
+        train_dataset, train_cfg = debug_dataset()
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=self.trial_configs["batch_size"],
+            shuffle=True,
+            drop_last=True
+        )
+        return train_dataset, train_loader
         
-    def train(self, model, optimizer, criterion, dataloader, configs, epoch):
+    def train(self, model, optimizer, criterion, dataloader, epoch): # TODO: remove configs
         model.train()
         train_loss = []
         print("start training...")
@@ -104,18 +120,18 @@ class ForecastingTrainingTrial(BasicTrial):
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
             optimizer.zero_grad()
 
-            batch_x = batch_x.float().to(configs.device)
-            batch_y = batch_y.float().to(configs.device)
+            batch_x = batch_x.float().to(self.device)
+            batch_y = batch_y.float().to(self.device)
 
-            batch_x_mark = batch_x_mark.float().to(configs.device)
-            batch_y_mark = batch_y_mark.float().to(configs.device)
+            batch_x_mark = batch_x_mark.float().to(self.device)
+            batch_y_mark = batch_y_mark.float().to(self.device)
 
             # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -configs.pred_len:, :]).float()
+            dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-            outputs = outputs[:, -configs.pred_len:]
-            batch_y = batch_y[:, -configs.pred_len:]
+            outputs = outputs[:, -self.trial_configs["pred_len"]:]
+            batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
             loss = criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
@@ -131,23 +147,23 @@ class ForecastingTrainingTrial(BasicTrial):
 
         return train_loss
     
-    def validate(self, model, criterion, dataloader, configs, epoch):
+    def validate(self, model, criterion, dataloader, epoch):
         model.eval()
         val_loss = []
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
 
-            batch_x = batch_x.float().to(configs.device)
-            batch_y = batch_y.float().to(configs.device)
+            batch_x = batch_x.float().to(self.device)
+            batch_y = batch_y.float().to(self.device)
 
-            batch_x_mark = batch_x_mark.float().to(configs.device)
-            batch_y_mark = batch_y_mark.float().to(configs.device)
+            batch_x_mark = batch_x_mark.float().to(self.device)
+            batch_y_mark = batch_y_mark.float().to(self.device)
 
             # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -configs.pred_len:, :]).float()
+            dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
             outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-            outputs = outputs[:, -configs.pred_len:]
-            batch_y = batch_y[:, -configs.pred_len:]
+            outputs = outputs[:, -self.trial_configs["pred_len"]:]
+            batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
             loss = criterion(outputs, batch_y)
             val_loss.append(loss.item())         
 
@@ -157,16 +173,16 @@ class ForecastingTrainingTrial(BasicTrial):
     
 
     def start(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.configs.learning_rate)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.trial_configs["learning_rate"])
         criterion = torch.nn.MSELoss()
 
         best_loss = np.inf
-        for epoch in range(self.configs.epochs):
-            train_loss = self.train(self.model, optimizer, criterion, self.dataloader, self.configs, epoch) 
-            val_loss = self.validate(self.model, criterion, self.dataloader, self.configs, epoch)
+        for epoch in range(self.trial_configs["epochs"]):
+            train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch) 
+            val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelStorager.save_model(self.model, self.model_cfg, self.model_id, 1)
+                # modelStorager.save_model(self.model, self.model_cfg, self.model_id, 1)
         return best_loss
         
 
@@ -236,16 +252,9 @@ class ForecastingInferenceTrial(BasicTrial):
         
 
 if __name__ == '__main__':
-    configs = argparse.Namespace(
-        model_id = 1,
-        trial_id = 1,
-        learning_rate = 0.0001,
-        batch_size=32,
-        epochs=10,
-        lradj='type1',
-        device='cpu',
-        pred_len = 96,
-        seq_len = 96
-    )
-    trial = ForecastingTrainingTrial(configs)
+    configs = {
+        "model_id": 1,
+        "trial_id": 1
+    }
+    trial = ForecastingTrainingTrial(configs, None, None)
     trial.start()
