@@ -982,38 +982,6 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> searchSourceExpressions(Expression expression) {
     return new CollectSourceExpressionsVisitor().process(expression, null);
-//    if (expression instanceof TernaryExpression) {
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      resultExpressions.addAll(
-//          searchSourceExpressions(((TernaryExpression) expression).getFirstExpression()));
-//      resultExpressions.addAll(
-//          searchSourceExpressions(((TernaryExpression) expression).getSecondExpression()));
-//      resultExpressions.addAll(
-//          searchSourceExpressions(((TernaryExpression) expression).getThirdExpression()));
-//      return resultExpressions;
-//    } else if (expression instanceof BinaryExpression) {
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      resultExpressions.addAll(
-//          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
-//      resultExpressions.addAll(
-//          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
-//      return resultExpressions;
-//    } else if (expression instanceof UnaryExpression) {
-//      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
-//    } else if (expression instanceof FunctionExpression) {
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      for (Expression childExpression : expression.getExpressions()) {
-//        resultExpressions.addAll(searchSourceExpressions(childExpression));
-//      }
-//      return resultExpressions;
-//    } else if (expression instanceof TimeSeriesOperand) {
-//      return Collections.singletonList(expression);
-//    } else if (expression instanceof LeafOperand) {
-//      return Collections.emptyList();
-//    } else {
-//      throw new IllegalArgumentException(
-//          "unsupported expression type: " + expression.getExpressionType());
-//    }
   }
 
   /**
@@ -1024,40 +992,6 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> searchAggregationExpressions(Expression expression) {
     return new CollectAggregationExpressionsVisitor().process(expression, null);
-//    if (expression instanceof TernaryExpression) {
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      resultExpressions.addAll(
-//          searchAggregationExpressions(((TernaryExpression) expression).getFirstExpression()));
-//      resultExpressions.addAll(
-//          searchAggregationExpressions(((TernaryExpression) expression).getSecondExpression()));
-//      resultExpressions.addAll(
-//          searchAggregationExpressions(((TernaryExpression) expression).getThirdExpression()));
-//      return resultExpressions;
-//    } else if (expression instanceof BinaryExpression) {
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      resultExpressions.addAll(
-//          searchAggregationExpressions(((BinaryExpression) expression).getLeftExpression()));
-//      resultExpressions.addAll(
-//          searchAggregationExpressions(((BinaryExpression) expression).getRightExpression()));
-//      return resultExpressions;
-//    } else if (expression instanceof UnaryExpression) {
-//      return searchAggregationExpressions(((UnaryExpression) expression).getExpression());
-//    } else if (expression instanceof FunctionExpression) {
-//      if (expression.isBuiltInAggregationFunctionExpression()) {
-//        return Collections.singletonList(expression);
-//      }
-//
-//      List<Expression> resultExpressions = new ArrayList<>();
-//      for (Expression inputExpression : expression.getExpressions()) {
-//        resultExpressions.addAll(searchAggregationExpressions(inputExpression));
-//      }
-//      return resultExpressions;
-//    } else if (expression instanceof LeafOperand) {
-//      return Collections.emptyList();
-//    } else {
-//      throw new IllegalArgumentException(
-//          "unsupported expression type: " + expression.getExpressionType());
-//    }
   }
 
   /**
