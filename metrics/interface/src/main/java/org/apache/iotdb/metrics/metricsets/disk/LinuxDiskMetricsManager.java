@@ -94,6 +94,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private final Map<String, Long> lastTimeInQueueForDisk;
   private final Map<String, Long> incrementReadOperationCountForDisk;
   private final Map<String, Long> incrementWriteOperationCountForDisk;
+  private final Map<String, Long> incrementMergedReadOperationCountForDisk;
+  private final Map<String, Long> incrementMergedWriteOperationCountForDisk;
   private final Map<String, Long> incrementReadTimeCostForDisk;
   private final Map<String, Long> incrementWriteTimeCostForDisk;
   private final Map<String, Long> incrementReadSectorCountForDisk;
@@ -114,26 +116,29 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         String.format(
             "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
     collectDiskId();
-    diskSectorSizeMap = new HashMap<>(diskIdSet.size());
+    // leave one entry to avoid hashmap resizing
+    diskSectorSizeMap = new HashMap<>(diskIdSet.size() + 1, 1);
     collectDiskInfo();
-    lastReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    lastReadTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    lastMergedReadCountForDisk = new HashMap<>(diskIdSet.size());
-    lastMergedWriteCountForDisk = new HashMap<>(diskIdSet.size());
-    lastReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    lastIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
-    lastTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
-    incrementTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
+    lastReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastReadTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastMergedReadCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastMergedWriteCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastReadSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastIoBusyTimeForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastTimeInQueueForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementMergedReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementMergedWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementIoBusyTimeForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementTimeInQueueForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
   }
 
   @Override
@@ -194,7 +199,11 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
     for (Map.Entry<String, Long> readCostEntry : incrementReadTimeCostForDisk.entrySet()) {
       // use Long.max to avoid NaN
       long readOpsCount =
-          Long.max(incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L), 1L);
+          Long.max(
+              incrementReadOperationCountForDisk.getOrDefault(readCostEntry.getKey(), 1L)
+                  + incrementMergedReadOperationCountForDisk.getOrDefault(
+                      readCostEntry.getKey(), 1L),
+              1L);
       avgReadTimeCostMap.put(
           readCostEntry.getKey(), (double) readCostEntry.getValue() / readOpsCount);
     }
@@ -208,7 +217,10 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
       // use Long.max to avoid NaN
       long writeOpsCount =
           Long.max(
-              incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L), 1L);
+              incrementWriteOperationCountForDisk.getOrDefault(writeCostEntry.getKey(), 1L)
+                  + incrementMergedWriteOperationCountForDisk.getOrDefault(
+                      writeCostEntry.getKey(), 1L),
+              1L);
       avgWriteTimeCostMap.put(
           writeCostEntry.getKey(), (double) writeCostEntry.getValue() / writeOpsCount);
     }
@@ -222,7 +234,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
       // use Long.max to avoid NaN
       long readOpsCount =
           Long.max(
-              incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L),
+              incrementReadOperationCountForDisk.getOrDefault(readSectorSizeEntry.getKey(), 1L)
+                  + incrementMergedReadOperationCountForDisk.getOrDefault(
+                      readSectorSizeEntry.getKey(), 1L),
               1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(readSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
@@ -241,7 +255,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
       // use Long.max to avoid NaN
       long writeOpsCount =
           Long.max(
-              incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L),
+              incrementWriteOperationCountForDisk.getOrDefault(writeSectorSizeEntry.getKey(), 1L)
+                  + incrementMergedWriteOperationCountForDisk.getOrDefault(
+                      writeSectorSizeEntry.getKey(), 1L),
               1L);
       int sectorSize =
           diskSectorSizeMap.getOrDefault(writeSectorSizeEntry.getKey(), DEFAULT_SECTOR_SIZE);
@@ -388,8 +404,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         Map[] incrementMapArray = {
           incrementReadOperationCountForDisk,
           incrementWriteOperationCountForDisk,
-          null,
-          null,
+          incrementMergedReadOperationCountForDisk,
+          incrementMergedWriteOperationCountForDisk,
           incrementReadSectorCountForDisk,
           incrementWriteSectorCountForDisk,
           incrementReadTimeCostForDisk,
