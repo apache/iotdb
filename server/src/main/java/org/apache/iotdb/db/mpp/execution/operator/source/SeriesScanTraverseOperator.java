@@ -144,6 +144,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     }
     if (seqFileNum == 0) {
       childSourceOperator = Collections.emptyList();
+      initFirstChildIndex();
       return;
     }
 
@@ -203,6 +204,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
           // if there is no more tsFile can be processed
         } else {
           closeRedundantSourceOperator(i);
+          initFirstChildIndex();
           return;
         }
       }
@@ -223,13 +225,8 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       startTime = curMaxTime + 1;
       endTime = Math.min(startTime + avgTime, maxTime);
     }
-
     // initialize first child index
-    if (scanOrder.isAscending()) {
-      curChildIndex = 0;
-    } else {
-      curChildIndex = childSourceOperator.size() - 1;
-    }
+    initFirstChildIndex();
   }
 
   private Filter getGlobalTimeFilter() {
@@ -260,6 +257,15 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     } else {
       return new SeriesScanUtil(
           seriesPath, scanOrder, scanOptions, operatorContext.getInstanceContext());
+    }
+  }
+
+  private void initFirstChildIndex() {
+    // initialize first child index
+    if (scanOrder.isAscending()) {
+      curChildIndex = 0;
+    } else {
+      curChildIndex = childSourceOperator.size() - 1;
     }
   }
 
