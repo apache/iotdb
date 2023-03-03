@@ -1606,13 +1606,14 @@ public class IoTDBDescriptor {
 
     String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
     proportions = allocationRatioForWrite.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
+    int proportionForMemTable = Integer.parseInt(proportions[0].replace("\\", "").trim());
     int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
+    logger.info("proportionForTimePartitionInfo = {}", proportionForTimePartitionInfo);
 
     double memtableProportionForWrite =
         ((double) (proportionForMemTable)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
+
     double timePartitionInfoForWrite =
         ((double) (proportionForTimePartitionInfo)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));
