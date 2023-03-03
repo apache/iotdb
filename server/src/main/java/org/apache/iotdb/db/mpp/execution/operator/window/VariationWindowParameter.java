@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class EventWindowParameter extends WindowParameter {
+public class VariationWindowParameter extends WindowParameter {
 
   private final boolean ignoringNull;
   private final double delta;
@@ -29,7 +29,7 @@ public class EventWindowParameter extends WindowParameter {
 
   private final int controlColumnIndex;
 
-  public EventWindowParameter(
+  public VariationWindowParameter(
       TSDataType dataType,
       int controlColumnIndex,
       boolean needOutputEndTime,
@@ -40,7 +40,7 @@ public class EventWindowParameter extends WindowParameter {
     this.dataType = dataType;
     this.ignoringNull = ignoringNull;
     this.delta = delta;
-    this.windowType = WindowType.EVENT_WINDOW;
+    this.windowType = WindowType.VARIATION_WINDOW;
   }
 
   public boolean isIgnoringNull() {
