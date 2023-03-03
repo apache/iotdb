@@ -178,24 +178,13 @@ public class MemoryPool {
     }
 
     ListenableFuture<Void> result;
-    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
-    long queryRemainingBytes =
-        maxBytesCanReserve
-            - queryMemoryReservations
-                .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-                .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-                .merge(planNodeId, bytesToReserve, Long::sum);
-    if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+    if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
       result = Futures.immediateFuture(null);
       return new Pair<>(result, Boolean.TRUE);
     } else {
       LOGGER.debug(
           "Blocked reserve request: {} bytes memory for planNodeId{}", bytesToReserve, planNodeId);
-      remainingBytes.addAndGet(bytesToReserve);
-      queryMemoryReservations
-          .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-          .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-          .merge(planNodeId, -bytesToReserve, Long::sum);
+      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
       result =
           MemoryReservationFuture.create(
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
@@ -205,7 +194,7 @@ public class MemoryPool {
   }
 
   @TestOnly
-  public boolean tryReserve(
+  public boolean tryReserveForTest(
       String queryId,
       String fragmentInstanceId,
       String planNodeId,
@@ -219,21 +208,10 @@ public class MemoryPool {
         "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
         bytesToReserve);
 
-    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
-    long queryRemainingBytes =
-        maxBytesCanReserve
-            - queryMemoryReservations
-                .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-                .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-                .merge(planNodeId, bytesToReserve, Long::sum);
-    if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+    if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
       return true;
     } else {
-      remainingBytes.addAndGet(bytesToReserve);
-      queryMemoryReservations
-          .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
-          .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
-          .merge(planNodeId, -bytesToReserve, Long::sum);
+      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
       return false;
     }
   }
@@ -313,23 +291,14 @@ public class MemoryPool {
         String curQueryId = future.getQueryId();
         String curFragmentInstanceId = future.getFragmentInstanceId();
         String curPlanNodeId = future.getPlanNodeId();
-        long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
-        long queryRemainingBytes =
-            future.getMaxBytesCanReserve()
-                - queryMemoryReservations
-                    .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
-                    .merge(curPlanNodeId, bytesToReserve, Long::sum);
-        if (tryRemainingBytes >= 0 && queryRemainingBytes >= 0) {
+        long maxBytesCanReserve = future.getMaxBytesCanReserve();
+        if (tryReserve(
+            curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve, maxBytesCanReserve)) {
           futureList.add(future);
           future.setMarked(true);
           iterator.remove();
         } else {
-          remainingBytes.addAndGet(bytesToReserve);
-          queryMemoryReservations
-              .computeIfAbsent(curQueryId, x -> new ConcurrentHashMap<>())
-              .computeIfAbsent(curFragmentInstanceId, x -> new ConcurrentHashMap<>())
-              .merge(curPlanNodeId, -bytesToReserve, Long::sum);
+          rollbackReserve(curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve);
         }
       }
     }
@@ -398,5 +367,30 @@ public class MemoryPool {
             return KInstanceBytesReserved;
           });
     }
+  }
+
+  private boolean tryReserve(
+      String queryId,
+      String fragmentInstanceId,
+      String planNodeId,
+      long bytesToReserve,
+      long maxBytesCanReserve) {
+    long tryRemainingBytes = remainingBytes.addAndGet(-bytesToReserve);
+    long queryRemainingBytes =
+        maxBytesCanReserve
+            - queryMemoryReservations
+                .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+                .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+                .merge(planNodeId, bytesToReserve, Long::sum);
+    return tryRemainingBytes >= 0 && queryRemainingBytes >= 0;
+  }
+
+  private void rollbackReserve(
+      String queryId, String fragmentInstanceId, String planNodeId, long bytesToReserve) {
+    queryMemoryReservations
+        .computeIfAbsent(queryId, x -> new ConcurrentHashMap<>())
+        .computeIfAbsent(fragmentInstanceId, x -> new ConcurrentHashMap<>())
+        .merge(planNodeId, -bytesToReserve, Long::sum);
+    remainingBytes.addAndGet(bytesToReserve);
   }
 }
