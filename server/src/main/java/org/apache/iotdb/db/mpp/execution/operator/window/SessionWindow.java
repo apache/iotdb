@@ -83,6 +83,7 @@ public class SessionWindow implements IWindow {
     }
     // update the last time of session window
     timeValue = ascending ? Math.max(timeValue, currentTime) : Math.min(timeValue, currentTime);
+    setLastTsBlockTime(timeValue);
   }
 
   @Override
@@ -145,10 +146,6 @@ public class SessionWindow implements IWindow {
 
   public void setInitializedTimeValue(boolean initializedTimeValue) {
     this.initializedTimeValue = initializedTimeValue;
-  }
-
-  public long getLastTsBlockTime() {
-    return lastTsBlockTime;
   }
 
   public void setLastTsBlockTime(long lastTsBlockTime) {

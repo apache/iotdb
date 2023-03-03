@@ -181,6 +181,15 @@
                                         <resource>
                                             <directory>${basedir}/src/main/</directory>
                                             <filtering>true</filtering>
+                                            <excludes>
+                                                <exclude>.eslintignore</exclude>
+                                                <exclude>.eslintrc.cjs</exclude>
+                                                <exclude>.gitignore</exclude>
+                                                <exclude>package-lock.json</exclude>
+                                                <exclude>package.json</exclude>
+                                                <exclude>tsconfig.base.json</exclude>
+                                                <exclude>tsconfig.json</exclude>
+                                            </excludes>
                                         </resource>
                                     </resources>
                                 </configuration>
@@ -333,8 +342,8 @@
                                 </goals>
                                 <phase>compile</phase>
                                 <configuration>
-                                    <nodeVersion>v16.9.1</nodeVersion>
-                                    <npmVersion>6.14.4</npmVersion>
+                                    <nodeVersion>v18.14.2</nodeVersion>
+                                    <npmVersion>9.5.1</npmVersion>
                                 </configuration>
                             </execution>
                             <!-- Install all project dependencies -->
@@ -379,6 +388,22 @@
                                         <fileSet>
                                             <sourceFile>${basedir}/src/main/package.json</sourceFile>
                                             <destinationFile>${project.build.directory}/vue-source/package.json</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.eslintrc.cjs</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/.eslintrc.cjs</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/.eslintignore</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/.eslintignore</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/tsconfig.base.json</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/tsconfig.base.json</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/main/tsconfig.json</sourceFile>
+                                            <destinationFile>${project.build.directory}/vue-source/tsconfig.json</destinationFile>
                                         </fileSet>
                                         <fileSet>
                                             <sourceFile>${basedir}/src/main/deploy.js</sourceFile>

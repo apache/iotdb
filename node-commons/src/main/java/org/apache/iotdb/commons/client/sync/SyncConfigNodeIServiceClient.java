@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
@@ -40,23 +39,26 @@ import java.net.SocketException;
 public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     implements ThriftClient, AutoCloseable {
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   public SyncConfigNodeIServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endPoint,
       ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
       throws TTransportException {
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    endPoint.getIp(),
-                    endPoint.getPort(),
-                    connectionTimeout))));
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endPoint.getIp(),
+                        endPoint.getPort(),
+                        property.getConnectionTimeoutMs()))));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
@@ -87,6 +89,11 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
   }
 
   @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  @Override
   public String toString() {
     return String.format("SyncConfigNodeIServiceClient{%s}", endpoint);
   }
@@ -112,9 +119,8 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncConfigNodeIServiceClient.class,
               SyncConfigNodeIServiceClient.class.getConstructor(
-                  TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
               endpoint,
               clientManager));
     }

@@ -117,6 +117,7 @@ public class CacheMemoryManager {
                   tryExecuteMemoryRelease();
                 }
               } catch (Throwable throwable) {
+                hasReleaseTask = false;
                 logger.error("Something wrong happened during MTree release.", throwable);
               }
             }
@@ -135,6 +136,7 @@ public class CacheMemoryManager {
                   tryFlushVolatileNodes();
                 }
               } catch (Throwable throwable) {
+                hasFlushTask = false;
                 logger.error("Something wrong happened during MTree flush.", throwable);
               }
             }
@@ -279,10 +281,16 @@ public class CacheMemoryManager {
   public void clear() {
     if (releaseTaskMonitor != null) {
       releaseTaskMonitor.shutdownNow();
+      while (true) {
+        if (releaseTaskMonitor.isTerminated()) break;
+      }
       releaseTaskMonitor = null;
     }
     if (flushTaskMonitor != null) {
       flushTaskMonitor.shutdownNow();
+      while (true) {
+        if (flushTaskMonitor.isTerminated()) break;
+      }
       releaseTaskMonitor = null;
     }
     if (releaseTaskProcessor != null) {

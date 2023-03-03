@@ -427,6 +427,34 @@ carefully evaluated. The current Core-level metrics are as follows:
 | schema_engine | name="schema_region_number"                                  | AutoGauge | Number of SchemaRegion                 |
 | schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | Memory usgae for each SchemaRegion     |
 | schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Timeseries count for each SchemaRegion |
+#### 4.2.17 Write Performance
+
+| Metric                    | Tags                                                                  | Type      | Description                                            |
+|---------------------------|:----------------------------------------------------------------------|-----------|--------------------------------------------------------|
+| wal_node_num              | name="wal_nodes_num"                                                  | AutoGauge | Num of WALNode                                         |
+| wal_cost                  | stage="make_checkpoint"  type="<checkpoint_type>"                     | Timer     | Time cost of make checkpoints for all checkpoint type  |
+| wal_cost                  | type="serialize_one_wal_info_entry"                                   | Timer     | Time cost of serialize one WALInfoEntry                |
+| wal_cost                  | stage="sync_wal_buffer" type="<force_flag>"                           | Timer     | Time cost of sync WALBuffer                            |
+| wal_buffer                | name="used_ratio"                                                     | Histogram | Used ratio of WALBuffer                                |
+| wal_cost                  | stage="serialize_wal_entry" type="serialize_wal_entry_total"          | Timer     | Time cost of WALBuffer serialize task                  |
+| wal_node_info             | name="effective_info_ratio" type="<wal_node_id>"                      | Histogram | Effective info ratio of WALNode                        |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_snapshot" type="<wal_node_id>"  | Histogram | Ram of oldest memTable when cause snapshot             |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_flush" type="<wal_node_id>"     | Histogram | Ram of oldest memTable when cause flush                |
+| flush_sub_task_cost       | type="sort_task"                                                      | Timer     | Time cost of sort series in flush sort stage           |
+| flush_sub_task_cost       | type="encoding_task"                                                  | Timer     | Time cost of sub encoding task in flush encoding stage |
+| flush_sub_task_cost       | type="io_task"                                                        | Timer     | Time cost of sub io task in flush io stage             |
+| flush_cost                | stage="write_plan_indices"                                            | Timer     | Time cost of write plan indices                        |
+| flush_cost                | stage="sort"                                                          | Timer     | Time cost of flush sort stage                          |
+| flush_cost                | stage="encoding"                                                      | Timer     | Time cost of flush encoding stage                      |
+| flush_cost                | stage="io"                                                            | Timer     | Time cost of flush io stage                            |
+| pending_flush_task        | type="pending_task_num"                                               | AutoGauge | Num of pending flush task num                          |
+| pending_flush_task        | type="pending_sub_task_num"                                           | AutoGauge | Num of pending flush sub task num                      |
+| flushing_mem_table_status | name="mem_table_size" region="DataRegion[<data_region_id>]"           | Histogram | Size of flushing memTable                              |
+| flushing_mem_table_status | name="total_point_num" region="DataRegion[<data_region_id>]"          | Histogram | Point num of flushing memTable                         |
+| flushing_mem_table_status | name="series_num" region="DataRegion[<data_region_id>]"               | Histogram | Series num of flushing memTable                        |
+| flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Point num of flushing memChunk                         |
+| flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | TsFile Compression ratio of flushing memTable          |
+| flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | TsFile size of flushing memTable                       |
 
 ### 4.3. Normal level Metrics
 
