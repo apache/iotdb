@@ -71,8 +71,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByConditionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySeriesComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTagComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -965,7 +965,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.EVENT_WINDOW));
+              parseGroupByClause(groupByAttribute, WindowType.VARIATION_WINDOW));
         } else if (groupByAttribute.CONDITION() != null) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
@@ -973,7 +973,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
           groupByKeys.add("COMMON");
           queryStatement.setGroupByComponent(
-              parseGroupByClause(groupByAttribute, WindowType.SERIES_WINDOW));
+              parseGroupByClause(groupByAttribute, WindowType.CONDITION_WINDOW));
         } else if (groupByAttribute.SESSION() != null) {
           if (groupByKeys.contains("COMMON")) {
             throw new SemanticException(GROUP_BY_COMMON_ONLY_ONE_MSG);
@@ -1209,7 +1209,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     List<ExpressionContext> expressions = ctx.expression();
-    if (windowType == WindowType.EVENT_WINDOW) {
+    if (windowType == WindowType.VARIATION_WINDOW) {
       ExpressionContext expressionContext = expressions.get(0);
       GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
       groupByVariationComponent.setControlColumnExpression(
@@ -1218,16 +1218,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           ctx.delta == null ? 0 : Double.parseDouble(ctx.delta.getText()));
       groupByVariationComponent.setIgnoringNull(ignoringNull);
       return groupByVariationComponent;
-    } else if (windowType == WindowType.SERIES_WINDOW) {
+    } else if (windowType == WindowType.CONDITION_WINDOW) {
       ExpressionContext conditionExpressionContext = expressions.get(0);
-      GroupBySeriesComponent groupBySeriesComponent = new GroupBySeriesComponent();
-      groupBySeriesComponent.setControlColumnExpression(
+      GroupByConditionComponent groupByConditionComponent = new GroupByConditionComponent();
+      groupByConditionComponent.setControlColumnExpression(
           parseExpression(conditionExpressionContext, true));
       if (expressions.size() == 2) {
-        groupBySeriesComponent.setKeepExpression(parseExpression(expressions.get(1), true));
+        groupByConditionComponent.setKeepExpression(parseExpression(expressions.get(1), true));
       }
-      groupBySeriesComponent.setIgnoringNull(ignoringNull);
-      return groupBySeriesComponent;
+      groupByConditionComponent.setIgnoringNull(ignoringNull);
+      return groupByConditionComponent;
     } else if (windowType == WindowType.SESSION_WINDOW) {
       long interval = DateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
       return new GroupBySessionComponent(interval);

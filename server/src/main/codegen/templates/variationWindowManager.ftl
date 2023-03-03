@@ -30,8 +30,8 @@
             </#if>
         </#if>
 
-        <#assign className = "${compareType.compareType?cap_first}Event${dataType.dataType?cap_first}WindowManager">
-        <#assign windowName = "${compareType.compareType?cap_first}Event${dataType.dataType?cap_first}Window">
+        <#assign className = "${compareType.compareType?cap_first}${dataType.dataType?cap_first}WindowManager">
+        <#assign windowName = "${compareType.compareType?cap_first}${dataType.dataType?cap_first}Window">
         <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/window/${className}.java" />
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
@@ -46,12 +46,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 /*
 * This class is generated using freemarker and the ${.template_name} template.
 */
-public class ${className} extends Event${dataType.dataType?cap_first}WindowManager {
+public class ${className} extends VariationWindowManager {
 
   public ${className}(
-      EventWindowParameter eventWindowParameter, boolean ascending) {
-    super(eventWindowParameter, ascending);
-    eventWindow = new ${windowName}(eventWindowParameter);
+      VariationWindowParameter variationWindowParameter, boolean ascending) {
+    super(ascending);
+    variationWindow = new ${windowName}(variationWindowParameter);
   }
 
   @Override
@@ -64,24 +64,24 @@ public class ${className} extends Event${dataType.dataType?cap_first}WindowManag
       return inputTsBlock;
     }
 
-    Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
+    Column controlColumn = variationWindow.getControlColumn(inputTsBlock);
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
-    ${dataType.dataType} previousEventValue = ((${windowName}) eventWindow).getPreviousEventValue();
-    boolean previousEventValueIsNull = ((${windowName}) eventWindow).valueIsNull();
+    ${dataType.dataType} previousValue = ((${windowName}) variationWindow).getPreviousHeadValue();
+    boolean previousValueIsNull = ((${windowName}) variationWindow).valueIsNull();
     for (; i < size; i++) {
       // condition must be initialized when isNull is false
       boolean condition = false;
       boolean isNull = controlColumn.isNull(i);
       <#if compareType.compareType == "equal">
           <#if dataType.dataType == "Binary">
-      if(!isNull) condition = !controlColumn.get${dataType.dataType?cap_first}(i).equals(previousEventValue);
+      if(!isNull) condition = !controlColumn.get${dataType.dataType?cap_first}(i).equals(previousValue);
           <#else>
-      if(!isNull) condition = controlColumn.get${dataType.dataType?cap_first}(i) != previousEventValue;
+      if(!isNull) condition = controlColumn.get${dataType.dataType?cap_first}(i) != previousValue;
           </#if>
       <#else>
-      if(!isNull) condition = Math.abs(controlColumn.get${dataType.dataType?cap_first}(i) - previousEventValue)
-          > eventWindowParameter.getDelta();
+      if(!isNull) condition = Math.abs(controlColumn.get${dataType.dataType?cap_first}(i) - previousValue)
+          > variationWindow.getDelta();
       </#if>
       if(isIgnoringNull()){
         if (!isNull && condition) {
@@ -90,19 +90,19 @@ public class ${className} extends Event${dataType.dataType?cap_first}WindowManag
             continue;
         }
       }else{
-        if((isNull&&!previousEventValueIsNull)||!isNull&&previousEventValueIsNull||(!isNull&&condition)){
+        if((isNull&&!previousValueIsNull)||!isNull&&previousValueIsNull||(!isNull&&condition)){
             break;
         }
       }
 
       long currentTime = timeColumn.getLong(i);
       // judge whether we need update startTime
-      if (eventWindow.getStartTime() > currentTime) {
-        eventWindow.setStartTime(currentTime);
+      if (variationWindow.getStartTime() > currentTime) {
+        variationWindow.setStartTime(currentTime);
       }
       // judge whether we need update endTime
-      if (eventWindow.getEndTime() < currentTime) {
-        eventWindow.setEndTime(currentTime);
+      if (variationWindow.getEndTime() < currentTime) {
+        variationWindow.setEndTime(currentTime);
       }
     }
     // we can create a new window beginning at index i of inputTsBlock

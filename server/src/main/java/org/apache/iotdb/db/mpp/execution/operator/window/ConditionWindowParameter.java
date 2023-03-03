@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,22 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
-public class GroupBySeriesComponent extends GroupByComponent {
+public class ConditionWindowParameter extends WindowParameter {
 
-  // use to filter continuous value (keep>=/>/=/</<=threshold)
-  private Expression keepExpression;
+  private final boolean ignoringNull;
+  private final int controlColumnIndex;
+  private final Expression keepExpression;
 
-  public GroupBySeriesComponent() {
-    super(WindowType.SERIES_WINDOW);
+  public ConditionWindowParameter(
+      boolean needOutputEndTime,
+      boolean ignoringNull,
+      int controlColumnIndex,
+      Expression keepExpression) {
+    super(needOutputEndTime);
+    this.windowType = WindowType.CONDITION_WINDOW;
+    this.ignoringNull = ignoringNull;
+    this.controlColumnIndex = controlColumnIndex;
+    this.keepExpression = keepExpression;
   }
 
-  public void setKeepExpression(Expression keepExpression) {
-    this.keepExpression = keepExpression;
+  public boolean isIgnoringNull() {
+    return ignoringNull;
+  }
+
+  public int getControlColumnIndex() {
+    return controlColumnIndex;
   }
 
   public Expression getKeepExpression() {

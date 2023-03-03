@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-public class SeriesWindow implements IWindow {
+public class ConditionWindow implements IWindow {
 
   private final int controlColumnIndex;
   private final boolean outputEndTime;
@@ -33,10 +33,10 @@ public class SeriesWindow implements IWindow {
   private long keep;
   private boolean timeInitialized;
 
-  public SeriesWindow(SeriesWindowParameter seriesWindowParameter) {
-    this.ignoringNull = seriesWindowParameter.isIgnoringNull();
-    this.controlColumnIndex = seriesWindowParameter.getControlColumnIndex();
-    this.outputEndTime = seriesWindowParameter.isNeedOutputEndTime();
+  public ConditionWindow(ConditionWindowParameter conditionWindowParameter) {
+    this.ignoringNull = conditionWindowParameter.isIgnoringNull();
+    this.controlColumnIndex = conditionWindowParameter.getControlColumnIndex();
+    this.outputEndTime = conditionWindowParameter.isNeedOutputEndTime();
   }
 
   @Override
@@ -54,6 +54,7 @@ public class SeriesWindow implements IWindow {
 
   @Override
   public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
+    keep++;
     long currentTime = controlTimeAndValueColumn[1].getLong(index);
     if (!timeInitialized) {
       startTime = currentTime;
