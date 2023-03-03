@@ -56,10 +56,9 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     this.metricService = service;
     prefix =
         MetricRegistry.name(
-            consensusGroupType,
-            info.getApplicationName(),
-            info.getMetricsComponentName(),
-            info.getPrefix());
+            consensusGroupType + "_111_",
+            info.getApplicationName() + "_222_",
+            info.getMetricsComponentName() + "_333_");
   }
 
   private String getMetricName(String name) {
