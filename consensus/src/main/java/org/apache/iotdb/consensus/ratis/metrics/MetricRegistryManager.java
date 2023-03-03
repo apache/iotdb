@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.DoNothingMetricService;
 
 import org.apache.ratis.metrics.MetricRegistries;
 import org.apache.ratis.metrics.MetricRegistryInfo;
@@ -36,7 +36,7 @@ public class MetricRegistryManager extends MetricRegistries {
   /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos */
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
   /** TODO: enable ratis metrics after verifying its correctness and efficiency */
-  private final AbstractMetricService service = new DoNothingMetricService();
+  private final AbstractMetricService service = MetricService.getInstance();
 
   private String consensusGroupType;
 

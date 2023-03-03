@@ -19,10 +19,14 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
@@ -103,6 +107,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public CompletableFuture<Message> applyTransaction(TransactionContext trx) {
+    long writeToStateMachineStartTime = System.nanoTime();
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
@@ -160,7 +165,18 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         }
       }
     } while (shouldRetry);
-
+    // statistic the time of write stateMachine
+    MetricService.getInstance()
+        .getOrCreateHistogram(
+            Metric.STAGE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.RATIS_CONSENSUS.toString(),
+            Tag.TYPE.toString(),
+            "writeStateMachine",
+            Tag.REGION.toString(),
+            this.groupId.toString())
+        .update(System.nanoTime() - writeToStateMachineStartTime);
     return CompletableFuture.completedFuture(ret);
   }
 
