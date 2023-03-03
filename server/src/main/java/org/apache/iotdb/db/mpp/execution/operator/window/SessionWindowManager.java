@@ -23,9 +23,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
@@ -138,30 +136,8 @@ public class SessionWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    // Use the start time of sessionWindow as default output time.
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    timeColumnBuilder.writeLong(sessionWindow.getStartTime());
-
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    if (isNeedOutputEndTime) {
-      columnBuilders[0].writeLong(sessionWindow.getEndTime());
-      columnIndex = 1;
-    }
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    resultTsBlockBuilder.declarePosition();
-  }
-
-  @Override
-  public boolean notInitedLastTimeWindow() {
-    return false;
+    long endTime = isNeedOutputEndTime ? sessionWindow.getEndTime() : -1;
+    outputAggregators(aggregators, resultTsBlockBuilder, sessionWindow.getStartTime(), endTime);
   }
 
   @Override
@@ -172,10 +148,5 @@ public class SessionWindowManager implements IWindowManager {
   @Override
   public boolean isIgnoringNull() {
     return false;
-  }
-
-  @Override
-  public void setLastTsBlockTime() {
-    this.sessionWindow.setLastTsBlockTime(this.sessionWindow.getTimeValue());
   }
 }
