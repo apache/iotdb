@@ -15,7 +15,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_WRITE.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_CHECK);
@@ -26,7 +26,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_READ.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.READ_CHECK);
@@ -37,7 +37,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_WRITE.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_LOCALLY);
@@ -48,7 +48,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_WRITE.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_REMOTELY);
@@ -59,7 +59,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_WRITE.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.TOTAL_WRITE_TIME);
@@ -70,7 +70,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_READ.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.TOTAL_READ_TIME);
@@ -81,7 +81,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_READ.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.SUBMIT_READ_REQUEST);
@@ -92,7 +92,7 @@ public class RatisMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.RATIS_CONSENSUS.toString(),
+        Metric.RATIS_CONSENSUS_WRITE.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         RatisMetricSet.WRITE_STATE_MACHINE);

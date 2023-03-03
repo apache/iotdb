@@ -36,7 +36,9 @@ public class RatisMetricSet implements IMetricSet {
   private MetricRegistries manager;
   private final String consensusGroupType;
   private static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
-  private static final String RATIS_CONSENSUS = Metric.RATIS_CONSENSUS.toString();
+  private static final String RATIS_CONSENSUS_WRITE = Metric.RATIS_CONSENSUS_WRITE.toString();
+  private static final String RATIS_CONSENSUS_READ = Metric.RATIS_CONSENSUS_READ.toString();
+
   public static final String WRITE_CHECK = "checkWriteCondition";
   public static final String READ_CHECK = "checkReadCondition";
   public static final String WRITE_LOCALLY = "writeLocally";
@@ -49,30 +51,34 @@ public class RatisMetricSet implements IMetricSet {
   static {
     metricInfoMap.put(
         WRITE_CHECK,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_CHECK));
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS_WRITE, Tag.STAGE.toString(), WRITE_CHECK));
     metricInfoMap.put(
         READ_CHECK,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), READ_CHECK));
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS_READ, Tag.STAGE.toString(), READ_CHECK));
     metricInfoMap.put(
         WRITE_LOCALLY,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_LOCALLY));
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS_WRITE, Tag.STAGE.toString(), WRITE_LOCALLY));
     metricInfoMap.put(
         WRITE_REMOTELY,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_REMOTELY));
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS_WRITE, Tag.STAGE.toString(), WRITE_REMOTELY));
     metricInfoMap.put(
         TOTAL_WRITE_TIME,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), TOTAL_WRITE_TIME));
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS_WRITE, Tag.STAGE.toString(), TOTAL_WRITE_TIME));
     metricInfoMap.put(
         TOTAL_READ_TIME,
-        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), TOTAL_READ_TIME));
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS_READ, Tag.STAGE.toString(), TOTAL_READ_TIME));
     metricInfoMap.put(
         SUBMIT_READ_REQUEST,
         new MetricInfo(
-            MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), SUBMIT_READ_REQUEST));
+            MetricType.TIMER, RATIS_CONSENSUS_READ, Tag.STAGE.toString(), SUBMIT_READ_REQUEST));
     metricInfoMap.put(
         WRITE_STATE_MACHINE,
         new MetricInfo(
-            MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_STATE_MACHINE));
+            MetricType.TIMER, RATIS_CONSENSUS_WRITE, Tag.STAGE.toString(), WRITE_STATE_MACHINE));
   }
 
   public RatisMetricSet(TConsensusGroupType consensusGroupType) {
