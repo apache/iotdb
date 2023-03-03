@@ -127,8 +127,3 @@ def test_with_null_query():
     df_output = convert_to_df(column_names, data_type_list, column_name_index, binary_with_null)
     df_output = df_output[df_input.columns.tolist()]
     assert_frame_equal(df_input, df_output)
-
-
-if __name__ == '__main__':
-    test_simple_query()
-    test_with_null_query()
