@@ -210,7 +210,7 @@ public class IoTDBGroupByConditionIT {
           {"6", "2500000000", "2499999994", "13", "100.0"},
         };
     String sql =
-        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(soc>=24.0,KEEP<=20)";
+        "select __endTime,max_time(charging_status) - min_time(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by condition(soc>=24.0,KEEP<=15)";
     normalTestWithEndTime(res, sql);
   }
 

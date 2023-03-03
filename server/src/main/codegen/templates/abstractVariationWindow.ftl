@@ -20,7 +20,7 @@
 
 <#list allDataTypes.types as type>
 
-    <#assign className = "Event${type.dataType?cap_first}Window">
+    <#assign className = "AbstractVariation${type.dataType?cap_first}Window">
     <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/window/${className}.java" />
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
@@ -32,19 +32,19 @@ import org.apache.iotdb.tsfile.utils.Binary;
 /*
 * This class is generated using freemarker and the ${.template_name} template.
 */
-public abstract class ${className} extends EventWindow {
+public abstract class ${className} extends AbstractVariationWindow {
 
-  protected ${type.dataType} eventValue;
+  protected ${type.dataType} headValue;
 
-  private ${type.dataType} previousEventValue;
+  private ${type.dataType} previousValue;
 
-  public ${className}(EventWindowParameter eventWindowParameter) {
-    super(eventWindowParameter);
+  public ${className}(VariationWindowParameter variationWindowParameter) {
+    super(variationWindowParameter);
   }
 
   @Override
-  public void updatePreviousEventValue() {
-    previousEventValue = eventValue;
+  public void updatePreviousValue() {
+    previousValue = headValue;
   }
 
   @Override
@@ -59,25 +59,25 @@ public abstract class ${className} extends EventWindow {
       endTime = currentTime;
     }
     // judge whether we need initialize eventValue
-    if (!initializedEventValue) {
+    if (!initializedHeadValue) {
       startTime = currentTime;
       endTime = currentTime;
       if(controlTimeAndValueColumn[0].isNull(index)){
         valueIsNull = true;
       }else{
         valueIsNull = false;
-        eventValue = controlTimeAndValueColumn[0].get${type.dataType?cap_first}(index);
+        headValue = controlTimeAndValueColumn[0].get${type.dataType?cap_first}(index);
       }
-      initializedEventValue = true;
+      initializedHeadValue = true;
     }
   }
 
-  public ${type.dataType} getEventValue() {
-    return eventValue;
+  public ${type.dataType} getHeadValue() {
+    return headValue;
   }
 
-  public ${type.dataType} getPreviousEventValue() {
-    return previousEventValue;
+  public ${type.dataType} getPreviousHeadValue() {
+    return previousValue;
   }
 }
 
