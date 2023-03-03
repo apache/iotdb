@@ -116,28 +116,29 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         String.format(
             "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
     collectDiskId();
-    diskSectorSizeMap = new HashMap<>(diskIdSet.size());
+    // leave one entry to avoid hashmap resizing
+    diskSectorSizeMap = new HashMap<>(diskIdSet.size() + 1, 1);
     collectDiskInfo();
-    lastReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    lastReadTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    lastMergedReadCountForDisk = new HashMap<>(diskIdSet.size());
-    lastMergedWriteCountForDisk = new HashMap<>(diskIdSet.size());
-    lastReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    lastWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    lastIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
-    lastTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementMergedReadOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementMergedWriteOperationCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteTimeCostForDisk = new HashMap<>(diskIdSet.size());
-    incrementReadSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementWriteSectorCountForDisk = new HashMap<>(diskIdSet.size());
-    incrementIoBusyTimeForDisk = new HashMap<>(diskIdSet.size());
-    incrementTimeInQueueForDisk = new HashMap<>(diskIdSet.size());
+    lastReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastReadTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastMergedReadCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastMergedWriteCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastReadSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastWriteSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastIoBusyTimeForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    lastTimeInQueueForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementMergedReadOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementMergedWriteOperationCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteTimeCostForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementReadSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementWriteSectorCountForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementIoBusyTimeForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
+    incrementTimeInQueueForDisk = new HashMap<>(diskIdSet.size() + 1, 1);
   }
 
   @Override
