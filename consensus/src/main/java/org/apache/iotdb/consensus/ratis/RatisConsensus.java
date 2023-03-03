@@ -285,6 +285,9 @@ class RatisConsensus implements IConsensus {
         // statistic the time of write locally
         RatisMetricsManager.getInstance()
             .recordWriteLocallyCost(System.nanoTime() - writeToRatisStartTime);
+        // statistic the time of total write process
+        RatisMetricsManager.getInstance()
+            .recordTotalWriteCost(System.nanoTime() - consensusWriteStartTime);
       }
     }
 
