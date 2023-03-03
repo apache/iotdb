@@ -155,6 +155,7 @@ triggerAttributeClause
 triggerAttribute
     : key=attributeKey operator_eq value=attributeValue
     ;
+
 // Create Pipe Plugin
 createPipePlugin
     : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
