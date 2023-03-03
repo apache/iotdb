@@ -58,23 +58,37 @@ public class Template implements Serializable {
   private boolean isDirectAligned;
   private Map<String, IMeasurementSchema> schemaMap;
 
-  private transient Map<String, IMNode> directNodes;
-
   private transient int rehashCode;
 
   public Template() {
     schemaMap = new HashMap<>();
-    directNodes = new HashMap<>();
   }
 
   public Template(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IllegalPathException {
-    this(name, measurements, dataTypes, encodings, compressors, null);
+          String name,
+          List<String> measurements,
+          List<TSDataType> dataTypes,
+          List<TSEncoding> encodings,
+          List<CompressionType> compressors)
+          throws IllegalPathException {
+    this(name, measurements, dataTypes, encodings, compressors, false);
+  }
+
+  public Template(
+          String name,
+          List<String> measurements,
+          List<TSDataType> dataTypes,
+          List<TSEncoding> encodings,
+          List<CompressionType> compressors,
+          boolean isAligned)
+          throws IllegalPathException {
+    this.isDirectAligned = isAligned;
+    this.schemaMap = new HashMap<>();
+    this.name = name;
+    for (int i = 0; i < measurements.size(); i++) {
+      IMeasurementSchema schema = new MeasurementSchema(measurements.get(i),dataTypes.get(i),encodings.get(i),compressors.get(i));
+      schemaMap.put(schema.getMeasurementId(), schema);
+    }
   }
 
   public Template(
@@ -85,57 +99,14 @@ public class Template implements Serializable {
       List<List<CompressionType>> compressors,
       Set<String> alignedDeviceId)
       throws IllegalPathException {
-    boolean isAlign;
-    schemaMap = new HashMap<>();
-    this.name = name;
-    isDirectAligned = false;
-    directNodes = new HashMap<>();
-    rehashCode = 0;
-
+    // for compatibly
+    boolean isAlign = false;
     for (int i = 0; i < measurements.size(); i++) {
-      IMeasurementSchema curSchema;
-      int size = measurements.get(i).size();
-      if (size > 1) {
+      if(measurements.get(i).size()>1){
         isAlign = true;
-      } else {
-        // If sublist of measurements has only one item,
-        // but it shares prefix with other aligned sublist, it will be aligned too
-        String[] thisMeasurement = PathUtils.splitPathToDetachedNodes(measurements.get(i).get(0));
-        String thisPrefix =
-            joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
-        isAlign = alignedDeviceId != null && alignedDeviceId.contains(thisPrefix);
-      }
-
-      // vector, aligned measurements
-      if (isAlign) {
-        IMeasurementSchema[] curSchemas;
-        String[] measurementsArray = new String[size];
-        TSDataType[] typeArray = new TSDataType[size];
-        TSEncoding[] encodingArray = new TSEncoding[size];
-        CompressionType[] compressorArray = new CompressionType[size];
-
-        for (int j = 0; j < size; j++) {
-          measurementsArray[j] = measurements.get(i).get(j);
-          typeArray[j] = dataTypes.get(i).get(j);
-          encodingArray[j] = encodings.get(i).get(j);
-          compressorArray[j] = compressors.get(i).get(j);
-        }
-
-        curSchemas = constructSchemas(measurementsArray, typeArray, encodingArray, compressorArray);
-        constructTemplateTree(measurementsArray, curSchemas);
-
-      }
-      // normal measurement
-      else {
-        curSchema =
-            new MeasurementSchema(
-                measurements.get(i).get(0),
-                dataTypes.get(i).get(0),
-                encodings.get(i).get(0),
-                compressors.get(i).get(0));
-        constructTemplateTree(measurements.get(i).get(0), curSchema);
       }
     }
+
   }
 
   public int getId() {
@@ -282,101 +253,6 @@ public class Template implements Serializable {
   }
   // endregion
 
-  // region query of template
-
-  public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    return getPathNodeInTemplate(PathUtils.splitPathToDetachedNodes(path));
-  }
-
-  private IMNode getPathNodeInTemplate(String[] pathNodes) {
-    if (pathNodes.length == 0) {
-      return null;
-    }
-    IMNode cur = directNodes.getOrDefault(pathNodes[0], null);
-    if (cur == null || cur.isMeasurement()) {
-      return cur;
-    }
-    for (int i = 1; i < pathNodes.length; i++) {
-      if (cur.hasChild(pathNodes[i])) {
-        cur = cur.getChild(pathNodes[i]);
-      } else {
-        return null;
-      }
-    }
-    return cur;
-  }
-
-  public IMNode getDirectNode(String nodeName) {
-    return directNodes.getOrDefault(nodeName, null);
-  }
-
-  public Collection<IMNode> getDirectNodes() {
-    return directNodes.values();
-  }
-
-  // endregion
-
-  // region inner utils
-
-  private String getFullPathWithoutTemplateName(IMNode node) {
-    if (node == null) {
-      return "";
-    }
-    StringBuilder builder = new StringBuilder(node.getName());
-    IMNode cur = node.getParent();
-    while (cur != null) {
-      builder.insert(0, cur.getName() + TsFileConstant.PATH_SEPARATOR);
-      cur = cur.getParent();
-    }
-    return builder.toString();
-  }
-
-  /**
-   * @param path complete path to measurement.
-   * @return null if need to add direct node, will never return a measurement.
-   */
-  private IMNode constructEntityPath(String path) throws IllegalPathException {
-    String[] pathNodes = PathUtils.splitPathToDetachedNodes(path);
-    if (pathNodes.length == 1) {
-      return null;
-    }
-
-    IMNode cur = directNodes.get(pathNodes[0]);
-    if (cur == null) {
-      cur = new EntityMNode(null, pathNodes[0]);
-      directNodes.put(pathNodes[0], cur);
-    }
-
-    if (cur.isMeasurement()) {
-      throw new IllegalPathException(path, "there is measurement in path.");
-    }
-
-    for (int i = 1; i <= pathNodes.length - 2; i++) {
-      if (!cur.hasChild(pathNodes[i])) {
-        cur.addChild(pathNodes[i], new EntityMNode(cur, pathNodes[i]));
-      }
-      cur = cur.getChild(pathNodes[i]);
-
-      if (cur.isMeasurement()) {
-        throw new IllegalPathException(path, "there is measurement in path.");
-      }
-    }
-    return cur;
-  }
-
-  private static String joinBySeparator(String[] pathNodes) {
-    if ((pathNodes == null) || (pathNodes.length == 0)) {
-      return "";
-    }
-    StringBuilder builder = new StringBuilder(pathNodes[0]);
-    for (int i = 1; i <= pathNodes.length - 1; i++) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(pathNodes[i]);
-    }
-    return builder.toString();
-  }
-  // endregion
-
   // region append of template
 
   public void addAlignedMeasurements(
@@ -481,7 +357,6 @@ public class Template implements Serializable {
     isDirectAligned = ReadWriteIOUtils.readBool(buffer);
     int schemaSize = ReadWriteIOUtils.readInt(buffer);
     schemaMap = new HashMap<>(schemaSize);
-    directNodes = new HashMap<>(schemaSize);
     for (int i = 0; i < schemaSize; i++) {
       String schemaName = ReadWriteIOUtils.readString(buffer);
       byte flag = ReadWriteIOUtils.readByte(buffer);
@@ -492,7 +367,6 @@ public class Template implements Serializable {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
       schemaMap.put(schemaName, measurementSchema);
-      directNodes.put(schemaName, new MeasurementMNode(null, schemaName, measurementSchema, null));
     }
   }
 

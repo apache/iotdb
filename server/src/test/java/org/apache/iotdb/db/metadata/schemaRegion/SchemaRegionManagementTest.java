@@ -146,11 +146,10 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
   private Template generateTemplate() throws IllegalPathException {
     Template template =
         new Template(
-            "t1",
-            Collections.singletonList(Collections.singletonList("s1")),
-            Collections.singletonList(Collections.singletonList(TSDataType.INT32)),
-            Collections.singletonList(Collections.singletonList(TSEncoding.PLAIN)),
-            Collections.singletonList(Collections.singletonList(CompressionType.GZIP)));
+            "t1", Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT32),
+            Collections.singletonList(TSEncoding.PLAIN),
+            Collections.singletonList(CompressionType.GZIP));
     template.setId(1);
     return template;
   }
