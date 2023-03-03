@@ -25,11 +25,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -348,23 +347,23 @@ public class MemoryPool {
     }
 
     if (planNodeIdToBytesReserved.get(planNodeId) == null
-        || planNodeIdToBytesReserved.get(planNodeId) <= 0) {
+        || planNodeIdToBytesReserved.get(planNodeId) == 0) {
       planNodeIdToBytesReserved.remove(planNodeId);
       instanceBytesReserved.computeIfPresent(
           planNodeId,
-          (K, KPlanNodeBytesReserved) -> {
-            if (KPlanNodeBytesReserved.isEmpty()) {
+          (k, kPlanNodeBytesReserved) -> {
+            if (kPlanNodeBytesReserved.isEmpty()) {
               return null;
             }
-            return KPlanNodeBytesReserved;
+            return kPlanNodeBytesReserved;
           });
       queryMemoryReservations.computeIfPresent(
           queryId,
-          (K, KInstanceBytesReserved) -> {
-            if (KInstanceBytesReserved.isEmpty()) {
+          (k, kInstanceBytesReserved) -> {
+            if (kInstanceBytesReserved.isEmpty()) {
               return null;
             }
-            return KInstanceBytesReserved;
+            return kInstanceBytesReserved;
           });
     }
   }
