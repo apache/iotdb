@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -52,7 +50,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -264,19 +262,9 @@ class RatisConsensus implements IConsensus {
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
 
     long writeToRatisStartTime = System.nanoTime();
-    // statistic the time of build check condition
-    MetricService.getInstance()
-        .getOrCreateHistogram(
-            Metric.STAGE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.RATIS_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
-            "checkCondition",
-            Tag.REGION.toString(),
-            consensusGroupId.toString())
-        .update(writeToRatisStartTime - consensusWriteStartTime);
-
+    // statistic the time of check write condition
+    RatisMetricsManager.getInstance()
+        .recordWriteCheckCost(writeToRatisStartTime - consensusWriteStartTime);
     RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
     if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
@@ -294,19 +282,9 @@ class RatisConsensus implements IConsensus {
       } catch (IOException e) {
         return failedWrite(new RatisRequestFailedException(e));
       } finally {
-        long writeLocallyEndTime = System.nanoTime();
         // statistic the time of write locally
-        MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.STAGE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                Metric.RATIS_CONSENSUS.toString(),
-                Tag.TYPE.toString(),
-                "writeLocally",
-                Tag.REGION.toString(),
-                consensusGroupId.toString())
-            .update(writeLocallyEndTime - writeToRatisStartTime);
+        RatisMetricsManager.getInstance()
+            .recordWriteLocallyCost(System.nanoTime() - writeToRatisStartTime);
       }
     }
 
@@ -326,19 +304,9 @@ class RatisConsensus implements IConsensus {
       if (client != null) {
         client.returnSelf();
       }
-      long writeRemotelyEndTime = System.nanoTime();
       // statistic the time of write remotely
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.RATIS_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "writeRemotely",
-              Tag.REGION.toString(),
-              consensusGroupId.toString())
-          .update(writeRemotelyEndTime - writeToRatisStartTime);
+      RatisMetricsManager.getInstance()
+          .recordWriteRemotelyCost(System.nanoTime() - writeToRatisStartTime);
     }
 
     if (suggestedLeader != null) {
@@ -347,17 +315,8 @@ class RatisConsensus implements IConsensus {
     }
 
     // statistic the time of total write process
-    MetricService.getInstance()
-        .getOrCreateHistogram(
-            Metric.STAGE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.RATIS_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
-            "totalConsensusWrite",
-            Tag.REGION.toString(),
-            consensusGroupId.toString())
-        .update(System.nanoTime() - consensusWriteStartTime);
+    RatisMetricsManager.getInstance()
+        .recordTotalWriteCost(System.nanoTime() - consensusWriteStartTime);
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
@@ -379,32 +338,13 @@ class RatisConsensus implements IConsensus {
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
       long readRatisStartTime = System.nanoTime();
       // statistic the time of check condition
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.RATIS_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "checkCondition",
-              Tag.REGION.toString(),
-              consensusGroupId.toString())
-          .update(readRatisStartTime - consensusReadStartTime);
+      RatisMetricsManager.getInstance()
+          .recordReadCheckCost(readRatisStartTime - consensusReadStartTime);
       reply = server.submitClientRequest(clientRequest);
       long readRatisEndTime = System.nanoTime();
       // statistic the time of submit read request
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.RATIS_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "submitReadRequest",
-              Tag.REGION.toString(),
-              consensusGroupId.toString())
-          .update(readRatisEndTime - readRatisStartTime);
-
+      RatisMetricsManager.getInstance()
+          .recordReadRequestCost(readRatisEndTime - readRatisStartTime);
       if (!reply.isSuccess()) {
         return failedRead(new RatisRequestFailedException(reply.getException()));
       }
@@ -416,18 +356,8 @@ class RatisConsensus implements IConsensus {
     ResponseMessage readResponseMessage = (ResponseMessage) ret;
     DataSet dataSet = (DataSet) readResponseMessage.getContentHolder();
     // statistic the time of total read process
-    MetricService.getInstance()
-        .getOrCreateHistogram(
-            Metric.STAGE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.RATIS_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
-            "totalConsensusRead",
-            Tag.REGION.toString(),
-            consensusGroupId.toString())
-        .update(System.nanoTime() - consensusReadStartTime);
-
+    RatisMetricsManager.getInstance()
+        .recordTotalReadCost(System.nanoTime() - consensusReadStartTime);
     return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
   }
 

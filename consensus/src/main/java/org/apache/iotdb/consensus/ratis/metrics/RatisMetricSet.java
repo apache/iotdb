@@ -19,14 +19,61 @@
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.apache.ratis.metrics.MetricRegistries;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class RatisMetricSet implements IMetricSet {
   private MetricRegistries manager;
   private final String consensusGroupType;
+  private static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
+  private static final String RATIS_CONSENSUS = Metric.RATIS_CONSENSUS.toString();
+  public static final String WRITE_CHECK = "checkWriteCondition";
+  public static final String READ_CHECK = "checkReadCondition";
+  public static final String WRITE_LOCALLY = "writeLocally";
+  public static final String WRITE_REMOTELY = "writeRemotely";
+  public static final String TOTAL_WRITE_TIME = "totalConsensusWrite";
+  public static final String TOTAL_READ_TIME = "totalConsensusRead";
+  public static final String SUBMIT_READ_REQUEST = "submitReadRequest";
+  public static final String WRITE_STATE_MACHINE = "writeStateMachine";
+
+  static {
+    metricInfoMap.put(
+        WRITE_CHECK,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_CHECK));
+    metricInfoMap.put(
+        READ_CHECK,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), READ_CHECK));
+    metricInfoMap.put(
+        WRITE_LOCALLY,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_LOCALLY));
+    metricInfoMap.put(
+        WRITE_REMOTELY,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_REMOTELY));
+    metricInfoMap.put(
+        TOTAL_WRITE_TIME,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), TOTAL_WRITE_TIME));
+    metricInfoMap.put(
+        TOTAL_READ_TIME,
+        new MetricInfo(MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), TOTAL_READ_TIME));
+    metricInfoMap.put(
+        SUBMIT_READ_REQUEST,
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), SUBMIT_READ_REQUEST));
+    metricInfoMap.put(
+        WRITE_STATE_MACHINE,
+        new MetricInfo(
+            MetricType.TIMER, RATIS_CONSENSUS, Tag.STAGE.toString(), WRITE_STATE_MACHINE));
+  }
 
   public RatisMetricSet(TConsensusGroupType consensusGroupType) {
     super();
@@ -39,10 +86,17 @@ public class RatisMetricSet implements IMetricSet {
     if (manager instanceof MetricRegistryManager) {
       ((MetricRegistryManager) manager).setConsensusGroupType(consensusGroupType);
     }
+    for (MetricInfo metricInfo : metricInfoMap.values()) {
+      metricService.getOrCreateTimer(
+          metricInfo.getName(), MetricLevel.CORE, metricInfo.getTagsInArray());
+    }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     manager.clear();
+    for (MetricInfo metricInfo : metricInfoMap.values()) {
+      metricService.remove(MetricType.TIMER, metricInfo.getName(), metricInfo.getTagsInArray());
+    }
   }
 }
