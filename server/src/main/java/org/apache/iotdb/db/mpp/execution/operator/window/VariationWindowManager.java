@@ -22,12 +22,10 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-public abstract class EventWindowManager implements IWindowManager {
+public abstract class VariationWindowManager implements IWindowManager {
 
   protected boolean initialized;
 
@@ -35,12 +33,9 @@ public abstract class EventWindowManager implements IWindowManager {
 
   protected boolean needSkip;
 
-  protected EventWindowParameter eventWindowParameter;
+  protected AbstractVariationWindow variationWindow;
 
-  protected EventWindow eventWindow;
-
-  protected EventWindowManager(EventWindowParameter eventWindowParameter, boolean ascending) {
-    this.eventWindowParameter = eventWindowParameter;
+  protected VariationWindowManager(boolean ascending) {
     this.initialized = false;
     this.ascending = ascending;
     // At beginning, we do not need to skip inputTsBlock
@@ -48,7 +43,7 @@ public abstract class EventWindowManager implements IWindowManager {
   }
 
   public boolean isIgnoringNull() {
-    return eventWindowParameter.isIgnoringNull();
+    return variationWindow.ignoreNull();
   }
 
   @Override
@@ -59,7 +54,7 @@ public abstract class EventWindowManager implements IWindowManager {
   @Override
   public void initCurWindow() {
     this.initialized = true;
-    this.eventWindow.setInitializedEventValue(false);
+    this.variationWindow.setInitializedHeadValue(false);
   }
 
   @Override
@@ -73,50 +68,33 @@ public abstract class EventWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
-    this.eventWindow.updatePreviousEventValue();
+    this.variationWindow.updatePreviousValue();
   }
 
   @Override
   public IWindow getCurWindow() {
-    return eventWindow;
+    return variationWindow;
   }
 
   @Override
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
-    if (eventWindowParameter.isNeedOutputEndTime()) {
+    if (variationWindow.isOutputEndTime()) {
       dataTypes.add(0, TSDataType.INT64);
     }
     return new TsBlockBuilder(dataTypes);
   }
 
-  protected ColumnBuilder[] appendOriginAggregationResult(
+  public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    // Use the start time of eventWindow as default output time.
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    timeColumnBuilder.writeLong(eventWindow.getStartTime());
 
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    if (eventWindowParameter.isNeedOutputEndTime()) {
-      columnBuilders[0].writeLong(eventWindow.getEndTime());
-      columnIndex = 1;
-    }
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    resultTsBlockBuilder.declarePosition();
-    return columnBuilders;
+    long endTime = variationWindow.isOutputEndTime() ? variationWindow.getEndTime() : -1;
+    outputAggregators(aggregators, resultTsBlockBuilder, variationWindow.getStartTime(), endTime);
   }
 
   @Override
   public boolean needSkipInAdvance() {
-    return eventWindowParameter.isNeedOutputEndTime();
+    return variationWindow.isOutputEndTime();
   }
 }

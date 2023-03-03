@@ -28,13 +28,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GroupBySeriesParameter extends GroupByParameter {
+public class GroupByConditionParameter extends GroupByParameter {
 
   private final Expression keepExpression;
-  private boolean ignoringNull;
+  private final boolean ignoringNull;
 
-  public GroupBySeriesParameter(boolean ignoringNull, Expression keepExpression) {
-    super(WindowType.SERIES_WINDOW);
+  public GroupByConditionParameter(boolean ignoringNull, Expression keepExpression) {
+    super(WindowType.CONDITION_WINDOW);
     this.keepExpression = keepExpression;
     this.ignoringNull = ignoringNull;
   }
@@ -54,7 +54,7 @@ public class GroupBySeriesParameter extends GroupByParameter {
   public static GroupByParameter deserialize(ByteBuffer buffer) {
     boolean ignoringNull = ReadWriteIOUtils.readBool(buffer);
     Expression keepExpression = Expression.deserialize(buffer);
-    return new GroupBySeriesParameter(ignoringNull, keepExpression);
+    return new GroupByConditionParameter(ignoringNull, keepExpression);
   }
 
   public Expression getKeepExpression() {
@@ -76,8 +76,8 @@ public class GroupBySeriesParameter extends GroupByParameter {
     if (!super.equals(obj)) {
       return false;
     }
-    return this.keepExpression == ((GroupBySeriesParameter) obj).getKeepExpression()
-        && this.ignoringNull == ((GroupBySeriesParameter) obj).ignoringNull;
+    return this.keepExpression == ((GroupByConditionParameter) obj).getKeepExpression()
+        && this.ignoringNull == ((GroupByConditionParameter) obj).ignoringNull;
   }
 
   @Override
