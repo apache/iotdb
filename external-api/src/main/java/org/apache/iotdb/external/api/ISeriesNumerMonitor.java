@@ -29,6 +29,7 @@ public interface ISeriesNumerMonitor {
    * @param properties Properties containing all the parameters needed to init
    */
   void init(Properties properties);
+
   /**
    * add time series
    *

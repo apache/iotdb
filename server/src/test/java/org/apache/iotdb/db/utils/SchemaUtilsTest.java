@@ -18,8 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.constant.SqlConstant;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,6 +35,17 @@ import java.util.List;
 
 public class SchemaUtilsTest {
   @Test
+  public void registerTimeseriesTest() throws MetadataException {
+    MManager mmanager = IoTDB.metaManager;
+    mmanager.init();
+
+    String tsPath = "root.sg.d1.s1";
+    TimeseriesSchema timeseriesSchema = new TimeseriesSchema(tsPath, TSDataType.INT32);
+    SchemaUtils.registerTimeseries(timeseriesSchema);
+    Assert.assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(tsPath)));
+  }
+
+  @Test
   public void getAggregatedDataTypesTest() {
     List<TSDataType> measurementTypes = new ArrayList<>();
     measurementTypes.add(TSDataType.INT64);
@@ -38,18 +54,18 @@ public class SchemaUtilsTest {
     measurementTypes.add(TSDataType.DOUBLE);
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.MIN_TIME));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MIN_TIME));
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.COUNT));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.COUNT));
     Assert.assertEquals(
         Collections.nCopies(measurementTypes.size(), TSDataType.DOUBLE),
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.SUM));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.SUM));
     Assert.assertEquals(
         measurementTypes,
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.LAST_VALUE));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.LAST_VALUE));
     Assert.assertEquals(
         measurementTypes,
-        SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.MAX_VALUE));
+        SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MAX_VALUE));
   }
 }

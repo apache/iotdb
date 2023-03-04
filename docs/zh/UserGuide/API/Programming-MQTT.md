@@ -30,13 +30,13 @@
 IoTDB 支持 MQTT v3.1（OASIS 标准）协议。
 IoTDB 服务器包括内置的 MQTT 服务，该服务允许远程设备将消息直接发送到 IoTDB 服务器。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 ### 内置 MQTT 服务
 内置的 MQTT 服务提供了通过 MQTT 直接连接到 IoTDB 的能力。 它侦听来自 MQTT 客户端的发布消息，然后立即将数据写入存储。
 MQTT 主题与 IoTDB 时间序列相对应。
 消息有效载荷可以由 Java SPI 加载的`PayloadFormatter`格式化为事件，默认实现为`JSONPayloadFormatter` 
-   默认的`json`格式化程序支持两种 json 格式以及由他们组成的json数组，以下是 MQTT 消息有效负载示例：
+   默认的`json`格式化程序支持两种 json 格式，以下是 MQTT 消息有效负载示例：
 
 ```json
  {
@@ -48,32 +48,31 @@ MQTT 主题与 IoTDB 时间序列相对应。
 ```
 或者
 ```json
- {
+{
       "device":"root.sg.d1",
       "timestamps":[1586076045524,1586076065526],
       "measurements":["s1","s2"],
       "values":[[0.530635,0.530635], [0.530655,0.530695]]
- }
+  }
 ```
-或者以上两者的JSON数组形式。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT 配置
-默认情况下，IoTDB MQTT 服务从`${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties`加载配置。
+默认情况下，IoTDB MQTT 服务从`${IOTDB_HOME}/${IOTDB_CONF}/iotdbengine.properties`加载配置。
 
 配置如下：
 
 | 名称      | 描述         | 默认 |
 | ------------- |:-------------:|:------:|
 | enable_mqtt_service      | 是否启用 mqtt 服务 | false |
-| mqtt_host      | mqtt 服务绑定主机 | 127.0.0.1 |
+| mqtt_host      | mqtt 服务绑定主机 | 0.0.0.0 |
 | mqtt_port      | mqtt 服务绑定端口 |   1883 |
 | mqtt_handler_pool_size | 处理 mqtt 消息的处理程序池大小 |    1 |
 | mqtt_payload_formatter | mqtt 消息有效负载格式化程序 |    json |
 | mqtt_max_message_size | mqtt 消息最大长度（字节）|   1048576 |
 
-### 示例代码
+### 示例代码
 以下是 mqtt 客户端将消息发送到 IoTDB 服务器的示例。
 
  ```java
@@ -115,7 +114,7 @@ connection.disconnect();
             <version>${project.version}</version>
         </dependency>
 ```
-* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.protocol.PayloadFormatter`
+* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
 
 ```java
 package org.apache.iotdb.mqtt.server;
@@ -156,21 +155,21 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
     @Override
     public String getName() {
-        // set the value of mqtt_payload_formatter in iotdb-datanode.properties as the following string:
+        // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
         return "CustomizedJson";
     }
 }
 ```
-* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter` 文件:
+* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter` 文件:
   将示例中的文件内容清除，并将刚才的实现类的全名（包名.类名）写入文件中。注意，这个文件中只有一行。
   在本例中，文件内容为: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * 编译项目生成一个 jar 包: `mvn package -DskipTests`
 
 
 在 IoTDB 服务端:
-* 创建 ${IOTDB_HOME}/ext/mqtt/ 文件夹, 将刚才的 jar 包放入此文件夹。
-* 打开 MQTT 服务参数. (`enable_mqtt_service=true` in `conf/iotdb-datanode.properties`)
-* 用刚才的实现类中的 getName() 方法的返回值 设置为 `conf/iotdb-datanode.properties` 中 `mqtt_payload_formatter` 的值， 
+* 将刚才的 jar 包放入 IoTDB 的 lib 文件夹内
+* 打开 MQTT 服务参数. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
+* 用刚才的实现类中的 getName() 方法的返回值 设置为 `conf/iotdb-engine.properties` 中 `mqtt_payload_formatter` 的值， 
   , 在本例中，为 `CustomizedJson`
 * 启动 IoTDB
 * 搞定.

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.time.DateTimeException;
-import java.time.ZoneId;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,12 +74,6 @@ public class Utils {
     if (info.containsKey(Config.VERSION)) {
       params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
     }
-    if (info.containsKey(Config.NETWORK_TIMEOUT)) {
-      params.setNetworkTimeout(Integer.parseInt(info.getProperty(Config.NETWORK_TIMEOUT)));
-    }
-    if (info.containsKey(Config.TIME_ZONE)) {
-      params.setTimeZone(info.getProperty(Config.TIME_ZONE));
-    }
 
     return params;
   }
@@ -116,16 +108,6 @@ public class Utils {
           }
           break;
         case Config.VERSION:
-        case Config.NETWORK_TIMEOUT:
-          info.put(key, value);
-          break;
-        case Config.TIME_ZONE:
-          try {
-            // Check the validity of the time zone string.
-            ZoneId.of(value);
-          } catch (DateTimeException e) {
-            return false;
-          }
           info.put(key, value);
           break;
         default:

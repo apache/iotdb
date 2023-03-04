@@ -19,31 +19,46 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Gauge;
 
 import java.lang.ref.WeakReference;
-import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
-public class DropwizardAutoGauge<T> implements AutoGauge, com.codahale.metrics.Gauge<Double> {
+public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge<Long> {
 
   private final WeakReference<T> refObject;
-  private final ToDoubleFunction<T> mapper;
+  private final ToLongFunction<T> mapper;
 
-  public DropwizardAutoGauge(T obj, ToDoubleFunction<T> mapper) {
+  public DropwizardAutoGauge(T obj, ToLongFunction<T> mapper) {
     this.refObject = new WeakReference<>(obj);
     this.mapper = mapper;
   }
 
   @Override
-  public Double getValue() {
+  public Long getValue() {
     if (refObject.get() == null) {
-      return 0d;
+      return 0L;
     }
-    return mapper.applyAsDouble(refObject.get());
+    return mapper.applyAsLong(refObject.get());
   }
 
   @Override
-  public double value() {
+  public long value() {
     return getValue();
+  }
+
+  @Override
+  public void incr(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public void decr(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public void set(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }

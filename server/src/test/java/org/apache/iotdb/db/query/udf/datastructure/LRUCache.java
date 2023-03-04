@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
-
 import java.util.Arrays;
 
 public class LRUCache extends Cache {
@@ -30,8 +28,8 @@ public class LRUCache extends Cache {
 
   public LRUCache(int capacity) {
     super(capacity);
-    inMemory = new int[capacity << 4];
-    outMemory = new int[capacity << 4];
+    inMemory = new int[capacity << 3];
+    outMemory = new int[capacity << 3];
     Arrays.fill(inMemory, Integer.MIN_VALUE);
     Arrays.fill(outMemory, Integer.MIN_VALUE);
   }
@@ -47,15 +45,15 @@ public class LRUCache extends Cache {
   }
 
   private void access(int targetIndex) {
-    if (!containsKey(targetIndex)) {
-      if (cacheCapacity <= size()) {
-        int lastIndex = getLast();
+    if (!removeFirstOccurrence(targetIndex)) {
+      if (cacheCapacity <= cacheSize) {
+        int lastIndex = removeLast();
         outMemory[lastIndex] = inMemory[lastIndex];
         inMemory[lastIndex] = Integer.MIN_VALUE;
       }
       inMemory[targetIndex] = outMemory[targetIndex];
       outMemory[targetIndex] = Integer.MIN_VALUE;
     }
-    putKey(targetIndex);
+    addFirst(targetIndex);
   }
 }

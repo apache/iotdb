@@ -26,14 +26,12 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
 
 public class ValuePageReader {
@@ -241,93 +239,6 @@ public class ValuePageReader {
     return valueBatch;
   }
 
-  public void writeColumnBuilderWithNextBatch(
-      int readEndIndex,
-      ColumnBuilder columnBuilder,
-      boolean[] keepCurrentRow,
-      boolean[] isDeleted) {
-    if (valueBuffer == null) {
-      for (int i = 0; i < readEndIndex; i++) {
-        if (keepCurrentRow[i]) {
-          columnBuilder.appendNull();
-        }
-      }
-      return;
-    }
-    for (int i = 0; i < readEndIndex; i++) {
-      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-        if (keepCurrentRow[i]) {
-          columnBuilder.appendNull();
-        }
-        continue;
-      }
-      switch (dataType) {
-        case BOOLEAN:
-          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeBoolean(aBoolean);
-            }
-          }
-          break;
-        case INT32:
-          int anInt = valueDecoder.readInt(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeInt(anInt);
-            }
-          }
-          break;
-        case INT64:
-          long aLong = valueDecoder.readLong(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeLong(aLong);
-            }
-          }
-          break;
-        case FLOAT:
-          float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeFloat(aFloat);
-            }
-          }
-          break;
-        case DOUBLE:
-          double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeDouble(aDouble);
-            }
-          }
-          break;
-        case TEXT:
-          Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (keepCurrentRow[i]) {
-            if (isDeleted[i]) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.writeBinary(aBinary);
-            }
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
-    }
-  }
-
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }
@@ -357,17 +268,7 @@ public class ValuePageReader {
     return false;
   }
 
-  public void fillIsDeleted(long[] timestamp, boolean[] isDeleted) {
-    for (int i = 0, n = timestamp.length; i < n; i++) {
-      isDeleted[i] = isDeleted(timestamp[i]);
-    }
-  }
-
   public TSDataType getDataType() {
     return dataType;
-  }
-
-  public byte[] getBitmap() {
-    return Arrays.copyOf(bitmap, bitmap.length);
   }
 }

@@ -80,7 +80,7 @@ public class DiskTSMIterator extends TSMIterator {
     try {
       if (remainsInFile) {
         // deserialize from file
-        return getTimeSerisMetadataFromFile();
+        return getTimeSeriesMetadataFromFile();
       } else {
         // get from memory iterator
         return super.next();
@@ -91,7 +91,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
   }
 
-  private Pair<Path, TimeseriesMetadata> getTimeSerisMetadataFromFile() throws IOException {
+  private Pair<Path, TimeseriesMetadata> getTimeSeriesMetadataFromFile() throws IOException {
     if (currentPos == nextEndPosForDevice) {
       // deserialize the current device name
       currentDevice = ReadWriteIOUtils.readString(input.wrapAsInputStream());
@@ -119,7 +119,7 @@ public class DiskTSMIterator extends TSMIterator {
     }
     updateCurrentPos();
     return new Pair<>(
-        new Path(currentDevice, measurementUid, false),
+        new Path(currentDevice, measurementUid),
         constructOneTimeseriesMetadata(measurementUid, chunkMetadataList));
   }
 

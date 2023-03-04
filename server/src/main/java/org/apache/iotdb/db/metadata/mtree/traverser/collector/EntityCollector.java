@@ -18,27 +18,47 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
-// TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-  protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    shouldTraverseTemplate = true;
+  }
+
+  public EntityCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, limit, offset);
+    shouldTraverseTemplate = true;
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    return collectEntity(nextMatchedNode.getAsEntityMNode());
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
-  protected abstract R collectEntity(IEntityMNode node);
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectEntity(node.getAsEntityMNode());
+      if (hasLimit) {
+        count += 1;
+      }
+    }
+    return false;
+  }
+
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

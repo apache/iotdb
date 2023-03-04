@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -40,6 +41,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -55,6 +57,7 @@ import java.util.Map;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileAndModSettleToolTest {
+  private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
   protected final long maxTimestamp = 50000L; // 100000000L;
   protected final String folder = "target" + File.separator + "settle";
@@ -64,16 +67,25 @@ public class TsFileAndModSettleToolTest {
   protected final String SENSOR1 = "sensor_1";
   protected final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
+  private final Planner processor = new Planner();
   private String path = null;
   private IoTDBConfig config;
+  private boolean originEnablePartition;
   private long originPartitionInterval;
 
   @Before
   public void setUp() {
-    config = IoTDBDescriptor.getInstance().getConfig();
-    originPartitionInterval = config.getTimePartitionInterval();
-    config.setTimePartitionInterval(newPartitionInterval);
     EnvironmentUtils.envSetUp();
+
+    config = IoTDBDescriptor.getInstance().getConfig();
+    originEnablePartition = config.isEnablePartition();
+    originPartitionInterval = config.getPartitionInterval();
+
+    config.setEnablePartition(newEnablePartition);
+    config.setPartitionInterval(newPartitionInterval);
+
+    StorageEngine.setEnablePartition(newEnablePartition);
+    StorageEngine.setTimePartitionInterval(newPartitionInterval);
 
     File f = new File(folder);
     if (!f.exists()) {
@@ -92,15 +104,22 @@ public class TsFileAndModSettleToolTest {
         Assert.assertTrue(deleteSuccess);
       }
     }
+    config.setEnablePartition(originEnablePartition);
+    config.setPartitionInterval(originPartitionInterval);
+
+    StorageEngine.setEnablePartition(originEnablePartition);
+    StorageEngine.setTimePartitionInterval(originPartitionInterval);
 
     File directory = new File(folder);
-    FileUtils.deleteDirectory(directory);
+    try {
+      FileUtils.deleteDirectory(directory);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
     try {
       EnvironmentUtils.cleanEnv();
     } catch (Exception e) {
       Assert.fail(e.getMessage());
-    } finally {
-      config.setTimePartitionInterval(originPartitionInterval);
     }
   }
 

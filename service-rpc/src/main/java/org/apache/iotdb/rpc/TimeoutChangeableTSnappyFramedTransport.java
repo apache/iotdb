@@ -28,7 +28,7 @@ import java.net.SocketException;
 public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFramedTransport
     implements TimeoutChangeableTransport {
 
-  private final TSocket underlyingSocket;
+  private TSocket underlyingSocket;
 
   public TimeoutChangeableTSnappyFramedTransport(
       TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
@@ -44,12 +44,6 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
   @Override
   public int getTimeOut() throws SocketException {
     return underlyingSocket.getSocket().getSoTimeout();
-  }
-
-  @Override
-  public TTransport getSocket() {
-    // in fact, this should be the same with underlying...
-    return underlyingSocket;
   }
 
   public static class Factory extends TTransportFactory {

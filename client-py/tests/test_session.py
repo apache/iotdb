@@ -20,7 +20,6 @@
 import numpy as np
 
 from iotdb.Session import Session
-from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
@@ -42,7 +41,6 @@ def print_message(message):
     print("*********")
     print(message)
     print("*********")
-    assert False
 
 
 def test_session():
@@ -55,7 +53,7 @@ def test_session():
             print("can't open session")
             exit(1)
 
-        # set and delete databases
+        # set and delete storage groups
         session.set_storage_group("root.sg_test_01")
         session.set_storage_group("root.sg_test_02")
         session.set_storage_group("root.sg_test_03")
@@ -63,11 +61,11 @@ def test_session():
 
         if session.delete_storage_group("root.sg_test_02") < 0:
             test_fail()
-            print_message("delete database failed")
+            print_message("delete storage group failed")
 
         if session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"]) < 0:
             test_fail()
-            print_message("delete databases failed")
+            print_message("delete storage groups failed")
 
         # setting time series.
         session.create_time_series(
@@ -215,7 +213,7 @@ def test_session():
             [True, 77, 88, 1.25, 8.125, "test_records02"],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
+        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_01"]
         if (
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
@@ -267,7 +265,7 @@ def test_session():
             "root.sg_test_01.d_01", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_02",
+            "root.sg_test_01.d_01",
             measurements_,
             data_types_,
             values_,
@@ -291,31 +289,6 @@ def test_session():
         if session.insert_tablet(tablet_) < 0:
             test_fail()
             print_message("insert tablet with empty cells failed")
-
-        # insert one numpy tablet with empty cells into the database.
-        np_values_ = [
-            np.array([False, True, False, True], np.dtype(">?")),
-            np.array([10, 0, 100, 0], np.dtype(">i4")),
-            np.array([11, 11111, 0, 0], np.dtype(">i8")),
-            np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
-            np.array([10011.1, 101.0, 688.25, 0], np.dtype(">f8")),
-            np.array(["test01", "test02", "test03", ""]),
-        ]
-        np_timestamps_ = np.array([30, 31, 32, 33], np.dtype(">i8"))
-        np_bitmaps_ = []
-        for i in range(len(measurements_)):
-            np_bitmaps_.append(BitMap(len(np_timestamps_)))
-        np_bitmaps_[0].mark(0)
-        np_bitmaps_[1].mark(1)
-        np_bitmaps_[2].mark(2)
-        np_bitmaps_[4].mark(3)
-        np_bitmaps_[5].mark(3)
-        np_tablet_ = NumpyTablet(
-            "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
-        )
-        if session.insert_tablet(np_tablet_) < 0:
-            test_fail()
-            print_message("insert numpy tablet with empty cells failed")
 
         # insert records of one device
         time_list = [1, 2, 3]

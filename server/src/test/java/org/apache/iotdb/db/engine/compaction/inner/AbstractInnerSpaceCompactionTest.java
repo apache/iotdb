@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -30,7 +29,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -53,9 +55,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public abstract class AbstractInnerSpaceCompactionTest {
   protected static final Logger logger =
@@ -127,6 +130,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
+    IoTDB.metaManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
@@ -142,6 +146,18 @@ public abstract class AbstractInnerSpaceCompactionTest {
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = COMPACTION_TEST_SG + PATH_SEPARATOR + "device" + i;
+    }
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    for (String device : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        PartialPath devicePath = new PartialPath(device);
+        IoTDB.metaManager.createTimeseries(
+            devicePath.concatNode(measurementSchema.getMeasurementId()),
+            measurementSchema.getType(),
+            measurementSchema.getEncodingType(),
+            measurementSchema.getCompressor(),
+            Collections.emptyMap());
+      }
     }
   }
 
@@ -223,6 +239,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanEnv();
     if (tempSGDir.exists()) {
       FileUtils.deleteDirectory(tempSGDir);

@@ -16,8 +16,8 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -26,30 +26,27 @@ import org.apache.thrift.transport.TTransport;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class RPCServiceThriftHandler extends BaseServerContextHandler
-    implements TServerEventHandler {
+public class RPCServiceThriftHandler implements TServerEventHandler {
+  private TSServiceImpl serviceImpl;
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
 
-  private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
-  private final IClientRPCServiceWithHandler eventHandler;
-
-  public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
-    this.eventHandler = eventHandler;
+  public RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
+    this.serviceImpl = serviceImpl;
     MetricService.getInstance()
         .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
-  public ServerContext createContext(TProtocol in, TProtocol out) {
+  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
     thriftConnectionNumber.incrementAndGet();
-    return super.createContext(in, out);
+    return null;
   }
 
   @Override
-  public void deleteContext(ServerContext arg0, TProtocol in, TProtocol out) {
+  public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
-    eventHandler.handleClientExit();
+    serviceImpl.handleClientExit();
     thriftConnectionNumber.decrementAndGet();
-    super.deleteContext(arg0, in, out);
   }
 
   @Override
@@ -61,11 +58,4 @@ public class RPCServiceThriftHandler extends BaseServerContextHandler
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
     // nothing
   }
-
-  /**
-   * get the SessionManager Instance. <br>
-   * in v0.13, Cluster mode uses different SessionManager instance...
-   *
-   * @return
-   */
 }

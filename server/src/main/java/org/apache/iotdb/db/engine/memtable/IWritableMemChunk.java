@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -28,7 +27,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 
-public interface IWritableMemChunk extends WALEntryValue {
+public interface IWritableMemChunk {
 
   void putLong(long t, long v);
 
@@ -38,11 +37,11 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putDouble(long t, double v);
 
-  boolean putBinaryWithFlushCheck(long t, Binary v);
+  void putBinary(long t, Binary v);
 
   void putBoolean(long t, boolean v);
 
-  boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray);
+  void putAlignedValue(long t, Object[] v, int[] columnIndexArray);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -52,29 +51,33 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
 
-  boolean putBinariesWithFlushCheck(long[] t, Binary[] v, BitMap bitMap, int start, int end);
+  void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
-  boolean putAlignedValuesWithFlushCheck(
+  void putAlignedValues(
       long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
 
-  boolean writeWithFlushCheck(long insertTime, Object objectValue);
+  void write(long insertTime, Object objectValue);
 
-  boolean writeAlignedValueWithFlushCheck(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+  void writeAlignedValue(
+      long insertTime,
+      Object[] objectValue,
+      List<Integer> failedIndices,
+      List<IMeasurementSchema> schemaList);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
-  boolean writeWithFlushCheck(
+  void write(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
 
-  boolean writeAlignedValuesWithFlushCheck(
+  void writeAlignedValues(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end);
@@ -124,8 +127,8 @@ public interface IWritableMemChunk extends WALEntryValue {
     return null;
   }
 
-  default long getMaxTime() {
-    return Long.MAX_VALUE;
+  default long getMinTime() {
+    return Long.MIN_VALUE;
   }
 
   /** @return how many points are deleted */
@@ -140,6 +143,4 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getFirstPoint();
 
   long getLastPoint();
-
-  boolean isEmpty();
 }

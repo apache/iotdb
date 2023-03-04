@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -33,20 +33,18 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 public class IoTDBConnectionTest {
 
-  @Mock private IClientRPCService.Iface client;
+  @Mock private TSIService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
   private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
@@ -75,16 +73,6 @@ public class IoTDBConnectionTest {
     sessionId = connection.getSessionId();
     when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(successStatus, timeZone));
     connection.setClient(client);
-    assertEquals(connection.getTimeZone(), timeZone);
-  }
-
-  @Test
-  public void testSetTimeZoneByClientInfo() throws TException, SQLClientInfoException {
-    String timeZone = "+07:00";
-    assertNotEquals(connection.getTimeZone(), timeZone);
-    when(client.setTimeZone(any(TSSetTimeZoneReq.class))).thenReturn(new TSStatus(successStatus));
-    connection.setClient(client);
-    connection.setClientInfo("time_zone", timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
   }
 

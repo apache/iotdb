@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
@@ -28,22 +27,16 @@ public class PathNotExistException extends MetadataException {
 
   private static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
 
-  private static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is represented by schema template";
-
-  private static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is not represented by schema template";
-
   public PathNotExistException(String path) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
-        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
+        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
 
   public PathNotExistException(String path, boolean isUserException) {
     super(
         String.format(PATH_NOT_EXIST_WRONG_MESSAGE, path),
-        TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
+        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
         isUserException);
   }
 
@@ -54,18 +47,6 @@ public class PathNotExistException extends MetadataException {
             paths.size() == 1
                 ? paths.get(0)
                 : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
-  }
-
-  public PathNotExistException(List<String> paths, boolean isTemplateSeries) {
-    super(
-        String.format(
-            isTemplateSeries
-                ? TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE
-                : NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE,
-            paths.size() == 1
-                ? paths.get(0)
-                : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-        TSStatusCode.PATH_NOT_EXIST.getStatusCode());
+        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
 }

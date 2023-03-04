@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.2.0-SNAPSHOT</version>
+        <version>0.13.3</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp</artifactId>
@@ -39,7 +39,7 @@
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
-        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
+        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
     </properties>
     <modules>
         <module>../example/client-cpp-example</module>
@@ -48,11 +48,6 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>client-cpp-tools-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -70,29 +65,27 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
             </properties>
         </profile>
-        <!--        <profile>-->
-        <!--            <id>os-unix-arm</id>-->
-        <!--            <activation>-->
-        <!--                <os>-->
-        <!--                    <family>unix</family>-->
-        <!--                    <arch>aarch64</arch>-->
-        <!--                </os>-->
-        <!--            </activation>-->
-        <!--            <properties>-->
-        <!--                <os.suffix>linux</os.suffix>-->
-        <!--                <os.classifier>linux-arm_32</os.classifier>-->
-        <!--                &lt;!&ndash; use Makefile as default cmake generator, users may specify other generators &ndash;&gt;-->
-        <!--                <cmake.generator>Unix Makefiles</cmake.generator>-->
-        <!--                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-3.21.2-linux-aarch64/</cmake.root.dir>-->
-        <!--                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>-->
-        <!--                <iotdb.start.script>start-standalone.sh</iotdb.start.script>-->
-        <!--                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>-->
-        <!--            </properties>-->
-        <!--        </profile>-->
+        <profile>
+            <id>os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>linux</os.suffix>
+                <os.classifier>linux-arm_32</os.classifier>
+                <!-- use Makefile as default cmake generator, users may specify other generators -->
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
+            </properties>
+        </profile>
         <profile>
             <id>os-mac</id>
             <activation>
@@ -106,8 +99,7 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
             </properties>
         </profile>
         <profile>
@@ -123,8 +115,7 @@
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
-                <iotdb.start.script>start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
+                <iotdb.server.script>start-server.bat</iotdb.server.script>
                 <boost.include.dir/>
                 <boost.library.dir/>
             </properties>
@@ -169,12 +160,8 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>../thrift/src/main/thrift/client.thrift</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift/client.thrift</destinationFile>
-                                        </fileSet>
-                                        <fileSet>
-                                            <sourceFile>../thrift-commons/src/main/thrift/common.thrift</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
+                                            <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
@@ -367,7 +354,7 @@
                             <!-- Run the integration test cases -->
                             <execution>
                                 <id>cmake-run-test</id>
-                                <phase>integration-test</phase>
+                                <phase>test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
@@ -386,40 +373,29 @@
                             <!-- Start a local IoTDB server to run integration test cases -->
                             <execution>
                                 <id>iotdb-process</id>
-                                <phase>pre-integration-test</phase>
+                                <phase>generate-test-resources</phase>
                                 <goals>
                                     <goal>start</goal>
                                 </goals>
                                 <configuration>
-                                    <name>iotdb-server</name>
+                                    <name>start-iotdb</name>
                                     <waitForInterrupt>false</waitForInterrupt>
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
-                                    <waitAfterLaunch>15</waitAfterLaunch>
+                                    <waitAfterLaunch>5</waitAfterLaunch>
                                     <!-- Redirect IoTDB server log to /dev/null -->
                                     <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                                     <arguments>
-                                        <argument>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
+                                        <argument>${project.basedir}/../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
                             <!-- Stop the IoTDB server when integration test finishes -->
                             <execution>
-                                <id>stop-iotdb</id>
+                                <id>stop-all</id>
                                 <phase>post-integration-test</phase>
                                 <goals>
                                     <goal>stop-all</goal>
                                 </goals>
-                                <configuration>
-                                    <name>iotdb-server</name>
-                                    <waitForInterrupt>false</waitForInterrupt>
-                                    <!-- Maximum time in seconds to wait after launching IoTDB -->
-                                    <waitAfterLaunch>5</waitAfterLaunch>
-                                    <!-- Redirect IoTDB server log to /dev/null -->
-                                    <processLogFile>${project.build.directory}/build/test/test1.log</processLogFile>
-                                    <arguments>
-                                        <argument>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
-                                    </arguments>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

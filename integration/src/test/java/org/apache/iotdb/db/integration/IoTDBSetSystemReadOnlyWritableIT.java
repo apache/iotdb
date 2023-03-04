@@ -48,7 +48,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
 
   private static final String[] sqls1 =
       new String[] {
-        "CREATE DATABASE root.ln",
+        "set storage group to root.ln",
         "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)",
@@ -97,7 +97,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
-        "CREATE DATABASE root.sgcc",
+        "set storage group to root.sgcc",
         "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
@@ -170,7 +170,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET SYSTEM TO RUNNING");
+      statement.execute("SET SYSTEM TO WRITABLE");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

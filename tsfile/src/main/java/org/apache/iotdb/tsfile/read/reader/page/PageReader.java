@@ -26,23 +26,15 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class PageReader implements IPageReader {
 
@@ -63,7 +55,6 @@ public class PageReader implements IPageReader {
   protected ByteBuffer valueBuffer;
 
   protected Filter filter;
-  private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
@@ -162,159 +153,6 @@ public class PageReader implements IPageReader {
     return pageData.flip();
   }
 
-  private boolean pageSatisfy() {
-    if (filter != null) {
-      return filter.satisfy(getStatistics());
-    } else {
-      long rowCount = getStatistics().getCount();
-      if (paginationController.hasCurOffset(rowCount)) {
-        paginationController.consumeOffset(rowCount);
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public TsBlock getAllSatisfiedData() throws IOException {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    if (pageSatisfy()) {
-      switch (dataType) {
-        case BOOLEAN:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aBoolean))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeBoolean(aBoolean);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        case INT32:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            int anInt = valueDecoder.readInt(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, anInt))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeInt(anInt);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        case INT64:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            long aLong = valueDecoder.readLong(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aLong))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeLong(aLong);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        case FLOAT:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            float aFloat = valueDecoder.readFloat(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aFloat))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeFloat(aFloat);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        case DOUBLE:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            double aDouble = valueDecoder.readDouble(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aDouble))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeDouble(aDouble);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        case TEXT:
-          while (timeDecoder.hasNext(timeBuffer)) {
-            long timestamp = timeDecoder.readLong(timeBuffer);
-            Binary aBinary = valueDecoder.readBinary(valueBuffer);
-            if (isDeleted(timestamp) || (filter != null && !filter.satisfy(timestamp, aBinary))) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timestamp);
-              valueBuilder.writeBinary(aBinary);
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
-    }
-    return builder.build();
-  }
-
   @Override
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
@@ -329,11 +167,6 @@ public class PageReader implements IPageReader {
     }
   }
 
-  @Override
-  public void setLimitOffset(PaginationController paginationController) {
-    this.paginationController = paginationController;
-  }
-
   public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }
@@ -346,9 +179,6 @@ public class PageReader implements IPageReader {
   public boolean isModified() {
     return pageHeader.isModified();
   }
-
-  @Override
-  public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
 
   protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {

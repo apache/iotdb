@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -53,7 +53,7 @@ public class BloomFilterCache {
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      logger.info("BloomFilterCache size = {}", MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE);
+      logger.info("BloomFilterCache size = " + MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE);
     }
     lruCache =
         Caffeine.newBuilder()
@@ -99,7 +99,7 @@ public class BloomFilterCache {
     BloomFilter bloomFilter = lruCache.get(key);
 
     if (debug) {
-      DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: {}", key.filePath);
+      DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: " + key.filePath);
     }
 
     return bloomFilter;

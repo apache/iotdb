@@ -53,7 +53,6 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -130,7 +129,7 @@ public class TsFileValidationTool {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
+          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
         }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
@@ -164,8 +163,7 @@ public class TsFileValidationTool {
                         Long.parseLong(f2.getName().split("-")[0])));
             findUncorrectFiles(tsFiles);
           }
-          // clear map
-          clearMap(false);
+          clearMap();
         }
       }
     }
@@ -218,7 +216,8 @@ public class TsFileValidationTool {
                   break;
                 }
                 long currentChunkEndTime = Long.MIN_VALUE;
-                String measurementID = deviceID + PATH_SEPARATOR + header.getMeasurementID();
+                String measurementID =
+                    deviceID + TsFileConstant.PATH_SEPARATOR + header.getMeasurementID();
                 hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
                 measurementLastTime.computeIfAbsent(
                     measurementID,
@@ -517,6 +516,7 @@ public class TsFileValidationTool {
           isBadFileMap.put(tsFile.getName(), true);
           badFileNum++;
         }
+
       } finally {
         for (String msg : previousBadFileMsgs) {
           printBoth(msg);
@@ -556,7 +556,7 @@ public class TsFileValidationTool {
           }
         }
       }
-      if (seqDataDirList.isEmpty() && fileList.isEmpty()) {
+      if (seqDataDirList.size() == 0 && fileList.size() == 0) {
         System.out.println(
             "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
         return false;
@@ -565,10 +565,7 @@ public class TsFileValidationTool {
     }
   }
 
-  public static void clearMap(boolean resetBadFileNum) {
-    if (resetBadFileNum) {
-      badFileNum = 0;
-    }
+  public static void clearMap() {
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();

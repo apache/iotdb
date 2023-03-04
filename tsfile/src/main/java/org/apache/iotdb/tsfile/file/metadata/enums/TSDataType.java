@@ -62,10 +62,6 @@ public enum TSDataType {
     return getTsDataType(type);
   }
 
-  public byte getType() {
-    return type;
-  }
-
   public static TSDataType getTsDataType(byte type) {
     switch (type) {
       case 0:

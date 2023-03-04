@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 public class AlignedChunkMetadata implements IChunkMetadata {
@@ -53,14 +52,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   public Statistics getStatistics(int index) {
     IChunkMetadata v = valueChunkMetadataList.get(index);
     return v == null ? null : v.getStatistics();
-  }
-
-  public List<Statistics> getValueStatisticsList() {
-    List<Statistics> valueStatisticsList = new ArrayList<>();
-    for (IChunkMetadata v : valueChunkMetadataList) {
-      valueStatisticsList.add(v == null ? null : v.getStatistics());
-    }
-    return valueStatisticsList;
   }
 
   public Statistics getTimeStatistics() {
@@ -178,7 +169,7 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public void insertIntoSortedDeletions(TimeRange timeRange) {
+  public void insertIntoSortedDeletions(long startTime, long endTime) {
     throw new UnsupportedOperationException();
   }
 

@@ -376,19 +376,19 @@ public class MetadataIndexConstructorTest {
       if (singleMeasurement != null) {
         for (String measurement : singleMeasurement[i]) {
           measurements.add(measurement);
-          correctPaths.add(new Path(device, measurement, true).getFullPath());
+          correctPaths.add(new Path(device, measurement).getFullPath());
         }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
-        correctPaths.add(new Path(device, "", true).getFullPath());
+        correctPaths.add(new Path(device, "").getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
-          correctPaths.add(new Path(device, measurementName, true).getFullPath());
+          correctPaths.add(new Path(device, measurementName).getFullPath());
         }
       }
       Collections.sort(measurements);

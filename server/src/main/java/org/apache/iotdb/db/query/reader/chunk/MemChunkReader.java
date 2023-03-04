@@ -45,8 +45,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList =
         Collections.singletonList(
-            new MemPageReader(
-                readableChunk.getTsBlock(), readableChunk.getChunkMetaData(), filter));
+            new MemPageReader(timeValuePairIterator, readableChunk.getChunkMetaData(), filter));
   }
 
   @Override

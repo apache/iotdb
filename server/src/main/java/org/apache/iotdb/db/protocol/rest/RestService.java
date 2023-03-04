@@ -16,12 +16,12 @@
  */
 package org.apache.iotdb.db.protocol.rest;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.protocol.rest.filter.ApiOriginFilter;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
 
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -53,8 +53,7 @@ public class RestService implements IService {
       String trustStorePath,
       String keyStorePwd,
       String trustStorePwd,
-      int idleTime,
-      boolean clientAuth) {
+      int idleTime) {
     server = new Server();
 
     HttpConfiguration httpsConfig = new HttpConfiguration();
@@ -64,11 +63,8 @@ public class RestService implements IService {
     SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
     sslContextFactory.setKeyStorePath(keyStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
-    if (clientAuth) {
-      sslContextFactory.setTrustStorePath(trustStorePath);
-      sslContextFactory.setTrustStorePassword(trustStorePwd);
-      sslContextFactory.setNeedClientAuth(clientAuth);
-    }
+    sslContextFactory.setTrustStorePath(trustStorePath);
+    sslContextFactory.setTrustStorePassword(trustStorePwd);
 
     ServerConnector httpsConnector =
         new ServerConnector(
@@ -113,7 +109,6 @@ public class RestService implements IService {
       LOGGER.warn("RestService failed to start: {}", e.getMessage());
       server.destroy();
     }
-    LOGGER.info("start RestService successfully");
   }
 
   @Override
@@ -126,8 +121,7 @@ public class RestService implements IService {
           config.getTrustStorePath(),
           config.getKeyStorePwd(),
           config.getTrustStorePwd(),
-          config.getIdleTimeoutInSeconds(),
-          config.isClientAuth());
+          config.getIdleTimeoutInSeconds());
     } else {
       startNonSSL(config.getRestServicePort());
     }

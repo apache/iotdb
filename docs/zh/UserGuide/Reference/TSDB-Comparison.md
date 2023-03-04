@@ -23,7 +23,7 @@
 
 ### Overview
 
-![TSDB Comparison](/img/github/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
+![TSDB Comparison](https://user-images.githubusercontent.com/33376433/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
 
 **表格外观启发自 [Andriy Zabavskyy: How to Select Time Series DB](https://towardsdatascience.com/how-to-select-time-series-db-123b0eb4ab82)*
 
@@ -102,8 +102,8 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 
 -   *SQL-like*：
 
-    -   IoTDB 和 InfluxDB 支持 SQL-like 语言。
-    -   OpenTSDB 和 KairosDB 只支持 Rest API。IoTDB 也支持 Rest API。
+    -   IoTDB 和 InfluxDB 支持 SQL-like 语言。另外，IoTDB 和 Calcite 的集成几乎完成（PR 已经提交），这意味着 IoTDB 很快就能支持标准 SQL。
+    -   OpenTSDB 和 KairosDB 只支持 Rest API。IoTDB 也支持 Rest API（PR 已经提交）。
     -   TimescaleDB 使用的是和 PostgreSQL 一样的 SQL。
 
 -   *Schema*：
@@ -233,6 +233,9 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 
     现在只有 IoTDB 支持了 JDBC driver（虽然不是所有接口都实现），这使得 IoTDB 可以整合许多其它的基于 JDBC driver 的软件。
 
+-   *Standard SQL*：
+
+    正如之前提到的，IoTDB 和 Calcite 的集成几乎完成（PR 已经提交），这意味着 IoTDB 很快就能支持标准 SQL。
 
 -   *Spark and Hive integration*：
 
@@ -276,23 +279,23 @@ IoTDB 拥有许多其它时间序列数据库不支持的强大功能。
 
 测试使用的 IoTDB 版本是`v0.11.1`。
 
-* 改变 batch size
+####### 改变 batch size
 
 10 个客户端并发地写数据。IoTDB 使用 batch insertion API，batch size 从 1ms 到 1min 变化（每次调用 write API 写 N 个数据点）。
 
 写入吞吐率（points/second）如下图所示：
 
-<img src="/img/github/106254214-6cacbe80-6253-11eb-8532-d6a1829f8f66.png" alt="Batch Size with Write Throughput (points/second)"  />
+<img src="https://user-images.githubusercontent.com/24886743/106254214-6cacbe80-6253-11eb-8532-d6a1829f8f66.png" alt="Batch Size with Write Throughput (points/second)"  />
 
 <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center>
 
-* 改变 client num
+####### 改变 client num
 
 client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size 是 100（每次调用 write API 写 100 个数据点）。
 
 写入吞吐率（points/second）如下图所示：
 
-![Client Num with Write Throughput (points/second) (ms)](/img/github/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
+![Client Num with Write Throughput (points/second) (ms)](https://user-images.githubusercontent.com/24886743/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
 
 <center>Figure 3. Client Num with Write Throughput (points/second) IoTDB v0.11.1</center>
 
@@ -306,19 +309,19 @@ client num 从 1 到 50 变化。IoTDB 使用 batch insertion API，batch size �
 
 测试结果如下图所示：
 
-![Raw data query 1 col](/img/github/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
+![Raw data query 1 col](https://user-images.githubusercontent.com/24886743/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
 
 <center>Figure 4. Raw data query 1 col time cost(ms) IoTDB v0.11.1</center>
 
-![Aggregation query](/img/github/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
+![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
 
 <center>Figure 5. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
-![Downsampling query](/img/github/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
+![Downsampling query](https://user-images.githubusercontent.com/24886743/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
 
 <center>Figure 6. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
-![Latest query](/img/github/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
+![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
 
 <center>Figure 7. Latest query time cost(ms) IoTDB v0.11.1</center>
 

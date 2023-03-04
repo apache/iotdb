@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.tree.ITreeNode;
-import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Map;
 
 /** This interface defines a MNode's operation interfaces. */
-public interface IMNode extends ITreeNode {
+public interface IMNode extends Serializable {
 
   String getName();
 
@@ -45,44 +47,31 @@ public interface IMNode extends ITreeNode {
 
   IMNode getChild(String name);
 
-  IMNode addChild(String name, IMNode child);
+  void addChild(String name, IMNode child);
 
   IMNode addChild(IMNode child);
 
-  IMNode deleteChild(String name);
+  void deleteChild(String name);
 
-  // this method will replace the oldChild with the newChild, the data of oldChild will be moved to
-  // newChild
   void replaceChild(String oldChildName, IMNode newChildNode);
 
-  // this method will move all the reference or value of current node's attributes to newMNode
-  void moveDataToNewMNode(IMNode newMNode);
+  Map<String, IMNode> getChildren();
 
-  IMNodeContainer getChildren();
-
-  void setChildren(IMNodeContainer children);
+  void setChildren(Map<String, IMNode> children);
 
   boolean isUseTemplate();
 
   void setUseTemplate(boolean useTemplate);
 
-  /** @return the logic id of template set or activated on this node, id>=-1 */
-  int getSchemaTemplateId();
+  Template getUpperTemplate();
 
-  /** @return the template id with current state, may be negative since unset or deactivation */
-  int getSchemaTemplateIdWithState();
+  Template getSchemaTemplate();
 
-  void setSchemaTemplateId(int schemaTemplateId);
+  void setSchemaTemplate(Template schemaTemplate);
 
-  void preUnsetSchemaTemplate();
-
-  void rollbackUnsetSchemaTemplate();
-
-  boolean isSchemaTemplatePreUnset();
-
-  void unsetSchemaTemplate();
-
-  boolean isAboveDatabase();
+  // EmptyInternal means there's no child or template under this node
+  // and this node is not the root nor a storageGroup nor a measurement.
+  boolean isEmptyInternal();
 
   boolean isStorageGroup();
 
@@ -90,17 +79,11 @@ public interface IMNode extends ITreeNode {
 
   boolean isMeasurement();
 
-  MNodeType getMNodeType(Boolean isConfig);
-
   IStorageGroupMNode getAsStorageGroupMNode();
 
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
 
-  CacheEntry getCacheEntry();
-
-  void setCacheEntry(CacheEntry cacheEntry);
-
-  <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
+  void serializeTo(MLogWriter logWriter) throws IOException;
 }

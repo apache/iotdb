@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.schedule.CompactionScheduler;
-import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -35,7 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX;
 import static org.junit.Assert.assertFalse;
 
 public class InnerCompactionLogTest extends InnerCompactionTest {
@@ -67,6 +67,7 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     try {
       Thread.sleep(1000);
     } catch (Exception e) {

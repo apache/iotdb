@@ -55,7 +55,7 @@ public class ChunkLoaderTest {
     fileReader = new TsFileSequenceReader(FILE_PATH);
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     List<IChunkMetadata> chunkMetadataList =
-        metadataQuerierByFile.getChunkMetaDataList(new Path("d2", "s1", true));
+        metadataQuerierByFile.getChunkMetaDataList(new Path("d2", "s1"));
 
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     for (IChunkMetadata chunkMetaData : chunkMetadataList) {

@@ -181,7 +181,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
   }
 
   @Override
-  public InterpreterResult internalInterpret(String st, InterpreterContext context) {
+  protected InterpreterResult internalInterpret(String st, InterpreterContext context) {
     if (connectionException != null) {
       return new InterpreterResult(
           Code.ERROR, "IoTDBConnectionException: " + connectionException.getMessage());
@@ -288,7 +288,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
     }
   }
 
-  public static String[] parseMultiLinesSQL(String sql) {
+  static String[] parseMultiLinesSQL(String sql) {
     String[] tmp =
         sql.replace(TAB, WHITESPACE).replace(NEWLINE, WHITESPACE).trim().split(SEMICOLON);
     return Arrays.stream(tmp).map(String::trim).toArray(String[]::new);

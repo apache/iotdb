@@ -53,10 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class RestorableTsFileIOWriterTest {
@@ -215,8 +212,8 @@ public class RestorableTsFileIOWriterTest {
 
     TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1", "s1", true));
-    pathList.add(new Path("d1", "s2", true));
+    pathList.add(new Path("d1", "s1"));
+    pathList.add(new Path("d1", "s2"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     QueryDataSet dataSet = tsFileReader.query(queryExpression);
     RowRecord record = dataSet.next();
@@ -256,9 +253,9 @@ public class RestorableTsFileIOWriterTest {
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
   }
@@ -300,13 +297,13 @@ public class RestorableTsFileIOWriterTest {
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
   }
@@ -348,13 +345,13 @@ public class RestorableTsFileIOWriterTest {
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
   }
@@ -397,13 +394,13 @@ public class RestorableTsFileIOWriterTest {
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d2", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
   }
@@ -434,9 +431,9 @@ public class RestorableTsFileIOWriterTest {
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);
     reader.close();
   }

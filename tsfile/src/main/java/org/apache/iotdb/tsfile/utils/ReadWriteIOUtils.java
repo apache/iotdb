@@ -35,12 +35,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
@@ -63,8 +60,6 @@ public class ReadWriteIOUtils {
   public static final int DOUBLE_LEN = 8;
   public static final int FLOAT_LEN = 4;
   public static final float BIT_LEN = 0.125F;
-
-  private static final int NO_BYTE_TO_READ = -1;
 
   private static final byte[] magicStringBytes;
 
@@ -116,13 +111,14 @@ public class ReadWriteIOUtils {
     return readBool(buffer);
   }
 
-  public static int write(Map<String, String> map, OutputStream stream) throws IOException {
+  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     if (map == null) {
-      return write(NO_BYTE_TO_READ, stream);
+      return write(-1, stream);
     }
 
     int length = 0;
-    length += write(map.size(), stream);
+    stream.writeInt(map.size());
+    length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
       length += write(entry.getKey(), stream);
       length += write(entry.getValue(), stream);
@@ -130,7 +126,8 @@ public class ReadWriteIOUtils {
     return length;
   }
 
-  public static void write(List<Map<String, String>> maps, OutputStream stream) throws IOException {
+  public static void write(List<Map<String, String>> maps, DataOutputStream stream)
+      throws IOException {
     for (Map<String, String> map : maps) {
       write(map, stream);
     }
@@ -138,7 +135,7 @@ public class ReadWriteIOUtils {
 
   public static int write(Map<String, String> map, ByteBuffer buffer) {
     if (map == null) {
-      return write(NO_BYTE_TO_READ, buffer);
+      return write(-1, buffer);
     }
 
     int length = 0;
@@ -146,24 +143,16 @@ public class ReadWriteIOUtils {
     buffer.putInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
-      if (entry.getKey() == null) {
-        buffer.putInt(-1);
-      } else {
-        bytes = entry.getKey().getBytes();
-        buffer.putInt(bytes.length);
-        buffer.put(bytes);
-        length += bytes.length;
-      }
+      bytes = entry.getKey().getBytes();
+      buffer.putInt(bytes.length);
       length += 4;
-      if (entry.getValue() == null) {
-        buffer.putInt(-1);
-      } else {
-        bytes = entry.getValue().getBytes();
-        buffer.putInt(bytes.length);
-        buffer.put(bytes);
-        length += bytes.length;
-      }
+      buffer.put(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      buffer.putInt(bytes.length);
       length += 4;
+      buffer.put(bytes);
+      length += bytes.length;
     }
     return length;
   }
@@ -183,7 +172,7 @@ public class ReadWriteIOUtils {
     } else {
       outputStream.write(0);
     }
-    return BOOLEAN_LEN;
+    return 1;
   }
 
   /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
@@ -196,7 +185,7 @@ public class ReadWriteIOUtils {
     }
 
     buffer.put(a);
-    return BOOLEAN_LEN;
+    return 1;
   }
 
   /**
@@ -341,7 +330,7 @@ public class ReadWriteIOUtils {
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += write(NO_BYTE_TO_READ, outputStream);
+      len += write(-1, outputStream);
       return len;
     }
 
@@ -360,7 +349,7 @@ public class ReadWriteIOUtils {
   public static int writeVar(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += ReadWriteForEncodingUtils.writeVarInt(NO_BYTE_TO_READ, outputStream);
+      len += ReadWriteForEncodingUtils.writeVarInt(-1, outputStream);
       return len;
     }
 
@@ -378,7 +367,7 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, ByteBuffer buffer) {
     if (s == null) {
-      return write(NO_BYTE_TO_READ, buffer);
+      return write(-1, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();
@@ -390,7 +379,7 @@ public class ReadWriteIOUtils {
 
   public static int writeVar(String s, ByteBuffer buffer) {
     if (s == null) {
-      return ReadWriteForEncodingUtils.writeVarInt(NO_BYTE_TO_READ, buffer);
+      return ReadWriteForEncodingUtils.writeVarInt(-1, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();
@@ -459,17 +448,6 @@ public class ReadWriteIOUtils {
   public static int write(TSEncoding encoding, ByteBuffer buffer) {
     byte n = encoding.serialize();
     return write(n, buffer);
-  }
-
-  public static int sizeToWrite(Binary n) {
-    return INT_LEN + n.getLength();
-  }
-
-  public static int sizeToWrite(String s) {
-    if (s == null) {
-      return INT_LEN;
-    }
-    return INT_LEN + s.getBytes().length;
   }
 
   /** read a byte var from inputStream. */
@@ -548,7 +526,7 @@ public class ReadWriteIOUtils {
    */
   public static int read(ByteBuffer buffer) {
     if (!buffer.hasRemaining()) {
-      return NO_BYTE_TO_READ;
+      return -1;
     }
     return buffer.get() & 0xFF;
   }
@@ -672,7 +650,7 @@ public class ReadWriteIOUtils {
     int offset = 0;
     int len;
     while (bytes.length - offset > 0
-        && (len = inputStream.read(bytes, offset, bytes.length - offset)) != NO_BYTE_TO_READ) {
+        && (len = inputStream.read(bytes, offset, bytes.length - offset)) != -1) {
       offset += len;
     }
     return bytes;
@@ -680,42 +658,10 @@ public class ReadWriteIOUtils {
 
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
-    if (length == NO_BYTE_TO_READ) {
+    if (length == -1) {
       return null;
     }
     Map<String, String> map = new HashMap<>(length);
-    for (int i = 0; i < length; i++) {
-      // key
-      String key = readString(buffer);
-      // value
-      String value = readString(buffer);
-      map.put(key, value);
-    }
-    return map;
-  }
-
-  public static Map<String, String> readMap(InputStream inputStream) throws IOException {
-    int length = readInt(inputStream);
-    if (length == NO_BYTE_TO_READ) {
-      return null;
-    }
-    Map<String, String> map = new HashMap<>(length);
-    for (int i = 0; i < length; i++) {
-      // key
-      String key = readString(inputStream);
-      // value
-      String value = readString(inputStream);
-      map.put(key, value);
-    }
-    return map;
-  }
-
-  public static LinkedHashMap<String, String> readLinkedHashMap(ByteBuffer buffer) {
-    int length = readInt(buffer);
-    if (length == NO_BYTE_TO_READ) {
-      return null;
-    }
-    LinkedHashMap<String, String> map = new LinkedHashMap<>(length);
     for (int i = 0; i < length; i++) {
       // key
       String key = readString(buffer);
@@ -774,7 +720,7 @@ public class ReadWriteIOUtils {
       throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = input.read(buffer, position)) != NO_BYTE_TO_READ) {
+    while (buffer.hasRemaining() && (read = input.read(buffer, position)) != -1) {
       length += read;
       position += read;
       input.read(buffer, position);
@@ -786,7 +732,7 @@ public class ReadWriteIOUtils {
   public static int readAsPossible(TsFileInput input, ByteBuffer buffer) throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = input.read(buffer)) != NO_BYTE_TO_READ) {
+    while (buffer.hasRemaining() && (read = input.read(buffer)) != -1) {
       length += read;
     }
     return length;
@@ -801,9 +747,7 @@ public class ReadWriteIOUtils {
       target.limit(target.position() + len);
     }
     int read;
-    while (length < len
-        && target.hasRemaining()
-        && (read = input.read(target, offset)) != NO_BYTE_TO_READ) {
+    while (length < len && target.hasRemaining() && (read = input.read(target, offset)) != -1) {
       length += read;
       offset += read;
     }
@@ -836,57 +780,6 @@ public class ReadWriteIOUtils {
     }
 
     return list;
-  }
-
-  /** write string list with self define length. */
-  public static void writeStringList(List<String> list, ByteBuffer buffer) {
-    if (list == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
-    }
-    int size = list.size();
-    buffer.putInt(size);
-    for (String s : list) {
-      write(s, buffer);
-    }
-  }
-
-  /** write string list with self define length. */
-  public static void writeStringList(List<String> list, OutputStream outputStream)
-      throws IOException {
-    if (list == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
-    }
-    int size = list.size();
-    write(size, outputStream);
-    for (String s : list) {
-      write(s, outputStream);
-    }
-  }
-
-  /** read integer set with self define length. */
-  public static Set<Integer> readIntegerSet(ByteBuffer buffer) {
-    int size = readInt(buffer);
-    if (size <= 0) {
-      return Collections.emptySet();
-    }
-    Set<Integer> set = new HashSet<>();
-    for (int i = 0; i < size; i++) {
-      set.add(readInt(buffer));
-    }
-    return set;
-  }
-
-  /** write integer set with self define length. */
-  public static void writeIntegerSet(Set<Integer> set, OutputStream outputStream)
-      throws IOException {
-    if (set == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
-    }
-    int size = set.size();
-    write(size, outputStream);
-    for (int i : set) {
-      write(i, outputStream);
-    }
   }
 
   public static CompressionType readCompressionType(InputStream inputStream) throws IOException {
@@ -990,37 +883,6 @@ public class ReadWriteIOUtils {
     }
   }
 
-  public static void writeObject(Object value, ByteBuffer byteBuffer) {
-    if (value instanceof Long) {
-      byteBuffer.putInt(LONG.ordinal());
-      byteBuffer.putLong((Long) value);
-    } else if (value instanceof Double) {
-      byteBuffer.putInt(DOUBLE.ordinal());
-      byteBuffer.putDouble((Double) value);
-    } else if (value instanceof Integer) {
-      byteBuffer.putInt(INTEGER.ordinal());
-      byteBuffer.putInt((Integer) value);
-    } else if (value instanceof Float) {
-      byteBuffer.putInt(FLOAT.ordinal());
-      byteBuffer.putFloat((Float) value);
-    } else if (value instanceof Binary) {
-      byteBuffer.putInt(BINARY.ordinal());
-      byte[] bytes = ((Binary) value).getValues();
-      byteBuffer.putInt(bytes.length);
-      byteBuffer.put(bytes);
-    } else if (value instanceof Boolean) {
-      byteBuffer.putInt(BOOLEAN.ordinal());
-      byteBuffer.put(Boolean.TRUE.equals(value) ? (byte) 1 : (byte) 0);
-    } else if (value == null) {
-      byteBuffer.putInt(NULL.ordinal());
-    } else {
-      byteBuffer.putInt(STRING.ordinal());
-      byte[] bytes = value.toString().getBytes();
-      byteBuffer.putInt(bytes.length);
-      byteBuffer.put(bytes);
-    }
-  }
-
   public static Object readObject(ByteBuffer buffer) {
     ClassSerializeId serializeId = ClassSerializeId.values()[buffer.get()];
     switch (serializeId) {
@@ -1058,29 +920,5 @@ public class ReadWriteIOUtils {
 
     clone.flip();
     return clone;
-  }
-
-  /**
-   * The skip method of will return only if skipping n bytes or reaching end of file.
-   *
-   * @param inputStream the inputSteam to be skipped.
-   * @param n the number of bytes to be skipped.
-   * @throws IOException if the stream does not support seek, or if some other I/O error occurs.
-   */
-  public static void skip(InputStream inputStream, long n) throws IOException {
-    while (n > 0) {
-      long skipN = inputStream.skip(n);
-      if (skipN > 0) {
-        n -= skipN;
-      } else {
-        // read one byte to decide should we retry
-        if (inputStream.read() == -1) {
-          // EOF
-          break;
-        } else {
-          n--;
-        }
-      }
-    }
   }
 }

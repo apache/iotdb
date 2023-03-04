@@ -27,18 +27,18 @@ def test_simple_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("CREATE DATABASE root.device0")
 
+        session.execute_non_query_statement("set storage group to root.device")
         # Write data
-        session.insert_str_record("root.device0", 123, "pressure", "15.0")
+        session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
-        session_data_set = session.execute_query_statement("SELECT * FROM root.device0")
+        session_data_set = session.execute_query_statement("SELECT ** FROM root")
         df = session_data_set.todf()
 
         session.close()
 
-    assert list(df.columns) == ["Time", "root.device0.pressure"]
+    assert list(df.columns) == ["Time", "root.device.pressure"]
     assert_array_equal(df.values, [[123.0, 15.0]])
 
 
@@ -47,41 +47,35 @@ def test_non_time_query():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("CREATE DATABASE root.device0")
-
+        session.execute_non_query_statement("set storage group to root.device")
         # Write data
-        session.insert_str_record("root.device0", 123, "pressure", "15.0")
+        session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
-        session_data_set = session.execute_query_statement("SHOW TIMESERIES root.device0.*")
+        session_data_set = session.execute_query_statement("SHOW TIMESERIES")
         df = session_data_set.todf()
 
         session.close()
 
     assert list(df.columns) == [
-        "Timeseries",
-        "Alias",
-        "Database",
-        "DataType",
-        "Encoding",
-        "Compression",
-        "Tags",
-        "Attributes",
-        "Deadband",
-        "DeadbandParameters"
+        "timeseries",
+        "alias",
+        "storage group",
+        "dataType",
+        "encoding",
+        "compression",
+        "tags",
+        "attributes",
     ]
     assert_array_equal(
         df.values,
-        [
-            [
-                "root.device0.pressure",
+        [[
+                "root.device.pressure",
                 None,
-                "root.device0",
+                "root.device",
                 "FLOAT",
                 "GORILLA",
                 "SNAPPY",
-                None,
-                None,
                 None,
                 None,
             ]

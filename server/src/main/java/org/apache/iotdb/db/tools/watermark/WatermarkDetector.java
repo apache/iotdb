@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.tools.watermark;
 
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 
 import org.apache.thrift.EncodingUtils;
 
@@ -32,7 +33,7 @@ import java.time.ZoneId;
 
 public class WatermarkDetector {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, LogicalOperatorException {
     if (args == null || args.length != 8) {
       throw new IOException(
           "Usage: ./detect-watermark.sh [filePath] [secretKey] "
@@ -67,7 +68,7 @@ public class WatermarkDetector {
         dataType);
   }
 
-  // Suppress high Cognitive Complexity warning
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static boolean isWatermarked(
       String filePath,
       String secretKey,
@@ -77,7 +78,7 @@ public class WatermarkDetector {
       double alpha,
       int columnIndex,
       String dataType)
-      throws IOException {
+      throws LogicalOperatorException, IOException {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
@@ -165,12 +166,17 @@ public class WatermarkDetector {
   }
 
   /** Parses timestamp from string type to long type */
-  private static long parseTimestamp(String str) {
+  private static long parseTimestamp(String str) throws LogicalOperatorException {
     long timestamp;
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, ZoneId.systemDefault());
+      try {
+        ZoneId zoneId = ZoneId.systemDefault();
+        timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId);
+      } catch (LogicalOperatorException e1) {
+        throw new LogicalOperatorException("The format of timestamp is not unexpected.");
+      }
     }
     return timestamp;
   }

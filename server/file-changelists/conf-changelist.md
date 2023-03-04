@@ -85,9 +85,6 @@ mtree_snapshot_interval=100000
 
 mtree_snapshot_threshold_time=3600
 
-rpc_selector_thread_num=1
-
-rpc_min_concurrent_client_num=1
 
 ## remove：
 merge_thread_num=1

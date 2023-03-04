@@ -18,417 +18,375 @@
     under the License.
 
 -->
+# 集群搭建
 
-## 1. 目标
+## 集群设置
 
-本文档为 IoTDB 集群版（1.0.0）的安装及启动教程。
+你可以根据此文档启动IoTDB集群。
 
-## 2. 前置检查
+### 安装环境
 
-1. JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
+为使用IoTDB，你首先需要:
+
+1. 安装前需要保证设备上配有 JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
+
 2. 设置最大文件打开数为 65535。
-3. 关闭交换内存。
-4. 首次启动ConfigNode节点时，确保已清空ConfigNode节点的data/confignode目录；首次启动DataNode节点时，确保已清空DataNode节点的data/datanode目录。
-5. 如果整个集群处在可信环境下，可以关闭机器上的防火墙选项。
-6. 在集群默认配置中，ConfigNode 会占用端口 10710 和 10720，DataNode 会占用端口 6667、10730、10740、10750 和 10760，
-请确保这些端口未被占用，或者手动修改配置文件中的端口配置。
 
-## 3. 安装包获取
+### 安装步骤
 
-你可以选择下载二进制文件（见 3.1）或从源代码编译（见 3.2）。
+IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行安装——下载二进制可运行程序、使用源码、使用 docker 镜像。
 
-### 3.1 下载二进制文件
+- 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
+- 二进制可运行程序：请从 [下载](https://iotdb.apache.org/Download/) 页面下载最新的安装包，解压后即完成安装。
+- 使用 Docker 镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
-1. 打开官网[Download Page](https://iotdb.apache.org/Download/)。
-2. 下载 IoTDB 1.0.0 版本的二进制文件。
-3. 解压得到 apache-iotdb-1.0.0-all-bin 目录。
+#### 源码编译
 
-### 3.2 使用源码编译
+下载源码:
 
-#### 3.2.1 下载源码
-
-**Git**
 ```
 git clone https://github.com/apache/iotdb.git
-git checkout v1.0.0
 ```
 
-**官网下载**
-1. 打开官网[Download Page](https://iotdb.apache.org/Download/)。
-2. 下载 IoTDB 1.0.0 版本的源码。
-3. 解压得到 apache-iotdb-1.0.0 目录。
-
-#### 3.2.2 编译源码
-
-在 IoTDB 源码根目录下:
-```
-mvn clean package -pl distribution -am -DskipTests
-```
-
-编译成功后，可在目录 
-**distribution/target/apache-iotdb-1.0.0-SNAPSHOT-all-bin/apache-iotdb-1.0.0-SNAPSHOT-all-bin** 
-找到集群版本的二进制文件。
-
-## 4. 安装包说明
-
-打开 apache-iotdb-1.0.0-SNAPSHOT-all-bin，可见以下目录：
-
-| **目录**   | **说明**                                              |
-|----------|-----------------------------------------------------|
-| conf     | 配置文件目录，包含 ConfigNode、DataNode、JMX 和 logback 等配置文件   |
-| data     | 数据文件目录，包含 ConfigNode 和 DataNode 的数据文件               |
-| lib      | 库文件目录                                               |
-| licenses | 证书文件目录                                              |
-| logs     | 日志文件目录，包含 ConfigNode 和 DataNode 的日志文件               |
-| sbin     | 脚本目录，包含 ConfigNode 和 DataNode 的启停移除脚本，以及 Cli 的启动脚本等 |
-| tools    | 系统工具目录                                              |
-
-## 5. 集群安装配置
-
-### 5.1 集群安装
-
-`apache-iotdb-1.0.0-SNAPSHOT-all-bin` 包含 ConfigNode 和 DataNode，
-请将安装包部署于你目标集群的所有机器上，推荐将安装包部署于所有服务器的相同目录下。
-
-如果你希望先在一台服务器上尝试部署 IoTDB 集群，请参考
-[Cluster Quick Start](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/ClusterQuickStart.html)。
-
-### 5.2 集群配置
-
-接下来需要修改每个服务器上的配置文件，登录服务器，
-并将工作路径切换至 `apache-iotdb-1.0.0-SNAPSHOT-all-bin`，
-配置文件在 `./conf` 目录内。
-
-对于所有部署 ConfigNode 的服务器，需要修改通用配置（见 5.2.1）和 ConfigNode 配置（见 5.2.2）。
-
-对于所有部署 DataNode 的服务器，需要修改通用配置（见 5.2.1）和 DataNode 配置（见 5.2.3）。
-
-#### 5.2.1 通用配置
-
-打开通用配置文件 ./conf/iotdb-common.properties，
-可根据 [部署推荐](https://iotdb.apache.org/zh/UserGuide/Master/Cluster/Deployment-Recommendation.html)
-设置以下参数：
-
-| **配置项**                                    | **说明**                                 | **默认**                                          |
-|--------------------------------------------|----------------------------------------|-------------------------------------------------|
-| cluster\_name                              | 节点希望加入的集群的名称                           | defaultCluster                                  |
-| config\_node\_consensus\_protocol\_class   | ConfigNode 使用的共识协议                     | org.apache.iotdb.consensus.ratis.RatisConsensus |
-| schema\_replication\_factor                | 元数据副本数，DataNode 数量不应少于此数目              | 1                                               |
-| schema\_region\_consensus\_protocol\_class | 元数据副本组的共识协议                            | org.apache.iotdb.consensus.ratis.RatisConsensus |
-| data\_replication\_factor                  | 数据副本数，DataNode 数量不应少于此数目               | 1                                               |
-| data\_region\_consensus\_protocol\_class   | 数据副本组的共识协议。注：RatisConsensus 目前不支持多数据目录 | org.apache.iotdb.consensus.iot.IoTConsensus     |
-
-**注意：上述配置项在集群启动后即不可更改，且务必保证所有节点的通用配置完全一致，否则节点无法启动。**
-
-#### 5.2.2 ConfigNode 配置
-
-打开 ConfigNode 配置文件 ./conf/iotdb-confignode.properties，根据服务器/虚拟机的 IP 地址和可用端口，设置以下参数：
-
-| **配置项**                        | **说明**                               | **默认**          | **用法**                                                                                                                                               |
-|--------------------------------|--------------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| cn\_internal\_address          | ConfigNode 在集群内部通讯使用的地址              | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                                                                                   |
-| cn\_internal\_port             | ConfigNode 在集群内部通讯使用的端口              | 10710           | 设置为任意未占用端口                                                                                                                                           |
-| cn\_consensus\_port            | ConfigNode 副本组共识协议通信使用的端口            | 10720           | 设置为任意未占用端口                                                                                                                                           |
-| cn\_target\_config\_node\_list | 节点注册加入集群时连接的 ConfigNode 的地址。注：只能配置一个 | 127.0.0.1:10710 | 对于 Seed-ConfigNode，设置为自己的 cn\_internal\_address:cn\_internal\_port；对于其它 ConfigNode，设置为另一个正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port |
-
-**注意：上述配置项在节点启动后即不可更改，且务必保证所有端口均未被占用，否则节点无法启动。**
-
-#### 5.2.3 DataNode 配置
-
-打开 DataNode 配置文件 ./conf/iotdb-datanode.properties，根据服务器/虚拟机的 IP 地址和可用端口，设置以下参数：
-
-| **配置项**                             | **说明**                    | **默认**          | **用法**                                                                            |
-|-------------------------------------|---------------------------|-----------------|-----------------------------------------------------------------------------------|
-| dn\_rpc\_address                    | 客户端 RPC 服务的地址             | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
-| dn\_rpc\_port                       | 客户端 RPC 服务的端口             | 6667            | 设置为任意未占用端口                                                                        |
-| dn\_internal\_address               | DataNode 在集群内部接收控制流使用的地址  | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
-| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 10730           | 设置为任意未占用端口                                                                        |
-| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 10740           | 设置为任意未占用端口                                                                        |
-| dn\_data\_region\_consensus\_port   | DataNode 的数据副本间共识协议通信的端口  | 10750           | 设置为任意未占用端口                                                                        |
-| dn\_schema\_region\_consensus\_port | DataNode 的元数据副本间共识协议通信的端口 | 10760           | 设置为任意未占用端口                                                                        |
-| dn\_target\_config\_node\_list      | 集群中正在运行的 ConfigNode 地址    | 127.0.0.1:10710 | 设置为任意正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port，可设置多个，用逗号（","）隔开 |
-
-**注意：上述配置项在节点启动后即不可更改，且务必保证所有端口均未被占用，否则节点无法启动。**
-
-## 6. 集群操作
-
-### 6.1 启动集群
-
-本小节描述如何启动包括若干 ConfigNode 和 DataNode 的集群。
-集群可以提供服务的标准是至少启动一个 ConfigNode 且启动 不小于（数据/元数据）副本个数 的 DataNode。
-
-总体启动流程分为三步：
-
-1. 启动种子 ConfigNode
-2. 增加 ConfigNode（可选）
-3. 增加 DataNode
-
-#### 6.1.1 启动 Seed-ConfigNode
-
-**集群第一个启动的节点必须是 ConfigNode，第一个启动的 ConfigNode 必须遵循本小节教程。**
-
-第一个启动的 ConfigNode 是 Seed-ConfigNode，标志着新集群的创建。
-在启动 Seed-ConfigNode 前，请打开通用配置文件 ./conf/iotdb-common.properties，并检查如下参数：
-
-| **配置项**                                    | **检查**        |
-|--------------------------------------------|---------------|
-| cluster\_name                              | 已设置为期望的集群名称   |
-| config\_node\_consensus\_protocol\_class   | 已设置为期望的共识协议   |
-| schema\_replication\_factor                | 已设置为期望的元数据副本数 |
-| schema\_region\_consensus\_protocol\_class | 已设置为期望的共识协议   |
-| data\_replication\_factor                  | 已设置为期望的数据副本数  |
-| data\_region\_consensus\_protocol\_class   | 已设置为期望的共识协议   |
-
-**注意：** 请根据[部署推荐](https://iotdb.apache.org/zh/UserGuide/Master/Cluster/Deployment-Recommendation.html)配置合适的通用参数，这些参数在首次配置后即不可修改。
-
-接着请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查如下参数：
-
-| **配置项**                        | **检查**                                                   |
-|--------------------------------|----------------------------------------------------------|
-| cn\_internal\_address          | 已设置为服务器的 IPV4 地址或域名                                      |
-| cn\_internal\_port             | 该端口未被占用                                                  |
-| cn\_consensus\_port            | 该端口未被占用                                                  |
-| cn\_target\_config\_node\_list | 已设置为自己的内部通讯地址，即 cn\_internal\_address:cn\_internal\_port |
-
-检查完毕后，即可在服务器上运行启动脚本：
+默认分支为master分支，你可以切换到其他发布版本，例如：
 
 ```
-# Linux 前台启动
-bash ./sbin/start-confignode.sh
+git checkout rel/0.12
+```
 
-# Linux 后台启动
-nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
+在iotdb根目录下:
+
+```
+> mvn clean package -pl cluster -am -DskipTests
+```
+
+集群的二进制版本在目录 **cluster/target/{iotdb-project.version}** 下
+
+#### 下载
+
+你可以直接下载二进制版本 [Download Page](https://iotdb.apache.org/Download/)
+
+
+
+### 文件目录
+
+完成IoTDB Cluster安装后，默认会在IoTDB Cluster的根目录下生成下列目录文件：
+
+| **目录** | **说明**                                     |
+| -------- | -------------------------------------------- |
+| conf     | 配置文件目录                                 |
+| data     | 默认数据文件目录，可通过修改配置文件修改位置 |
+| ext      | 默认udf目录，可通过修改配置文件修改位置      |
+| lib      | 库文件目录                                   |
+| logs     | 运行日志目录                                 |
+| sbin     | 可执行文件目录                               |
+| tools    | 系统工具目录                                 |
+
+
+
+### 配置
+
+为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得您可以在启动服务或服务运行时对其进行配置。
+
+三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 4 个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `iotdb-env.sh`(Unix 系统）/`iotdb-env.bat`(Windows 系统）, 您可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+
+配置文件的说明如下：
+
+- `iotdb-env.sh`/`iotdb-env.bat`：环境配置项的默认配置文件。您可以在文件中配置 JAVA-JVM 的相关系统配置项。
+- `iotdb-engine.properties`：IoTDB 引擎层系统配置项的默认配置文件。您可以在文件中配置 IoTDB 引擎运行时的相关参数。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘前的缓存大小 (`group_size_in_byte`)，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
+- `logback.xml`: 日志配置文件，比如日志级别等。
+- `iotdb-cluster.properties`: IoTDB 集群所需要的一些配置。
+
+`iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考 [附录/配置手册](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/Appendix/Config-Manual.md)，与集群有关的配置项是在`iotdb-cluster.properties`文件中的，你可以直接查看 [配置文件](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) 中的注释，也可以参考 [Cluster Configuration](#集群配置项)。
+
+配置文件位于 **{cluster\_root\_dir}/conf**。
+
+**你需要修改每个节点以下的配置项去启动你的IoTDB集群：**
+
+* iotdb-engine.properties:
+
+  * rpc\_address
+
+  - rpc\_port
+
+  - base\_dir
+
+  - data\_dirs
+
+  - wal\_dir
+
+* iotdb-cluster.properties
+  * internal\_ip
+  * internal\_meta\_port
+  * internal\_data\_port
+  * cluster\_info\_public\_port
+  * seed\_nodes
+
+  * default\_replica\_num
+
+## 被覆盖的单机版选项
+
+iotdb-engines.properties 配置文件中的部分内容会不再生效：
+
+- `enable_auto_create_schema` 不再生效，并被视为`false`. 应使用 iotdb-cluster.properties 中的
+   `enable_auto_create_schema` 来控制是否自动创建序列。
+- `is_sync_enable` 不再生效，并被视为 `false`.
+
+
+
+### 启动服务
+
+#### 启动集群
+
+您可以多节点部署或单机部署分布式集群，两者的主要区别是后者需要处理端口和文件目录的冲突，配置项含义请参考 [配置项](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/Cluster/Cluster-Setup.md#配置项)。 启动其中一个节点的服务，需要执行如下命令：
+
+```
+# Unix/OS X
+> nohup sbin/start-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
 
 # Windows
-.\sbin\start-confignode.bat
+> sbin\start-node.bat [printgc] [<conf_path>] 
 ```
 
-ConfigNode 的其它配置参数可参考
-[ConfigNode 配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/ConfigNode-Config-Manual.html)。
+`printgc`表示在启动的时候，会开启 GC 日志。 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。GC 日志会被存储在`IOTDB_HOME/logs/`下面。
 
-#### 6.1.2 增加更多 ConfigNode（可选）
+**如果你启动了所有seed节点，并且所有seed节点可以相互通信并没有ip地址/端口和文件目录的冲突，集群就成功启动了。**
 
-**只要不是第一个启动的 ConfigNode 就必须遵循本小节教程。**
+#### 集群扩展
 
-可向集群添加更多 ConfigNode，以保证 ConfigNode 的高可用。常用的配置为额外增加两个 ConfigNode，使集群共有三个 ConfigNode。
+在集群运行过程中，用户可以向集群中加入新的节点或者删除集群中已有节点。目前仅支持逐节点集群扩展操作，多节点的集群扩展可以转化为一系列单节点集群扩展操作来实现。集群只有在上一次集群扩展操作完成后才会接收新的集群扩展操作。
 
-新增的 ConfigNode 需要保证 ./conf/iotdb-common.properites 中的所有配置参数与 Seed-ConfigNode 完全一致，否则可能启动失败或产生运行时错误。
-因此，请着重检查通用配置文件中的以下参数：
-
-| **配置项**                                    | **检查**                 |
-|--------------------------------------------|------------------------|
-| cluster\_name                              | 与 Seed-ConfigNode 保持一致 |
-| config\_node\_consensus\_protocol\_class   | 与 Seed-ConfigNode 保持一致 |
-| schema\_replication\_factor                | 与 Seed-ConfigNode 保持一致 |
-| schema\_region\_consensus\_protocol\_class | 与 Seed-ConfigNode 保持一致 |
-| data\_replication\_factor                  | 与 Seed-ConfigNode 保持一致 |
-| data\_region\_consensus\_protocol\_class   | 与 Seed-ConfigNode 保持一致 |
-
-接着请打开它的配置文件 ./conf/iotdb-confignode.properties，并检查以下参数：
-
-| **配置项**                        | **检查**                                                       |
-|--------------------------------|--------------------------------------------------------------|
-| cn\_internal\_address          | 已设置为服务器的 IPV4 地址或域名                                          |
-| cn\_internal\_port             | 该端口未被占用                                                      |
-| cn\_consensus\_port            | 该端口未被占用                                                      |
-| cn\_target\_config\_node\_list | 已设置为另一个正在运行的 ConfigNode 的内部通讯地址，推荐使用 Seed-ConfigNode 的内部通讯地址 |
-
-检查完毕后，即可在服务器上运行启动脚本：
+**在要加入集群的新节点上启动以下脚本进行增加节点操作：**
 
 ```
-# Linux 前台启动
-bash ./sbin/start-confignode.sh
-
-# Linux 后台启动
-nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
+# Unix/OS X
+> nohup sbin/add-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
 
 # Windows
-.\sbin\start-confignode.bat
+> sbin\add-node.bat [printgc] [<conf_path>] 
 ```
 
-ConfigNode 的其它配置参数可参考
-[ConfigNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/ConfigNode-Config-Manual.html)。
+`printgc`表示在启动的时候，会开启 GC 日志。 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
 
-#### 6.1.3 增加 DataNode
-
-**确保集群已有正在运行的 ConfigNode 后，才能开始增加 DataNode。**
-
-可以向集群中添加任意个 DataNode。
-在添加新的 DataNode 前，请先打开通用配置文件 ./conf/iotdb-common.properties 并检查以下参数：
-
-| **配置项**                                    | **检查**                 |
-|--------------------------------------------|------------------------|
-| cluster\_name                              | 与 Seed-ConfigNode 保持一致 |
-
-接着打开它的配置文件 ./conf/iotdb-datanode.properties 并检查以下参数：
-
-| **配置项**                             | **检查**                                                    |
-|-------------------------------------|-----------------------------------------------------------|
-| dn\_rpc\_address                    | 已设置为服务器的 IPV4 地址或域名                                       |
-| dn\_rpc\_port                       | 该端口未被占用                                                   |
-| dn\_internal\_address               | 已设置为服务器的 IPV4 地址或域名                                       |
-| dn\_internal\_port                  | 该端口未被占用                                                   |
-| dn\_mpp\_data\_exchange\_port       | 该端口未被占用                                                   |
-| dn\_data\_region\_consensus\_port   | 该端口未被占用                                                   |
-| dn\_schema\_region\_consensus\_port | 该端口未被占用                                                   |
-| dn\_target\_config\_node\_list      | 已设置为正在运行的 ConfigNode 的内部通讯地址，推荐使用 Seed-ConfigNode 的内部通讯地址 |
-
-检查完毕后，即可在服务器上运行启动脚本：
+**在任一集群中的节点上启动以下脚本进行删除节点操作：**
 
 ```
-# Linux 前台启动
-bash ./sbin/start-datanode.sh
-
-# Linux 后台启动
-nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
+# Unix/OS X
+> sbin/remove-node.sh <internal_ip> <internal_meta_port>
 
 # Windows
-.\sbin\start-datanode.bat
+> sbin\remove-node.bat <internal_ip> <internal_meta_port>
 ```
 
-DataNode 的其它配置参数可参考
-[DataNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
+`internal_ip`表示待删除节点的 IP 地址 `internal_meta_port`表示待删除节点的 meta 服务端口
 
-**注意：当且仅当集群拥有不少于副本个数（max{schema\_replication\_factor, data\_replication\_factor}）的 DataNode 后，集群才可以提供服务**
+#### 使用 Cli 工具
 
-### 6.2 启动 Cli
+安装环境请参考 [快速上手/安装环境章节](https://github.com/apache/iotdb/blob/master/docs/zh/UserGuide/QuickStart/QuickStart.md)。你可以根据节点的rpc\_address和rpc\_port向任何节点发起连接。
 
-若搭建的集群仅用于本地调试，可直接执行 ./sbin 目录下的 Cli 启动脚本：
+#### 停止集群
+
+在任一机器上启动以下脚本进行停止所有运行在该机器上的节点服务操作：
 
 ```
-# Linux
-./sbin/start-cli.sh
+# Unix/OS X
+> sbin/stop-node.sh
 
 # Windows
-.\sbin\start-cli.bat
+> sbin\stop-node.bat
 ```
 
-若希望通过 Cli 连接生产环境的集群，
-请阅读 [Cli 使用手册](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/Command-Line-Interface.html)。
-
-### 6.3 验证集群
-
-以在6台服务器上启动的3C3D（3个ConfigNode 和 3个DataNode）集群为例，
-这里假设3个ConfigNode的IP地址依次为192.168.1.10、192.168.1.11、192.168.1.12，且3个ConfigNode启动时均使用了默认的端口10710与10720；
-3个DataNode的IP地址依次为192.168.1.20、192.168.1.21、192.168.1.22，且3个DataNode启动时均使用了默认的端口6667、10730、10740、10750与10760。
-
-当按照6.1步骤成功启动集群后，在 Cli 执行 `show cluster details`，看到的结果应当如下：
-
-```
-IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
-|     0|ConfigNode|Running|   192.168.1.10|       10710|              10720|            |       |       |                   |                 |
-|     2|ConfigNode|Running|   192.168.1.11|       10710|              10720|            |       |       |                   |                 |
-|     3|ConfigNode|Running|   192.168.1.12|       10710|              10720|            |       |       |                   |                 |
-|     1|  DataNode|Running|   192.168.1.20|       10730|                   |192.168.1.20|   6667|  10740|              10750|            10760|
-|     4|  DataNode|Running|   192.168.1.21|       10730|                   |192.168.1.21|   6667|  10740|              10750|            10760|
-|     5|  DataNode|Running|   192.168.1.22|       10730|                   |192.168.1.22|   6667|  10740|              10750|            10760|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
-Total line number = 6
-It costs 0.012s
-```
-
-若所有节点的状态均为 **Running**，则说明集群部署成功；
-否则，请阅读启动失败节点的运行日志，并检查对应的配置参数。
-
-### 6.4 停止 IoTDB 进程
-
-本小节描述如何手动关闭 IoTDB 的 ConfigNode 或 DataNode 进程。
-
-#### 6.4.1 使用脚本停止 ConfigNode
-
-执行停止 ConfigNode 脚本：
-
-```
-# Linux
-./sbin/stop-confignode.sh
-
-# Windows
-.\sbin\stop-confignode.bat
-```
-
-#### 6.4.2 使用脚本停止 DataNode
-
-执行停止 DataNode 脚本：
-
-```
-# Linux
-./sbin/stop-datanode.sh
-
-# Windows
-.\sbin\stop-datanode.bat
-```
-
-#### 6.4.3 停止节点进程
-
-首先获取节点的进程号：
-
-```
-jps
-
-# 或
-
-ps aux | grep iotdb
-```
-
-结束进程：
-
-```
-kill -9 <pid>
-```
-
-**注意：有些端口的信息需要 root 权限才能获取，在此情况下请使用 sudo**
-
-### 6.5 集群缩容
-
-本小节描述如何将 ConfigNode 或 DataNode 移出集群。
-
-#### 6.5.1 移除 ConfigNode
-
-在移除 ConfigNode 前，请确保移除后集群至少还有一个活跃的 ConfigNode。
-在活跃的 ConfigNode 上执行 remove-confignode 脚本：
-
-```
-# Linux
-## 根据 confignode_id 移除节点
-./sbin/remove-confignode.sh <confignode_id>
-
-## 根据 ConfigNode 内部通讯地址和端口移除节点
-./sbin/remove-confignode.sh <cn_internal_address>:<cn_internal_port>
 
 
-# Windows
-## 根据 confignode_id 移除节点
-.\sbin\remove-confignode.bat <confignode_id>
+### 附录
 
-## 根据 ConfigNode 内部通讯地址和端口移除节点
-.\sbin\remove-confignode.bat <cn_internal_address>:<cn_internal_port>
-```
+#### 集群配置项
 
-#### 6.5.2 移除 DataNode
+- internal_ip
 
-在移除 DataNode 前，请确保移除后集群至少还有不少于（数据/元数据）副本个数的 DataNode。
-在活跃的 DataNode 上执行 remove-datanode 脚本：
+| 名字         | internal_ip                                                  |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | IOTDB 集群各个节点之间内部通信的 IP 地址，比如心跳、snapshot 快照、raft log 等。**`internal_ip`是集群内部的私有ip** |
+| 类型         | String                                                       |
+| 默认值       | 127.0.0.1                                                    |
+| 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |
 
-```
-# Linux
-## 根据 datanode_id 移除节点
-./sbin/remove-datanode.sh <datanode_id>
+- internal_meta_port
 
-## 根据 DataNode RPC 服务地址和端口移除节点
-./sbin/remove-datanode.sh <dn_rpc_address>:<dn_rpc_port>
+| 名字         | internal_meta_port                                           |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | IoTDB meta 服务端口，用于元数据组（又称集群管理组）通信，元数据组管理集群配置和存储组信息**IoTDB 将为每个 meta 服务自动创建心跳端口。默认 meta 服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用** |
+| 类型         | Int32                                                        |
+| 默认值       | 9003                                                         |
+| 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |
 
+- internal_data_port
 
-# Windows
-## 根据 datanode_id 移除节点
-.\sbin\remove-datanode.bat <datanode_id>
+| 名字         | internal_data_port                                           |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | IoTDB data 服务端口，用于数据组通信，数据组管理数据模式和数据的存储**IoTDB 将为每个 data 服务自动创建心跳端口。默认的 data 服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用** |
+| 类型         | Int32                                                        |
+| 默认值       | 40010                                                        |
+| 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |
 
-## 根据 DataNode RPC 服务地址和端口移除节点
-.\sbin\remove-datanode.bat <dn_rpc_address>:<dn_rpc_port>
-```
+- cluster_info_public_port
 
-## 7. 常见问题
+| 名字         | cluster_info_public_port                        |
+| ------------ | ----------------------------------------------- |
+| 描述         | 用于查看集群信息（如数据分区）的 RPC 服务的接口 |
+| 类型         | Int32                                           |
+| 默认值       | 6567                                            |
+| 改后生效方式 | 重启服务生效                                    |
 
-请参考 [分布式部署FAQ](https://iotdb.apache.org/zh/UserGuide/Master/FAQ/FAQ-for-cluster-setup.html)
+- open_server_rpc_port
+
+| 名字         | open_server_rpc_port                                         |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 是否打开单机模块的 rpc port，用于调试模式，如果设置为 true，则单机模块的 rpc port 设置为`rpc_port (in iotdb-engines.properties) + 1` |
+| 类型         | Boolean                                                      |
+| 默认值       | false                                                        |
+| 改后生效方式 | 重启服务生效，集群建立后不可再修改                           |
+
+- seed_nodes
+
+| 名字         | seed_nodes                                                   |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 集群中节点的地址（私有ip），`{IP/DOMAIN}:internal_meta_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的 ip 地址；对于分布式模式，支持填写 real ip 或是 hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。 |
+| 类型         | String                                                       |
+| 默认值       | 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007                 |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- rpc_thrift_compression_enable
+
+| 名字         | rpc_thrift_compression_enable                                |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 是否开启 thrift 压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_thrift_compression_enable`参数保持一致** |
+| 类型         | Boolean                                                      |
+| 默认值       | false                                                        |
+| 改后生效方式 | 重启服务生效，需要整个集群同时更改                           |
+
+- default_replica_num
+
+| 名字         | default_replica_num              |
+| ------------ | -------------------------------- |
+| 描述         | 集群副本数                       |
+| 类型         | Int32                            |
+| 默认值       | 3                                |
+| 改后生效方式 | 重启服务生效，集群建立后不可更改 |
+
+- multi_raft_factor
+
+| 名字         | multi_raft_factor                                            |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 每个数据组启动的 raft 组实例数量，默认每个数据组启动一个 raft 组 |
+| 类型         | Int32                                                        |
+| 默认值       | 1                                                            |
+| 改后生效方式 | 重启服务生效，集群建立后不可更改                             |
+
+- cluster_name
+
+| 名字         | cluster_name                                                 |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 集群名称，集群名称用以标识不同的集群，**一个集群中所有节点的 cluster_name 都应相同** |
+| 类型         | String                                                       |
+| 默认值       | default                                                      |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- connection_timeout_ms
+
+| 名字         | connection_timeout_ms                              |
+| ------------ | -------------------------------------------------- |
+| 描述         | raft 节点间的 thrift 连接超时和 socket 超时时间，单位毫秒. **对于发送心跳和投票请求的 thrift 连接的超时时间会被自动调整为 connection_timeout_ms 和 heartbeat_interval_ms 的最小值.** |
+| 类型         | Int32                                              |
+| 默认值       | 20000                                              |
+| 改后生效方式 | 重启服务生效
+
+- heartbeat\_interval\_ms
+
+| 名字         | heartbeat\_interval\_ms                                 |
+| ------------ | ------------------------------------------------------- |
+| 描述         | 领导者发送心跳广播的间隔时间，单位毫秒                  |
+| 类型         | Int64                                                   |
+| 默认值       | 1000                                                    |
+| 改后生成方式 | 重启服务生效                                            |
+
+- election\_timeout\_ms
+
+| 名字         | election\_timeout\_ms                                        |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 跟随者的选举超时时间, 以及选举者等待投票的超时时间, 单位毫秒 |
+| 类型         | Int64                                                        |
+| 默认值       | 20000                                                        |
+| 改后生成方式 | 重启服务生效                                                 |
+
+- read_operation_timeout_ms
+
+| 名字         | read_operation_timeout_ms                                    |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 读取操作超时时间，仅用于内部通信，不适用于整个操作，单位毫秒 |
+| 类型         | Int32                                                        |
+| 默认值       | 30000                                                        |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- write_operation_timeout_ms
+
+| 名字         | write_operation_timeout_ms                                   |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 写入操作超时时间，仅用于内部通信，不适用于整个操作，单位毫秒 |
+| 类型         | Int32                                                        |
+| 默认值       | 30000                                                        |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- min_num_of_logs_in_mem
+
+| 名字         | min_num_of_logs_in_mem                                       |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 删除日志操作执行后，内存中保留的最多的提交的日志的数量。增大这个值将减少在 CatchUp 使用快照的机会，但也会增加内存占用量 |
+| 类型         | Int32                                                        |
+| 默认值       | 100                                                          |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- max_num_of_logs_in_mem
+
+| 名字         | max_num_of_logs_in_mem                                       |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 当内存中已提交的日志条数达到这个值之后，就会触发删除日志的操作，增大这个值将减少在 CatchUp 使用快照的机会，但也会增加内存占用量 |
+| 类型         | Int32                                                        |
+| 默认值       | 1000                                                         |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- log_deletion_check_interval_second
+
+| 名字         | log_deletion_check_interval_second                           |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 检查删除日志任务的时间间隔，每次删除日志任务将会把已提交日志超过 min_num_of_logs_in_mem 条的最老部分删除，单位秒 |
+| 类型         | Int32                                                        |
+| 默认值       | 60                                                           |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- enable_auto_create_schema
+
+| 名字         | enable_auto_create_schema                                    |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 是否支持自动创建 schema，**这个值会覆盖`iotdb-engine.properties`中`enable_auto_create_schema`的配置** |
+| 类型         | BOOLEAN                                                      |
+| 默认值       | true                                                         |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- consistency_level
+
+| 名字         | consistency_level                                            |
+| ------------ | ------------------------------------------------------------ |
+| 描述         | 读一致性，目前支持 3 种一致性：strong、mid、weak。strong consistency  每次操作都会尝试与 Leader 同步以获取最新的数据，如果失败（超时），则直接向用户返回错误； mid consistency  每次操作将首先尝试与 Leader 进行同步，但是如果失败（超时），它将使用本地当前数据向用户提供服务； weak consistency  不会与 Leader 进行同步，而只是使用本地数据向用户提供服务 |
+| 类型         | strong、mid、weak                                            |
+| 默认值       | mid                                                          |
+| 改后生效方式 | 重启服务生效                                                 |
+
+- is_enable_raft_log_persistence
+
+| 名字         | is_enable_raft_log_persistence |
+| ------------ | ------------------------------ |
+| 描述         | 是否开启 raft log 持久化       |
+| 类型         | BOOLEAN                        |
+| 默认值       | true                           |
+| 改后生效方式 | 重启服务生效                   |

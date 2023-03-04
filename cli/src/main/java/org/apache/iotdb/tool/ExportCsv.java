@@ -21,11 +21,11 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -36,6 +36,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.thrift.TException;
 import org.jline.reader.LineReader;
 
@@ -43,6 +46,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -71,9 +75,6 @@ public class ExportCsv extends AbstractCsvTool {
   private static final String QUERY_COMMAND_ARGS = "q";
   private static final String QUERY_COMMAND_NAME = "queryCommand";
 
-  private static final String LINES_PER_FILE_ARGS = "linesPerFile";
-  private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
-
   private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
 
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
@@ -87,11 +88,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static String timestampPrecision;
 
-  private static int linesPerFile = 10000;
-
   private static final int EXPORT_PER_LINE_COUNT = 10000;
-
-  private static long timeout = -1;
 
   /** main function of export csv tool. */
   public static void main(String[] args) {
@@ -182,10 +179,7 @@ public class ExportCsv extends AbstractCsvTool {
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
-    String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
-    if (timeoutString != null) {
-      timeout = Long.parseLong(timeoutString);
-    }
+
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;
     }
@@ -199,9 +193,6 @@ public class ExportCsv extends AbstractCsvTool {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
-    }
-    if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
-      linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
     }
   }
 
@@ -276,14 +267,6 @@ public class ExportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opQuery);
 
-    Option opLinesPerFile =
-        Option.builder(LINES_PER_FILE_ARGS)
-            .argName(LINES_PER_FILE_ARGS_NAME)
-            .hasArg()
-            .desc("Lines per dump file.")
-            .build();
-    options.addOption(opLinesPerFile);
-
     Option opHelp =
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
@@ -292,13 +275,6 @@ public class ExportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opHelp);
 
-    Option opTimeout =
-        Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
-            .hasArg()
-            .desc("Timeout for session query")
-            .build();
-    options.addOption(opTimeout);
     return options;
   }
 
@@ -326,24 +302,10 @@ public class ExportCsv extends AbstractCsvTool {
    * @param index used to create dump file name
    */
   private static void dumpResult(String sql, int index) {
-    final String path = targetDirectory + targetFile + index;
+    final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
-      List<Object> headers = new ArrayList<>();
-      List<String> names = sessionDataSet.getColumnNames();
-      List<String> types = sessionDataSet.getColumnTypes();
-      if (needDataTypePrinted) {
-        for (int i = 0; i < names.size(); i++) {
-          if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
-            headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-          } else {
-            headers.add(names.get(i));
-          }
-        }
-      } else {
-        headers.addAll(names);
-      }
-      writeCsvFile(sessionDataSet, path, headers, linesPerFile);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+      writeCsvFile(sessionDataSet, path);
       sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
@@ -366,46 +328,60 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  public static void writeCsvFile(
-      SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
+  public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    int fileIndex = 0;
-    boolean hasNext = true;
-    while (hasNext) {
-      int i = 0;
-      final String finalFilePath = filePath + "_" + fileIndex + ".csv";
-      final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(headers);
-      while (i++ < linesPerFile) {
-        if (sessionDataSet.hasNext()) {
-          RowRecord rowRecord = sessionDataSet.next();
-          if (rowRecord.getTimestamp() != 0) {
-            csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
-          }
-          rowRecord
-              .getFields()
-              .forEach(
-                  field -> {
-                    String fieldStringValue = field.getStringValue();
-                    if (!"null".equals(field.getStringValue())) {
-                      if (field.getDataType() == TSDataType.TEXT
-                          && !fieldStringValue.startsWith("root.")) {
-                        fieldStringValue = "\"" + fieldStringValue + "\"";
-                      }
-                      csvPrinterWrapper.print(fieldStringValue);
-                    } else {
-                      csvPrinterWrapper.print("");
-                    }
-                  });
-          csvPrinterWrapper.println();
+    CSVPrinter printer =
+        CSVFormat.Builder.create(CSVFormat.DEFAULT)
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .setEscape('\\')
+            .setQuoteMode(QuoteMode.NONE)
+            .build()
+            .print(new PrintWriter(filePath));
+
+    List<Object> headers = new ArrayList<>();
+    List<String> names = sessionDataSet.getColumnNames();
+    List<String> types = sessionDataSet.getColumnTypes();
+
+    if (needDataTypePrinted) {
+      for (int i = 0; i < names.size(); i++) {
+        if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
+          headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
         } else {
-          hasNext = false;
-          break;
+          headers.add(names.get(i));
         }
       }
-      fileIndex++;
-      csvPrinterWrapper.flush();
-      csvPrinterWrapper.close();
+    } else {
+      headers.addAll(names);
     }
+    printer.printRecord(headers);
+
+    while (sessionDataSet.hasNext()) {
+      RowRecord rowRecord = sessionDataSet.next();
+      ArrayList<String> record = new ArrayList<>();
+      if (rowRecord.getTimestamp() != 0) {
+        record.add(timeTrans(rowRecord.getTimestamp()));
+      }
+      rowRecord
+          .getFields()
+          .forEach(
+              field -> {
+                String fieldStringValue = field.getStringValue();
+                if (!"null".equals(field.getStringValue())) {
+                  if (field.getDataType() == TSDataType.TEXT
+                      && !fieldStringValue.startsWith("root.")) {
+                    fieldStringValue = "\"" + fieldStringValue + "\"";
+                  }
+                  record.add(fieldStringValue);
+                } else {
+                  record.add("");
+                }
+              });
+      printer.printRecord(record);
+    }
+
+    printer.flush();
+    printer.close();
+    return true;
   }
 }

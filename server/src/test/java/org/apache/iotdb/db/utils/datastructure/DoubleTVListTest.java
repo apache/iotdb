@@ -32,7 +32,7 @@ public class DoubleTVListTest {
 
   @Test
   public void testDoubleTVList1() {
-    DoubleTVList tvList = DoubleTVList.newList();
+    DoubleTVList tvList = new DoubleTVList();
     for (int i = 0; i < 1000; i++) {
       tvList.putDouble(i, i);
     }
@@ -45,7 +45,7 @@ public class DoubleTVListTest {
 
   @Test
   public void testDoubleTVList2() {
-    DoubleTVList tvList = DoubleTVList.newList();
+    DoubleTVList tvList = new DoubleTVList();
     for (int i = 1000; i >= 0; i--) {
       tvList.putDouble(i, i);
     }
@@ -58,7 +58,7 @@ public class DoubleTVListTest {
 
   @Test
   public void testPutDoublesWithoutBitMap() {
-    DoubleTVList tvList = DoubleTVList.newList();
+    DoubleTVList tvList = new DoubleTVList();
     List<Double> doubleList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     for (long i = 1000; i >= 0; i--) {
@@ -79,7 +79,7 @@ public class DoubleTVListTest {
 
   @Test
   public void testPutDoublesWithBitMap() {
-    DoubleTVList tvList = DoubleTVList.newList();
+    DoubleTVList tvList = new DoubleTVList();
     List<Double> doubleList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);
@@ -110,7 +110,7 @@ public class DoubleTVListTest {
 
   @Test
   public void testClone() {
-    DoubleTVList tvList = DoubleTVList.newList();
+    DoubleTVList tvList = new DoubleTVList();
     List<Double> doubleList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
     BitMap bitMap = new BitMap(1001);

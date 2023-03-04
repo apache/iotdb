@@ -1,3 +1,5 @@
+package org.apache.iotdb.rpc;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,8 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
-
 public class NoValidValueException extends RuntimeException {
   public NoValidValueException() {
     super();

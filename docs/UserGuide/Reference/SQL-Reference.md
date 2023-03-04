@@ -40,7 +40,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|1.0.0|
+|0.13.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -48,22 +48,22 @@ It costs 0.417s
 
 ## Schema Statement
 
-* Create Database
+* Set Storage Group
 
 ``` SQL
-CREATE DATABASE <FullPath>
-Eg: IoTDB > CREATE DATABASE root.ln.wf01.wt01
+SET STORAGE GROUP TO <FullPath>
+Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
 Note: FullPath can not include wildcard `*` or `**`
 ```
 
-* Delete database
+* Delete Storage Group
 
 ```
-DELETE DATABASE <PathPattern> [COMMA <PathPattern>]*
-Eg: IoTDB > DELETE DATABASE root.ln.wf01.wt01
-Eg: IoTDB > DELETE DATABASE root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE DATABASE root.ln.wf01.*
-Eg: IoTDB > DELETE DATABASE root.**
+DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * Create Timeseries Statement
@@ -98,9 +98,9 @@ Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=P
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
 Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01, COMPMINTIME=3
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
 Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
 Note: When propertyValue is SDT, it is required to set compression deviation COMPDEV, which is the maximum absolute difference between values.
 Note: For SDT, values withtin COMPDEV will be discarded.
@@ -123,9 +123,9 @@ Eg: CREATE TIMESERIES root.ln.wf01.wt01.status BOOLEAN ENCODING=PLAIN
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE COMPRESSOR=SNAPPY MAX_POINT_NUMBER=3
 Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) FLOAT ENCODING=RLE COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01 COMPMINTIME=3
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01 COMPMINTIME=2 COMPMAXTIME=15
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=2 COMPMAXTIME=15
 ```
 
 * Create Aligned Timeseries Statement
@@ -177,11 +177,10 @@ Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 * Delete Timeseries Statement
 
 ```
-(DELETE | DROP) TIMESERIES <PathPattern> [COMMA <PathPattern>]*
+DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
-Eg: IoTDB > DROP TIMESERIES root.ln.wf01.wt01.*
 ```
 
 * Alter Timeseries Statement
@@ -265,20 +264,20 @@ Eg: show timeseries root.ln.** where description contains 'test1'
 Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
-* Show Databases Statement
+* Show Storage Group Statement
 
 ```
-SHOW DATABASES
-Eg: IoTDB > SHOW DATABASES
+SHOW STORAGE GROUP
+Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* Show Specific database Statement
+* Show Specific Storage Group Statement
 
 ```
-SHOW DATABASES <Path>
-Eg: IoTDB > SHOW DATABASES root.*
-Eg: IoTDB > SHOW DATABASES root.ln
+SHOW STORAGE GROUP <Path>
+Eg: IoTDB > SHOW STORAGE GROUP root.*
+Eg: IoTDB > SHOW STORAGE GROUP root.ln
 Note: The path can be full path or path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
@@ -327,21 +326,21 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show All Devices Statement
 
 ```
-SHOW DEVICES (WITH DATABASE)? limitClause? 
+SHOW DEVICES (WITH STORAGE GROUP)? limitClause? 
 Eg: IoTDB > SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES WITH DATABASE
+Eg: IoTDB > SHOW DEVICES WITH STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Devices Statement
 
 ```
-SHOW DEVICES <PathPattern> (WITH DATABASE)? limitClause?
+SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
 Eg: IoTDB > SHOW DEVICES root.**
 Eg: IoTDB > SHOW DEVICES root.ln.**
 Eg: IoTDB > SHOW DEVICES root.*.wf01
-Eg: IoTDB > SHOW DEVICES root.ln WITH DATABASE
-Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH DATABASE
+Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -360,6 +359,11 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
 Eg: IoTDB > SHOW CHILD PATHS root.ln.wf* 
 Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Create snapshot for schema
+```
+CREATE SNAPSHOT FOR SCHEMA
 ```
 
 ## Data Management Statement
@@ -408,7 +412,7 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
 Eg. IoTDB > SELECT ** FROM root
 Eg. IoTDB > SELECT * FROM root.**
-Eg. IoTDB > SELECT * FROM root.** where time > now() - 5m
+Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT * FROM root.ln.*.wf*
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
@@ -1068,7 +1072,7 @@ The NOW function returns the current timestamp. This function can be used in the
 NOW()
 Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg. SELECT * FROM root.** WHERE time < NOW()
+Eg. SELECT * FROM root WHERE time < NOW()
 Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 * SUM
@@ -1113,13 +1117,13 @@ This example means that data of all time will be accepted in this group.
 SHOW ALL TTL
 SHOW TTL ON StorageGroupNames
 Eg.1 SHOW ALL TTL
-This example will show TTLs of all databases.
+This example will show TTLs of all storage groups.
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 This example will show TTLs of the specified 3 groups.
-Notice: databases without TTL will show a "null"
+Notice: storage groups without TTL will show a "null"
 ```
 
-Notice: When you set TTL to some databases, data out of the TTL will be made invisible
+Notice: When you set TTL to some storage groups, data out of the TTL will be made invisible
 immediately, but because the data files may contain both out-dated and living data or the data files may
 be being used by queries, the physical removal of data is stale. If you increase or unset TTL
 just after setting it previously, some previously invisible data may be seen again, but the
@@ -1132,7 +1136,7 @@ to suffer the unpredictability.
 ```
 DELETE PARTITION StorageGroupName INT(COMMA INT)*
 Eg DELETE PARTITION root.sg1 0,1,2
-This example will delete the first 3 time partitions of database root.sg1.
+This example will delete the first 3 time partitions of storage group root.sg1.
 ```
 The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
 
@@ -1236,7 +1240,7 @@ Note: DateTime Type can support several types, see Chapter 3 Datetime section fo
 PrecedenceEqualOperator : EQUAL | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN
 ```
 ```
-Timeseries : ROOT [DOT \<LayerName\>]* DOT \<SensorName\>
+Timeseries : ROOT [DOT <LayerName>]* DOT <SensorName>
 LayerName : Identifier
 SensorName : Identifier
 eg. root.ln.wf01.wt01.status
@@ -1245,7 +1249,7 @@ Note: Timeseries must be start with `root`(case insensitive) and end with sensor
 ```
 
 ```
-PrefixPath : ROOT (DOT \<LayerName\>)*
+PrefixPath : ROOT (DOT <LayerName>)*
 LayerName : Identifier | STAR
 eg. root.sgcc
 eg. root.*

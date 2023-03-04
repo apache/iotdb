@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.when;
 public class BatchTest {
 
   @Mock private IoTDBConnection connection;
-  @Mock private IClientRPCService.Iface client;
+  @Mock private TSIService.Iface client;
   private long sessionId;
   @Mock private IoTDBStatement statement;
   private TSStatus errorStatus = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
@@ -94,7 +94,7 @@ public class BatchTest {
     resp.setSubStatus(resExpected);
 
     statement.clearBatch();
-    statement.addBatch("CREATE DATABASE root.ln.wf01.wt01");
+    statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     statement.addBatch(

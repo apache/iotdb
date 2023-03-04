@@ -164,14 +164,14 @@ void close();
 
 ### Data Definition Interface (DDL)
 
-#### Database Management
+#### Storage Group Management
 
-- CREATE DATABASE
+- Set storage group
 ```cpp
 void setStorageGroup(const std::string &storageGroupId);
 ```
 
-- Delete one or several databases
+- Delete one or several storage groups
 ```cpp
 void deleteStorageGroup(const std::string &storageGroup);
 void deleteStorageGroups(const std::vector<std::string> &storageGroups);

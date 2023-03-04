@@ -56,7 +56,7 @@ public class TSFileConfig implements Serializable {
 
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "iotdb-common.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
@@ -74,8 +74,8 @@ public class TSFileConfig implements Serializable {
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
   private int pageSizeInByte = 64 * 1024;
-  /** The maximum number of data points in a page, default value is 10000. */
-  private int maxNumberOfPointsInPage = 10_000;
+  /** The maximum number of data points in a page, default value is 1024 * 1024. */
+  private int maxNumberOfPointsInPage = 1024 * 1024;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -108,10 +108,6 @@ public class TSFileConfig implements Serializable {
   private double sdtMaxError = 100;
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
-  /** Default SNR for FREQ encoding is 40dB. */
-  private double freqEncodingSNR = 40;
-  /** Default block size for FREQ encoding is 1024. */
-  private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
@@ -151,14 +147,7 @@ public class TSFileConfig implements Serializable {
   /** The amount of data iterate each time */
   private int batchSize = 1000;
 
-  /** Maximum capacity of a TsBlock, allow up to two pages. */
-  private int maxTsBlockSizeInBytes = 128 * 1024;
-
-  /** Maximum number of lines in a single TsBlock */
-  private int maxTsBlockLineNumber = 1000;
-
   private int patternMatchingThreshold = 1000000;
-
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -428,36 +417,12 @@ public class TSFileConfig implements Serializable {
     this.batchSize = batchSize;
   }
 
-  public double getFreqEncodingSNR() {
-    return freqEncodingSNR;
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
   }
 
-  public void setFreqEncodingSNR(double freqEncodingSNR) {
-    this.freqEncodingSNR = freqEncodingSNR;
-  }
-
-  public int getFreqEncodingBlockSize() {
-    return freqEncodingBlockSize;
-  }
-
-  public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
-    this.freqEncodingBlockSize = freqEncodingBlockSize;
-  }
-
-  public int getMaxTsBlockSizeInBytes() {
-    return maxTsBlockSizeInBytes;
-  }
-
-  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
-    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
-  }
-
-  public int getMaxTsBlockLineNumber() {
-    return maxTsBlockLineNumber;
-  }
-
-  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
-    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
   }
 
   public int getPatternMatchingThreshold() {
@@ -466,13 +431,5 @@ public class TSFileConfig implements Serializable {
 
   public void setPatternMatchingThreshold(int patternMatchingThreshold) {
     this.patternMatchingThreshold = patternMatchingThreshold;
-  }
-
-  public Properties getCustomizedProperties() {
-    return customizedProperties;
-  }
-
-  public void setCustomizedProperties(Properties customizedProperties) {
-    this.customizedProperties = customizedProperties;
   }
 }

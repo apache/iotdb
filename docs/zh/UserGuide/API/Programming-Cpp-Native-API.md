@@ -157,14 +157,14 @@ void close();
 
 #### 数据定义接口（DDL）
 
-##### Database 管理
+##### 存储组管理
 
-- 设置 database
+- 设置存储组
 ```cpp
 void setStorageGroup(const std::string &storageGroupId);
 ```
 
-- 删除单个或多个 database
+- 删除单个或多个存储组
 ```cpp
 void deleteStorageGroup(const std::string &storageGroup);
 void deleteStorageGroups(const std::vector<std::string> &storageGroups);

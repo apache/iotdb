@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class StorageGroupAlreadySetException extends MetadataException {
@@ -31,13 +30,13 @@ public class StorageGroupAlreadySetException extends MetadataException {
   private final String storageGroupPath;
 
   public StorageGroupAlreadySetException(String path) {
-    super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, false), TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
     storageGroupPath = path;
     hasChild = false;
   }
 
   public StorageGroupAlreadySetException(String path, boolean hasChild) {
-    super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+    super(getMessage(path, hasChild), TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
     this.hasChild = hasChild;
     storageGroupPath = path;
   }
@@ -52,9 +51,9 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   private static String getMessage(String path, boolean hasChild) {
     if (hasChild) {
-      return String.format("some children of %s have already been created as database", path);
+      return String.format("some children of %s have already been set to storage group", path);
     } else {
-      return String.format("%s has already been created as database", path);
+      return String.format("%s has already been set to storage group", path);
     }
   }
 }

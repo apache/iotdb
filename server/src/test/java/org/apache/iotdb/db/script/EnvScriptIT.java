@@ -34,7 +34,6 @@ import java.util.Properties;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/** This test case is strange that it relies on the maven output files */
 public class EnvScriptIT {
 
   @Before
@@ -56,8 +55,8 @@ public class EnvScriptIT {
   private void testStartClientOnWindows(String suffix, String os) throws IOException {
     String dir = getServerPath();
     final String output =
-        "If you want to change this configuration, please check conf\\datanode-env.bat.";
-    String cmd = dir + File.separator + "conf" + File.separator + "datanode-env" + suffix;
+        "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env" + suffix;
     ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", cmd);
     testOutput(dir, suffix, startBuilder, output, os);
   }
@@ -65,8 +64,8 @@ public class EnvScriptIT {
   private void testStartClientOnUnix(String suffix, String os) throws IOException {
     String dir = getServerPath();
     final String output =
-        "If you want to change this configuration, please check conf/datanode-env.sh.";
-    String cmd = dir + File.separator + "conf" + File.separator + "datanode-env" + suffix;
+        "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env" + suffix;
     ProcessBuilder builder = new ProcessBuilder("bash", cmd);
     testOutput(cmd, suffix, builder, output, os);
   }

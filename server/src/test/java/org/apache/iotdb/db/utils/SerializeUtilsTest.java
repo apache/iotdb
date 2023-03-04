@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;

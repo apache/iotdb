@@ -19,21 +19,17 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Objects;
 
 /** Deletion is a delete operation on a timeseries. */
-public class Deletion extends Modification implements Cloneable {
+public class Deletion extends Modification {
 
   /** data within the interval [startTime, endTime] are to be deleted. */
-  private TimeRange timeRange;
+  private long startTime;
+
+  private long endTime;
 
   /**
    * constructor of Deletion, the start time is set to Long.MIN_VALUE
@@ -43,7 +39,8 @@ public class Deletion extends Modification implements Cloneable {
    */
   public Deletion(PartialPath path, long fileOffset, long endTime) {
     super(Type.DELETION, path, fileOffset);
-    this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
+    this.startTime = Long.MIN_VALUE;
+    this.endTime = endTime;
   }
 
   /**
@@ -55,57 +52,24 @@ public class Deletion extends Modification implements Cloneable {
    */
   public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
     super(Type.DELETION, path, fileOffset);
-    this.timeRange = new TimeRange(startTime, endTime);
+    this.startTime = startTime;
+    this.endTime = endTime;
   }
 
   public long getStartTime() {
-    return this.timeRange.getMin();
+    return startTime;
   }
 
   public void setStartTime(long timestamp) {
-    this.timeRange.setMin(timestamp);
+    this.startTime = timestamp;
   }
 
   public long getEndTime() {
-    return this.timeRange.getMax();
+    return endTime;
   }
 
   public void setEndTime(long timestamp) {
-    this.timeRange.setMax(timestamp);
-  }
-
-  public TimeRange getTimeRange() {
-    return timeRange;
-  }
-
-  public boolean intersects(Deletion deletion) {
-    if (super.equals(deletion)) {
-      return this.timeRange.intersects(deletion.getTimeRange());
-    } else {
-      return false;
-    }
-  }
-
-  public void merge(Deletion deletion) {
-    this.timeRange.merge(deletion.getTimeRange());
-  }
-
-  public long serializeWithoutFileOffset(DataOutputStream stream) throws IOException {
-    long serializeSize = 0;
-    stream.writeLong(getStartTime());
-    serializeSize += Long.BYTES;
-    stream.writeLong(getEndTime());
-    serializeSize += Long.BYTES;
-    serializeSize += ReadWriteIOUtils.write(getPathString(), stream);
-    return serializeSize;
-  }
-
-  public static Deletion deserializeWithoutFileOffset(DataInputStream stream)
-      throws IOException, IllegalPathException {
-    long startTime = stream.readLong();
-    long endTime = stream.readLong();
-    return new Deletion(
-        new PartialPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
+    this.endTime = timestamp;
   }
 
   @Override
@@ -117,21 +81,21 @@ public class Deletion extends Modification implements Cloneable {
       return false;
     }
     Deletion del = (Deletion) obj;
-    return super.equals(obj) && del.timeRange.equals(this.timeRange);
+    return super.equals(obj) && del.startTime == this.startTime && del.endTime == this.endTime;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), this.timeRange);
+    return Objects.hash(super.hashCode(), startTime, endTime);
   }
 
   @Override
   public String toString() {
     return "Deletion{"
         + "startTime="
-        + getStartTime()
+        + startTime
         + ", endTime="
-        + getEndTime()
+        + endTime
         + ", type="
         + type
         + ", path="
@@ -139,10 +103,5 @@ public class Deletion extends Modification implements Cloneable {
         + ", fileOffset="
         + fileOffset
         + '}';
-  }
-
-  @Override
-  public Deletion clone() {
-    return new Deletion(getPath(), getFileOffset(), getStartTime(), getEndTime());
   }
 }

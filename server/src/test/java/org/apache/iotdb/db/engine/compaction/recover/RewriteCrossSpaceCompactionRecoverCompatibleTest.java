@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.db.engine.compaction.recover;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -52,12 +52,12 @@ import java.util.Map;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCompactionTest {
+  private String TEST_SG = "root.compactionTest";
   private final String oldThreadName = Thread.currentThread().getName();
 
   @Override
   @Before
-  public void setUp()
-      throws IOException, MetadataException, WriteProcessException, InterruptedException {
+  public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
@@ -89,14 +89,12 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     logWriter.write("seqFiles\n");
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(
-          String.format(
-              COMPACTION_TEST_SG + " 0 0 %s true\n", tsFileResource.getTsFile().getName()));
+          String.format(TEST_SG + " 0 0 %s true\n", tsFileResource.getTsFile().getName()));
     }
     logWriter.write("unseqFiles\n");
     for (TsFileResource tsFileResource : unseqResources) {
       logWriter.write(
-          String.format(
-              COMPACTION_TEST_SG + " 0 0 %s false\n", tsFileResource.getTsFile().getName()));
+          String.format(TEST_SG + " 0 0 %s false\n", tsFileResource.getTsFile().getName()));
     }
     logWriter.close();
 
@@ -120,9 +118,8 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.write(new Deletion(new PartialPath("root.d1.s1"), 100, 0, 100));
     mergeMods.close();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, false)
-        .doCompaction();
+    TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
+    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -168,14 +165,12 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     logWriter.write("seqFiles\n");
     for (TsFileResource tsFileResource : seqResources) {
       logWriter.write(
-          String.format(
-              COMPACTION_TEST_SG + " 0 0 %s true\n", tsFileResource.getTsFile().getName()));
+          String.format(TEST_SG + " 0 0 %s true\n", tsFileResource.getTsFile().getName()));
     }
     logWriter.write("unseqFiles\n");
     for (TsFileResource tsFileResource : unseqResources) {
       logWriter.write(
-          String.format(
-              COMPACTION_TEST_SG + " 0 0 %s false\n", tsFileResource.getTsFile().getName()));
+          String.format(TEST_SG + " 0 0 %s false\n", tsFileResource.getTsFile().getName()));
     }
     logWriter.close();
 
@@ -202,9 +197,8 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.write(new Deletion(new PartialPath("root.d1.s1"), 100, 0, 100));
     mergeMods.close();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, false)
-        .doCompaction();
+    TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
+    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -291,9 +285,8 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.write(new Deletion(new PartialPath("root.d1.s1"), 100, 0, 100));
     mergeMods.close();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, false)
-        .doCompaction();
+    TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
+    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -374,9 +367,8 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.write(new Deletion(new PartialPath("root.d1.s1"), 100, 0, 100));
     mergeMods.close();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, false)
-        .doCompaction();
+    TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
+    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());

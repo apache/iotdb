@@ -30,7 +30,6 @@ import org.apache.iotdb.jdbc.Constant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -43,13 +42,12 @@ import java.util.Locale;
 import static org.junit.Assert.assertEquals;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
-@Ignore // No longer forward compatible since v0.14
 public class IoTDBDeletionVersionAdaptionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "CREATE DATABASE root.vehicle.d0",
-        "CREATE DATABASE root.vehicle.d1",
+        "SET STORAGE GROUP TO root.vehicle.d0",
+        "SET STORAGE GROUP TO root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -59,13 +57,13 @@ public class IoTDBDeletionVersionAdaptionIT {
 
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
+  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
   private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
@@ -80,7 +78,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   @Test
   public void test() throws SQLException {
     prepareData();
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
@@ -120,7 +118,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   public void testMerge() throws SQLException {
     prepareMerge();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
       statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
@@ -149,7 +147,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   @Test
   public void testRangeDelete() throws SQLException {
     prepareData();
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time <= 300");
@@ -185,7 +183,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   @Test
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.* WHERE time <= 300 and time > 150");
@@ -211,7 +209,7 @@ public class IoTDBDeletionVersionAdaptionIT {
 
   @Test
   public void testDeleteAll() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.lz.dev.GPS(time, latitude, longitude) values(9,3.2,9.8)");
       statement.execute("insert into root.lz.dev.GPS(time, latitude) values(11,4.5)");
@@ -237,7 +235,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   }
 
   private static void prepareSeries() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
@@ -249,7 +247,7 @@ public class IoTDBDeletionVersionAdaptionIT {
   }
 
   private void prepareData() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite file
@@ -278,14 +276,14 @@ public class IoTDBDeletionVersionAdaptionIT {
   }
 
   private void cleanData() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
     }
   }
 
   public void prepareMerge() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_1_0);
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data

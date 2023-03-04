@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Using device id path as id */
@@ -57,14 +54,5 @@ public class PlainDeviceID implements IDeviceID {
   @Override
   public String toStringID() {
     return deviceID;
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(deviceID, byteBuffer);
-  }
-
-  public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
-    return new PlainDeviceID(ReadWriteIOUtils.readString(byteBuffer));
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
@@ -27,8 +26,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 public class GroupByFilter implements Filter, Serializable {
@@ -153,12 +150,5 @@ public class GroupByFilter implements Filter, Serializable {
 
   public long getEndTime() {
     return endTime;
-  }
-
-  @Override
-  public List<TimeRange> getTimeRanges() {
-    return startTime >= endTime
-        ? Collections.emptyList()
-        : Collections.singletonList(new TimeRange(startTime, endTime - 1));
   }
 }

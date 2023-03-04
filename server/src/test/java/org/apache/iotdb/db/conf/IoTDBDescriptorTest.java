@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,7 +48,7 @@ public class IoTDBDescriptorTest {
     String pathString = "file:/usr/local/bin";
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
-    URL confURL = desc.getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    URL confURL = desc.getPropsUrl();
     Assert.assertTrue(confURL.toString().startsWith(pathString));
   }
 
@@ -60,7 +58,7 @@ public class IoTDBDescriptorTest {
 
     String pathString = "classpath:/root/path";
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
-    URL confURL = desc.getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    URL confURL = desc.getPropsUrl();
     Assert.assertTrue(confURL.toString().startsWith(pathString));
   }
 
@@ -71,7 +69,7 @@ public class IoTDBDescriptorTest {
     // filePath is a plain path string
     String filePath = path.getFile();
     System.setProperty(IoTDBConstant.IOTDB_CONF, filePath);
-    URL confURL = desc.getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    URL confURL = desc.getPropsUrl();
     Assert.assertEquals(confURL.toString(), path.toString());
   }
 }

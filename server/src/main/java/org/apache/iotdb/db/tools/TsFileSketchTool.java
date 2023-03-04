@@ -45,10 +45,8 @@ import java.io.PrintWriter;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 
 public class TsFileSketchTool {
@@ -118,33 +116,20 @@ public class TsFileSketchTool {
       printlnBoth(
           pw, String.format("%20s", reader.readFileMetadata().getMetaOffset()) + "|\t[marker] 2");
     }
-
-    // get all TimerseriesIndex
+    // get all timeseries index
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
         reader.getAllTimeseriesMetadataWithOffset();
 
-    // get all IndexOfTimerseriesIndex (excluding the root node in TsFileMetadata)
+    // print timeseries index
+    printTimeseriesIndex(timeseriesMetadataMap);
+
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     TreeMap<Long, MetadataIndexNode> metadataIndexNodeMap = new TreeMap<>();
     List<String> treeOutputStringBuffer = new ArrayList<>();
     loadIndexTree(metadataIndexNode, metadataIndexNodeMap, treeOutputStringBuffer, 0);
 
-    // iterate timeseriesMetadataMap and metadataIndexNodeMap to print info in increasing order of
-    // position
-    Iterator<Entry<Long, Pair<Path, TimeseriesMetadata>>> ite1 =
-        timeseriesMetadataMap.entrySet().iterator();
-    Iterator<Entry<Long, MetadataIndexNode>> ite2 = metadataIndexNodeMap.entrySet().iterator();
-    Entry<Long, Pair<Path, TimeseriesMetadata>> value1 = (ite1.hasNext() ? ite1.next() : null);
-    Entry<Long, MetadataIndexNode> value2 = (ite2.hasNext() ? ite2.next() : null);
-    while (value1 != null || value2 != null) {
-      if (value2 == null || (value1 != null && value1.getKey().compareTo(value2.getKey()) <= 0)) {
-        printTimeseriesIndex(value1.getKey(), value1.getValue());
-        value1 = (ite1.hasNext() ? ite1.next() : null);
-      } else {
-        printIndexOfTimerseriesIndex(value2.getKey(), value2.getValue());
-        value2 = (ite2.hasNext() ? ite2.next() : null);
-      }
-    }
+    // print IndexOfTimerseriesIndex
+    printIndexOfTimerseriesIndex(metadataIndexNodeMap);
 
     // print TsFile Metadata
     printTsFileMetadata(tsFileMetaData);
@@ -164,46 +149,50 @@ public class TsFileSketchTool {
     pw.close();
   }
 
-  public void close() throws IOException {
-    reader.close();
-    pw.close();
-  }
-
   private void printTsFileMetadata(TsFileMetadata tsFileMetaData) {
     try {
-      printlnBoth(pw, splitStr + " [TsFileMetadata] begins");
-
-      // metadataIndex
-      MetadataIndexNode rootNode = tsFileMetaData.getMetadataIndex();
-      printIndexOfTimerseriesIndex(reader.getFileMetadataPos(), rootNode);
-
-      // metaOffset
+      printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetadata]");
       printlnBoth(
-          pw, String.format("%20s", "") + "|\t[meta offset] " + tsFileMetaData.getMetaOffset());
-
+          pw, String.format("%20s", "") + "|\t\t[meta offset] " + tsFileMetaData.getMetaOffset());
+      printlnBoth(
+          pw,
+          String.format("%20s", "")
+              + "|\t\t[num of devices] "
+              + tsFileMetaData.getMetadataIndex().getChildren().size());
+      printlnBoth(
+          pw,
+          String.format("%20s", "")
+              + "|\t\t"
+              + tsFileMetaData.getMetadataIndex().getChildren().size()
+              + " key&TsMetadataIndex");
       // bloom filter
       BloomFilter bloomFilter = tsFileMetaData.getBloomFilter();
       printlnBoth(
           pw,
           String.format("%20s", "")
-              + "|\t[bloom filter] "
-              + "bit vector byte array length="
-              + bloomFilter.serialize().length
-              + ", filterSize="
-              + bloomFilter.getSize()
-              + ", hashFunctionSize="
+              + "|\t\t[bloom filter bit vector byte array length] "
+              + bloomFilter.serialize().length);
+      printlnBoth(pw, String.format("%20s", "") + "|\t\t[bloom filter bit vector byte array] ");
+      printlnBoth(
+          pw,
+          String.format("%20s", "")
+              + "|\t\t[bloom filter number of bits] "
+              + bloomFilter.getSize());
+      printlnBoth(
+          pw,
+          String.format("%20s", "")
+              + "|\t\t[bloom filter number of hash functions] "
               + bloomFilter.getHashFunctionSize());
-      printlnBoth(pw, splitStr + " [TsFileMetadata] ends");
 
       printlnBoth(
           pw,
-          String.format("%20s", (reader.getFileMetadataPos() + reader.getTsFileMetadataSize()))
+          String.format("%20s", (reader.getFileMetadataPos() + reader.getFileMetadataSize()))
               + "|\t[TsFileMetadataSize] "
-              + reader.getTsFileMetadataSize());
+              + reader.getFileMetadataSize());
 
       printlnBoth(
           pw,
-          String.format("%20s", reader.getFileMetadataPos() + reader.getTsFileMetadataSize() + 4)
+          String.format("%20s", reader.getFileMetadataPos() + reader.getFileMetadataSize() + 4)
               + "|\t[magic tail] "
               + reader.readTailMagic());
     } catch (IOException e) {
@@ -234,27 +223,6 @@ public class TsFileSketchTool {
     }
   }
 
-  private void printIndexOfTimerseriesIndex(long pos, MetadataIndexNode metadataIndexNode) {
-    printlnBoth(
-        pw,
-        String.format("%20s", pos)
-            + "|\t[IndexOfTimerseriesIndex Node] type="
-            + metadataIndexNode.getNodeType());
-    for (MetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()) {
-      printlnBoth(
-          pw,
-          String.format("%20s", "")
-              + "|\t\t<"
-              + metadataIndexEntry.getName()
-              + ", "
-              + metadataIndexEntry.getOffset()
-              + ">");
-    }
-    printlnBoth(
-        pw,
-        String.format("%20s", "") + "|\t\t<endOffset, " + metadataIndexNode.getEndOffset() + ">");
-  }
-
   private void printFileInfo() {
     try {
       printlnBoth(pw, "");
@@ -280,7 +248,7 @@ public class TsFileSketchTool {
         printlnBoth(
             pw,
             splitStr
-                + " [Chunk Group] of "
+                + "\t[Chunk Group] of "
                 + chunkGroupMetadata.getDevice()
                 + ", num of Chunks:"
                 + chunkGroupMetadata.getChunkMetadataList().size());
@@ -298,9 +266,18 @@ public class TsFileSketchTool {
               pw,
               String.format("%20d", chunkMetadata.getOffsetOfChunkHeader())
                   + "|\t[Chunk] of "
-                  + new Path(
-                      chunkGroupHeader.getDeviceID(), chunkMetadata.getMeasurementUid(), false)
-                  + ", "
+                  + chunkMetadata.getMeasurementUid()
+                  + ", numOfPoints:"
+                  + chunkMetadata.getNumOfPoints()
+                  + ", time range:["
+                  + chunkMetadata.getStartTime()
+                  + ","
+                  + chunkMetadata.getEndTime()
+                  + "], tsDataType:"
+                  + chunkMetadata.getDataType()
+                  + ", \n"
+                  + String.format("%20s", "")
+                  + " \t"
                   + chunkMetadata.getStatistics());
           printlnBoth(
               pw,
@@ -308,51 +285,30 @@ public class TsFileSketchTool {
                   + "|\t\t[chunk header] "
                   + "marker="
                   + chunk.getHeader().getChunkType()
-                  + ", measurementID="
+                  + ", measurementId="
                   + chunk.getHeader().getMeasurementID()
                   + ", dataSize="
                   + chunk.getHeader().getDataSize()
-                  + ", dataType="
-                  + chunk.getHeader().getDataType()
-                  + ", compressionType="
-                  + chunk.getHeader().getCompressionType()
-                  + ", encodingType="
-                  + chunk.getHeader().getEncodingType());
+                  + ", serializedSize="
+                  + chunk.getHeader().getSerializedSize());
+
+          printlnBoth(pw, String.format("%20s", "") + "|\t\t[chunk] " + chunk.getData());
           PageHeader pageHeader;
           if (((byte) (chunk.getHeader().getChunkType() & 0x3F))
               == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
             pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
-            printlnBoth(
-                pw,
-                String.format("%20s", "")
-                    + "|\t\t[page] "
-                    + " UncompressedSize:"
-                    + pageHeader.getUncompressedSize()
-                    + ", CompressedSize:"
-                    + pageHeader.getCompressedSize());
-          } else { // more than one page in this chunk
-            ByteBuffer chunkDataBuffer = chunk.getData();
-            int pageID = 0;
-            while (chunkDataBuffer.remaining() > 0) {
-              pageID++;
-              // deserialize a PageHeader from chunkDataBuffer
-              pageHeader =
-                  PageHeader.deserializeFrom(chunkDataBuffer, chunk.getHeader().getDataType());
-              // skip the compressed bytes
-              chunkDataBuffer.position(chunkDataBuffer.position() + pageHeader.getCompressedSize());
-              // print page info
-              printlnBoth(
-                  pw,
-                  String.format("%20s", "")
-                      + String.format("|\t\t[page-%s] ", pageID)
-                      + " UncompressedSize:"
-                      + pageHeader.getUncompressedSize()
-                      + ", CompressedSize:"
-                      + pageHeader.getCompressedSize()
-                      + ", "
-                      + pageHeader.getStatistics());
-            }
+          } else {
+            pageHeader =
+                PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
           }
+          printlnBoth(
+              pw,
+              String.format("%20s", "")
+                  + "|\t\t[page] "
+                  + " CompressedSize:"
+                  + pageHeader.getCompressedSize()
+                  + ", UncompressedSize:"
+                  + pageHeader.getUncompressedSize());
           nextChunkGroupHeaderPos =
               chunkMetadata.getOffsetOfChunkHeader()
                   + chunk.getHeader().getSerializedSize()
@@ -370,7 +326,8 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+        printlnBoth(
+            pw, splitStr + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -388,9 +345,7 @@ public class TsFileSketchTool {
                 + "|\t[TimeseriesIndex] of "
                 + entry.getValue().left
                 + ", tsDataType:"
-                + entry.getValue().right.getTSDataType()
-                + ", "
-                + entry.getValue().right.getStatistics());
+                + entry.getValue().right.getTSDataType());
         for (IChunkMetadata chunkMetadata : reader.getChunkMetadataList(entry.getValue().left)) {
           printlnBoth(
               pw,
@@ -400,32 +355,11 @@ public class TsFileSketchTool {
                   + ", offset="
                   + chunkMetadata.getOffsetOfChunkHeader());
         }
-      }
-      printlnBoth(pw, splitStr);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  private void printTimeseriesIndex(long pos, Pair<Path, TimeseriesMetadata> timeseriesMetadata) {
-    try {
-      printlnBoth(
-          pw,
-          String.format("%20s", pos)
-              + "|\t[TimeseriesIndex] of "
-              + timeseriesMetadata.left
-              + ", tsDataType:"
-              + timeseriesMetadata.right.getTSDataType()
-              + ", "
-              + timeseriesMetadata.right.getStatistics());
-      for (IChunkMetadata chunkMetadata : reader.getChunkMetadataList(timeseriesMetadata.left)) {
         printlnBoth(
             pw,
-            String.format("%20s", "")
-                + "|\t\t[ChunkIndex] "
-                + "offset="
-                + chunkMetadata.getOffsetOfChunkHeader());
+            String.format("%20s", "") + "|\t\t[" + entry.getValue().right.getStatistics() + "] ");
       }
+      printlnBoth(pw, splitStr);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -492,11 +426,9 @@ public class TsFileSketchTool {
   }
 
   private class TsFileSketchToolReader extends TsFileSequenceReader {
-
     public TsFileSketchToolReader(String file) throws IOException {
       super(file);
     }
-
     /**
      * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
      *
@@ -524,8 +456,7 @@ public class TsFileSketchTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
-                    timeseriesMetadata));
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
           }
         } else {
           // deviceId should be determined by LEAF_DEVICE node

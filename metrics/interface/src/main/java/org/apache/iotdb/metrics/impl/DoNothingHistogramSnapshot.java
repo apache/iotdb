@@ -21,15 +21,17 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingMetric {
+import java.io.OutputStream;
+
+public class DoNothingHistogramSnapshot implements HistogramSnapshot {
   @Override
   public double getValue(double quantile) {
     return 0;
   }
 
   @Override
-  public double[] getValues() {
-    return new double[0];
+  public long[] getValues() {
+    return new long[0];
   }
 
   @Override
@@ -43,8 +45,8 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public double getMax() {
-    return 0.0D;
+  public long getMax() {
+    return 0;
   }
 
   @Override
@@ -53,7 +55,12 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public double getMin() {
-    return 0.0D;
+  public long getMin() {
+    return 0;
+  }
+
+  @Override
+  public void dump(OutputStream output) {
+    // do nothing
   }
 }

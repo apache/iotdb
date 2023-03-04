@@ -18,37 +18,30 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implement measurement counter.
-public class MeasurementCounter extends MeasurementTraverser<Void> implements Counter {
-  private int count;
+// This method implements the measurement count function.
+// One MultiMeasurement will only be count once.
+public class MeasurementCounter extends CounterTraverser {
 
-  public MeasurementCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
-      throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+  public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    shouldTraverseTemplate = true;
   }
 
   @Override
-  protected Void generateResult(IMNode nextMatchedNode) {
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (!node.isMeasurement()) {
+      return false;
+    }
     count++;
-    return null;
-  }
-
-  @Override
-  public long count() throws MetadataException {
-    while (hasNext()) {
-      next();
-    }
-    if (!isSuccess()) {
-      Throwable e = getFailure();
-      throw new MetadataException(e.getMessage(), e);
-    }
-    return count;
+    return true;
   }
 }

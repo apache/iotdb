@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.spark.tsfile
 
+import java.io.{ObjectInputStream, ObjectOutputStream, _}
+import java.net.URI
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce.Job
@@ -38,10 +41,9 @@ import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFacto
 import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
-
-import java.io._
-import java.net.URI
 import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
@@ -187,7 +189,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
               }
               else {
                 val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(deviceName,
-                  field.name, true))
+                  field.name))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)

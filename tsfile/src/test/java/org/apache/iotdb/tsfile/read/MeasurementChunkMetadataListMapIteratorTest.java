@@ -133,7 +133,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
           expectedDeviceMeasurementChunkMetadataListMap
               .computeIfAbsent(device, d -> new HashMap<>())
               .computeIfAbsent(measurement, m -> new ArrayList<>())
-              .addAll(fileReader.getChunkMetadataList(new Path(device, measurement, true)));
+              .addAll(fileReader.getChunkMetadataList(new Path(device, measurement)));
         }
       }
 

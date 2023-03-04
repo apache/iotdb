@@ -20,36 +20,42 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.execute.utils.reader.IDataBlockReader;
-import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -58,186 +64,227 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
-  private DataRegionId dataRegionId1 = new DataRegionId(1);
   private String sg2 = "root.TTL_SG2";
-  private DataRegionId dataRegionId2 = new DataRegionId(1);
   private long ttl = 12345;
-  private DataRegion dataRegion;
+  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
   @Before
-  public void setUp() throws MetadataException, DataRegionException {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
+  public void setUp() throws MetadataException, StorageGroupProcessorException {
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
-    dataRegion =
-        new DataRegion(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-            String.valueOf(dataRegionId1.getId()),
-            new DirectFlushPolicy(),
-            sg1);
-    //    createSchemas();
+    createSchemas();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+  }
+
+  private void createSchemas() throws MetadataException, StorageGroupProcessorException {
+    IoTDB.metaManager.setStorageGroup(new PartialPath(sg1));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(sg2));
+    virtualStorageGroupProcessor =
+        new VirtualStorageGroupProcessor(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+            sg1,
+            new DirectFlushPolicy(),
+            sg1);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath(g1s1),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        Collections.emptyMap());
+  }
+
+  @Test
+  public void testSetMetaTTL() throws IOException, MetadataException {
+    // exception is expected when setting ttl to a non-exist storage group
+    boolean caught = false;
+
+    try {
+      IoTDB.metaManager.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
+    } catch (MetadataException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    // normally set ttl
+    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
+    IStorageGroupMNode mNode =
+        IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg1));
+    assertEquals(ttl, mNode.getDataTTL());
+
+    // default ttl
+    mNode = IoTDB.metaManager.getStorageGroupNodeByStorageGroupPath(new PartialPath(sg2));
+    assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
   @Test
   public void testTTLWrite()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
-    InsertRowNode node =
-        new InsertRowNode(
-            new PlanNodeId("0"),
-            new PartialPath(sg1),
-            false,
-            new String[] {"s1"},
-            new TSDataType[] {TSDataType.INT64},
-            System.currentTimeMillis(),
-            new Object[] {1L},
-            false);
-    node.setMeasurementSchemas(
-        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
+    InsertRowPlan plan = new InsertRowPlan();
+    plan.setDevicePath(new PartialPath(sg1));
+    plan.setTime(System.currentTimeMillis());
+    plan.setMeasurements(new String[] {"s1"});
+    plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
+    plan.setValues(new Object[] {1L});
+    plan.setMeasurementMNodes(
+        new IMeasurementMNode[] {
+          MeasurementMNode.getMeasurementMNode(
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+        });
+    plan.transferType();
 
     // ok without ttl
-    dataRegion.insert(node);
+    virtualStorageGroupProcessor.insert(plan);
 
-    dataRegion.setDataTTL(1000);
+    virtualStorageGroupProcessor.setDataTTL(1000);
     // with ttl
-    node.setTime(System.currentTimeMillis() - 1001);
+    plan.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
     try {
-      dataRegion.insert(node);
+      virtualStorageGroupProcessor.insert(plan);
     } catch (OutOfTTLException e) {
       caught = true;
     }
     assertTrue(caught);
-    node.setTime(System.currentTimeMillis() - 900);
-    dataRegion.insert(node);
+    plan.setTime(System.currentTimeMillis() - 900);
+    virtualStorageGroupProcessor.insert(plan);
   }
 
-  private void prepareData() throws WriteProcessException, IllegalPathException {
-    InsertRowNode node =
-        new InsertRowNode(
-            new PlanNodeId("0"),
-            new PartialPath(sg1),
-            false,
-            new String[] {"s1"},
-            new TSDataType[] {TSDataType.INT64},
-            System.currentTimeMillis(),
-            new Object[] {1L},
-            false);
-    node.setMeasurementSchemas(
-        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+  private void prepareData()
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
+    InsertRowPlan plan = new InsertRowPlan();
+    plan.setDevicePath(new PartialPath(sg1));
+    plan.setTime(System.currentTimeMillis());
+    plan.setMeasurements(new String[] {"s1"});
+    plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
+    plan.setValues(new Object[] {1L});
+    plan.setMeasurementMNodes(
+        new IMeasurementMNode[] {
+          MeasurementMNode.getMeasurementMNode(
+              null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
+        });
+    plan.transferType();
 
     long initTime = System.currentTimeMillis();
     // sequence data
     for (int i = 1000; i < 2000; i++) {
-      node.setTime(initTime - 2000 + i);
-      dataRegion.insert(node);
+      plan.setTime(initTime - 2000 + i);
+      virtualStorageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
-        dataRegion.syncCloseAllWorkingTsFileProcessors();
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
     for (int i = 0; i < 1000; i++) {
-      node.setTime(initTime - 2000 + i);
-      dataRegion.insert(node);
+      plan.setTime(initTime - 2000 + i);
+      virtualStorageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
-        dataRegion.syncCloseAllWorkingTsFileProcessors();
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   @Test
   public void testTTLRead()
-      throws IOException, WriteProcessException, QueryProcessException, MetadataException {
+      throws IOException, WriteProcessException, StorageEngineException, QueryProcessException,
+          MetadataException {
     prepareData();
 
     // files before ttl
     QueryDataSource dataSource =
-        dataRegion.query(
-            Collections.singletonList(mockMeasurementPath()),
+        virtualStorageGroupProcessor.query(
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    dataRegion.setDataTTL(500);
+    virtualStorageGroupProcessor.setDataTTL(500);
 
     // files after ttl
     dataSource =
-        dataRegion.query(
-            Collections.singletonList(mockMeasurementPath()),
+        virtualStorageGroupProcessor.query(
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    MeasurementPath path = mockMeasurementPath();
-
-    IDataBlockReader reader =
-        new SeriesDataBlockReader(
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1);
+    Set<String> allSensors = new HashSet<>();
+    allSensors.add(s1);
+    IBatchReader reader =
+        new SeriesRawDataBatchReader(
             path,
-            FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID),
+            TSDataType.INT64,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             seqResource,
             unseqResource,
+            null,
+            null,
             true);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
-      TsBlock tsblock = reader.nextBatch();
-      cnt += tsblock.getPositionCount();
+      BatchData batchData = reader.nextBatch();
+      while (batchData.hasCurrent()) {
+        batchData.next();
+        cnt++;
+      }
     }
     reader.close();
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    dataRegion.setDataTTL(0);
+    virtualStorageGroupProcessor.setDataTTL(0);
     dataSource =
-        dataRegion.query(
-            Collections.singletonList(mockMeasurementPath()),
+        virtualStorageGroupProcessor.query(
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
-  }
-
-  private MeasurementPath mockMeasurementPath() throws MetadataException {
-    return new MeasurementPath(
-        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
-        new MeasurementSchema(
-            s1,
-            TSDataType.INT64,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            Collections.emptyMap()));
   }
 
   @Test
@@ -246,7 +293,7 @@ public class TTLTest {
           IllegalPathException {
     prepareData();
 
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
@@ -290,8 +337,8 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    dataRegion.setDataTTL(500);
-    dataRegion.checkFilesTTL();
+    virtualStorageGroupProcessor.setDataTTL(500);
+    virtualStorageGroupProcessor.checkFilesTTL();
 
     // files after ttl
     seqFiles = new ArrayList<>();
@@ -329,54 +376,72 @@ public class TTLTest {
   }
 
   @Test
-  public void testParseSetTTL() {
-    SetTTLStatement statement1 =
-        (SetTTLStatement)
-            StatementGenerator.createStatement(
-                "SET TTL TO " + sg1 + " 10000", ZoneId.systemDefault());
-    assertEquals(sg1, statement1.getStorageGroupPath().getFullPath());
-    assertEquals(10000, statement1.getTTL());
+  public void testParseSetTTL() throws QueryProcessException {
+    Planner planner = new Planner();
+    SetTTLPlan plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
+    assertEquals(sg1, plan.getStorageGroup().getFullPath());
+    assertEquals(10000, plan.getDataTTL());
 
-    UnSetTTLStatement statement2 =
-        (UnSetTTLStatement)
-            StatementGenerator.createStatement("UNSET TTL TO " + sg2, ZoneId.systemDefault());
-    assertEquals(sg2, statement2.getStorageGroupPath().getFullPath());
-    assertEquals(Long.MAX_VALUE, statement2.getTTL());
+    plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
+    assertEquals(sg2, plan.getStorageGroup().getFullPath());
+    assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 
   @Test
-  public void testParseShowTTL() {
-    ShowTTLStatement statement1 =
-        (ShowTTLStatement)
-            StatementGenerator.createStatement("SHOW ALL TTL", ZoneId.systemDefault());
-    assertTrue(statement1.getPaths().isEmpty());
+  public void testParseShowTTL() throws QueryProcessException {
+    Planner planner = new Planner();
+    ShowTTLPlan plan = (ShowTTLPlan) planner.parseSQLToPhysicalPlan("SHOW ALL TTL");
+    assertTrue(plan.getStorageGroups().isEmpty());
 
     List<String> sgs = new ArrayList<>();
     sgs.add("root.sg1");
     sgs.add("root.sg2");
     sgs.add("root.sg3");
-    ShowTTLStatement statement2 =
-        (ShowTTLStatement)
-            StatementGenerator.createStatement(
-                "SHOW TTL ON root.sg1,root.sg2,root.sg3", ZoneId.systemDefault());
+    plan = (ShowTTLPlan) planner.parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
     assertEquals(
         sgs,
-        statement2.getPaths().stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
+        plan.getStorageGroups().stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testShowTTL()
+      throws IOException, QueryProcessException, QueryFilterOptimizationException,
+          StorageEngineException, MetadataException, InterruptedException {
+    IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
+
+    ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
+    PlanExecutor executor = new PlanExecutor();
+    QueryDataSet queryDataSet = executor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    while (queryDataSet.hasNext()) {
+      RowRecord rowRecord = queryDataSet.next();
+      String sg = rowRecord.getFields().get(0).getStringValue();
+      if (sg.equals(sg1)) {
+        assertEquals(ttl, rowRecord.getFields().get(1).getLongV());
+      } else if (sg.equals(sg2)) {
+        assertNull(rowRecord.getFields().get(1));
+      } else {
+        fail();
+      }
+    }
   }
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     prepareData();
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
-    assertEquals(4, dataRegion.getSequenceFileList().size());
-    assertEquals(4, dataRegion.getUnSequenceFileList().size());
+    assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
-    dataRegion.setDataTTL(0);
-    dataRegion.checkFilesTTL();
+    virtualStorageGroupProcessor.setDataTTL(0);
+    virtualStorageGroupProcessor.checkFilesTTL();
 
-    assertEquals(0, dataRegion.getSequenceFileList().size());
-    assertEquals(0, dataRegion.getUnSequenceFileList().size());
+    assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }
 }

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -51,6 +51,7 @@ public class MemtableBenchmark {
       for (int j = 0; j < numOfMeasurement; j++) {
         memTable.write(
             DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+            Collections.emptyList(),
             Collections.singletonList(
                 new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
             System.nanoTime(),

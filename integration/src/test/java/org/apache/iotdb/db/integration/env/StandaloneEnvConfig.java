@@ -45,18 +45,25 @@ public class StandaloneEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setDataRegionNum(int dataRegionNum) {
-    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
+  public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(virtualStorageGroupNum);
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(partitionInterval);
     return this;
   }
 
   public BaseConfig setCompressor(String compressor) {
     TSFileDescriptor.getInstance().getConfig().setCompressor(compressor);
+    return this;
+  }
+
+  public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
     return this;
   }
 
@@ -71,6 +78,11 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
+    return this;
+  }
+
+  public BaseConfig setEnablePartition(boolean enablePartition) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(enablePartition);
     return this;
   }
 

@@ -19,19 +19,18 @@
 
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.thrift.impl.IInfluxDBServiceWithHandler;
+import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
-    implements TServerEventHandler {
-  private final IInfluxDBServiceWithHandler impl;
+public class InfluxDBServiceThriftHandler implements TServerEventHandler {
+  private final InfluxDBServiceImpl influxDBServiceImpl;
 
-  public InfluxDBServiceThriftHandler(IInfluxDBServiceWithHandler impl) {
-    this.impl = impl;
+  public InfluxDBServiceThriftHandler(InfluxDBServiceImpl influxDBServiceImpl) {
+    this.influxDBServiceImpl = influxDBServiceImpl;
   }
 
   @Override
@@ -40,16 +39,16 @@ public class InfluxDBServiceThriftHandler extends BaseServerContextHandler
   }
 
   @Override
-  public ServerContext createContext(TProtocol in, TProtocol out) {
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
     // nothing
-    return super.createContext(in, out);
+    return null;
   }
 
   @Override
-  public void deleteContext(ServerContext serverContext, TProtocol in, TProtocol out) {
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
     // release resources.
-    impl.handleClientExit();
-    super.deleteContext(serverContext, in, out);
+    influxDBServiceImpl.handleClientExit();
   }
 
   @Override

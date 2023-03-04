@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import org.apache.iotdb.udf.api.UDTF;
-import org.apache.iotdb.udf.api.access.RowIterator;
-import org.apache.iotdb.udf.api.access.RowWindow;
-import org.apache.iotdb.udf.api.collector.PointCollector;
-import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.type.Type;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, Type.INT32);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
   }
 
   @Override
@@ -49,7 +49,7 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
     logger.debug("SlidingTimeWindowConstructionTester#beforeStart");
     long timeInterval = parameters.getLong(ExampleUDFConstant.TIME_INTERVAL_KEY);
     configurations
-        .setOutputDataType(Type.INT32)
+        .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new SlidingTimeWindowAccessStrategy(timeInterval));
   }
 

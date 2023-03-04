@@ -21,8 +21,8 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import io.micrometer.core.instrument.distribution.ValueAtPercentile;
-
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 
 public class MicrometerHistogramSnapshot implements HistogramSnapshot {
@@ -51,9 +51,9 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double[] getValues() {
+  public long[] getValues() {
     return Arrays.stream(this.histogramSnapshot.percentileValues())
-        .mapToDouble(ValueAtPercentile::value)
+        .mapToLong(k -> (long) k.value())
         .toArray();
   }
 
@@ -68,8 +68,8 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double getMax() {
-    return this.histogramSnapshot.max();
+  public long getMax() {
+    return (long) this.histogramSnapshot.max();
   }
 
   @Override
@@ -78,8 +78,13 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double getMin() {
+  public long getMin() {
     // need distributionSummary to push 0 percentiles
-    return getValue(0.0);
+    return (long) getValue(0.0);
+  }
+
+  @Override
+  public void dump(OutputStream output) {
+    this.histogramSnapshot.outputSummary((PrintStream) output, 100);
   }
 }

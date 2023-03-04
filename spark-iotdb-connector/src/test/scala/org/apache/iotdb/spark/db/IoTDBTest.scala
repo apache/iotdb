@@ -20,15 +20,15 @@
 package org.apache.iotdb.spark.db
 
 import java.io.ByteArrayOutputStream
+import org.apache.iotdb.db.conf.IoTDBConstant
+import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.junit._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
-// TODO move it to integration-test
-@Ignore
 class IoTDBTest extends FunSuite with BeforeAndAfterAll {
-//  private var daemon: NewIoTDB = _
+  private var daemon: IoTDB = _
 
   private val testFile = "/home/hadoop/git/tsfile/delta-spark/src/test/resources/test.tsfile"
   private val csvPath: java.lang.String = "/home/hadoop/git/tsfile/delta-spark/src/test/resources/test.csv"
@@ -39,11 +39,11 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
 
   @Before
   override protected def beforeAll(): Unit = {
-    System.setProperty("IOTDB_CONF", "src/test/resources/")
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/")
     super.beforeAll()
 
-//    daemon = NewIoTDB.getInstance
-//    daemon.active(false)
+    daemon = IoTDB.getInstance
+    daemon.active()
     EnvironmentUtils.envSetUp()
     Class.forName(Config.JDBC_DRIVER_NAME)
     EnvironmentUtils.prepareData()
@@ -61,7 +61,7 @@ class IoTDBTest extends FunSuite with BeforeAndAfterAll {
       spark.sparkContext.stop()
     }
 
-//    daemon.stop()
+    daemon.stop()
     EnvironmentUtils.cleanEnv()
 
     super.afterAll()

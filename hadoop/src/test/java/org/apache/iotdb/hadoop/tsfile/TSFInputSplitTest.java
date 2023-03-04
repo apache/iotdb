@@ -26,8 +26,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /** Test the {@link TSFInputSplit} Assert the readFields function and write function is right */
 public class TSFInputSplitTest {

@@ -18,27 +18,52 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import java.util.Iterator;
 
 // This class defines MeasurementMNode as target node and defines the measurement process framework.
-// TODO: set R is ITimeseriesInfo
-public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
+public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
-  protected MeasurementCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public MeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    shouldTraverseTemplate = true;
+  }
+
+  public MeasurementCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, limit, offset);
+    shouldTraverseTemplate = true;
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    return collectMeasurement(nextMatchedNode.getAsMeasurementMNode());
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    return false;
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (!node.isMeasurement()) {
+      return false;
+    }
+    if (hasLimit) {
+      curOffset += 1;
+      if (curOffset < offset) {
+        return true;
+      }
+    }
+    collectMeasurement(node.getAsMeasurementMNode());
+    if (hasLimit) {
+      count += 1;
+    }
+    return true;
   }
 
   /**
@@ -46,17 +71,29 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
    *
    * @param node MeasurementMNode holding the measurement schema
    */
-  protected abstract R collectMeasurement(IMeasurementMNode node);
+  protected abstract void collectMeasurement(IMeasurementMNode node) throws MetadataException;
 
   /**
    * When traverse goes into a template, IMNode.getPartialPath may not work as nodes in template has
    * no parent on MTree. So this methods will construct a path from root to node in template using a
    * stack traverseContext.
    */
-  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode) {
-    IMNode par = getParentOfNextMatchedNode();
+  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode)
+      throws MetadataException {
+    IMNode par = traverseContext.peek();
+
+    Iterator<IMNode> nodes = traverseContext.descendingIterator();
+    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    while (nodes.hasNext()) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+      builder.append(nodes.next().getName());
+    }
+    if (builder.length() != 0) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+    }
+    builder.append(currentNode.getName());
     MeasurementPath retPath =
-        new MeasurementPath(getPartialPathFromRootToNode(currentNode), currentNode.getSchema());
+        new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
     retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
   }

@@ -29,7 +29,9 @@ You have to install thrift (>=0.13) before using the package.
 
 ### How to use (Example)
 
-First, download the package: `pip3 install apache-iotdb`
+First, download the latest package: `pip3 install apache-iotdb`
+
+*Notice: If you are installing Python API v0.13.0, DO NOT install by `pip install apache-iotdb==0.13.0`, use `pip install apache-iotdb==0.13.0.post1` instead!* 
 
 You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
 
@@ -76,15 +78,15 @@ session.close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Database Management
+#### Storage Group Management
 
-* CREATE DATABASE
+* Set storage group
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* Delete one or several databases
+* Delete one or several storage groups
 
 ```python
 session.delete_storage_group(group_name)
@@ -153,18 +155,6 @@ tablet_ = Tablet(
     device_id, measurements_, data_types_, values_, timestamps_
 )
 session.insert_tablet(tablet_)
-
-values_ = [
-    [None, 10, 11, 1.1, 10011.1, "test01"],
-    [True, None, 11111, 1.25, 101.0, "test02"],
-    [False, 100, None, 188.1, 688.25, "test03"],
-    [True, 0, 0, 0, None, None],
-]
-timestamps_ = [16, 17, 18, 19]
-tablet_ = Tablet(
-    device_id, measurements_, data_types_, values_, timestamps_
-)
-session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
@@ -192,36 +182,13 @@ np_values_ = [
     np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
     np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
     np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
-    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"]),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-  device_id, measurements_, data_types_, np_values_, np_timestamps_
+  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
-
-# insert one numpy tablet with None into the database.
-np_values_ = [
-    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
-    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
-    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
-    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
-    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
-    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
-]
-np_timestamps_ = np.array([98, 99, 100, 101], TSDataType.INT64.np_dtype())
-np_bitmaps_ = []
-for i in range(len(measurements_)):
-    np_bitmaps_.append(BitMap(len(np_timestamps_)))
-np_bitmaps_[0].mark(0)
-np_bitmaps_[1].mark(1)
-np_bitmaps_[2].mark(2)
-np_bitmaps_[4].mark(3)
-np_bitmaps_[5].mark(3)
-np_tablet_with_none = NumpyTablet(
-    device_id, measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
-)
-session.insert_tablet(np_tablet_with_none)
 ```
 
 * Insert multiple Tablets
@@ -287,98 +254,6 @@ session.execute_query_statement(sql)
 session.execute_non_query_statement(sql)
 ```
 
-* Execute statement
-
-```python
-session.execute_statement(sql)
-```
-
-### Schema Template
-#### Create Schema Template
-The step for creating a metadata template is as follows
-1. Create the template class
-2. Adding child Node，InternalNode and MeasurementNode can be chose
-3. Execute create schema template function
-
-```python
-template = Template(name=template_name, share_time=True)
-
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
-m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
-
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
-template.add_template(m_node_x)
-
-session.create_schema_template(template)
-```
-#### Modify Schema Template measurements
-Modify measurements in a template, the template must be already created. These are functions that add or delete some measurement nodes.
-* add node in template
-```python
-session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
-```
-
-* delete node in template
-```python
-session.delete_node_in_template(template_name, path)
-```
-
-#### Set Schema Template
-```python
-session.set_schema_template(template_name, prefix_path)
-```
-
-#### Uset Schema Template
-```python
-session.unset_schema_template(template_name, prefix_path)
-```
-
-#### Show Schema Template
-* Show all schema templates
-```python
-session.show_all_templates()
-```
-* Count all measurements in templates
-```python
-session.count_measurements_in_template(template_name)
-```
-
-* Judge whether the path is measurement or not in templates, This measurement must be in the template
-```python
-session.count_measurements_in_template(template_name, path)
-```
-
-* Judge whether the path is exist or not in templates, This path may not belong to the template
-```python
-session.is_path_exist_in_template(template_name, path)
-```
-
-* Show nodes under in schema template
-```python
-session.show_measurements_in_template(template_name)
-```
-
-* Show the path prefix where a schema template is set
-```python
-session.show_paths_template_set_on(template_name)
-```
-
-* Show the path prefix where a schema template is used (i.e. the time series has been created)
-```python
-session.show_paths_template_using_on(template_name)
-```
-
-#### Drop Schema Template
-Delete an existing metadata template，dropping an already set template is not supported
-```python
-session.drop_schema_template("template_python")
-```
-
 
 ### Pandas Support
 
@@ -426,150 +301,6 @@ class MyTestCase(unittest.TestCase):
 ```
 
 by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.12.0")` to get version `0.12.0` running.
-
-### IoTDB DBAPI
-
-IoTDB DBAPI implements the Python DB API 2.0 specification (https://peps.python.org/pep-0249/), which defines a common
-interface for accessing databases in Python.
-
-#### Examples
-+ Initialization
-
-The initialized parameters are consistent with the session part (except for the sqlalchemy_mode).
-```python
-from iotdb.dbapi import connect
-
-ip = "127.0.0.1"
-port_ = "6667"
-username_ = "root"
-password_ = "root"
-conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
-cursor = conn.cursor()
-```
-+ simple SQL statement execution
-```python
-cursor.execute("SELECT ** FROM root")
-for row in cursor.fetchall():
-    print(row)
-```
-
-+ execute SQL with parameter
-
-IoTDB DBAPI supports pyformat style parameters
-```python
-cursor.execute("SELECT ** FROM root WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
-for row in cursor.fetchall():
-    print(row)
-```
-
-+ execute SQL with parameter sequences
-```python
-seq_of_parameters = [
-    {"timestamp": 1, "temperature": 1},
-    {"timestamp": 2, "temperature": 2},
-    {"timestamp": 3, "temperature": 3},
-    {"timestamp": 4, "temperature": 4},
-    {"timestamp": 5, "temperature": 5},
-]
-sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
-cursor.executemany(sql,seq_of_parameters)
-```
-
-+ close the connection and cursor
-```python
-cursor.close()
-conn.close()
-```
-
-### IoTDB SQLAlchemy Dialect (Experimental)
-The SQLAlchemy dialect of IoTDB is written to adapt to Apache Superset.
-This part is still being improved.
-Please do not use it in the production environment!
-#### Mapping of the metadata
-The data model used by SQLAlchemy is a relational data model, which describes the relationships between different entities through tables.
-While the data model of IoTDB is a hierarchical data model, which organizes the data through a tree structure.
-In order to adapt IoTDB to the dialect of SQLAlchemy, the original data model in IoTDB needs to be reorganized.
-Converting the data model of IoTDB into the data model of SQLAlchemy.
-
-The metadata in the IoTDB are：
-
-1. Database
-2. Path
-3. Entity
-4. Measurement
-
-The metadata in the SQLAlchemy are：
-1. Schema
-2. Table
-3. Column
-
-The mapping relationship between them is：
-
-| The metadata in the SQLAlchemy | The metadata in the IoTDB                            |
-| -------------------- | -------------------------------------------- |
-| Schema               | Database                                     |
-| Table                | Path ( from database to entity ) + Entity    |
-| Column               | Measurement                                  |
-
-The following figure shows the relationship between the two more intuitively:
-
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
-
-#### Data type mapping
-| data type in IoTDB | data type in SQLAlchemy |
-|--------------------|-------------------------|
-| BOOLEAN            | Boolean                 |
-| INT32              | Integer                 |
-| INT64              | BigInteger              |
-| FLOAT              | Float                   |
-| DOUBLE             | Float                   |
-| TEXT               | Text                    |
-| LONG               | BigInteger              |
-
-#### Example
-
-+ execute statement
-
-```python
-from sqlalchemy import create_engine
-
-engine = create_engine("iotdb://root:root@127.0.0.1:6667")
-connect = engine.connect()
-result = connect.execute("SELECT ** FROM root")
-for row in result.fetchall():
-    print(row)
-```
-
-+ ORM (now only simple queries are supported)
-
-```python
-from sqlalchemy import create_engine, Column, Float, BigInteger, MetaData
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-
-metadata = MetaData(
-    schema='root.factory'
-)
-Base = declarative_base(metadata=metadata)
-
-
-class Device(Base):
-    __tablename__ = "room2.device1"
-    Time = Column(BigInteger, primary_key=True)
-    temperature = Column(Float)
-    status = Column(Float)
-
-
-engine = create_engine("iotdb://root:root@127.0.0.1:6667")
-
-DbSession = sessionmaker(bind=engine)
-session = DbSession()
-
-res = session.query(Device.status).filter(Device.temperature > 1)
-
-for row in res:
-    print(row)
-```
 
 
 ## Developers

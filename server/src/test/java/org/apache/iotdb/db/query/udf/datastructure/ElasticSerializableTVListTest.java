@@ -20,11 +20,10 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
-import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.udf.api.type.Binary;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Before;
@@ -93,9 +92,13 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   }
 
   private void initESTVList(TSDataType dataType) {
-    tvList =
-        ElasticSerializableTVList.newElasticSerializableTVList(
-            dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
+    try {
+      tvList =
+          ElasticSerializableTVList.newElasticSerializableTVList(
+              dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
+    } catch (QueryProcessException e) {
+      fail(e.toString());
+    }
     assertEquals(0, tvList.size());
   }
 
@@ -157,7 +160,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
           }
           break;
       }
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, tvList.size());
@@ -228,9 +231,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
               assertTrue(tvList.isNull(i));
             } else {
               assertFalse(tvList.isNull(i));
-              assertEquals(
-                  org.apache.iotdb.tsfile.utils.Binary.valueOf(String.valueOf(i)),
-                  tvList.getBinary(i));
+              assertEquals(Binary.valueOf(String.valueOf(i)), tvList.getBinary(i));
             }
           }
           break;

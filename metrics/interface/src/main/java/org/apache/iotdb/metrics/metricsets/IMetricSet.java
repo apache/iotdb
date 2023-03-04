@@ -21,11 +21,11 @@ package org.apache.iotdb.metrics.metricsets;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
 
-/** Notice that IMetricSet should be stateless. */
+/** Notice that IMetricSet should be stateless */
 public interface IMetricSet {
-  /** bind metrics to metricManager and init environment. */
+  /** bind metrics to metricManager and init environment */
   void bindTo(AbstractMetricService metricService);
 
-  /** remove metrics from metricManager and clear environment. */
+  /** remove metrics from metricManager and clear environment */
   void unbindFrom(AbstractMetricService metricService);
 }

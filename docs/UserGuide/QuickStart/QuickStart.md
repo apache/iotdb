@@ -35,8 +35,8 @@ To use IoTDB, you need to have:
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is [github](https://github.com/apache/iotdb/blob/master/docker/src/main)
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
 ## Download
@@ -46,34 +46,43 @@ You can download the binary file from:
 
 ## Configurations
 
-Configuration files are under "conf" folder
+configuration files are under "conf" folder
 
-  * environment config module (`datanode-env.bat`, `datanode-env.sh`), 
-  * system config module (`iotdb-datanode.properties`)
+  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Config](../Reference/DataNode-Config-Manual.md) in detail.
+For more, see [Config](../Reference/Config-Manual.md) in detail.
 
 ## Start
 
 You can go through the following step to test the installation, if there is no error after execution, the installation is completed. 
 
 ### Start IoTDB
-IoTDB is a database based on distributed system. To launch IoTDB, you can first start standalone mode (i.e. 1 ConfigNode and 1 DataNode) to check.
 
-Users can start IoTDB standalone mode by the start-standalone script under the sbin folder.
+Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> bash sbin/start-standalone.sh
-```
-```
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+
 # Windows
-> sbin\start-standalone.bat
+> sbin\start-server.bat -c <conf_path>
 ```
 
-Note: Currently, To run standalone mode, you need to ensure that all addresses are set to 127.0.0.1, and replication factors set to 1, which is by now the default setting.
-Besides, it's recommended to use SimpleConsensus in this mode, since it brings additional efficiency.
+- "-c" is optional.
+- option "-c" specifies the system configuration file directory.
+
+if you want to use JMX to connect IOTDB, you may need to add 
+
+```
+-Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
+```
+to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
+
+
 ### Use Cli
 
 IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
@@ -86,7 +95,7 @@ Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> bash sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
 > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
@@ -103,7 +112,7 @@ The command line client is interactive so if everything is ready you should see 
 |_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
 
-Successfully login at 127.0.0.1:6667
+IoTDB> login successfully
 IoTDB>
 ```
 
@@ -111,25 +120,25 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data. 
 
-The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a database. Before defining a timeseries, we should define a database using create DATABASE, and here is an example: 
+The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP, and here is an example: 
 
 ``` 
-IoTDB> create database root.ln
+IoTDB> SET STORAGE GROUP TO root.ln
 ```
 
-We can also use SHOW DATABASES to check created databases:
+We can also use SHOW STORAGE GROUP to check created storage group:
 
 ```
-IoTDB> SHOW DATABASES
+IoTDB> SHOW STORAGE GROUP
 +-----------------------------------+
-|                           Database|
+|                      Storage Group|
 +-----------------------------------+
 |                            root.ln|
 +-----------------------------------+
-Database number = 1
+storage group number = 1
 ```
 
-After the database is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
+After the storage group is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -143,7 +152,7 @@ To query the specific timeseries, use SHOW TIMESERIES \<Path\>. \<Path\> represe
 ```
 IoTDB> SHOW TIMESERIES
 +-------------------------------+---------------+--------+--------+
-|                     Timeseries|       Database|DataType|Encoding|
+|                     Timeseries|  Storage Group|DataType|Encoding|
 +-------------------------------+---------------+--------+--------+
 |       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
 |  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
@@ -156,7 +165,7 @@ Total timeseries number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------------+--------------+--------+--------+
-|                    Timeseries|      Database|DataType|Encoding|
+|                    Timeseries| Storage Group|DataType|Encoding|
 +------------------------------+--------------+--------+--------+
 |      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
 +------------------------------+--------------+--------+--------+
@@ -212,31 +221,17 @@ The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/OS X
-> bash sbin/stop-standalone.sh
+> sbin/stop-server.sh
 
 # Windows
-> sbin\stop-standalone.bat
+> sbin\stop-server.bat
 ```
-Note: In Linux, please add the "sudo" as far as possible, or else the stopping process may fail.
-More explanations are in Cluster/Cluster-setup.md.
-
-### Administration management
-
-There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
-
-You can alter the password of root using the following command：
-```
-ALTER USER <username> SET PASSWORD <password>;
-Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
-```
-
-More about administration management：[Administration Management](https://iotdb.apache.org/UserGuide/V1.0.x/Administration-Management/Administration.html)
 
 
 ## Basic configuration
 
 The configuration files is in the `conf` folder, includes:
 
-* environment configuration (`datanode-env.bat`, `datanode-env.sh`),
-* system configuration (`iotdb-datanode.properties`)
+* environment configuration (`iotdb-env.bat`, `iotdb-env.sh`),
+* system configuration (`iotdb-engine.properties`)
 * log configuration (`logback.xml`).

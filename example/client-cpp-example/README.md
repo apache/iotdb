@@ -34,7 +34,7 @@ You can find some files to form a complete project:
 +-- client
 |   +-- include
 |       +-- Session.h
-|       +-- IClientRPCService.h
+|       +-- TSIService.h
 |       +-- rpc_types.h
 |       +-- rpc_constants.h
 |       +-- thrift

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -88,7 +88,7 @@ public class IoTDBDataDirViewer {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be database directories under "
+          "Irregular data dir structure.There should be storage group directories under "
               + "the sequence/unsequence directory "
               + seqOrUnseqDir.getName());
     }
@@ -106,7 +106,7 @@ public class IoTDBDataDirViewer {
     if (files == null) {
       throw new IOException(
           "Irregular data dir structure.There should be timeInterval directories under "
-              + "the database directory "
+              + "the storage group directory "
               + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);

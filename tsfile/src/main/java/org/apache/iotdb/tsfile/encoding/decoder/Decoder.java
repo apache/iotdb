@@ -112,31 +112,6 @@ public abstract class Decoder {
         }
       case DICTIONARY:
         return new DictionaryDecoder();
-      case ZIGZAG:
-        switch (dataType) {
-          case INT32:
-            return new IntZigzagDecoder();
-          case INT64:
-            return new LongZigzagDecoder();
-          default:
-            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
-        }
-      case FREQ:
-        return new FreqDecoder();
-      case CHIMP:
-        switch (dataType) {
-          case FLOAT:
-            return new SinglePrecisionChimpDecoder();
-          case DOUBLE:
-            return new DoublePrecisionChimpDecoder();
-          case INT32:
-            return new IntChimpDecoder();
-          case INT64:
-          case VECTOR:
-            return new LongChimpDecoder();
-          default:
-            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
-        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

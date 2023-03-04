@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
@@ -68,6 +68,9 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertAfter(TsFileResource node, TsFileResource newNode) {
+    if (node.equals(newNode)) {
+      return;
+    }
     newNode.prev = node;
     newNode.next = node.next;
     if (node.next == null) {
@@ -149,16 +152,16 @@ public class TsFileResourceList implements List<TsFileResource> {
     } else {
       // find the position to insert of this node
       // the list should be ordered by file timestamp
-      long versionOfNewNode =
-          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getVersion();
+      long timeOfNewNode =
+          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getTime();
 
-      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getVersion()
-          > versionOfNewNode) {
+      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getTime()
+          > timeOfNewNode) {
         // the timestamp of head node is greater than the new node
         // insert it before the head
         insertBefore(header, newNode);
-      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getVersion()
-          < versionOfNewNode) {
+      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
+          < timeOfNewNode) {
         // the timestamp of new node is greater than the tail node
         // insert it after the tail
         insertAfter(tail, newNode);
@@ -168,14 +171,14 @@ public class TsFileResourceList implements List<TsFileResource> {
         // and insert the new node before this node
         TsFileResource currNode = header;
         while (currNode.next != null) {
-          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
-              > versionOfNewNode) {
+          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+              > timeOfNewNode) {
             break;
           }
           currNode = currNode.next;
         }
-        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
-            < versionOfNewNode) {
+        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+            < timeOfNewNode) {
           LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
         } else {
           insertBefore(currNode, newNode);
@@ -250,12 +253,12 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public Object[] toArray() {
-    return getArrayList().toArray();
+    throw new NotImplementedException();
   }
 
   @Override
   public <T> T[] toArray(T[] a) {
-    return getArrayList().toArray(a);
+    throw new NotImplementedException();
   }
 
   @Override

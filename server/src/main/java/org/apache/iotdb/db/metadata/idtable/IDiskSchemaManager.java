@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.idtable;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.List;
 
 /** This class manages IO of id table's schema entry */
 public interface IDiskSchemaManager {
@@ -35,14 +33,14 @@ public interface IDiskSchemaManager {
    * @param schemaEntry disk schema entry
    * @return disk position of that entry
    */
-  long serialize(DiskSchemaEntry schemaEntry);
+  public long serialize(DiskSchemaEntry schemaEntry);
 
   /**
    * recover id table from log file
    *
    * @param idTable id table need to be recovered
    */
-  void recover(IDTable idTable);
+  public void recover(IDTable idTable);
 
   /**
    * get all disk schema entries from file
@@ -50,23 +48,7 @@ public interface IDiskSchemaManager {
    * @return collection of all disk schema entires
    */
   @TestOnly
-  Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
-
-  /**
-   * get DiskSchemaEntries from disk file
-   *
-   * @param offsets the offset of each record on the disk file
-   * @return DiskSchemaEntries
-   */
-  List<DiskSchemaEntry> getDiskSchemaEntriesByOffset(List<Long> offsets);
-
-  /**
-   * delete DiskSchemaEntries on disk
-   *
-   * @param offset the offset of a record on the disk file
-   * @throws MetadataException
-   */
-  void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException;
+  public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
 
   /** close file and free resource */
   void close() throws IOException;

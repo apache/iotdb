@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.api;
 
-import java.util.List;
-
 public interface Handler<C extends Configuration, E extends Event> {
 
   @SuppressWarnings("squid:S112")
@@ -31,7 +29,4 @@ public interface Handler<C extends Configuration, E extends Event> {
 
   @SuppressWarnings("squid:S112")
   void onEvent(E event) throws Exception;
-
-  @SuppressWarnings("squid:S112")
-  default void onEvent(List<E> events) throws Exception {}
 }

@@ -25,6 +25,7 @@ import java.util.Properties;
  * configurations
  */
 public interface IPropertiesLoader {
+
   /**
    * Load Properties from specific file
    *

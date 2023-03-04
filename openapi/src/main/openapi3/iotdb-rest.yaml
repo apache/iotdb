@@ -23,7 +23,6 @@ info:
   description: IoTDB Rest API for Grafana, Prometheus, etc..
   license:
     name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.0
 servers:
 - url: http://127.0.0.1:18080/
@@ -143,29 +142,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/VariablesResult'
 
-  /grafana/v1/node:
-    post:
-      summary: node
-      description: node
-      operationId: node
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: array
-              description: node name (e.g., "root.a.b.c")
-              items:
-                type: string
-      responses:
-        "200":
-          description: NodesResult
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-
 components:
   schemas:
     SQL:
@@ -174,9 +150,8 @@ components:
       properties:
         sql:
           type: string
-        row_limit:
-          type: integer
-          format: int32
+        rowLimit:
+          type: Integer
 
     InsertTabletRequest:
       title: InsertTabletRequest
@@ -185,13 +160,12 @@ components:
         timestamps:
           type: array
           items:
-            type: integer
-            format: int64
+            type: long
         measurements:
           type: array
           items:
             type: string
-        data_types:
+        dataTypes:
           type: array
           items:
             type: string
@@ -201,9 +175,9 @@ components:
             type: array
             items:
               type: object
-        is_aligned:
+        isAligned:
           type: boolean
-        device:
+        deviceId:
           type: string
 
     ExecutionStatus:
@@ -211,7 +185,6 @@ components:
       properties:
         code:
           type: integer
-          format: int32
         message:
           type: string
 
@@ -222,15 +195,14 @@ components:
           type: array
           items:
             type: string
-        column_names:
+        columnNames:
           type: array
           items:
             type: string
         timestamps:
           type: array
           items:
-            type: integer
-            format: int64
+            type: long
         values:
           type: array
           items:
@@ -245,7 +217,7 @@ components:
           type: array
           items:
             type: string
-        prefix_path:
+        prefixPath:
           type: array
           items:
             type: string
@@ -253,9 +225,9 @@ components:
           type: string
         control:
            type: string
-        start_time:
+        startTime:
           type: number
-        end_time:
+        endTime:
           type: number
 
     VariablesResult:

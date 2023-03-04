@@ -19,42 +19,32 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.io.OutputStream;
 
-/** Used by timer and histogram. */
-public interface HistogramSnapshot extends IMetric {
+/** used by timer and histogram. */
+public interface HistogramSnapshot {
 
-  /** Get value by quantile. */
+  /** get value by quantile */
   double getValue(double quantile);
 
-  /** Get values in snapshot. */
-  double[] getValues();
+  /** get values in snapshot */
+  long[] getValues();
 
-  /** Get the size of values in snapshot. */
+  /** get the size of values in snapshot */
   int size();
 
-  /** Get min value in values. */
-  double getMin();
+  /** get min value in values */
+  long getMin();
 
-  /** Get median value in values. */
+  /** get median value in values */
   double getMedian();
 
-  /** Get mean value in values. */
+  /** get mean value in values */
   double getMean();
 
-  /** Get max value in values. */
-  double getMax();
+  /** get max value of values */
+  long getMax();
 
-  @Override
-  default void constructValueMap(Map<String, Object> result) {
-    result.put("max", getMax());
-    result.put("sum", Arrays.stream(getValues()).sum());
-
-    result.put("p0", getValue(0.0));
-    result.put("p50", getValue(0.5));
-    result.put("p75", getValue(0.75));
-    result.put("p99", getValue(0.99));
-    result.put("p999", getValue(0.999));
-  }
+  /** writes the values of the snapshot to the given stream */
+  void dump(OutputStream output);
 }

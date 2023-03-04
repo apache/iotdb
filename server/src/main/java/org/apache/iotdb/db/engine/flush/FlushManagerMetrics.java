@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -37,18 +37,18 @@ public class FlushManagerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.CORE,
+        MetricLevel.IMPORTANT,
         flushManager,
         FlushManager::getNumberOfWaitingTasks,
         Tag.NAME.toString(),
         "flush",
         Tag.STATUS.toString(),
         "waiting");
-    metricService.createAutoGauge(
+    metricService.getOrCreateAutoGauge(
         Metric.QUEUE.toString(),
-        MetricLevel.CORE,
+        MetricLevel.IMPORTANT,
         flushManager,
         FlushManager::getNumberOfWorkingTasks,
         Tag.NAME.toString(),
@@ -60,14 +60,14 @@ public class FlushManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE,
+        MetricType.GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         "flush",
         Tag.STATUS.toString(),
         "waiting");
     metricService.remove(
-        MetricType.AUTO_GAUGE,
+        MetricType.GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
         "flush",

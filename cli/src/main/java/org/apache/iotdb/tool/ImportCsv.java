@@ -19,20 +19,12 @@
 
 package org.apache.iotdb.tool;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.constant.SqlConstant;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -50,12 +42,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,50 +82,16 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
-  private static final String TIMESTAMP_PRECISION_ARGS = "tp";
-  private static final String TIMESTAMP_PRECISION_NAME = "timestamp precision (ms/us/ns)";
-
-  private static final String TYPE_INFER_ARGS = "typeInfer";
-  private static final String TYPE_INFER_ARGS_NAME = "type infer";
-
-  private static final String LINES_PER_FAILED_FILE_ARGS = "linesPerFailedFile";
-  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "Lines Per FailedFile";
-
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
 
   private static String targetPath;
   private static String failedFileDirectory = null;
-  private static int linesPerFailedFile = 10000;
   private static Boolean aligned = false;
 
   private static String timeColumn = "Time";
   private static String deviceColumn = "Device";
 
   private static int batchPointSize = 100_000;
-
-  private static String timestampPrecision = "ms";
-
-  private static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
-
-  static {
-    TYPE_INFER_KEY_DICT.put("boolean", TSDataType.BOOLEAN);
-    TYPE_INFER_KEY_DICT.put("int", TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put("long", TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put("float", TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put("double", TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put("NaN", TSDataType.DOUBLE);
-  }
-
-  private static final Map<String, TSDataType> TYPE_INFER_VALUE_DICT = new HashMap<>();
-
-  static {
-    TYPE_INFER_VALUE_DICT.put("boolean", TSDataType.BOOLEAN);
-    TYPE_INFER_VALUE_DICT.put("int", TSDataType.INT32);
-    TYPE_INFER_VALUE_DICT.put("long", TSDataType.INT64);
-    TYPE_INFER_VALUE_DICT.put("float", TSDataType.FLOAT);
-    TYPE_INFER_VALUE_DICT.put("double", TSDataType.DOUBLE);
-    TYPE_INFER_VALUE_DICT.put("text", TSDataType.TEXT);
-  }
 
   /**
    * create the commandline options.
@@ -194,33 +153,6 @@ public class ImportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opBatchPointSize);
 
-    Option opTimestampPrecision =
-        Option.builder(TIMESTAMP_PRECISION_ARGS)
-            .argName(TIMESTAMP_PRECISION_NAME)
-            .hasArg()
-            .desc("Timestamp precision (ms/us/ns)")
-            .build();
-
-    options.addOption(opTimestampPrecision);
-
-    Option opTypeInfer =
-        Option.builder(TYPE_INFER_ARGS)
-            .argName(TYPE_INFER_ARGS_NAME)
-            .numberOfArgs(5)
-            .hasArgs()
-            .valueSeparator(',')
-            .desc("Define type info by option:\"boolean=text,int=long, ...")
-            .build();
-    options.addOption(opTypeInfer);
-
-    Option opFailedLinesPerFile =
-        Option.builder(LINES_PER_FAILED_FILE_ARGS)
-            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .hasArgs()
-            .desc("Lines per failedfile")
-            .build();
-    options.addOption(opFailedLinesPerFile);
-
     return options;
   }
 
@@ -229,7 +161,7 @@ public class ImportCsv extends AbstractCsvTool {
    *
    * @param commandLine
    */
-  private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
+  private static void parseSpecialParams(CommandLine commandLine) {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     targetPath = commandLine.getOptionValue(FILE_ARGS);
     if (commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS) != null) {
@@ -246,46 +178,6 @@ public class ImportCsv extends AbstractCsvTool {
     if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
       aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
     }
-
-    if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
-      timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
-    }
-    final String[] opTypeInferValues = commandLine.getOptionValues(TYPE_INFER_ARGS);
-    if (opTypeInferValues != null && opTypeInferValues.length > 0) {
-      for (String opTypeInferValue : opTypeInferValues) {
-        if (opTypeInferValue.contains("=")) {
-          final String[] typeInfoExpressionArr = opTypeInferValue.split("=");
-          final String key = typeInfoExpressionArr[0];
-          final String value = typeInfoExpressionArr[1];
-          applyTypeInferArgs(key, value);
-        }
-      }
-    }
-    if (commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS) != null) {
-      linesPerFailedFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS));
-    }
-  }
-
-  private static void applyTypeInferArgs(String key, String value) throws ArgsErrorException {
-    if (!TYPE_INFER_KEY_DICT.containsKey(key)) {
-      throw new ArgsErrorException("Unknown type infer key: " + key);
-    }
-    if (!TYPE_INFER_VALUE_DICT.containsKey(value)) {
-      throw new ArgsErrorException("Unknown type infer value: " + value);
-    }
-    if (key.equals("NaN")
-        && !(value.equals("float") || value.equals("double") || value.equals("text"))) {
-      throw new ArgsErrorException("NaN can not convert to " + value);
-    }
-    if (key.equals("boolean") && !(value.equals("boolean") || value.equals("text"))) {
-      throw new ArgsErrorException("Boolean can not convert to " + value);
-    }
-    final TSDataType srcType = TYPE_INFER_VALUE_DICT.get(key);
-    final TSDataType dstType = TYPE_INFER_VALUE_DICT.get(value);
-    if (dstType.getType() < srcType.getType()) {
-      throw new ArgsErrorException(key + " can not convert to " + value);
-    }
-    TYPE_INFER_KEY_DICT.put(key, TYPE_INFER_VALUE_DICT.get(value));
   }
 
   public static void main(String[] args) throws IoTDBConnectionException {
@@ -415,7 +307,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
         }
-      } catch (IOException | IllegalPathException e) {
+      } catch (IOException e) {
         System.out.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
@@ -431,17 +323,17 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByTime(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
-      throws IllegalPathException {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
     HashMap<String, List<String>> deviceAndMeasurementNames = new HashMap<>();
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, deviceAndMeasurementNames, headerTypeMap, headerNameMap);
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
+    String devicesStr = StringUtils.join(devices, ",");
     if (headerTypeMap.isEmpty()) {
       try {
-        queryType(devices, headerTypeMap, "Time");
+        queryType(devicesStr, headerTypeMap, "Time");
       } catch (IoTDBConnectionException e) {
         e.printStackTrace();
       }
@@ -453,6 +345,7 @@ public class ImportCsv extends AbstractCsvTool {
     List<List<TSDataType>> typesList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
 
+    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
     AtomicInteger pointSize = new AtomicInteger(0);
 
@@ -462,6 +355,7 @@ public class ImportCsv extends AbstractCsvTool {
         record -> {
           if (!hasStarted.get()) {
             hasStarted.set(true);
+            timeFormatter.set(formatterInit(record.get(0)));
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
             pointSize.set(0);
@@ -477,10 +371,10 @@ public class ImportCsv extends AbstractCsvTool {
             List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
-              String value = record.get(headerNameMap.get(header));
+              String value = record.get(header);
               if (!"".equals(value)) {
                 TSDataType type;
-                if (!headerTypeMap.containsKey(header)) {
+                if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                   type = typeInfer(value);
                   if (type != null) {
                     headerTypeMap.put(header, type);
@@ -491,7 +385,7 @@ public class ImportCsv extends AbstractCsvTool {
                     isFail = true;
                   }
                 }
-                type = headerTypeMap.get(header);
+                type = headerTypeMap.get(headerNameMap.get(header));
                 if (type != null) {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
@@ -500,7 +394,7 @@ public class ImportCsv extends AbstractCsvTool {
                         "Line '%s', column '%s': '%s' can't convert to '%s'%n",
                         record.getRecordNumber(), header, value, type);
                   } else {
-                    measurements.add(header.replace(deviceId + '.', ""));
+                    measurements.add(headerNameMap.get(header).replace(deviceId + '.', ""));
                     types.add(type);
                     values.add(valueTrans);
                     pointSize.getAndIncrement();
@@ -509,7 +403,17 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
             if (!measurements.isEmpty()) {
-              times.add(parseTimestamp(record.get(timeColumn)));
+              if (timeFormatter.get() == null) {
+                times.add(Long.valueOf(record.get(timeColumn)));
+              } else {
+                try {
+                  times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
+                } catch (ParseException e) {
+                  System.out.println(
+                      "Meet error when insert csv because the format of time is not supported");
+                  System.exit(0);
+                }
+              }
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -526,7 +430,7 @@ public class ImportCsv extends AbstractCsvTool {
     }
 
     if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+      writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
     if (hasStarted.get()) {
       System.out.println("Import completely!");
@@ -543,12 +447,12 @@ public class ImportCsv extends AbstractCsvTool {
    * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByDevice(
-      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
-      throws IllegalPathException {
+      List<String> headerNames, Stream<CSVRecord> records, String failedFilePath) {
     HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
     HashMap<String, String> headerNameMap = new HashMap<>();
     parseHeaders(headerNames, null, headerTypeMap, headerNameMap);
 
+    AtomicReference<SimpleDateFormat> timeFormatter = new AtomicReference<>(null);
     AtomicReference<String> deviceName = new AtomicReference<>(null);
 
     HashSet<String> typeQueriedDevice = new HashSet<>();
@@ -568,6 +472,7 @@ public class ImportCsv extends AbstractCsvTool {
           // only run in first record
           if (deviceName.get() == null) {
             deviceName.set(record.get(1));
+            timeFormatter.set(formatterInit(record.get(0)));
           } else if (!Objects.equals(deviceName.get(), record.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
@@ -589,29 +494,17 @@ public class ImportCsv extends AbstractCsvTool {
           AtomicReference<Boolean> isFail = new AtomicReference<>(false);
 
           // read data from record
-          for (Map.Entry<String, String> headerNameEntry : headerNameMap.entrySet()) {
-            // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
-            String headerNameWithoutType = headerNameEntry.getKey();
-            String headerName = headerNameEntry.getValue();
-            String value = record.get(headerName);
+          for (String measurement : headerNameMap.keySet()) {
+            String value = record.get(measurement);
             if (!"".equals(value)) {
               TSDataType type;
-              // Get the data type directly if the CSV column have data type.
-              if (!headerTypeMap.containsKey(headerNameWithoutType)) {
+              if (!headerTypeMap.containsKey(headerNameMap.get(measurement))) {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
-                      hasResult =
-                          queryType(
-                              new HashSet<String>() {
-                                {
-                                  add(deviceName.get());
-                                }
-                              },
-                              headerTypeMap,
-                              "Device");
+                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
                     }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
@@ -621,26 +514,26 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!hasResult) {
                   type = typeInfer(value);
                   if (type != null) {
-                    headerTypeMap.put(headerNameWithoutType, type);
+                    headerTypeMap.put(measurement, type);
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), headerNameWithoutType, value);
+                        record.getRecordNumber(), measurement, value);
                     isFail.set(true);
                   }
                 }
               }
-              type = headerTypeMap.get(headerNameWithoutType);
+              type = headerTypeMap.get(headerNameMap.get(measurement));
               if (type != null) {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerNameWithoutType, value, type);
+                      record.getRecordNumber(), headerNameMap.get(measurement), value, type);
                 } else {
                   values.add(valueTrans);
-                  measurements.add(headerNameWithoutType);
+                  measurements.add(headerNameMap.get(measurement));
                   types.add(type);
                   pointSize.getAndIncrement();
                 }
@@ -651,7 +544,17 @@ public class ImportCsv extends AbstractCsvTool {
             failedRecords.add(record.stream().collect(Collectors.toList()));
           }
           if (!measurements.isEmpty()) {
-            times.add(parseTimestamp(record.get(timeColumn)));
+            if (timeFormatter.get() == null) {
+              times.add(Long.valueOf(record.get(timeColumn)));
+            } else {
+              try {
+                times.add(timeFormatter.get().parse(record.get(timeColumn)).getTime());
+              } catch (ParseException e) {
+                System.out.println(
+                    "Meet error when insert csv because the format of time is not supported");
+                System.exit(0);
+              }
+            }
             typesList.add(types);
             valuesList.add(values);
             measurementsList.add(measurements);
@@ -662,26 +565,9 @@ public class ImportCsv extends AbstractCsvTool {
       pointSize.set(0);
     }
     if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+      writeCsvFile(headerNames, failedRecords, failedFilePath);
     }
     System.out.println("Import completely!");
-  }
-
-  private static void writeFailedLinesFile(
-      List<String> headerNames, String failedFilePath, ArrayList<List<Object>> failedRecords) {
-    int fileIndex = 0;
-    int from = 0;
-    int failedRecordsSize = failedRecords.size();
-    int restFailedRecords = failedRecordsSize;
-    while (from < failedRecordsSize) {
-      int step = Math.min(restFailedRecords, linesPerFailedFile);
-      writeCsvFile(
-          headerNames,
-          failedRecords.subList(from, from + step),
-          failedFilePath + "_" + fileIndex++);
-      from += step;
-      restFailedRecords -= step;
-    }
   }
 
   private static void writeAndEmptyDataSet(
@@ -755,8 +641,8 @@ public class ImportCsv extends AbstractCsvTool {
    * read data from the CSV file
    *
    * @param path
-   * @return CSVParser csv parser
-   * @throws IOException when reading the csv file failed.
+   * @return
+   * @throws IOException
    */
   private static CSVParser readCsvFile(String path) throws IOException {
     return CSVFormat.Builder.create(CSVFormat.DEFAULT)
@@ -781,8 +667,7 @@ public class ImportCsv extends AbstractCsvTool {
       List<String> headerNames,
       @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
       HashMap<String, TSDataType> headerTypeMap,
-      HashMap<String, String> headerNameMap)
-      throws IllegalPathException {
+      HashMap<String, String> headerNameMap) {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
@@ -795,17 +680,16 @@ public class ImportCsv extends AbstractCsvTool {
       }
       Matcher matcher = pattern.matcher(headerName);
       String type;
-      String headerNameWithoutType;
       if (matcher.find()) {
         type = matcher.group();
-        headerNameWithoutType = headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
-        headerNameMap.put(headerNameWithoutType, headerName);
+        String headerNameWithoutType =
+            headerName.replace("(" + type + ")", "").replaceAll("\\s+", "");
+        headerNameMap.put(headerName, headerNameWithoutType);
         headerTypeMap.put(headerNameWithoutType, getType(type));
       } else {
-        headerNameWithoutType = headerName;
         headerNameMap.put(headerName, headerName);
       }
-      String[] split = PathUtils.splitPathToDetachedNodes(headerNameWithoutType);
+      String[] split = headerName.split("\\.");
       String measurementName = split[split.length - 1];
       String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
@@ -827,37 +711,59 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws StatementExecutionException
    */
   private static boolean queryType(
-      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
+      String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
       throws IoTDBConnectionException {
-    boolean hasResult = false;
-    for (String deviceName : deviceNames) {
-      String sql = "show timeseries " + deviceName + ".*";
-      SessionDataSet sessionDataSet = null;
-      try {
-        sessionDataSet = session.executeQueryStatement(sql);
-        int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);
-        int dtIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
-        while (sessionDataSet.hasNext()) {
-          hasResult = true;
-          RowRecord record = sessionDataSet.next();
-          List<Field> fields = record.getFields();
-          String timeseries = fields.get(tsIndex).getStringValue();
-          String dataType = fields.get(dtIndex).getStringValue();
-          if (Objects.equals(alignedType, "Time")) {
-            headerTypeMap.put(timeseries, getType(dataType));
-          } else if (Objects.equals(alignedType, "Device")) {
-            String[] split = PathUtils.splitPathToDetachedNodes(timeseries);
-            String measurement = split[split.length - 1];
-            headerTypeMap.put(measurement, getType(dataType));
-          }
+    String sql = "select * from " + deviceNames + " limit 1";
+    SessionDataSet sessionDataSet = null;
+    try {
+      sessionDataSet = session.executeQueryStatement(sql);
+    } catch (StatementExecutionException e) {
+      System.out.println(
+          "Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
+      return false;
+    }
+    List<String> columnNames = sessionDataSet.getColumnNames();
+    List<String> columnTypes = sessionDataSet.getColumnTypes();
+    if (columnNames.size() == 1) {
+      return false;
+    } else {
+      for (int i = 1; i < columnNames.size(); i++) {
+        if (Objects.equals(alignedType, "Time")) {
+          headerTypeMap.put(columnNames.get(i), getType(columnTypes.get(i)));
+        } else if (Objects.equals(alignedType, "Device")) {
+          String[] split = columnNames.get(i).split("\\.");
+          String measurement = split[split.length - 1];
+          headerTypeMap.put(measurement, getType(columnTypes.get(i)));
         }
-      } catch (StatementExecutionException | IllegalPathException e) {
-        System.out.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
-        return false;
+      }
+      return true;
+    }
+  }
+
+  /**
+   * return a suit time formatter
+   *
+   * @param time
+   * @return
+   */
+  private static SimpleDateFormat formatterInit(String time) {
+    try {
+      Long.parseLong(time);
+      return null;
+    } catch (Exception ignored) {
+      // do nothing
+    }
+
+    for (String timeFormat : STRING_TIME_FORMAT) {
+      SimpleDateFormat format = new SimpleDateFormat(timeFormat);
+      try {
+        format.parse(time);
+        return format;
+      } catch (java.text.ParseException ignored) {
+        // do nothing
       }
     }
-    return hasResult;
+    return null;
   }
 
   /**
@@ -889,53 +795,31 @@ public class ImportCsv extends AbstractCsvTool {
    * if data type of timeseries is not defined in headers of schema, this method will be called to
    * do type inference
    *
-   * @param strValue
+   * @param value
    * @return
    */
-  private static TSDataType typeInfer(String strValue) {
-    if (strValue.contains("\"")) {
+  private static TSDataType typeInfer(String value) {
+    if (value.contains("\"")) {
       return TEXT;
-    }
-    if (isBoolean(strValue)) {
-      return TYPE_INFER_KEY_DICT.get("boolean");
-    } else if (isNumber(strValue)) {
-      if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-        if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return TYPE_INFER_KEY_DICT.get("long");
+    } else if (value.equals("true") || value.equals("false")) {
+      return BOOLEAN;
+    } else if (value.equals("NaN")) {
+      return DOUBLE;
+    } else if (!value.contains(".")) {
+      try {
+        Integer.valueOf(value);
+        return INT32;
+      } catch (Exception e) {
+        try {
+          Long.valueOf(value);
+          return INT64;
+        } catch (Exception exception) {
+          return null;
         }
-        return TYPE_INFER_KEY_DICT.get("int");
-      } else {
-        return TYPE_INFER_KEY_DICT.get("float");
       }
-    } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
-      return null;
-      // "NaN" is returned if the NaN Literal is given in Parser
-    } else if ("NaN".equals(strValue)) {
-      return TYPE_INFER_KEY_DICT.get("NaN");
     } else {
-      return TSDataType.TEXT;
+      return DOUBLE;
     }
-  }
-
-  static boolean isNumber(String s) {
-    if (s == null || s.equals("NaN")) {
-      return false;
-    }
-    try {
-      Double.parseDouble(s);
-    } catch (NumberFormatException e) {
-      return false;
-    }
-    return true;
-  }
-
-  private static boolean isBoolean(String s) {
-    return s.equalsIgnoreCase(SqlConstant.BOOLEAN_TRUE)
-        || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
-  }
-
-  private static boolean isConvertFloatPrecisionLack(String s) {
-    return Long.parseLong(s) > (2 << 24);
   }
 
   /**
@@ -952,33 +836,23 @@ public class ImportCsv extends AbstractCsvTool {
           }
           return value;
         case BOOLEAN:
-          if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+          if (!"true".equals(value) && !"false".equals(value)) {
             return null;
           }
-          return Boolean.parseBoolean(value);
+          return Boolean.valueOf(value);
         case INT32:
-          return Integer.parseInt(value);
+          return Integer.valueOf(value);
         case INT64:
-          return Long.parseLong(value);
+          return Long.valueOf(value);
         case FLOAT:
-          return Float.parseFloat(value);
+          return Float.valueOf(value);
         case DOUBLE:
-          return Double.parseDouble(value);
+          return Double.valueOf(value);
         default:
           return null;
       }
     } catch (NumberFormatException e) {
       return null;
     }
-  }
-
-  private static long parseTimestamp(String str) {
-    long timestamp;
-    try {
-      timestamp = Long.parseLong(str);
-    } catch (NumberFormatException e) {
-      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
-    }
-    return timestamp;
   }
 }

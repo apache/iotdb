@@ -18,36 +18,28 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implement entity counter.
-public class EntityCounter extends EntityTraverser<Void> implements Counter {
-  private int count;
+// This class implements the entity count function.
+public class EntityCounter extends CounterTraverser {
 
-  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
-      throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    shouldTraverseTemplate = true;
   }
 
   @Override
-  protected Void generateResult(IMNode nextMatchedNode) {
-    count++;
-    return null;
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return false;
   }
 
   @Override
-  public long count() throws MetadataException {
-    while (hasNext()) {
-      next();
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isEntity()) {
+      count++;
     }
-    if (!isSuccess()) {
-      Throwable e = getFailure();
-      throw new MetadataException(e.getMessage(), e);
-    }
-    return count;
+    return false;
   }
 }

@@ -18,16 +18,30 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.constant.SqlConstant;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -54,9 +68,6 @@ public class SchemaUtils {
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
     intSet.add(TSEncoding.GORILLA);
-    intSet.add(TSEncoding.ZIGZAG);
-    intSet.add(TSEncoding.FREQ);
-    intSet.add(TSEncoding.CHIMP);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -66,8 +77,6 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
-    floatSet.add(TSEncoding.FREQ);
-    floatSet.add(TSEncoding.CHIMP);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -75,6 +84,46 @@ public class SchemaUtils {
     textSet.add(TSEncoding.PLAIN);
     textSet.add(TSEncoding.DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
+
+  public static void registerTimeseries(TimeseriesSchema schema) {
+    try {
+      logger.debug("Registering timeseries {}", schema);
+      PartialPath path = new PartialPath(schema.getFullPath());
+      TSDataType dataType = schema.getType();
+      TSEncoding encoding = schema.getEncodingType();
+      CompressionType compressionType = schema.getCompressor();
+      IoTDB.metaManager.createTimeseries(
+          path, dataType, encoding, compressionType, Collections.emptyMap());
+    } catch (PathAlreadyExistException ignored) {
+      // ignore added timeseries
+    } catch (MetadataException e) {
+      if (!(e.getCause() instanceof ClosedByInterruptException)
+          && !(e.getCause() instanceof ClosedChannelException)) {
+        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
+      }
+    }
+  }
+
+  public static void cacheTimeseriesSchema(TimeseriesSchema schema) {
+    PartialPath path;
+    try {
+      path = new PartialPath(schema.getFullPath());
+    } catch (IllegalPathException e) {
+      logger.error("Cannot cache an illegal path {}", schema.getFullPath());
+      return;
+    }
+    TSDataType dataType = schema.getType();
+    TSEncoding encoding = schema.getEncodingType();
+    CompressionType compressionType = schema.getCompressor();
+    IMeasurementSchema measurementSchema =
+        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
+
+    IMeasurementMNode measurementMNode =
+        MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
+    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
@@ -103,7 +152,23 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
+  public static List<TSDataType> getSeriesTypesByPaths(
+      List<MeasurementPath> paths, List<String> aggregations) {
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      String aggrStr = aggregations != null ? aggregations.get(i) : null;
+      TSDataType dataType = getAggregationType(aggrStr);
+      if (dataType != null) {
+        tsDataTypes.add(dataType);
+      } else {
+        PartialPath path = paths.get(i);
+        tsDataTypes.add(path == null ? null : path.getSeriesType());
+      }
+    }
+    return tsDataTypes;
+  }
+
+  public static TSDataType getSeriesTypeByPath(MeasurementPath path, String aggregation) {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
       return dataType;
@@ -121,47 +186,41 @@ public class SchemaUtils {
       return null;
     }
     switch (aggregation.toLowerCase()) {
-      case SqlConstant.MIN_TIME:
-      case SqlConstant.MAX_TIME:
-      case SqlConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.COUNT:
         return TSDataType.INT64;
-      case SqlConstant.AVG:
-      case SqlConstant.SUM:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
         return TSDataType.DOUBLE;
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.MAX_VALUE:
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
       default:
         return null;
     }
   }
 
   /**
-   * judge whether the order of aggregation calculation is consistent with the order of traversing
-   * data
+   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
+   * return such an exception or null if it cannot be found.
+   *
+   * @param currEx
+   * @return null or a PathNotExistException or a StorageGroupNotSetException
    */
-  public static boolean isConsistentWithScanOrder(
-      TAggregationType aggregationFunction, Ordering scanOrder) {
-    boolean ascending = scanOrder == Ordering.ASC;
-    switch (aggregationFunction) {
-      case MIN_TIME:
-      case FIRST_VALUE:
-        return ascending;
-      case MAX_TIME:
-      case LAST_VALUE:
-        return !ascending;
-      case SUM:
-      case MIN_VALUE:
-      case MAX_VALUE:
-      case EXTREME:
-      case COUNT:
-      case AVG:
-        return true;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationFunction));
+  public static Throwable findMetaMissingException(Throwable currEx) {
+    while (true) {
+      if (currEx instanceof PathNotExistException
+          || currEx instanceof StorageGroupNotSetException) {
+        return currEx;
+      }
+      if (currEx.getCause() == null) {
+        break;
+      }
+      currEx = currEx.getCause();
     }
+    return null;
   }
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
@@ -169,29 +228,6 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
-    }
-  }
-
-  public static List<TAggregationType> splitPartialAggregation(TAggregationType aggregationType) {
-    switch (aggregationType) {
-      case FIRST_VALUE:
-        return Collections.singletonList(TAggregationType.MIN_TIME);
-      case LAST_VALUE:
-        return Collections.singletonList(TAggregationType.MAX_TIME);
-      case AVG:
-        return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
-      case SUM:
-      case MIN_VALUE:
-      case MAX_VALUE:
-      case EXTREME:
-      case COUNT:
-      case MIN_TIME:
-      case MAX_TIME:
-      case COUNT_IF:
-        return Collections.emptyList();
-      default:
-        throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationType));
     }
   }
 }

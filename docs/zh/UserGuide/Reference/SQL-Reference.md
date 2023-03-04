@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|1.0.0|
+|0.13.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -39,20 +39,20 @@ It costs 0.417s
 
 ### Schema 语句
 
-* 设置 database
+* 设置存储组
 
 ``` SQL
-CREATE DATABASE <FullPath>
-Eg: IoTDB > CREATE DATABASE root.ln.wf01.wt01
+SET STORAGE GROUP TO <FullPath>
+Eg: IoTDB > SET STORAGE GROUP TO root.ln.wf01.wt01
 Note: FullPath can not include wildcard `*` or `**`
 ```
-* 删除 database
+* 删除存储组
 
 ```
-DELETE DATABASE <PathPattern> [COMMA <PathPattern>]*
-Eg: IoTDB > DELETE DATABASE root.ln
-Eg: IoTDB > DELETE DATABASE root.*
-Eg: IoTDB > DELETE DATABASE root.**
+DELETE STORAGE GROUP <PathPattern> [COMMA <PathPattern>]*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln
+Eg: IoTDB > DELETE STORAGE GROUP root.*
+Eg: IoTDB > DELETE STORAGE GROUP root.**
 ```
 
 * 创建时间序列语句
@@ -87,9 +87,9 @@ Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=P
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
 Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01, COMPMINTIME=3
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, DEADBAND=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
 Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
 Note: When propertyValue is SDT, it is required to set compression deviation COMPDEV, which is the maximum absolute difference between values.
 Note: For SDT, values withtin COMPDEV will be discarded.
@@ -112,9 +112,9 @@ Eg: CREATE TIMESERIES root.ln.wf01.wt01.status BOOLEAN ENCODING=PLAIN
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE COMPRESSOR=SNAPPY MAX_POINT_NUMBER=3
 Eg: CREATE TIMESERIES root.turbine.d0.s0(temperature) FLOAT ENCODING=RLE COMPRESSOR=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01 COMPMINTIME=3
-Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE DEADBAND=SDT COMPDEV=0.01 COMPMINTIME=2 COMPMAXTIME=15
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature FLOAT ENCODING=RLE LOSS=SDT COMPDEV=0.01 COMPMINTIME=2 COMPMAXTIME=15
 ```
 
 * 创建对齐时间序列语句
@@ -166,11 +166,10 @@ Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 * 删除时间序列语句
 
 ```
-(DELETE | DROP) TIMESERIES <PathPattern> [COMMA <PathPattern>]*
+DELETE TIMESERIES <PathPattern> [COMMA <PathPattern>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
-Eg: IoTDB > DROP TIMESERIES root.ln.wf01.wt01.*
 ```
 
 * 修改时间序列标签属性语句
@@ -255,21 +254,21 @@ Eg: show timeseries root.ln.** where description contains 'test1'
 Eg: show timeseries root.ln.** where unit='c' limit 10 offset 10
 ```
 
-* 查看所有 database 语句
+* 显示存储组语句
 
 ```
-SHOW DATABASES
-Eg: IoTDB > SHOW DATABASES
+SHOW STORAGE GROUP
+Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
-* 显示特定 database
+* 显示特定存储组语句
 
 ```
-SHOW DATABASES <PathPattern>
-Eg: IoTDB > SHOW DATABASES root.*
-Eg: IoTDB > SHOW DATABASES root.**
-Eg: IoTDB > SHOW DATABASES root.ln
+SHOW STORAGE GROUP <PathPattern>
+Eg: IoTDB > SHOW STORAGE GROUP root.*
+Eg: IoTDB > SHOW STORAGE GROUP root.**
+Eg: IoTDB > SHOW STORAGE GROUP root.ln
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
@@ -317,21 +316,21 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示所有设备语句
 
 ```
-SHOW DEVICES (WITH DATABASE)? limitClause? 
+SHOW DEVICES (WITH STORAGE GROUP)? limitClause? 
 Eg: IoTDB > SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES WITH DATABASE
+Eg: IoTDB > SHOW DEVICES WITH STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PathPattern> (WITH DATABASE)? limitClause?
+SHOW DEVICES <PathPattern> (WITH STORAGE GROUP)? limitClause?
 Eg: IoTDB > SHOW DEVICES root.**
 Eg: IoTDB > SHOW DEVICES root.ln.*
 Eg: IoTDB > SHOW DEVICES root.*.wf01
-Eg: IoTDB > SHOW DEVICES root.ln.* WITH DATABASE
-Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH DATABASE
+Eg: IoTDB > SHOW DEVICES root.ln.* WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
 Note: The path can be path pattern.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
@@ -353,6 +352,12 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln
 Eg: IoTDB > SHOW CHILD PATHS root.*.wf01
 Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* 为 schema 创建快照
+
+```
+CREATE SNAPSHOT FOR SCHEMA
 ```
 
 ### 数据管理语句
@@ -737,7 +742,7 @@ select last s1 as speed, s2 from root.sg.d1
 
 E.g. select s1 as temperature from root.sg.*
 
-此时如果 database root.sg.* 中含有多个设备，则会抛出异常。
+此时如果存储组 root.sg.* 中含有多个设备，则会抛出异常。
 
 2. 按设备对齐查询中，每个 AS 语句对应的前缀路径可以含多个设备，而后缀路径不能含多个传感器。
 
@@ -1039,7 +1044,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 NOW()
 Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
 Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg. SELECT * FROM root.** WHERE time < NOW()
+Eg. SELECT * FROM root WHERE time < NOW()
 Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 
@@ -1051,9 +1056,9 @@ Eg. SELECT SUM(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.tempe
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-### TTL
+## TTL
 
-IoTDB 支持对 database 级别设置数据存活时间（TTL），这使得 IoTDB 可以定期、自动地删除一定时间之前的数据。合理使用 TTL
+IoTDB 支持对存储组级别设置数据存活时间（TTL），这使得 IoTDB 可以定期、自动地删除一定时间之前的数据。合理使用 TTL
 可以帮助您控制 IoTDB 占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降，
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
 IoTDB 中的 TTL 操作可以由以下的语句进行实现：
@@ -1063,7 +1068,7 @@ IoTDB 中的 TTL 操作可以由以下的语句进行实现：
 ```
 SET TTL TO StorageGroupName TTLTime
 Eg. SET TTL TO root.group1 3600000
-这个例子展示了如何使得 root.group1 这个 database 只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
+这个例子展示了如何使得 root.group1 这个存储组只保留近一个小时的数据，一个小时前的数据会被删除或者进入不可见状态。
 注意：TTLTime 应是毫秒时间戳。一旦 TTL 被设置，超过 TTL 时间范围的写入将被拒绝。
 ```
 
@@ -1072,7 +1077,7 @@ Eg. SET TTL TO root.group1 3600000
 ```
 UNSET TTL TO StorageGroupName
 Eg. UNSET TTL TO root.group1
-这个例子展示了如何取消 database root.group1 的 TTL，这将使得该 database 接受任意时刻的数据。
+这个例子展示了如何取消存储组 root.group1 的 TTL，这将使得该存储组接受任意时刻的数据。
 ```
 
 * 显示 TTL
@@ -1081,13 +1086,13 @@ Eg. UNSET TTL TO root.group1
 SHOW ALL TTL
 SHOW TTL ON StorageGroupNames
 Eg.1 SHOW ALL TTL
-这个例子会给出所有 database 的 TTL。
+这个例子会给出所有存储组的 TTL。
 Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
-这个例子会显示指定的三个 database 的 TTL。
-注意：没有设置 TTL 的 database 的 TTL 将显示为 null。
+这个例子会显示指定的三个存储组的 TTL。
+注意：没有设置 TTL 的存储组的 TTL 将显示为 null。
 ```
 
-注意：当您对某个 database 设置 TTL 的时候，超过 TTL 范围的数据将会立即不可见。但由于数据文件可能混合包含处在 TTL 范围内
+注意：当您对某个存储组设置 TTL 的时候，超过 TTL 范围的数据将会立即不可见。但由于数据文件可能混合包含处在 TTL 范围内
 与范围外的数据，同时数据文件可能正在接受查询，数据文件的物理删除不会立即进行。如果你在此时取消或者调大 TTL，
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL 操作不会原子性地删除
 对应的数据。因此我们不推荐您频繁修改 TTL，除非您能接受该操作带来的一定程度的不可预知性。
@@ -1097,7 +1102,7 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 ```
 DELETE PARTITION StorageGroupName INT(COMMA INT)*
 Eg DELETE PARTITION root.sg1 0,1,2
-该例子将删除 database root.sg1 的前三个时间分区
+该例子将删除存储组 root.sg1 的前三个时间分区
 ```
 partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
 
@@ -1197,7 +1202,7 @@ Note: DateTime Type can support several types, see Chapter 3 Datetime section fo
 ```
 PrecedenceEqualOperator : EQUAL | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN
 ```
-Timeseries : ROOT [DOT \<LayerName\>]* DOT \<SensorName\>
+Timeseries : ROOT [DOT <LayerName>]* DOT <SensorName>
 LayerName : Identifier
 SensorName : Identifier
 eg. root.ln.wf01.wt01.status
@@ -1206,7 +1211,7 @@ Note: Timeseries must be start with `root`(case insensitive) and end with sensor
 ```
 
 ```
-PrefixPath : ROOT (DOT \<LayerName\>)*
+PrefixPath : ROOT (DOT <LayerName>)*
 LayerName : Identifier | STAR
 eg. root.sgcc
 eg. root.*

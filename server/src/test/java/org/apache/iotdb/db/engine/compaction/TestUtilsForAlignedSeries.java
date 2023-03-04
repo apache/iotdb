@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -31,12 +35,46 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Random;
 
 public class TestUtilsForAlignedSeries {
   public static void registerTimeSeries(
       String storageGroup, String[] devices, IMeasurementSchema[] schemas, boolean[] isAligned)
-      throws MetadataException {}
+      throws MetadataException {
+    IoTDB.metaManager.setStorageGroup(new PartialPath(storageGroup));
+    for (int i = 0; i < devices.length; ++i) {
+      boolean aligned = isAligned[i];
+      String device = devices[i];
+      if (!aligned) {
+        for (IMeasurementSchema schema : schemas) {
+          IoTDB.metaManager.createTimeseries(
+              new PartialPath(device, schema.getMeasurementId()),
+              schema.getType(),
+              schema.getEncodingType(),
+              schema.getCompressor(),
+              new HashMap<>());
+        }
+      } else {
+        TSDataType[] dataTypes = new TSDataType[schemas.length];
+        TSEncoding[] encodings = new TSEncoding[schemas.length];
+        CompressionType[] compressionTypes = new CompressionType[schemas.length];
+        String[] measurements = new String[schemas.length];
+        for (int j = 0; j < schemas.length; ++j) {
+          dataTypes[j] = schemas[j].getType();
+          encodings[j] = schemas[j].getEncodingType();
+          compressionTypes[j] = schemas[j].getCompressor();
+          measurements[j] = schemas[j].getMeasurementId();
+        }
+        IoTDB.metaManager.createAlignedTimeSeries(
+            new PartialPath(device),
+            Arrays.asList(measurements),
+            Arrays.asList(dataTypes),
+            Arrays.asList(encodings),
+            Arrays.asList(compressionTypes));
+      }
+    }
+  }
 
   public static void writeTsFile(
       String[] devices,

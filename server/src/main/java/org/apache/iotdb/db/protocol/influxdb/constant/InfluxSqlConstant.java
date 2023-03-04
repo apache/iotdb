@@ -19,21 +19,14 @@
 
 package org.apache.iotdb.db.protocol.influxdb.constant;
 
-import org.apache.iotdb.db.constant.SqlConstant;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-public class InfluxSqlConstant extends SqlConstant {
-
-  private InfluxSqlConstant() {
-    // forbidding instantiation
-    super();
-  }
-
-  public static final String STAR = "*";
+public class InfluxSQLConstant extends SQLConstant {
 
   public static final String MAX = "max";
   public static final String MIN = "min";
@@ -48,8 +41,11 @@ public class InfluxSqlConstant extends SqlConstant {
           Arrays.asList(MIN, MAX, FIRST, LAST, MEAN, COUNT, MEDIAN, MODE, SPREAD, STDDEV, SUM));
   private static final Set<String> NATIVE_SELECTOR_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
-  private static final Set<String> ONLY_TRAVERSE_FUNCTION_NAMES =
-      new HashSet<>(Arrays.asList(MEDIAN, MODE, SPREAD, STDDEV));
+
+  public InfluxSQLConstant() throws InstantiationException {
+    // forbidding instantiation
+    super();
+  }
 
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;
@@ -57,9 +53,5 @@ public class InfluxSqlConstant extends SqlConstant {
 
   public static Set<String> getNativeSelectorFunctionNames() {
     return NATIVE_SELECTOR_FUNCTION_NAMES;
-  }
-
-  public static Set<String> getOnlyTraverseFunctionNames() {
-    return ONLY_TRAVERSE_FUNCTION_NAMES;
   }
 }

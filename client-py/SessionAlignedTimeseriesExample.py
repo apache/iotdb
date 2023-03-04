@@ -30,7 +30,7 @@ password_ = "root"
 session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
 session.open(False)
 
-# set and delete databases
+# set and delete storage groups
 session.set_storage_group("root.sg_test_01")
 session.set_storage_group("root.sg_test_02")
 session.set_storage_group("root.sg_test_03")
@@ -200,24 +200,6 @@ with session.execute_query_statement(
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
-
-# insert aligned string record into the database.
-time_list = [1, 2, 3]
-measurements_list = [
-    ["s_01", "s_02", "s_03"],
-    ["s_01", "s_02", "s_03"],
-    ["s_01", "s_02", "s_03"],
-]
-values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
-session.insert_aligned_string_records_of_one_device(
-    "root.sg_test_01.d_04",
-    time_list,
-    measurements_list,
-    values_list,
-)
-
-# delete database
-session.delete_storage_group("root.sg_test_01")
 
 # close session connection.
 session.close()

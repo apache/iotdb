@@ -112,7 +112,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
       for (String deviceId : deviceIds) {
         List<Path> paths =
             measurementIds.stream()
-                .map(measurementId -> new Path(deviceId, measurementId, true))
+                .map(measurementId -> new Path(deviceId, measurementId))
                 .collect(toList());
         QueryExpression queryExpression = QueryExpression.create(paths, null);
         QueryDataSet dataSet =

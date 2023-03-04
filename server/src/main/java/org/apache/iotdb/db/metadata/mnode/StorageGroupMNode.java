@@ -18,71 +18,34 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+
+import java.io.IOException;
 
 public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
-  private TDatabaseSchema schema;
+  /**
+   * when the data file in a storage group is older than dataTTL, it is considered invalid and will
+   * be eventually deleted.
+   */
+  private long dataTTL;
 
-  public StorageGroupMNode(IMNode parent, String name) {
-    super(parent, name);
-  }
-
-  // TODO: @yukun, remove this constructor
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
-    this.schema = new TDatabaseSchema(name).setTTL(dataTTL);
-  }
-
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath().intern();
-    }
-    return fullPath;
+    this.dataTTL = dataTTL;
   }
 
   @Override
   public long getDataTTL() {
-    return schema.getTTL();
+    return dataTTL;
   }
 
   @Override
   public void setDataTTL(long dataTTL) {
-    schema.setTTL(dataTTL);
-  }
-
-  @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
-    schema.setSchemaReplicationFactor(schemaReplicationFactor);
-  }
-
-  @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {
-    schema.setDataReplicationFactor(dataReplicationFactor);
-  }
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    schema.setTimePartitionInterval(timePartitionInterval);
-  }
-
-  @Override
-  public void setStorageGroupSchema(TDatabaseSchema schema) {
-    this.schema = schema;
-  }
-
-  @Override
-  public TDatabaseSchema getStorageGroupSchema() {
-    return schema;
-  }
-
-  @Override
-  public void moveDataToNewMNode(IMNode newMNode) {
-    super.moveDataToNewMNode(newMNode);
+    this.dataTTL = dataTTL;
   }
 
   @Override
@@ -91,12 +54,17 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return MNodeType.STORAGE_GROUP;
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
+
+    logWriter.serializeStorageGroupMNode(this);
   }
 
-  @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitStorageGroupMNode(this, context);
+  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
+    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
+  }
+
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

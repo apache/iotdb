@@ -27,7 +27,7 @@ It is useful for connections with remote locations where a small code footprint 
 IoTDB supports the MQTT v3.1(an OASIS Standard) protocol.
 IoTDB server includes a built-in MQTT service that allows remote devices send messages into IoTDB server directly.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 
 ### Built-in MQTT Service
@@ -35,7 +35,7 @@ The Built-in MQTT Service provide the ability of direct connection to IoTDB thro
  and then write the data into storage immediately. 
 The MQTT topic corresponds to IoTDB timeseries. 
 The messages payload can be format to events by `PayloadFormatter` which loaded by java SPI, and the default implementation is `JSONPayloadFormatter`.
-The default `json` formatter support two json format and its json array. The following is an MQTT message payload example:
+The default `json` formatter support two json format, and the following is an MQTT message payload example:
 
 ```json
  {
@@ -47,26 +47,25 @@ The default `json` formatter support two json format and its json array. The fol
 ```
 or
 ```json
- {
+{
       "device":"root.sg.d1",
       "timestamps":[1586076045524,1586076065526],
       "measurements":["s1","s2"],
       "values":[[0.530635,0.530635], [0.530655,0.530695]]
- }
+  }
 ```
-or json array of the above two.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT Configurations
-The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-datanode.properties` by default.
+The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-engine.properties` by default.
 
 Configurations are as follows:
 
 | NAME        | DESCRIPTION           | DEFAULT  |
 | ------------- |:-------------:|:------:|
 | enable_mqtt_service      | whether to enable the mqtt service | false |
-| mqtt_host      | the mqtt service binding host | 127.0.0.1 |
+| mqtt_host      | the mqtt service binding host | 0.0.0.0 |
 | mqtt_port      | the mqtt service binding port    |   1883 |
 | mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
 | mqtt_payload_formatter | the mqtt message payload formatter     |    json |
@@ -112,10 +111,10 @@ Steps:
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 ```
-* Define your implementation which implements `org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`
+* Define your implementation which implements `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
 e.g.,
 
 ```java
@@ -157,21 +156,21 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
     @Override
     public String getName() {
-        // set the value of mqtt_payload_formatter in iotdb-datanode.properties as the following string:
+        // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
         return "CustomizedJson";
     }
 }
 ```
-* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`:
+* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter`:
   clean the file and put your implementation class name into the file.
   In this example, the content is: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * compile your implementation as a jar file: `mvn package -DskipTests`
 
 
 Then, in your server:
-* Create ${IOTDB_HOME}/ext/mqtt/ folder, and put the jar into this folder.
-* Update configuration to enable MQTT service. (`enable_mqtt_service=true` in `conf/iotdb-datanode.properties`)
-* Set the value of `mqtt_payload_formatter` in `conf/iotdb-datanode.properties` as the value of getName() in your implementation
+* put the jar into your server's lib folder
+* Update configuration to enable MQTT service. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
+* Set the value of `mqtt_payload_formatter` in `conf/iotdb-engine.properties` as the value of getName() in your implementation
   , in this example, the value is `CustomizedJson`
 * Launch the IoTDB server.
 * Now IoTDB will use your implementation to parse the MQTT message.

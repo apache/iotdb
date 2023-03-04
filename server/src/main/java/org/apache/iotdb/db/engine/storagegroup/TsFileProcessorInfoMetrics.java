@@ -16,34 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class TsFileProcessorInfoMetrics implements IMetricSet {
-  private final String storageGroupName;
-  private final TsFileProcessorInfo tsFileProcessorInfo;
+import java.util.Objects;
 
-  public TsFileProcessorInfoMetrics(
-      String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {
+public class TsFileProcessorInfoMetrics implements IMetricSet {
+  private String storageGroupName;
+  private long memCost;
+
+  public TsFileProcessorInfoMetrics(String storageGroupName, long memCost) {
     this.storageGroupName = storageGroupName;
-    this.tsFileProcessorInfo = tsFileProcessorInfo;
+    this.memCost = memCost;
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     MetricService.getInstance()
-        .createAutoGauge(
+        .getOrCreateAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
-            tsFileProcessorInfo,
-            TsFileProcessorInfo::getMemCost,
+            memCost,
+            o -> o,
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
   }
@@ -52,9 +54,22 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     MetricService.getInstance()
         .remove(
-            MetricType.AUTO_GAUGE,
+            MetricType.GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFileProcessorInfoMetrics that = (TsFileProcessorInfoMetrics) o;
+    return memCost == that.memCost && Objects.equals(storageGroupName, that.storageGroupName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupName, memCost);
   }
 }

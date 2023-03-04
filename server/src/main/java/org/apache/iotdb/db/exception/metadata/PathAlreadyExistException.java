@@ -20,7 +20,6 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class PathAlreadyExistException extends MetadataException {
@@ -30,7 +29,7 @@ public class PathAlreadyExistException extends MetadataException {
   public PathAlreadyExistException(String path) {
     super(
         String.format("Path [%s] already exist", path),
-        TSStatusCode.PATH_ALREADY_EXIST.getStatusCode());
+        TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
     this.isUserException = true;
   }
 }

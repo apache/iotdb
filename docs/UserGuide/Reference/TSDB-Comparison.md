@@ -23,7 +23,7 @@
 
 ## Overview
 
-![TSDB Comparison](/img/github/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
+![TSDB Comparison](https://user-images.githubusercontent.com/33376433/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
 
 
 
@@ -109,8 +109,8 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB support SQL like language. 
-  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API.
+  * IoTDB and InfluxDB support SQL like language. In addition, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
+  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
   * TimescaleDB uses the SQL the same as PG.
   
 * Schema:
@@ -263,6 +263,9 @@ I listed some interesting features that these systems may differ.
 
   Now only IoTDB supports a JDBC driver (though not all interfaces are implemented), and makes it possible to integrate many other JDBC driver based softwares.
 
+* Standard SQL:
+
+  As mentioned before, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 
@@ -298,11 +301,11 @@ It is somehow right. But, if you consider the performance, you may change your m
 
 * Write:
 
-We test the performance of writing from two aspects: *batch size* and *client num*. The number of database is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
+We test the performance of writing from two aspects: *batch size* and *client num*. The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
 
 * Read:
 
-10 clients read data concurrently. The number of database is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
+10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
 The data type is *double*, encoding type is *GORILLA*
 
 * Compression:
@@ -320,7 +323,7 @@ IoTDB uses batch insertion API and the batch size is distributed from 0 to 6000 
 
 The write throughput (points/second) is:
 
-![Batch Size with Write Throughput (points/second)](/img/github/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
+![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
 <span id = "exp1"> <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center></span>
 
 * client num:
@@ -330,24 +333,24 @@ IoTDB uses batch insertion API and the batch size is 100 (write 100 data points 
 
 The write throughput (points/second) is:
 
-![Client Num with Write Throughput (points/second) (ms)](/img/github/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
+![Client Num with Write Throughput (points/second) (ms)](https://user-images.githubusercontent.com/24886743/106251411-e5aa1700-624f-11eb-8ca8-00c0627b1e96.png)
 <center>Figure 3. Client Num with Write Throughput (points/second) IoTDB v0.11.1</center>
 
 **Query performance**
 
-![Raw data query 1 col](/img/github/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
+![Raw data query 1 col](https://user-images.githubusercontent.com/24886743/106251377-daef8200-624f-11eb-9678-b1d5440be2de.png)
 <center>Figure 4. Raw data query 1 col time cost(ms) IoTDB v0.11.1</center>
 
-![Aggregation query](/img/github/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
+![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
 <center>Figure 5. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
-![Downsampling query](/img/github/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
+![Downsampling query](https://user-images.githubusercontent.com/24886743/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
 <center>Figure 6. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
-![Latest query](/img/github/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
+![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
 <center>Figure 7. Latest query time cost(ms) IoTDB v0.11.1</center>
 
-![Data compression](/img/github/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
+![Data compression](https://user-images.githubusercontent.com/24886743/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
 <center>Figure 8. Data compression IoTDB v0.11.1</center>
 
 We can see that IoTDB outperforms others.

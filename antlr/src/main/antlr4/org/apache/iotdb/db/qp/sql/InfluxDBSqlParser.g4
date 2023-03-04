@@ -21,8 +21,6 @@ parser grammar InfluxDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
-import IdentifierParser;
-
 singleStatement
     : statement SEMI? EOF
     ;
@@ -51,18 +49,20 @@ expression
    ;
 
 whereClause
-    : WHERE predicate
+    : WHERE orExpression
+    ;
+
+orExpression
+    : andExpression (OPERATOR_OR andExpression)*
+    ;
+
+andExpression
+    : predicate (OPERATOR_AND predicate)*
     ;
 
 predicate
-    : LR_BRACKET predicateInBracket=predicate RR_BRACKET
-    | constant
-    | time=(TIME | TIMESTAMP)
-    | nodeName
-    | OPERATOR_NOT predicateAfterUnaryOperator=predicate
-    | leftPredicate=predicate (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_NEQ) rightPredicate=predicate
-    | leftPredicate=predicate OPERATOR_AND rightPredicate=predicate
-    | leftPredicate=predicate OPERATOR_OR rightPredicate=predicate
+    : (TIME | TIMESTAMP | nodeName ) comparisonOperator constant
+    | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
 fromClause
@@ -71,10 +71,18 @@ fromClause
 
 nodeName
     : STAR
-    | identifier
-    | LAST
-    | COUNT
-    | DEVICE
+    | ID
+    | QUTOED_ID
+    | QUTOED_ID_IN_NODE_NAME
+    ;
+
+// Identifier
+
+identifier
+    : ID
+    | QUTOED_ID
+    | QUTOED_ID_IN_NODE_NAME
+    | INTEGER_LITERAL
     ;
 
 
@@ -91,7 +99,16 @@ constant
     ;
 
 functionAttribute
-    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_SEQ functionAttributeValue=STRING_LITERAL
+    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_EQ functionAttributeValue=STRING_LITERAL
+    ;
+
+comparisonOperator
+    : type = OPERATOR_GT
+    | type = OPERATOR_GTE
+    | type = OPERATOR_LT
+    | type = OPERATOR_LTE
+    | type = OPERATOR_EQ
+    | type = OPERATOR_NEQ
     ;
 
 // Expression & Predicate

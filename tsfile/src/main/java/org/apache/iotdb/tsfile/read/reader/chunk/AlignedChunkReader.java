@@ -30,10 +30,10 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPagePrefetchReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
@@ -57,7 +57,6 @@ public class AlignedChunkReader implements IChunkReader {
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
-  private long currentTimestamp;
 
   protected Filter filter;
 
@@ -78,7 +77,6 @@ public class AlignedChunkReader implements IChunkReader {
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-    this.currentTimestamp = Long.MIN_VALUE;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
@@ -90,19 +88,14 @@ public class AlignedChunkReader implements IChunkReader {
     initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
 
-  /**
-   * Constructor of ChunkReader by timestamp. This constructor is used to accelerate queries by
-   * filtering out pages whose endTime is less than current timestamp.
-   */
   public AlignedChunkReader(
-      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, long currentTimestamp)
+      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, boolean prefetch)
       throws IOException {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-    this.currentTimestamp = currentTimestamp;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
@@ -111,7 +104,7 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPrefetchPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
 
   /** construct all the page readers in this chunk */
@@ -165,6 +158,56 @@ public class AlignedChunkReader implements IChunkReader {
     }
   }
 
+  private void initAllPrefetchPageReaders(
+      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      throws IOException {
+    // construct next satisfied page header
+    while (timeChunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      PageHeader timePageHeader;
+      List<PageHeader> valuePageHeaderList = new ArrayList<>();
+
+      boolean exits = false;
+      // this chunk has only one page
+      if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
+        for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
+          if (valueChunkDataBufferList.get(i) != null) {
+            exits = true;
+            valuePageHeaderList.add(
+                PageHeader.deserializeFrom(
+                    valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
+          } else {
+            valuePageHeaderList.add(null);
+          }
+        }
+      } else { // this chunk has more than one page
+        timePageHeader =
+            PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
+        for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
+          if (valueChunkDataBufferList.get(i) != null) {
+            exits = true;
+            valuePageHeaderList.add(
+                PageHeader.deserializeFrom(
+                    valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
+          } else {
+            valuePageHeaderList.add(null);
+          }
+        }
+      }
+      // if the current page satisfies
+      if (exits && timePageSatisfied(timePageHeader)) {
+        AlignedPagePrefetchReader alignedPageReader =
+            constructPrefetchPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+        if (alignedPageReader != null) {
+          pageReaderList.add(alignedPageReader);
+        }
+      } else {
+        skipBytesInStreamByLength(timePageHeader, valuePageHeaderList);
+      }
+    }
+  }
+
   /** used for time page filter */
   private boolean timePageSatisfied(PageHeader timePageHeader) {
     long startTime = timePageHeader.getStatistics().getStartTime();
@@ -174,10 +217,6 @@ public class AlignedChunkReader implements IChunkReader {
 
   /** used for value page filter */
   protected boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
-    if (currentTimestamp > pageHeader.getEndTime()) {
-      // used for chunk reader by timestamp
-      return false;
-    }
     if (valueDeleteInterval != null) {
       for (TimeRange range : valueDeleteInterval) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
@@ -250,72 +289,63 @@ public class AlignedChunkReader implements IChunkReader {
     return alignedPageReader;
   }
 
-  /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
-  public TsBlock readPageData(
-      PageHeader timePageHeader,
-      List<PageHeader> valuePageHeaders,
-      ByteBuffer compressedTimePageData,
-      List<ByteBuffer> compressedValuePageDatas)
-      throws IOException {
-
-    // uncompress time page data
-    ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, compressedTimePageData);
-
-    // uncompress value page datas
-    List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
-    List<TSDataType> valueTypes = new ArrayList<>();
-    List<Decoder> valueDecoders = new ArrayList<>();
-    for (int i = 0; i < valuePageHeaders.size(); i++) {
-      if (valuePageHeaders.get(i) == null) {
-        uncompressedValuePageDatas.add(null);
-        valueTypes.add(TSDataType.BOOLEAN);
-        valueDecoders.add(null);
-      } else {
-        uncompressedValuePageDatas.add(
-            uncompressPageData(valuePageHeaders.get(i), compressedValuePageDatas.get(i)));
-        ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
-        TSDataType valueType = valueChunkHeader.getDataType();
-        valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
-        valueTypes.add(valueType);
+  private AlignedPagePrefetchReader constructPrefetchPageReaderForNextPage(
+      PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
+    PageInfo timePageInfo = new PageInfo();
+    getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
+    PageInfo valuePageInfo = new PageInfo();
+    List<PageHeader> valuePageHeaderList = new ArrayList<>();
+    List<ByteBuffer> valuePageDataList = new ArrayList<>();
+    List<TSDataType> valueDataTypeList = new ArrayList<>();
+    List<Decoder> valueDecoderList = new ArrayList<>();
+    boolean exist = false;
+    for (int i = 0; i < valuePageHeader.size(); i++) {
+      if (valuePageHeader.get(i) == null
+          || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page
+        valuePageHeaderList.add(null);
+        valuePageDataList.add(null);
+        valueDataTypeList.add(null);
+        valueDecoderList.add(null);
+      } else if (pageSatisfied(
+          valuePageHeader.get(i),
+          valueDeleteIntervalList.get(i))) { // if the page is satisfied, deserialize it
+        getPageInfo(
+            valuePageHeader.get(i),
+            valueChunkDataBufferList.get(i),
+            valueChunkHeaderList.get(i),
+            valuePageInfo);
+        valuePageHeaderList.add(valuePageInfo.pageHeader);
+        valuePageDataList.add(valuePageInfo.pageData);
+        valueDataTypeList.add(valuePageInfo.dataType);
+        valueDecoderList.add(valuePageInfo.decoder);
+        exist = true;
+      } else { // if the page is not satisfied, just skip it
+        valueChunkDataBufferList
+            .get(i)
+            .position(
+                valueChunkDataBufferList.get(i).position()
+                    + valuePageHeader.get(i).getCompressedSize());
+        valuePageHeaderList.add(null);
+        valuePageDataList.add(null);
+        valueDataTypeList.add(null);
+        valueDecoderList.add(null);
       }
     }
-
-    // decode page data
-    AlignedPageReader alignedPageReader =
-        new AlignedPageReader(
-            timePageHeader,
-            uncompressedTimePageData,
-            timeDecoder,
-            valuePageHeaders,
-            uncompressedValuePageDatas,
-            valueTypes,
-            valueDecoders,
-            null);
-    alignedPageReader.initTsBlockBuilder(valueTypes);
-    alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader.getAllSatisfiedData();
-  }
-
-  private ByteBuffer uncompressPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
-      throws IOException {
-    int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    try {
-      unCompressor.uncompress(
-          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
-    } catch (Exception e) {
-      throw new IOException(
-          "Uncompress error! uncompress size: "
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage());
+    if (!exist) {
+      return null;
     }
-
-    return ByteBuffer.wrap(uncompressedPageData);
+    AlignedPagePrefetchReader alignedPageReader =
+        new AlignedPagePrefetchReader(
+            timePageHeader,
+            timePageInfo.pageData,
+            timeDecoder,
+            valuePageHeaderList,
+            valuePageDataList,
+            valueDataTypeList,
+            valueDecoderList,
+            filter);
+    alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
+    return alignedPageReader;
   }
 
   /**

@@ -226,26 +226,20 @@ public class ChunkMetadata implements IChunkMetadata {
     return deleteIntervalList;
   }
 
-  @Override
-  public void insertIntoSortedDeletions(TimeRange timeRange) {
+  public void setDeleteIntervalList(List<TimeRange> list) {
+    this.deleteIntervalList = list;
+  }
+
+  public void insertIntoSortedDeletions(long startTime, long endTime) {
     List<TimeRange> resultInterval = new ArrayList<>();
-    long startTime = timeRange.getMin();
-    long endTime = timeRange.getMax();
     if (deleteIntervalList != null) {
-      if (deleteIntervalList.get(deleteIntervalList.size() - 1).getMax() < timeRange.getMin()) {
-        deleteIntervalList.add(timeRange);
-        return;
-      }
-      for (int i = 0; i < deleteIntervalList.size(); i++) {
-        TimeRange interval = deleteIntervalList.get(i);
+      for (TimeRange interval : deleteIntervalList) {
         if (interval.getMax() < startTime) {
           resultInterval.add(interval);
         } else if (interval.getMin() > endTime) {
-          // remaining TimeRanges are in order, add all and return
           resultInterval.add(new TimeRange(startTime, endTime));
-          resultInterval.addAll(deleteIntervalList.subList(i, deleteIntervalList.size()));
-          deleteIntervalList = resultInterval;
-          return;
+          startTime = interval.getMin();
+          endTime = interval.getMax();
         } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
           startTime = Math.min(interval.getMin(), startTime);
           endTime = Math.max(interval.getMax(), endTime);
@@ -309,11 +303,10 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public long calculateRamSize() {
-    long memSize = CHUNK_METADATA_FIXED_RAM_SIZE;
-    memSize += RamUsageEstimator.sizeOf(tsFilePrefixPath);
-    memSize += RamUsageEstimator.sizeOf(measurementUid);
-    memSize += statistics.calculateRamSize();
-    return memSize;
+    return CHUNK_METADATA_FIXED_RAM_SIZE
+        + RamUsageEstimator.sizeOf(tsFilePrefixPath)
+        + RamUsageEstimator.sizeOf(measurementUid)
+        + statistics.calculateRamSize();
   }
 
   public static long calculateRamSize(String measurementId, TSDataType dataType) {

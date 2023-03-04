@@ -19,21 +19,14 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
-
 public interface Counter extends IMetric {
 
-  /** Counter add 1. */
+  /** counter add 1 */
   void inc();
 
-  /** Counter add n. */
+  /** counter add n */
   void inc(long n);
 
-  /** Get the value of counter. */
+  /** get the value of counter */
   long count();
-
-  @Override
-  default void constructValueMap(Map<String, Object> result) {
-    result.put("value", count());
-  }
 }

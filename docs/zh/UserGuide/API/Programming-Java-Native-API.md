@@ -18,19 +18,17 @@
     under the License.
 
 -->
-
-
 # 应用编程接口
 ## Java 原生接口
 
 ### 安装
 
-#### 依赖
+### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-#### 安装方法
+### 安装方法
 
 在根目录下运行：
 
@@ -38,25 +36,27 @@
 mvn clean install -pl session -am -Dmaven.test.skip=true
 ```
 
-#### 在 MAVEN 中使用原生接口
+### 在 MAVEN 中使用原生接口
 
 ```xml
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>1.0.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
 
 ### 语法说明
 
- - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Syntax-Conventions/Literal-Values.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
+ - 对于 IoTDB-SQL 接口：传入的 SQL 参数需要符合 [语法规范](../Reference/Syntax-Conventions.md) ，并且针对 JAVA 字符串进行反转义，如双引号前需要加反斜杠。（即：经 JAVA 转义之后与命令行执行的 SQL 语句一致。） 
  - 对于其他接口： 
-   - 经参数传入的路径或路径前缀中的节点： 在 SQL 语句中需要使用反引号（`）进行转义的，此处均需要进行转义。 
-   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，均可以不用进行转义。
- - 语法说明相关代码示例可以参考：`example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
+   - 经参数传入的路径或路径前缀中的节点： 
+     - 在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。 
+     - 使用单引号或双引号括起的节点，仍需要使用单引号或双引号括起，并且要针对 JAVA 字符串进行反转义。 
+     - 对于 `checkTimeseriesExists` 接口，由于内部调用了 IoTDB-SQL 接口，因此需要和 SQL 语法规范保持一致，并且针对 JAVA 字符串进行反转义。
+   - 经参数传入的标识符（如模板名）：在 SQL 语句中需要使用反引号（`）进行转义的，此处均不需要进行转义。
 
 ### 基本接口说明
 
@@ -91,12 +91,12 @@ session =
         .password(String password)
         .thriftDefaultBufferSize(int thriftDefaultBufferSize)
         .thriftMaxFrameSize(int thriftMaxFrameSize)
-        .enableRedirection(boolean enableRedirection)
+        .enableCacheLeader(boolean enableCacheLeader)
         .version(Version version)
         .build();
 ```
 
-其中，version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`、`V_1_0`。
+其中，version 表示客户端使用的 SQL 语义版本，用于升级 0.13 时兼容 0.12 的 SQL 语义，可能取值有：`V_0_12`、`V_0_13`。
 
 * 开启 Session
 
@@ -120,15 +120,15 @@ void close()
 
 #### 数据定义接口 DDL
 
-##### Database 管理
+##### 存储组管理
 
-* 设置 database
+* 设置存储组
 
 ```java
 void setStorageGroup(String storageGroupId)
 ```
 
-* 删除单个或多个 database
+* 删除单个或多个存储组
 
 ```java
 void deleteStorageGroup(String storageGroup)
@@ -154,7 +154,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 ```
 void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      List <CompressionType> compressors, List<String> measurementAliasList);
+      CompressionType compressor, List<String> measurementAliasList);
 ```
 
 注意：目前**暂不支持**使用传感器别名。
@@ -174,7 +174,7 @@ boolean checkTimeseriesExists(String path)
 
 ##### 元数据模版
 
-* 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
+* 创建元数据模板，可以通过先后创建`Template`、`MeasurementNode`的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -207,7 +207,7 @@ Class MeasurementNode extends Node {
 }
 ```
 
-通过上述类的实例描述模板时，Template 内应当仅能包含单层的 MeasurementNode，具体可以参见如下示例：
+通过上述类的实例描述模板时，`Template`内应当仅能包含单层的`MeasurementNode`，具体可以参见如下示例：
 
 ```java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -221,6 +221,42 @@ template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
 createSchemaTemplate(flatTemplate);
+```
+
+* 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
+
+```java
+// 为指定模板新增一组对齐的物理量，若其父节点在模板中已经存在，且不要求对齐，则报错
+public void addAlignedMeasurementsInTemplate(String templateName,
+    						  String[] measurementsPath,
+                              TSDataType[] dataTypes,
+                              TSEncoding[] encodings,
+                              CompressionType[] compressors);
+
+// 为指定模板新增一个对齐物理量, 若其父节点在模板中已经存在，且不要求对齐，则报错
+public void addAlignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+
+
+// 为指定模板新增一个不对齐物理量, 若其父节在模板中已经存在，且要求对齐，则报错
+public void addUnalignedMeasurementInTemplate(String templateName,
+                                String measurementPath,
+                                TSDataType dataType,
+                                TSEncoding encoding,
+                                CompressionType compressor);
+                                
+// 为指定模板新增一组不对齐的物理量, 若其父节在模板中已经存在，且要求对齐，则报错
+public void addUnalignedMeasurementsIntemplate(String templateName,
+                                String[] measurementPaths,
+                                TSDataType[] dataTypes,
+                                TSEncoding[] encodings,
+                                CompressionType[] compressors);
+
+// 从指定模板中删除一个节点
+public void deleteNodeInTemplate(String templateName, String path);
 ```
 
 * 对于已经创建的元数据模板，还可以通过以下接口查询模板信息：
@@ -242,8 +278,8 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-* 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
-* **请注意，我们强烈建议您将模板设置在 database 或 database 下层的节点中，以更好地适配未来版本更新及各模块的协作**
+* 将名为`templateName`的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为`templateName`的元数据模板
+* **请注意，我们强烈建议您将模板设置在存储组或存储组下层的节点中，以更好地适配未来版本更新及各模块的协作**
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -270,10 +306,21 @@ void unsetSchemaTemplate(String prefixPath, String templateName);
 public void dropSchemaTemplate(String templateName);
 ```
 
-* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。
-* 卸载'prefixPath'路径下的名为'templateName'的元数据模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的元数据模板。
+* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 `setSchemaTemplate` 。而只有在已有数据点插入模板对应的物理量，或使用以下接口激活模板，模板才会被设置为激活状态，进而被 `show timeseries` 等查询访问到。
 
-注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
+```java
+public void createTimeseriesOfTemplateOnPath(String path);
+```
+
+* 卸载'prefixPath'路径下的名为`templateName`的元数据模板。你需要保证给定的路径`prefixPath`下需要有名为`templateName`的元数据模板。
+* 如果在挂载模板后，曾经在`prefixPath`路径及其后代节点使用模板插入数据后，或者使用了激活模板命令，那么在卸载模板之前，还要对所有已激活模板的节点使用以下接口解除模板：
+
+```java
+public void deactivateTemplateOn(String templateName, String prefixPath);
+```
+
+* 以上解除模板接口中，参数`prefixPath`如果含有通配符（`*`或`**`）则按 PathPattern 匹配目标路径，否则仅表达其字面量对应的路径。
+* 解除模板接口会删除对应节点按照模板中的序列写入的数据。
 
 
 #### 数据操作接口 DML
@@ -397,44 +444,16 @@ void deleteData(List<String> paths, long endTime)
 
 ##### 数据查询
 
-* 时间序列原始数据范围查询：
-  - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
+* 原始数据查询。时间间隔包含开始时间，不包含结束时间
 
 ```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
 
-* 最新点查询：
-  - 查询最后一条时间戳大于等于某个时间点的数据。
+* 查询最后一条时间戳大于等于某个时间点的数据
 
 ```java
-SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
-```
-
-* 聚合查询：
-  - 支持指定查询时间范围。指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
-  - 支持按照时间区间分段查询。
-
-```java
-SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
-
-SessionDataSet executeAggregationQuery(
-    List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
-
-SessionDataSet executeAggregationQuery(
-    List<String> paths,
-    List<Aggregation> aggregations,
-    long startTime,
-    long endTime,
-    long interval);
-
-SessionDataSet executeAggregationQuery(
-    List<String> paths,
-    List<Aggregation> aggregations,
-    long startTime,
-    long endTime,
-    long interval,
-    long slidingStep);
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
 ```
 
 #### IoTDB-SQL 接口
@@ -487,7 +506,7 @@ void testInsertTablet(Tablet tablet)
 void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
-#### 示例代码
+##### 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 
@@ -495,7 +514,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 使用对齐时间序列和元数据模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
-### 针对原生接口的连接池
+###### 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池 (`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -515,7 +534,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-### 集群信息相关的接口 （仅在集群模式下可用）
+###### 集群信息相关的接口 （仅在集群模式下可用）
 
 集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
 要使用该 API，需要增加依赖：
@@ -525,7 +544,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-thrift-cluster</artifactId>
-      <version>1.0.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -576,7 +595,7 @@ list<Node> getRing();
 
 ```java 
 /**
- * @param path input path (should contains a database name as its prefix)
+ * @param path input path (should contains a Storage group name as its prefix)
  * @return the data partition info. If the time range only covers one data partition, the the size
  * of the list is one.
  */
@@ -586,7 +605,7 @@ list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:lon
 * 给定一个路径（应包括一个 SG 作为前缀），获取其被分到了哪个节点上：
 ```java  
 /**
- * @param path input path (should contains a database name as its prefix)
+ * @param path input path (should contains a Storage group name as its prefix)
  * @return metadata partition information
  */
 list<Node> getMetaPartition(1:string path);

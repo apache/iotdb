@@ -45,7 +45,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 public class TsFileGeneratorUtils {
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   public static final String testStorageGroup = "root.testsg";
-  public static int alignDeviceOffset = 10000;
+  private static int alignDeviceOffset = 10000;
 
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,
@@ -129,65 +129,57 @@ public class TsFileGeneratorUtils {
     if (file.exists()) {
       file.delete();
     }
-    int originGroupSize = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
-    int originPageSize = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    try {
-      if (chunkGroupSize > 0)
-        TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
-      if (pageSize > 0)
-        TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
-      try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
-        // register align timeseries
-        List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-        for (int i = 0; i < measurementNum; i++) {
-          alignedMeasurementSchemas.add(
-              new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
-        }
-        for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
-          tsFileWriter.registerAlignedTimeseries(
-              new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), alignedMeasurementSchemas);
-        }
-
-        // write with record
-        for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
-          writeWithTsRecord(
-              tsFileWriter,
-              testStorageGroup + PATH_SEPARATOR + "d" + i,
-              alignedMeasurementSchemas,
-              pointNum,
-              startTime,
-              startValue,
-              true);
-        }
-
-        // register nonAlign timeseries
-        List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-        for (int i = 0; i < measurementNum; i++) {
-          measurementSchemas.add(
-              new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
-        }
-        for (int i = 0; i < deviceNum; i++) {
-          tsFileWriter.registerTimeseries(
-              new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), measurementSchemas);
-        }
-
-        // write with record
-        for (int i = 0; i < deviceNum; i++) {
-          writeWithTsRecord(
-              tsFileWriter,
-              testStorageGroup + PATH_SEPARATOR + "d" + i,
-              measurementSchemas,
-              pointNum,
-              startTime,
-              startValue,
-              false);
-        }
+    if (chunkGroupSize > 0)
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    if (pageSize > 0)
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      // register align timeseries
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      for (int i = 0; i < measurementNum; i++) {
+        alignedMeasurementSchemas.add(
+            new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
-      return file;
-    } finally {
-      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(originGroupSize);
-      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(originPageSize);
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
+        tsFileWriter.registerAlignedTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), alignedMeasurementSchemas);
+      }
+
+      // write with record
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
+        writeWithTsRecord(
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            alignedMeasurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            true);
+      }
+
+      // register nonAlign timeseries
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      for (int i = 0; i < measurementNum; i++) {
+        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+      }
+      for (int i = 0; i < deviceNum; i++) {
+        tsFileWriter.registerTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), measurementSchemas);
+      }
+
+      // write with record
+      for (int i = 0; i < deviceNum; i++) {
+        writeWithTsRecord(
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            measurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            false);
+      }
     }
+    return file;
   }
 
   public static File generateAlignedTsFile(
@@ -285,7 +277,6 @@ public class TsFileGeneratorUtils {
       List<Integer> measurementIndex,
       int pointNum,
       int startTime,
-      String value,
       int chunkGroupSize,
       int pageSize)
       throws IOException, WriteProcessException {
@@ -324,7 +315,8 @@ public class TsFileGeneratorUtils {
                       + "d"
                       + (deviceIndex.get(i) + alignDeviceOffset));
           for (IMeasurementSchema schema : alignedMeasurementSchemas) {
-            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
+            DataPoint dPoint =
+                new StringDataPoint(schema.getMeasurementId(), new Binary("textValue"));
             tsRecord.addTuple(dPoint);
           }
           // write
@@ -341,7 +333,6 @@ public class TsFileGeneratorUtils {
       List<Integer> measurementIndex,
       int pointNum,
       int startTime,
-      String value,
       int chunkGroupSize,
       int pageSize)
       throws IOException, WriteProcessException {
@@ -374,7 +365,8 @@ public class TsFileGeneratorUtils {
           TSRecord tsRecord =
               new TSRecord(time, testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex.get(i));
           for (IMeasurementSchema schema : measurementSchemas) {
-            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
+            DataPoint dPoint =
+                new StringDataPoint(schema.getMeasurementId(), new Binary("textValue"));
             tsRecord.addTuple(dPoint);
           }
           // write

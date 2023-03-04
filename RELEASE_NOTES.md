@@ -19,41 +19,6 @@
 
 -->
 
-# Apache IoTDB 1.0.0
-
-## New Features
-
-* New architecture that supports standalone and cluster mode with two types of nodes: ConfigNode, DataNode
-* Support ConfigNode management: Start/Add, Stop, Remove
-* Support DataNode management: Start/Add, Stop, Remove
-* Support replication of ConfigNode, Schema and Data
-* Support Consensus Protocol: Simple, IoT, Ratis
-* Support Cluster management sql: show cluster, show regions
-* Support administration in Cluster:  User, Permission, Role management
-* Support authorization when login and executing a command
-* Support create/show/count/delete database
-* Support show/count devices
-* Support create/show/count timeseries
-* Support schema template management
-* Support MPP(massively parallel process) framework in cluster
-* Support insertion, deletion and all query types in Cluster
-* Support CSV import/export tools
-* Support TsFile import/export tools
-* Support Sync TsFile from an IoTDB with one replica to another with any replica number
-* Support UDF framework in Cluster
-* Support new UDF 'change_points
-* Support stateful, stateless Trigger in Cluster
-* Support Select into in Cluster
-* Support Continuous Query in Cluster
-* Support flush on local/cluster
-* Support clear cache on local/cluster
-* Support metric for DataNode and ConfigNode with output to IoTDB, Prometheus, and JMX
-* Support DBAPI in python client
-* Support RestApi, MQTT for cluster
-* Support having clause and between expression in query
-* Support order by timeseries in last query
-* Support hot configuration of data_dirs
-
 # Apache IoTDB 0.13.3
 
 ## Improvements
@@ -217,6 +182,7 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-1986] Support select UDF as alisa clauses 
 * [IOTDB-1989] Spark-IoTDB-connector support inserting data
 * [IOTDB-2131] Support previous, linear, constant value fill funtion New fill
+* [IOTDB-2593] Support using IoTDB with JDK17
 * [ISSUE-3811] Provide a data type column for the last query dataset
 * add rabbitmq example
 
@@ -311,9 +277,12 @@ Import-CSV supports specify data type and no need quotation for text value
 * [IOTDB-2267] UDF: Error code 500 caused by user logic
 * [IOTDB-2282] fix tag recovery bug after tag upsert
 * [IOTDB-2290] Fix Incorrect query result in C++ client 
+* [IOTDB-2520] Fix `list user privilege root` returns empty 
+* [IOTDB-2544] Fix tag info sync error during metadata sync
+* [IOTDB-2550] Avoid show timeseries error after alter tag on sync sender
+* [IOTDB-2654] Fix Alias doesn't show when using group by level
 * Fix CPP client could not be successfully built on windows
 * Fix dead lock in setDataTTL method
-
 
 # Apache IoTDB 0.12.5
 

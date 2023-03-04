@@ -65,13 +65,14 @@ public class ClusterEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setDataRegionNum(int dataRegionNum) {
-    engineProperties.setProperty("data_region_num", String.valueOf(dataRegionNum));
+  public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    engineProperties.setProperty(
+        "virtual_storage_group_num", String.valueOf(virtualStorageGroupNum));
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    engineProperties.setProperty("time_partition_interval", String.valueOf(partitionInterval));
+    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
@@ -95,6 +96,11 @@ public class ClusterEnvConfig implements BaseConfig {
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     engineProperties.setProperty(
         "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
+    return this;
+  }
+
+  public BaseConfig setEnablePartition(boolean enablePartition) {
+    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
     return this;
   }
 

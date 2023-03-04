@@ -18,48 +18,44 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
   /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
-  private final DataRegionInfo dataRegionInfo;
+  private StorageGroupInfo storageGroupInfo;
 
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
   private long memCost;
 
-  private final TsFileProcessorInfoMetrics metrics;
-
-  public TsFileProcessorInfo(DataRegionInfo dataRegionInfo) {
-    this.dataRegionInfo = dataRegionInfo;
+  public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
+    this.storageGroupInfo = storageGroupInfo;
     this.memCost = 0L;
-    this.metrics =
-        new TsFileProcessorInfoMetrics(dataRegionInfo.getDataRegion().getDatabaseName(), this);
-    MetricService.getInstance().addMetricSet(metrics);
+    if (null != storageGroupInfo.getVirtualStorageGroupProcessor()) {
+      MetricService.getInstance()
+          .addMetricSet(
+              new TsFileProcessorInfoMetrics(
+                  storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName(),
+                  memCost));
+    }
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
-    dataRegionInfo.addStorageGroupMemCost(cost);
+    storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
-    dataRegionInfo.releaseStorageGroupMemCost(cost);
+    storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
   }
 
   /** called when closing TSP */
   public void clear() {
-    dataRegionInfo.releaseStorageGroupMemCost(memCost);
+    storageGroupInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
-    MetricService.getInstance().removeMetricSet(metrics);
-  }
-
-  /** get memCost */
-  public long getMemCost() {
-    return memCost;
   }
 }

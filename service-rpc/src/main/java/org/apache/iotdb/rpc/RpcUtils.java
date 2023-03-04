@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
-import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -35,7 +34,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class RpcUtils {
 
@@ -63,11 +61,11 @@ public class RpcUtils {
   public static final TSStatus SUCCESS_STATUS =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {
-    return (IClientRPCService.Iface)
+  public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
+    return (TSIService.Iface)
         Proxy.newProxyInstance(
             RpcUtils.class.getClassLoader(),
-            new Class[] {IClientRPCService.Iface.class},
+            new Class[] {TSIService.Iface.class},
             new SynchronizedHandler(client));
   }
 
@@ -89,9 +87,13 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
+    if (status.getCode() == TSStatusCode.SESSION_TIMEOUT.getStatusCode()) {
+      throw new SessionTimeoutException(status);
+    }
+
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new StatementExecutionException(status);
     }
@@ -102,8 +104,9 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+  public static void verifySuccess(org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status)
+      throws StatementExecutionException {
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -123,8 +126,8 @@ public class RpcUtils {
       TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
-        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
+        || status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);
@@ -141,7 +144,7 @@ public class RpcUtils {
         new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         errMsgs.append(status.getMessage()).append("; ");
       }
     }
@@ -179,12 +182,15 @@ public class RpcUtils {
     return status;
   }
 
-  public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
-    return new InfluxTSStatus(tsStatusCode.getStatusCode());
+  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
+      TSStatusCode tsStatusCode) {
+    return new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(tsStatusCode.getStatusCode());
   }
 
-  public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
-    InfluxTSStatus status = new InfluxTSStatus(code);
+  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
+      int code, String message) {
+    org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status =
+        new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);
     status.setMessage(message);
     return status;
   }
@@ -264,27 +270,14 @@ public class RpcUtils {
     }
   }
 
-  public static String formatDatetimeStr(String datetime, StringBuilder digits) {
-    if (datetime.contains("+")) {
-      String timeZoneStr = datetime.substring(datetime.length() - 6);
-      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
-    } else if (datetime.contains("Z")) {
-      String timeZoneStr = datetime.substring(datetime.length() - 1);
-      return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
-    } else {
-      String timeZoneStr = "";
-      return datetime + "." + digits + timeZoneStr;
-    }
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
     if ("ms".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000;
+      long integerofDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
@@ -292,12 +285,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formatDatetimeStr(datetime, digits);
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     } else if ("us".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000_000;
+      long integerofDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
@@ -305,12 +298,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formatDatetimeStr(datetime, digits);
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     } else {
-      long integerOfDate = timestamp / 1000_000_000L;
+      long integerofDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {
@@ -318,18 +311,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formatDatetimeStr(datetime, digits);
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     }
-  }
-
-  public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
-    final List<TSStatus> failedStatus =
-        responseStatusList.stream()
-            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            .collect(Collectors.toList());
-    return failedStatus.isEmpty()
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(failedStatus.toString());
   }
 }

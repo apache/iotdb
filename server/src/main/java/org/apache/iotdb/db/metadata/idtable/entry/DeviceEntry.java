@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.db.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** device entry in id table */
 public class DeviceEntry {
@@ -34,6 +35,10 @@ public class DeviceEntry {
 
   boolean isAligned;
 
+  // for managing last time
+  // time partition -> last time
+  Map<Long, Long> lastTimeMapOfEachPartition;
+
   // for managing flush time
   // time partition -> flush time
   Map<Long, Long> flushTimeMapOfEachPartition;
@@ -42,7 +47,8 @@ public class DeviceEntry {
 
   public DeviceEntry(IDeviceID deviceID) {
     this.deviceID = deviceID;
-    measurementMap = new ConcurrentHashMap<>();
+    measurementMap = new HashMap<>();
+    lastTimeMapOfEachPartition = new HashMap<>();
     flushTimeMapOfEachPartition = new HashMap<>();
   }
 
@@ -89,9 +95,17 @@ public class DeviceEntry {
   }
 
   // region support flush time
+  public void putLastTimeMap(long timePartition, long lastTime) {
+    lastTimeMapOfEachPartition.put(timePartition, lastTime);
+  }
 
-  public Long putFlushTimeMap(long timePartition, long flushTime) {
-    return flushTimeMapOfEachPartition.put(timePartition, flushTime);
+  public void putFlushTimeMap(long timePartition, long flushTime) {
+    flushTimeMapOfEachPartition.put(timePartition, flushTime);
+  }
+
+  public long updateLastTimeMap(long timePartition, long lastTime) {
+    return lastTimeMapOfEachPartition.compute(
+        timePartition, (k, v) -> v == null ? lastTime : Math.max(v, lastTime));
   }
 
   public long updateFlushTimeMap(long timePartition, long flushTime) {
@@ -107,8 +121,16 @@ public class DeviceEntry {
     this.globalFlushTime = globalFlushTime;
   }
 
+  public Long getLastTime(long timePartition) {
+    return lastTimeMapOfEachPartition.get(timePartition);
+  }
+
   public Long getFlushTime(long timePartition) {
     return flushTimeMapOfEachPartition.get(timePartition);
+  }
+
+  public Long getLastTimeWithDefaultValue(long timePartition) {
+    return lastTimeMapOfEachPartition.getOrDefault(timePartition, Long.MIN_VALUE);
   }
 
   public Long getFLushTimeWithDefaultValue(long timePartition) {
@@ -119,8 +141,8 @@ public class DeviceEntry {
     return globalFlushTime;
   }
 
-  public void removePartition(long partitionId) {
-    flushTimeMapOfEachPartition.remove(partitionId);
+  public void clearLastTime() {
+    lastTimeMapOfEachPartition.clear();
   }
 
   public void clearFlushTime() {
@@ -128,6 +150,7 @@ public class DeviceEntry {
   }
   // endregion
 
+  @TestOnly
   public Map<String, SchemaEntry> getMeasurementMap() {
     return measurementMap;
   }
@@ -145,12 +168,18 @@ public class DeviceEntry {
         && globalFlushTime == that.globalFlushTime
         && deviceID.equals(that.deviceID)
         && measurementMap.equals(that.measurementMap)
+        && lastTimeMapOfEachPartition.equals(that.lastTimeMapOfEachPartition)
         && flushTimeMapOfEachPartition.equals(that.flushTimeMapOfEachPartition);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        deviceID, measurementMap, isAligned, flushTimeMapOfEachPartition, globalFlushTime);
+        deviceID,
+        measurementMap,
+        isAligned,
+        lastTimeMapOfEachPartition,
+        flushTimeMapOfEachPartition,
+        globalFlushTime);
   }
 }

@@ -25,9 +25,7 @@ import java.io.File;
 
 public class FakedTsFileResource extends TsFileResource {
   /** time index */
-  public ITimeIndex timeIndex;
-
-  public long timePartition;
+  protected ITimeIndex timeIndex;
 
   private long tsFileSize;
   private String fakeTsfileName;
@@ -70,10 +68,5 @@ public class FakedTsFileResource extends TsFileResource {
     }
 
     return false;
-  }
-
-  @Override
-  public long getTimePartition() {
-    return this.timePartition;
   }
 }

@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the database to the disk, and seal the data file. In cluster mode, we provide commands to persist the specified database cache of local node and persist the specified database cache of the cluster.
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
@@ -30,44 +30,58 @@ Frequently call flush can result in small data files that degrade query performa
 
 ```sql
 IoTDB> FLUSH 
-IoTDB> FLUSH ON LOCAL
-IoTDB> FLUSH ON CLUSTER
 IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
-IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+Execute Level Compaction and unsequence Compaction task. Currently IoTDB supports the following two types of SQL to manually trigger the compaction process of data files:
+
+* `MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed very fast by rewriting the overlapped Chunks only, while there is some redundant data on the disk eventually.
+* `FULL MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed slow due to it takes more time to rewrite all data in overlapped files. However, there won't be any redundant data on the disk eventually.
+
+```sql
+IoTDB> MERGE
+IoTDB> FULL MERGE
 ```
 
 ## CLEAR CACHE
 
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear local node cache and clear the cluster cache.
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
 
 ```sql
 IoTDB> CLEAR CACHE
-IoTDB> CLEAR CACHE ON LOCAL
-IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
-## SET SYSTEM TO READONLY / RUNNING
+## SET STSTEM TO READONLY / WRITABLE
 
-Manually set IoTDB system to running, read-only mode. In cluster mode, we provide commands to set the local node status and set the cluster status, valid for the entire cluster by default.
+Manually set IoTDB system to read-only or writable mode.
 
 ```sql
-IoTDB> SET SYSTEM TO RUNNING
-IoTDB> SET SYSTEM TO READONLY ON LOCAL
-IoTDB> SET SYSTEM TO READONLY ON CLUSTER
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
+
+## SCHEMA SNAPSHOT
+
+To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file. This feature doesn't support scenarios involving Schema Template, Tag/Attribute, or Aligned Timeseries. 
+
+```sql
+IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
 
-## Kill Query
+## Timeout
 
-IoTDB supports setting session connection timeouts and query timeouts, and also allows to stop the executing query manually.
+IoTDB supports session and query level timeout.
 
 ### Session timeout
 
 Session timeout controls when idle sessions are closed. An idle session is one that had not initiated any query or non-query operations for a period of time.
 
-Session timeout is disabled by default and can be set using the `dn_session_timeout_threshold` parameter in IoTDB configuration file.
+Session timeout is disabled by default and can be set using the `session_timeout_threshold` parameter in IoTDB configuration file.
 
 ### Query timeout
 
@@ -95,107 +109,16 @@ session.executeQueryStatement(String sql, long timeout)
 
 In addition to waiting for the query to time out passively, IoTDB also supports stopping the query actively:
 
-#### Kill specific query
-
 ```sql
 KILL QUERY <queryId>
 ```
 
-You can kill the specified query by specifying `queryId`.
+You can abort the specified query by specifying `queryId`. If `queryId` is not specified, all executing queries will be killed.
 
-To get the executing `queryId`，you can use the [show queries](#show-queries) command, which will show the list of all executing queries.
+To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
 
-#### Kill all queries
+| Time | queryId | statement |
+| ---- | ------- | --------- |
+|      |         |           |
 
-```sql
-KILL ALL QUERIES
-```
-
-Kill all queries on all DataNodes.
-
-## SHOW QUERIES
-
-This command is used to display all ongoing queries, here are usage scenarios：
-- When you want to kill a query, you need to get the queryId of it
-- Verify that a query has been killed after killing
-
-### Grammar
-
-```sql
-SHOW QUERIES | (QUERY PROCESSLIST)
-[WHERE whereCondition]
-[ORDER BY sortKey {ASC | DESC}]
-[LIMIT rowLimit] [OFFSET rowOffset]
-```
-Note：
-- Compatibility with old syntax `show query processlist`
-- When using WHERE clause, ensure that target columns of filter are existed in the result set
-- When using ORDER BY clause, ensure that sortKeys are existed in the result set
-
-### ResultSet
-Time：Start time of query，DataType is `INT64`  
-QueryId：Cluster - level unique query identifier，DataType is `TEXT`, format is `yyyyMMdd_HHmmss_index_dataNodeId`  
-DataNodeId：DataNode which do execution of query，DataType is `INT32`  
-ElapsedTime：Execution time of query (Imperfectly accurate)，`second` for unit，DataType is `FLOAT`  
-Statement：Origin string of query，DataType is `TEXT`
-
-```
-+-----------------------------+-----------------------+----------+-----------+------------+
-|                         Time|                QueryId|DataNodeId|ElapsedTime|   Statement|
-+-----------------------------+-----------------------+----------+-----------+------------+
-|2022-12-30T13:26:47.260+08:00|20221230_052647_00005_1|         1|      0.019|show queries|
-+-----------------------------+-----------------------+----------+-----------+------------+
-```
-Note：
-- Result set is arranged in Time ASC as default, use ORDER BY clause if you want to sort it by other keys.
-
-### SQL Example
-#### Example1：Obtain all current queries whose execution time is longer than 30 seconds
-
-SQL string：
-```sql
-SHOW QUERIES WHERE ElapsedTime > 30
-```
-
-SQL result：
-```
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|                         Time|                QueryId|DataNodeId|ElapsedTime|                    Statement|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:44.515+08:00|20221205_114444_00002_2|         2|     31.111|     select * from root.test1|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:45.515+08:00|20221205_114445_00003_2|         2|     30.111|     select * from root.test2|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:43.515+08:00|20221205_114443_00001_3|         3|     32.111|        select * from root.**|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-```
-
-#### Example2：Obtain the Top5 queries in the current execution time
-
-SQL string：
-```sql
-SHOW QUERIES limit 5
-```
-
-Equivalent to
-```sql
-SHOW QUERIES ORDER BY ElapsedTime DESC limit 5
-```
-
-SQL result：
-```
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|                         Time|                QueryId|DataNodeId|ElapsedTime|                    Statement|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:44.515+08:00|20221205_114444_00003_5|         5|     31.111|     select * from root.test1|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:45.515+08:00|20221205_114445_00003_2|         2|     30.111|     select * from root.test2|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:46.515+08:00|20221205_114446_00003_3|         3|     29.111|     select * from root.test3|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:47.515+08:00|20221205_114447_00003_2|         2|     28.111|     select * from root.test4|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-|2022-12-05T11:44:48.515+08:00|20221205_114448_00003_4|         4|     27.111|     select * from root.test5|
-+-----------------------------+-----------------------+----------+-----------+-----------------------------+
-```
-
+The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.

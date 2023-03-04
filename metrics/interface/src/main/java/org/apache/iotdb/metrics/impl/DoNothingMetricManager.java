@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -30,45 +29,49 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
 public class DoNothingMetricManager extends AbstractMetricManager {
 
-  public static final DoNothingCounter DO_NOTHING_COUNTER = new DoNothingCounter();
-  public static final DoNothingHistogram DO_NOTHING_HISTOGRAM = new DoNothingHistogram();
-  public static final DoNothingAutoGauge DO_NOTHING_AUTO_GAUGE = new DoNothingAutoGauge();
-  public static final DoNothingGauge DO_NOTHING_GAUGE = new DoNothingGauge();
-  public static final DoNothingRate DO_NOTHING_RATE = new DoNothingRate();
-  public static final DoNothingTimer DO_NOTHING_TIMER = new DoNothingTimer();
+  public static final DoNothingCounter doNothingCounter = new DoNothingCounter();
+  public static final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
+  public static final DoNothingGauge doNothingGauge = new DoNothingGauge();
+  public static final DoNothingRate doNothingRate = new DoNothingRate();
+  public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
 
   @Override
   public Counter createCounter(MetricInfo metricInfo) {
-    return DO_NOTHING_COUNTER;
+    return doNothingCounter;
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
-    return DO_NOTHING_AUTO_GAUGE;
+  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+    return doNothingGauge;
   }
 
   @Override
   public Gauge createGauge(MetricInfo metricInfo) {
-    return DO_NOTHING_GAUGE;
+    return doNothingGauge;
   }
 
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
-    return DO_NOTHING_HISTOGRAM;
+    return doNothingHistogram;
   }
 
   @Override
   public Rate createRate(MetricInfo metricInfo) {
-    return DO_NOTHING_RATE;
+    return doNothingRate;
   }
 
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
-    return DO_NOTHING_TIMER;
+    return doNothingTimer;
+  }
+
+  @Override
+  public boolean isEnableMetric() {
+    return false;
   }
 
   @Override
@@ -77,7 +80,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
+  protected void remove(MetricType type, MetricInfo metricInfo) {
     // do nothing
   }
 

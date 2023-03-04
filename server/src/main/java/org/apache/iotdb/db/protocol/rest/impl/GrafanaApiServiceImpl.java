@@ -17,20 +17,9 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.plan.Coordinator;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
 import org.apache.iotdb.db.protocol.rest.NotFoundException;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
@@ -40,9 +29,15 @@ import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
-import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import com.google.common.base.Joiner;
 import org.apache.commons.lang3.StringUtils;
@@ -51,27 +46,16 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
-import java.util.List;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
-
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  private final IPartitionFetcher PARTITION_FETCHER;
-
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private final AuthorizationHandler authorizationHandler;
 
   private final long timePrecision; // the default timestamp precision is ms
 
-  public GrafanaApiServiceImpl() {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    authorizationHandler = new AuthorizationHandler();
+  public GrafanaApiServiceImpl() throws QueryProcessException {
+    authorizationHandler = new AuthorizationHandler(serviceProvider);
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
@@ -90,9 +74,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      Statement statement =
-          StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
-      if (!(statement instanceof ShowStatement) && !(statement instanceof QueryStatement)) {
+      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+      if (!(physicalPlan instanceof ShowPlan) && !(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -101,34 +84,26 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId();
-      // create and cache dataset
-      ExecutionResult result =
-          COORDINATOR.execute(
-              statement,
-              queryId,
-              null,
-              sql.getSql(),
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        return Response.ok()
-            .entity(
-                new ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
-            .build();
-      }
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        return QueryDataSetHandler.fillGrafanaVariablesResult(queryExecution, statement);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+      try {
+        QueryContext queryContext =
+            serviceProvider.genQueryContext(
+                queryId,
+                physicalPlan.isDebug(),
+                System.currentTimeMillis(),
+                sql.getSql(),
+                IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+        QueryDataSet queryDataSet =
+            serviceProvider.createQueryDataSet(
+                queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+        return QueryDataSetHandler.fillGrafanaVariablesResult(queryDataSet, physicalPlan);
+      } finally {
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -162,40 +137,35 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId();
-      // create and cache dataset
-      ExecutionResult result =
-          COORDINATOR.execute(
-              statement,
-              queryId,
-              null,
-              sql,
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        return Response.ok()
-            .entity(
-                new ExecutionStatus()
-                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
-            .build();
-      }
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        if (((QueryStatement) statement).isGroupByLevel()) {
-          return QueryDataSetHandler.fillAggregationPlanDataSet(queryExecution, 0);
+      final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
+      try {
+        QueryContext queryContext =
+            serviceProvider.genQueryContext(
+                queryId,
+                physicalPlan.isDebug(),
+                System.currentTimeMillis(),
+                sql,
+                IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+        QueryDataSet queryDataSet =
+            serviceProvider.createQueryDataSet(
+                queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+
+        if (queryDataSet instanceof GroupByLevelDataSet) {
+          return QueryDataSetHandler.fillGroupByLevelDataSet(queryDataSet, 0, timePrecision);
         } else {
-          return QueryDataSetHandler.fillDataSetWithTimestamps(queryExecution, 0, timePrecision);
+          return QueryDataSetHandler.fillDataSetWithTimestamps(
+              queryDataSet, (QueryPlan) physicalPlan, 0, timePrecision);
         }
+      } finally {
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -210,52 +180,5 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                 .message(TSStatusCode.SUCCESS_STATUS.name()))
         .build();
-  }
-
-  @Override
-  public Response node(List<String> requestBody, SecurityContext securityContext)
-      throws NotFoundException {
-    try {
-      if (requestBody != null && !requestBody.isEmpty()) {
-        PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
-        String sql = "show child paths " + path;
-        Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
-
-        Response response = authorizationHandler.checkAuthority(securityContext, statement);
-        if (response != null) {
-          return response;
-        }
-
-        final long queryId = SESSION_MANAGER.requestQueryId();
-        // create and cache dataset
-        ExecutionResult result =
-            COORDINATOR.execute(
-                statement,
-                queryId,
-                null,
-                sql,
-                PARTITION_FETCHER,
-                SCHEMA_FETCHER,
-                config.getQueryTimeoutThreshold());
-        if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          return Response.ok()
-              .entity(
-                  new ExecutionStatus()
-                      .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                      .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
-              .build();
-        }
-        IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-
-        try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-          return QueryDataSetHandler.fillGrafanaNodesResult(queryExecution);
-        }
-      } else {
-        return QueryDataSetHandler.fillGrafanaNodesResult(null);
-      }
-    } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
-    }
   }
 }

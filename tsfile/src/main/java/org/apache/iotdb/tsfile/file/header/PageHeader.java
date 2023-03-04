@@ -117,12 +117,10 @@ public class PageHeader {
     return statistics.getStartTime();
   }
 
-  public int serializeTo(OutputStream outputStream) throws IOException {
-    int length = 0;
-    length += ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, outputStream);
-    length += ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, outputStream);
-    length += statistics.serialize(outputStream);
-    return length;
+  public void serializeTo(OutputStream outputStream) throws IOException {
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, outputStream);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, outputStream);
+    statistics.serialize(outputStream);
   }
 
   @Override

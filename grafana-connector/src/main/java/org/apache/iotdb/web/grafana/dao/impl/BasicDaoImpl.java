@@ -101,7 +101,7 @@ public class BasicDaoImpl implements BasicDao {
       default:
         timestampRadioX = 1L;
     }
-    logger.info("Use timestamp precision {}", timestampPrecision.replaceAll("[\n\r\t]", "_"));
+    logger.info("Use timestamp precision {}", timestampPrecision);
   }
 
   /**

@@ -18,27 +18,23 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -75,9 +71,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
-          e.getMessage());
+      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
     }
 
     // set schema template
@@ -89,9 +83,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute("DROP SCHEMA TEMPLATE t1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode()
-              + ": Template [t1] has been set on MTree, cannot be dropped now.",
-          e.getMessage());
+          "303: Template [t1] has been set on MTree, cannot be dropped now.", e.getMessage());
     }
 
     statement.execute("SHOW TIMESERIES root.sg1.**");
@@ -117,13 +109,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING);
+                + resultSet.getString("compression");
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -138,9 +130,7 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.DEVICE)
-                + ","
-                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
+            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -150,9 +140,7 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
-          e.getMessage());
+      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }
   }
 
@@ -163,9 +151,7 @@ public class IoTDBSchemaTemplateIT {
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
-          e.getMessage());
+      Assert.assertEquals("303: Duplicated template name: t1", e.getMessage());
     }
 
     // set schema template
@@ -195,13 +181,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+                + resultSet.getString("compression");
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -216,9 +202,7 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.DEVICE)
-                + ","
-                + resultSet.getString(ColumnHeaderConstant.IS_ALIGNED);
+            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
         Assert.assertTrue(expectedResult.contains(actualResult));
         expectedResult.remove(actualResult);
       }
@@ -228,9 +212,7 @@ public class IoTDBSchemaTemplateIT {
     try {
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals(
-          TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
-          e.getMessage());
+      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }
   }
 
@@ -242,9 +224,8 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(
-            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
-        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
+        expectedResultSet.remove(resultSet.getString("template name"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -256,9 +237,8 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(
-            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME)));
-        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
+        expectedResultSet.remove(resultSet.getString("template name"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -273,13 +253,13 @@ public class IoTDBSchemaTemplateIT {
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
         String actualResult =
-            resultSet.getString(ColumnHeaderConstant.CHILD_NODES)
+            resultSet.getString("child nodes")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+                + resultSet.getString("compression");
         Assert.assertTrue(expectedResultSet.contains(actualResult));
         expectedResultSet.remove(actualResult);
       }
@@ -308,9 +288,8 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(
-            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
-        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -320,9 +299,8 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(
-            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
-        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -332,9 +310,8 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        Assert.assertTrue(
-            expectedResultSet.contains(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS)));
-        expectedResultSet.remove(resultSet.getString(ColumnHeaderConstant.CHILD_PATHS));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -344,14 +321,135 @@ public class IoTDBSchemaTemplateIT {
     Assert.assertFalse(resultSet.next());
   }
 
+  @Test
+  public void testDeactivateSchemaTemplate() throws SQLException {
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.v1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd2");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.x1.dd2");
+
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    String[] expectedResult =
+        new String[] {"root.sg1.v1", "root.sg1.v1.dd1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
+    Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.dd1");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.*");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.x1.dd2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.**");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.v1");
+    statement.execute("DROP SCHEMA TEMPLATE t1");
+    statement.execute("SHOW SCHEMA TEMPLATES");
+
+    expectedResult = new String[] {"t2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
+        expectedResultSet.remove(resultSet.getString("template name"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+  }
+
   private void prepareTemplate() throws SQLException {
-    // create database
-    statement.execute("CREATE DATABASE root.sg1");
-    statement.execute("CREATE DATABASE root.sg2");
-    statement.execute("CREATE DATABASE root.sg3");
+    // create storage group
+    statement.execute("CREATE STORAGE GROUP root.sg1");
+    statement.execute("CREATE STORAGE GROUP root.sg2");
+    statement.execute("CREATE STORAGE GROUP root.sg3");
 
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
     statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+  }
+
+  @Test
+  public void testLastCacheWithTemplate() throws SQLException {
+    statement.execute("set storage group to root.clsu1");
+    statement.execute("set schema template t1 to root.clsu1");
+    statement.execute("insert into root.clsu1.device1(time, s1) values(220, 200)");
+    statement.execute("insert into root.clsu1.device2(time, s1) values(320, 200)");
+
+    String[] lastQuerySqlArray =
+        new String[] {
+          "select last s1 from root.clsu1.device1",
+          "select last s1 from root.clsu1.device2",
+          "select last s1 from root.clsu1.device2",
+        };
+
+    String[] retArray =
+        new String[] {
+          "root.clsu1.device1.s1,220,200,INT64",
+          "root.clsu1.device2.s1,320,200,INT64",
+          "root.clsu1.device2.s1,320,200,INT64",
+        };
+
+    for (int i = 0; i < retArray.length; i++) {
+      statement.execute(lastQuerySqlArray[i]);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        Assert.assertEquals(retArray[i], ans);
+      }
+    }
   }
 }

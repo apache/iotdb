@@ -23,11 +23,8 @@ import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
@@ -51,13 +48,6 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write((byte) getType().ordinal(), byteBuffer);
-    seriesPath.serialize(byteBuffer);
-    filter.serialize(byteBuffer);
-  }
-
-  @Override
   public Filter getFilter() {
     return filter;
   }
@@ -78,24 +68,5 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
   public void setSeriesPath(Path seriesPath) {
     this.seriesPath = seriesPath;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-
-    SingleSeriesExpression that = (SingleSeriesExpression) o;
-    return Objects.equals(toString(), that.toString());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(toString());
   }
 }

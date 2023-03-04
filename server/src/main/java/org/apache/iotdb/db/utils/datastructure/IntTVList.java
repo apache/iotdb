@@ -19,59 +19,30 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
-import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 
-public abstract class IntTVList extends TVList {
+public class IntTVList extends TVList {
+
   // list of primitive array, add 1 when expanded -> int primitive array
   // index relation: arrayIndex -> elementIndex
-  protected List<int[]> values;
+  private List<int[]> values;
+
+  private int[][] sortedValues;
+
+  private int pivotValue;
 
   IntTVList() {
     super();
     values = new ArrayList<>();
-  }
-
-  public static IntTVList newList() {
-    switch (TVLIST_SORT_ALGORITHM) {
-      case QUICK:
-        return new QuickIntTVList();
-      case BACKWARD:
-        return new BackIntTVList();
-      default:
-        return new TimIntTVList();
-    }
-  }
-
-  @Override
-  public IntTVList clone() {
-    IntTVList cloneList = IntTVList.newList();
-    cloneAs(cloneList);
-    for (int[] valueArray : values) {
-      cloneList.values.add(cloneValue(valueArray));
-    }
-    return cloneList;
-  }
-
-  private int[] cloneValue(int[] array) {
-    int[] cloneArray = new int[array.length];
-    System.arraycopy(array, 0, cloneArray, 0, array.length);
-    return cloneArray;
   }
 
   @Override
@@ -79,7 +50,7 @@ public abstract class IntTVList extends TVList {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
-    maxTime = Math.max(maxTime, timestamp);
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     rowCount++;
@@ -109,6 +80,40 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
+  public IntTVList clone() {
+    IntTVList cloneList = new IntTVList();
+    cloneAs(cloneList);
+    for (int[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
+    }
+    return cloneList;
+  }
+
+  private int[] cloneValue(int[] array) {
+    int[] cloneArray = new int[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
+  }
+
+  @Override
+  public void sort() {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedTimestamps =
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
+    }
+    if (sortedValues == null
+        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedValues =
+          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
+    }
+    sort(0, rowCount);
+    clearSortedValue();
+    clearSortedTime();
+    sorted = true;
+  }
+
+  @Override
   void clearValue() {
     if (values != null) {
       for (int[] dataArray : values) {
@@ -119,8 +124,60 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
+  void clearSortedValue() {
+    if (sortedValues != null) {
+      sortedValues = null;
+    }
+  }
+
+  @Override
+  protected void setFromSorted(int src, int dest) {
+    set(
+        dest,
+        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+  }
+
+  @Override
+  protected void set(int src, int dest) {
+    long srcT = getTime(src);
+    int srcV = getInt(src);
+    set(dest, srcT, srcV);
+  }
+
+  @Override
+  protected void setToSorted(int src, int dest) {
+    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
+    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getInt(src);
+  }
+
+  @Override
+  protected void reverseRange(int lo, int hi) {
+    hi--;
+    while (lo < hi) {
+      long loT = getTime(lo);
+      int loV = getInt(lo);
+      long hiT = getTime(hi);
+      int hiV = getInt(hi);
+      set(lo++, hiT, hiV);
+      set(hi--, loT, loV);
+    }
+  }
+
+  @Override
   protected void expandValues() {
     values.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+  }
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotValue = getInt(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotValue);
   }
 
   @Override
@@ -133,23 +190,6 @@ public abstract class IntTVList extends TVList {
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));
-  }
-
-  @Override
-  protected void writeValidValuesIntoTsBlock(
-      TsBlockBuilder builder,
-      int floatPrecision,
-      TSEncoding encoding,
-      List<TimeRange> deletionList) {
-    Integer deleteCursor = 0;
-    for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
-          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
-        builder.getTimeColumnBuilder().writeLong(getTime(i));
-        builder.getColumnBuilder(0).writeInt(getInt(i));
-        builder.declarePosition();
-      }
-    }
   }
 
   @Override
@@ -172,10 +212,10 @@ public abstract class IntTVList extends TVList {
       timeIdxOffset = start;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMinTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMaxTimeAndSorted(time, start, end);
+      updateMinTimeAndSorted(time, start, end);
     }
 
     while (idx < end) {
@@ -204,7 +244,7 @@ public abstract class IntTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMaxTimeAndSorted(
+  int dropNullValThenUpdateMinTimeAndSorted(
       long[] time, int[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
@@ -221,15 +261,14 @@ public abstract class IntTVList extends TVList {
         time[tIdx - nullCnt] = time[tIdx];
         values[vIdx - nullCnt] = values[vIdx];
       }
-      // update maxTime and sorted
+      // update minTime and sorted
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
-      maxTime = Math.max(maxTime, time[tIdx]);
       if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
         inputSorted = false;
       }
     }
-
+    minTime = Math.min(inPutMinTime, minTime);
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }
@@ -237,33 +276,5 @@ public abstract class IntTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.INT32;
-  }
-
-  @Override
-  public int serializedSize() {
-    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Integer.BYTES);
-  }
-
-  @Override
-  public void serializeToWAL(IWALByteBufferView buffer) {
-    WALWriteUtils.write(TSDataType.INT32, buffer);
-    buffer.putInt(rowCount);
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      buffer.putLong(getTime(rowIdx));
-      buffer.putInt(getInt(rowIdx));
-    }
-  }
-
-  public static IntTVList deserialize(DataInputStream stream) throws IOException {
-    IntTVList tvList = IntTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    int[] values = new int[rowCount];
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = stream.readInt();
-    }
-    tvList.putInts(times, values, null, 0, rowCount);
-    return tvList;
   }
 }

@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -32,7 +31,6 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,32 +39,35 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  /** The map from metric name to metric metaInfo. */
-  protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
-  /** The map from metricInfo to metric. */
+  /** Is metric service enabled */
+  protected static boolean isEnableMetric;
+  /** metric name -> tag keys */
+  protected Map<String, MetricInfo.MetaInfo> nameToTagInfo;
+  /** metric type -> metric name -> metric info */
   protected Map<MetricInfo, IMetric> metrics;
 
   public AbstractMetricManager() {
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
+    nameToTagInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
   }
 
+  // region get or create metric
   /**
    * Get counter. return if exists, create if not.
    *
    * @param name the name of name
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Counter getOrCreateCounter(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_COUNTER;
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingCounter;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, name, tags);
     IMetric metric =
@@ -74,7 +75,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Counter counter = createCounter(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return counter;
             });
     if (metric instanceof Counter) {
@@ -87,7 +88,7 @@ public abstract class AbstractMetricManager {
   protected abstract Counter createCounter(MetricInfo metricInfo);
 
   /**
-   * Create autoGauge
+   * Get autoGauge. return if exists, create if not.
    *
    * <p>AutoGauge keep a weak reference of the obj, so it will not prevent gc of the obj. Notice: if
    * you call this gauge's value() when the obj has already been cleared by gc, then you will get
@@ -96,71 +97,20 @@ public abstract class AbstractMetricManager {
    * @param name the name of name
    * @param metricLevel the level of name
    * @param obj which will be monitored automatically
-   * @param mapper use which to map the obj to a double value
+   * @param mapper use which to map the obj to a long value
    */
-  public <T> AutoGauge createAutoGauge(
-      String name, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
-    }
-    MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
-    AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
-    nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-    metrics.put(metricInfo, gauge);
-    return gauge;
-  }
-
-  /**
-   * Create autoGauge according to metric framework.
-   *
-   * @param metricInfo the metricInfo of autoGauge
-   * @param obj which will be monitored automatically
-   * @param mapper use which to map the obj to a double value
-   */
-  protected abstract <T> AutoGauge createAutoGauge(
-      MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper);
-
-  /**
-   * Get autoGauge.
-   *
-   * @param name the name of name
-   * @param metricLevel the level of name
-   * @throws IllegalArgumentException when there has different type metric with same name
-   */
-  public AutoGauge getAutoGauge(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
-    }
-    MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
-    IMetric metric = metrics.get(metricInfo);
-    if (metric == null) {
-      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
-    } else if (metric instanceof AutoGauge) {
-      return (AutoGauge) metric;
-    }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
-  }
-
-  /**
-   * Get counter. return if exists, create if not.
-   *
-   * @param name the name of name
-   * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
-   */
-  public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_GAUGE;
+  public <T> Gauge getOrCreateAutoGauge(
+      String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
     IMetric metric =
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Gauge gauge = createGauge(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -170,11 +120,36 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
+  protected abstract <T> Gauge createAutoGauge(
+      MetricInfo metricInfo, T obj, ToLongFunction<T> mapper);
+
   /**
-   * Create gauge according to metric framework.
+   * Get counter. return if exists, create if not.
    *
-   * @param metricInfo the metricInfo of gauge
+   * @param name the name of name
+   * @param metricLevel the level of name
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
+  public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Gauge gauge = createGauge(metricInfo);
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
+              return gauge;
+            });
+    if (metric instanceof Gauge) {
+      return (Gauge) metric;
+    }
+    throw new IllegalArgumentException(
+        metricInfo + " is already used for a different type of name");
+  }
+
   protected abstract Gauge createGauge(MetricInfo metricInfo);
 
   /**
@@ -183,11 +158,10 @@ public abstract class AbstractMetricManager {
    * @param name the name of name
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Rate getOrCreateRate(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_RATE;
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingRate;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.RATE, name, tags);
     IMetric metric =
@@ -195,7 +169,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Rate rate = createRate(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return rate;
             });
     if (metric instanceof Rate) {
@@ -205,11 +179,6 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
-  /**
-   * Create rate according to metric framework.
-   *
-   * @param metricInfo the metricInfo of rate
-   */
   protected abstract Rate createRate(MetricInfo metricInfo);
 
   /**
@@ -218,11 +187,10 @@ public abstract class AbstractMetricManager {
    * @param name the name of name
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Histogram getOrCreateHistogram(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingHistogram;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, name, tags);
     IMetric metric =
@@ -230,7 +198,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Histogram histogram = createHistogram(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return histogram;
             });
     if (metric instanceof Histogram) {
@@ -240,11 +208,6 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
-  /**
-   * Create histogram according to metric framework.
-   *
-   * @param metricInfo the metricInfo of metric
-   */
   protected abstract Histogram createHistogram(MetricInfo metricInfo);
 
   /**
@@ -253,11 +216,10 @@ public abstract class AbstractMetricManager {
    * @param name the name of name
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Timer getOrCreateTimer(String name, MetricLevel metricLevel, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_TIMER;
+    if (!isValid(metricLevel, name, tags)) {
+      return DoNothingMetricManager.doNothingTimer;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, name, tags);
     IMetric metric =
@@ -265,7 +227,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Timer timer = createTimer(metricInfo);
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              nameToTagInfo.put(name, metricInfo.getMetaInfo());
               return timer;
             });
     if (metric instanceof Timer) {
@@ -275,11 +237,6 @@ public abstract class AbstractMetricManager {
         metricInfo + " is already used for a different type of name");
   }
 
-  /**
-   * Create timer according to metric framework.
-   *
-   * @param metricInfo the metricInfo of metric
-   */
   protected abstract Timer createTimer(MetricInfo metricInfo);
 
   // endregion
@@ -294,10 +251,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Counter count(long delta, String name, MetricLevel metricLevel, String... tags) {
+  public void count(long delta, String name, MetricLevel metricLevel, String... tags) {
     Counter counter = getOrCreateCounter(name, metricLevel, tags);
     counter.inc(delta);
-    return counter;
   }
 
   /**
@@ -308,10 +264,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Gauge gauge(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void gauge(long value, String name, MetricLevel metricLevel, String... tags) {
     Gauge gauge = getOrCreateGauge(name, metricLevel, tags);
     gauge.set(value);
-    return gauge;
   }
 
   /**
@@ -322,10 +277,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Rate rate(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void rate(long value, String name, MetricLevel metricLevel, String... tags) {
     Rate rate = getOrCreateRate(name, metricLevel, tags);
     rate.mark(value);
-    return rate;
   }
 
   /**
@@ -336,10 +290,9 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Histogram histogram(long value, String name, MetricLevel metricLevel, String... tags) {
+  public void histogram(long value, String name, MetricLevel metricLevel, String... tags) {
     Histogram histogram = getOrCreateHistogram(name, metricLevel, tags);
     histogram.update(value);
-    return histogram;
   }
 
   /**
@@ -352,11 +305,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Timer timer(
+  public void timer(
       long delta, TimeUnit timeUnit, String name, MetricLevel metricLevel, String... tags) {
     Timer timer = getOrCreateTimer(name, metricLevel, tags);
     timer.update(delta, timeUnit);
-    return timer;
   }
 
   // endregion
@@ -366,36 +318,87 @@ public abstract class AbstractMetricManager {
   /**
    * Get all metric keys.
    *
-   * @return [[name, [tags...]], ..., [name, [tags...]]]
+   * @return [[name, tags...], ..., [name, tags...]]
    */
-  public List<Pair<String, String[]>> getAllMetricKeys() {
-    List<Pair<String, String[]>> keys = new ArrayList<>(metrics.size());
+  protected List<String[]> getAllMetricKeys() {
+    List<String[]> keys = new ArrayList<>(metrics.size());
     metrics.keySet().forEach(k -> keys.add(k.toStringArray()));
     return keys;
   }
 
   /**
-   * Get all metrics.
+   * Get all counters
    *
-   * @return [name, [tags...]] -> metric
+   * @return [name, tags...] -> counter
    */
-  public Map<MetricInfo, IMetric> getAllMetrics() {
-    return metrics;
+  protected Map<String[], Counter> getAllCounters() {
+    Map<String[], Counter> counterMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Counter) {
+        counterMap.put(entry.getKey().toStringArray(), (Counter) entry.getValue());
+      }
+    }
+    return counterMap;
   }
 
   /**
-   * Get metrics by type.
+   * Get all gauges
    *
-   * @return [name, [tags...]] -> metric
+   * @return [name, tags...] -> gauge
    */
-  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
-    Map<MetricInfo, IMetric> result = new HashMap<>();
+  protected Map<String[], Gauge> getAllGauges() {
+    Map<String[], Gauge> gaugeMap = new HashMap<>();
     for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getKey().getMetaInfo().getType() == metricType) {
-        result.put(entry.getKey(), entry.getValue());
+      if (entry.getValue() instanceof Gauge) {
+        gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
       }
     }
-    return result;
+    return gaugeMap;
+  }
+
+  /**
+   * Get all rates
+   *
+   * @return [name, tags...] -> rate
+   */
+  protected Map<String[], Rate> getAllRates() {
+    Map<String[], Rate> rateMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Rate) {
+        rateMap.put(entry.getKey().toStringArray(), (Rate) entry.getValue());
+      }
+    }
+    return rateMap;
+  }
+
+  /**
+   * Get all histograms
+   *
+   * @return [name, tags...] -> histogram
+   */
+  protected Map<String[], Histogram> getAllHistograms() {
+    Map<String[], Histogram> histogramMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Histogram) {
+        histogramMap.put(entry.getKey().toStringArray(), (Histogram) entry.getValue());
+      }
+    }
+    return histogramMap;
+  }
+
+  /**
+   * Get all timers
+   *
+   * @return [name, tags...] -> timer
+   */
+  protected Map<String[], Timer> getAllTimers() {
+    Map<String[], Timer> timerMap = new HashMap<>();
+    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
+      if (entry.getValue() instanceof Timer) {
+        timerMap.put(entry.getKey().toStringArray(), (Timer) entry.getValue());
+      }
+    }
+    return timerMap;
   }
 
   // endregion
@@ -403,54 +406,69 @@ public abstract class AbstractMetricManager {
   // region remove metric
 
   /**
-   * remove name.
+   * remove name
    *
    * @param type the type of name
    * @param name the name of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public void remove(MetricType type, String name, String... tags) {
-    MetricInfo metricInfo = new MetricInfo(type, name, tags);
-    if (metrics.containsKey(metricInfo)) {
-      if (type == metricInfo.getMetaInfo().getType()) {
-        nameToMetaInfo.remove(metricInfo.getName());
-        metrics.remove(metricInfo);
-        removeMetric(type, metricInfo);
-      } else {
-        throw new IllegalArgumentException(
-            metricInfo + " failed to remove because the mismatch of type. ");
+    if (isEnableMetric()) {
+      MetricInfo metricInfo = new MetricInfo(type, name, tags);
+      if (nameToTagInfo.containsKey(metricInfo.getName())) {
+        MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo.getName());
+        if (metaInfo.hasSameKey(tags)) {
+          if (type == metaInfo.getType()) {
+            remove(metricInfo);
+            remove(type, metricInfo);
+          } else {
+            throw new IllegalArgumentException(
+                metricInfo + " failed to remove because the mismatch of type. ");
+          }
+        }
       }
     }
   }
 
-  protected abstract void removeMetric(MetricType type, MetricInfo metricInfo);
+  protected abstract void remove(MetricType type, MetricInfo metricInfo);
 
   // endregion
 
-  /** Is metric service enabled in specific level. */
-  public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
-    return MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+  /** Is metric service enabled */
+  public boolean isEnableMetric() {
+    return isEnableMetric;
   }
 
-  /** Stop and clear metric manager. */
+  /** Is metric service enabled in specific level */
+  public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
+    return isEnableMetric()
+        && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+  }
+
+  /** Stop and clear metric manager */
   protected boolean stop() {
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     metrics = new ConcurrentHashMap<>();
-    nameToMetaInfo = new ConcurrentHashMap<>();
+    nameToTagInfo = new ConcurrentHashMap<>();
     return stopFramework();
   }
 
   protected abstract boolean stopFramework();
 
-  private boolean invalid(MetricLevel metricLevel, String name, String... tags) {
+  private boolean isValid(MetricLevel metricLevel, String name, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
-      return true;
-    }
-    if (!nameToMetaInfo.containsKey(name)) {
       return false;
     }
-    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
-    return !metaInfo.hasSameKey(tags);
+    if (!nameToTagInfo.containsKey(name)) {
+      return true;
+    }
+    MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(name);
+    return metaInfo.hasSameKey(tags);
+  }
+
+  private void remove(MetricInfo metricInfo) {
+    nameToTagInfo.remove(metricInfo.getName());
+    metrics.remove(metricInfo);
   }
 
   @Override

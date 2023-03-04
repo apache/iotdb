@@ -40,6 +40,7 @@ public class TSFileConfigUtilCompletenessTest {
 
   @Test
   public void testTSFileConfigUtilCompleteness() {
+
     String[] setters = {
       "setBatchSize",
       "setBloomFilterErrorRate",
@@ -73,12 +74,8 @@ public class TSFileConfigUtilCompletenessTest {
       "setTSFileStorageFs",
       "setUseKerberos",
       "setValueEncoder",
-      "setFreqEncodingSNR",
-      "setFreqEncodingBlockSize",
-      "setMaxTsBlockLineNumber",
-      "setMaxTsBlockSizeInBytes",
-      "setPatternMatchingThreshold",
-      "setCustomizedProperties"
+      "setCustomizedProperties",
+      "setPatternMatchingThreshold"
     };
     Set<String> addedSetters = new HashSet<>();
     Collections.addAll(addedSetters, setters);

@@ -20,21 +20,18 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
-import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.EndPoint;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxEndPoint;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxOpenSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxOpenSessionResp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxWritePointsReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Config;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -42,7 +39,6 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.influxdb.InfluxDBException;
-import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,14 +54,14 @@ public class InfluxDBSession {
 
   private TTransport transport;
   private InfluxDBService.Iface client;
-  private List<InfluxEndPoint> endPointList = new ArrayList<>();
+  private List<EndPoint> endPointList = new ArrayList<>();
   private long sessionId;
 
   protected String username;
   protected String password;
   protected int fetchSize;
   protected ZoneId zoneId;
-  protected InfluxEndPoint defaultEndPoint;
+  protected EndPoint defaultEndPoint;
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
 
@@ -79,10 +75,10 @@ public class InfluxDBSession {
         rpcPort,
         username,
         password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
+        Config.DEFAULT_FETCH_SIZE,
         ZoneId.systemDefault(),
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public InfluxDBSession(
@@ -94,7 +90,7 @@ public class InfluxDBSession {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize) {
-    this.defaultEndPoint = new InfluxEndPoint(host, rpcPort);
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -104,7 +100,7 @@ public class InfluxDBSession {
   }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
+    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -128,9 +124,7 @@ public class InfluxDBSession {
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
               defaultEndPoint.getIp(), defaultEndPoint.getPort(), connectionTimeoutInMs);
-      if (!transport.isOpen()) {
-        transport.open();
-      }
+      transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -142,13 +136,13 @@ public class InfluxDBSession {
     }
     client = RpcUtils.newSynchronizedClient(client);
 
-    InfluxOpenSessionReq openReq = new InfluxOpenSessionReq();
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername(username);
     openReq.setPassword(password);
     openReq.setZoneId(zoneId.toString());
 
     try {
-      InfluxOpenSessionResp openResp = client.openSession(openReq);
+      TSOpenSessionResp openResp = client.openSession(openReq);
       RpcUtils.verifySuccess(openResp.getStatus());
       sessionId = openResp.getSessionId();
 
@@ -158,7 +152,7 @@ public class InfluxDBSession {
     }
   }
 
-  public void writePoints(InfluxWritePointsReq request)
+  public void writePoints(TSWritePointsReq request)
       throws StatementExecutionException, IoTDBConnectionException {
     request.setSessionId(sessionId);
     try {
@@ -178,32 +172,7 @@ public class InfluxDBSession {
     }
   }
 
-  public QueryResult query(InfluxQueryReq request)
-      throws StatementExecutionException, IoTDBConnectionException {
-    request.setSessionId(sessionId);
-    try {
-      InfluxQueryResultRsp tsQueryResultRsp = client.query(request);
-      RpcUtils.verifySuccess(tsQueryResultRsp.status);
-      return JacksonUtils.json2Bean(tsQueryResultRsp.resultJsonString, QueryResult.class);
-    } catch (TException e) {
-      e.printStackTrace();
-      logger.error(e.getMessage());
-      if (reconnect()) {
-        try {
-          request.setSessionId(sessionId);
-          InfluxQueryResultRsp tsQueryResultRsp = client.query(request);
-          RpcUtils.verifySuccess(tsQueryResultRsp.status);
-          return JacksonUtils.json2Bean(tsQueryResultRsp.resultJsonString, QueryResult.class);
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
-      }
-    }
-  }
-
-  public void createDatabase(InfluxCreateDatabaseReq request)
+  public void createDatabase(TSCreateDatabaseReq request)
       throws StatementExecutionException, IoTDBConnectionException {
     request.setSessionId(sessionId);
     try {
@@ -229,7 +198,7 @@ public class InfluxDBSession {
       return;
     }
     try {
-      client.closeSession(new InfluxCloseSessionReq(sessionId));
+      client.closeSession(new TSCloseSessionReq(sessionId));
     } catch (TException e) {
       throw new InfluxDBException(
           "Error occurs when closing session at server. Maybe server is down.", e);
@@ -246,7 +215,7 @@ public class InfluxDBSession {
   private boolean reconnect() {
     boolean connectedSuccess = false;
     Random random = new Random();
-    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
+    for (int i = 1; i <= Config.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
         int currHostIndex = random.nextInt(endPointList.size());

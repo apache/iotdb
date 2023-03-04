@@ -84,8 +84,7 @@ public class TsFileReadWriteTest {
             TSEncoding.RLE,
             TSEncoding.TS_2DIFF,
             TSEncoding.REGULAR,
-            TSEncoding.GORILLA,
-            TSEncoding.ZIGZAG);
+            TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       intTest(encoding);
     }
@@ -180,7 +179,7 @@ public class TsFileReadWriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
     TsFileReader readTsFile = new TsFileReader(reader);
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1", "sensor_2", true));
+    paths.add(new Path("device_1", "sensor_2"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
     try {
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
@@ -225,7 +224,7 @@ public class TsFileReadWriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
     TsFileReader readTsFile = new TsFileReader(reader);
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1", "sensor_1", true));
+    paths.add(new Path("device_1", "sensor_1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);

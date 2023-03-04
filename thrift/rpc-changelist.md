@@ -30,14 +30,15 @@ Last Updated on 2022.1.17 by Xin Zhao.
 
 ## 2. Add New
 
-| Latest Changes                                                                                                                                                                                                                                                                                                                                        | Related Committers |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
-| Add TSTracingInfo                                                                                                                                                                                                                                                                                                                                     | Minghui Liu        |
+| Latest Changes                                                                                                                                                                                                                                                                                                                                          | Related Committers |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| Add TSTracingInfo                                                                                                                                                                                                                                                                                                                                       | Minghui Liu        |
 | Add structs and interfaces to append, prune, query and unset Schema Template (detail: TSAppendSchemaTemplateReq, TSPruneSchemaTemplateReq, TSQueryTemplateReq, TSQueryTemplateResp, TSUnsetSchemaTemplateReq, appendSchemaTemplate, pruneSchemaTemplate, querySchemaTemplate, unsetSchemaTemplate), and serializedTemplate in TSCreateSchemaTemplateReq | Xin Zhao           |
-| Add struct TSInsertStringRecordsOfOneDeviceReq                                                                                                                                                                                                                                                                                                        | Hang Zhang         |
-| Add method TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req)                                                                                                                                                                                                                                                         | Hang Zhang         |
-| Add TSDropSchemaTemplateReq, TSStatus dropSchemaTemplate                                                                                                                                                                                                                                                                                              | Xin Zhao           |
+| Add struct TSInsertStringRecordsOfOneDeviceReq                                                                                                                                                                                                                                                                                                          | Hang Zhang         |
+| Add method TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req)                                                                                                                                                                                                                                                           | Hang Zhang         |
+| Add TSDropSchemaTemplateReq, TSStatus dropSchemaTemplate                                                                                                                                                                                                                                                                                                | Xin Zhao           |
 | Add TSCreateAlignedTimeseriesReq                                                                                                                                                                                                                                                                                                                        | Haonan Hou         |
+| Add TSOperationSyncWriteReq                                                                                                                                                                                                                                                                                                                             | Rongzhao Chen      |
 
 ## 3. Update
 
@@ -151,9 +152,9 @@ Last Updated on 2019-10-27 by Lei Rui.
 | Remove struct TSDataValue          | Lei Rui            |
 | Remove struct TSRowRecord          | Lei Rui            |
 | Remove optional string version in TSFetchMetadataResp | Genius_pig |
-| Remove optional set\<string> childPaths, nodesList, storageGroups, devices in TSFetchMetadataResp | Genius_pig |
-| Remove optional map\<string, string> nodeTimeseriesNum in TSFetchMetadataResp | Genius_pig |
-| Remove optional list\<list\<string>> timeseriesList in TSFetchMetadataResp | Genius_pig |
+| Remove optional set<string> childPaths, nodesList, storageGroups, devices in TSFetchMetadataResp | Genius_pig |
+| Remove optional map<string, string> nodeTimeseriesNum in TSFetchMetadataResp | Genius_pig |
+| Remove optional list<list<string>> timeseriesList in TSFetchMetadataResp | Genius_pig |
 | Remove optinoal optional i32 timeseriesNum in TSFetchMetadataResp | Genius_pig |
 | Remove optional i32 nodeLevel in TSFetchMetadataReq | Genius_pig |
 
@@ -205,6 +206,6 @@ Last Updated on 2019-10-27 by Lei Rui.
 | Add optional set\<string> childPaths in TSFetchMetadataResp     | Haonan Hou             |
 | Add optional string version in TSFetchMetadataResp           | Genius_pig             |
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
-| Add required binary time, required list\<binary> valueList, required list\<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
+| Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
-| Add optional map\<string, string> props, optional map\<string, string> tags, optional map\<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 
+| Add optional map<string, string> props, optional map<string, string> tags, optional map<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 

@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.2.0-SNAPSHOT</version>
+        <version>0.13.3</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -34,14 +34,7 @@
         <dependency>
             <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-client</artifactId>
-            <version>2.7.5</version>
-            <!-- exclude guava for avoiding compile error, guava can be found in other module -->
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>2.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

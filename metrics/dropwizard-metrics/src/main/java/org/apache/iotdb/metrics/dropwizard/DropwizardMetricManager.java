@@ -26,7 +26,6 @@ import org.apache.iotdb.metrics.dropwizard.type.DropwizardGauge;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardHistogram;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardRate;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardTimer;
-import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -38,7 +37,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 
-import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
 /**
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
@@ -58,7 +57,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
     DropwizardAutoGauge<T> dropwizardGauge = new DropwizardAutoGauge<>(obj, mapper);
     metricRegistry.register(DropwizardMetricNameTool.toFlatString(metricInfo), dropwizardGauge);
     return dropwizardGauge;
@@ -92,7 +91,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  protected void removeMetric(MetricType type, MetricInfo metricInfo) {
+  protected void remove(MetricType type, MetricInfo metricInfo) {
     metricRegistry.remove(DropwizardMetricNameTool.toFlatString(metricInfo));
   }
 

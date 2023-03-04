@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.security.encrypt;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.auth.user.LocalFileUserManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -40,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 
 public class MessageDigestEncryptTest {
   private static final String providerClass =
-      "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
+      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
 
   private File testFolder;
   private LocalFileUserManager manager;
@@ -48,7 +47,7 @@ public class MessageDigestEncryptTest {
 
   @Before
   public void setUp() throws Exception {
-    CommonDescriptor.getInstance().getConfig().setEncryptDecryptProvider(providerClass);
+    IoTDBDescriptor.getInstance().getConfig().setEncryptDecryptProvider(providerClass);
     EnvironmentUtils.envSetUp();
     testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
     testFolder.mkdirs();

@@ -21,9 +21,7 @@
 
 # How to vote for a release
 
-For non-Chinese users, please read
-
-https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
+For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
 
 ## Download everything under voting version / rc
 
@@ -102,7 +100,7 @@ Compared with the corresponding .sha512, the same is fine.
 * Verify compilation
 
 ```
-mvnw install
+mvnw.sh install
 
 Should end up all SUCCESS
 ```
@@ -132,7 +130,7 @@ nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
 ./sbin/start-cli.sh
 
-CREATE DATABASE root.turbine;
+SET STORAGE GROUP TO root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
@@ -163,14 +161,14 @@ The source release:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
-could compile from source: ./mvnw clean install [ok]
+could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]
 
-CREATE DATABASE root.turbine;
+SET STORAGE GROUP TO root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);

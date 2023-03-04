@@ -8,6 +8,7 @@
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +19,8 @@
 
 package org.apache.iotdb.spark.db.unit
 
+import org.apache.iotdb.db.conf.IoTDBConstant
+import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.iotdb.session.Session
 import org.apache.iotdb.spark.db.{DataFrameTools, EnvironmentUtils, IoTDBOptions}
@@ -25,21 +28,19 @@ import org.apache.spark.sql.SparkSession
 import org.junit._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
-// TODO move it to integration-test
-@Ignore
 class DataFrameToolsTest extends FunSuite with BeforeAndAfterAll {
 
   private var spark: SparkSession = _
-//  private var daemon: NewIoTDB = _
+  private var daemon: IoTDB = _
   private var session: Session = _
 
   @Before
   override protected def beforeAll(): Unit = {
-    System.setProperty("IOTDB_CONF", "src/test/resources/")
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/")
     super.beforeAll()
 
-//    daemon = NewIoTDB.getInstance
-//    daemon.active(false)
+    daemon = IoTDB.getInstance
+    daemon.active()
     EnvironmentUtils.envSetUp()
     Class.forName(Config.JDBC_DRIVER_NAME)
 
@@ -59,7 +60,7 @@ class DataFrameToolsTest extends FunSuite with BeforeAndAfterAll {
       spark.sparkContext.stop()
     }
 
-//    daemon.stop()
+    daemon.stop()
     EnvironmentUtils.cleanEnv()
 
     session.close()

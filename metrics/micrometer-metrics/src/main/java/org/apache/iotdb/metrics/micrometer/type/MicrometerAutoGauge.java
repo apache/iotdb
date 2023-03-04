@@ -19,36 +19,52 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Gauge;
 
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
-import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
-public class MicrometerAutoGauge<T> implements AutoGauge {
-
+public class MicrometerAutoGauge<T> implements Gauge {
   private final WeakReference<T> refObject;
-  private final ToDoubleFunction<T> mapper;
+  private final ToLongFunction<T> mapper;
 
   public MicrometerAutoGauge(
       io.micrometer.core.instrument.MeterRegistry meterRegistry,
       String metricName,
       T object,
-      ToDoubleFunction<T> mapper,
+      ToLongFunction<T> mapper,
       String... tags) {
     LoggerFactory.getLogger(MicrometerAutoGauge.class).info("{},{}", metricName, tags);
     this.refObject =
-        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
+        new WeakReference<>(
+            meterRegistry.gauge(
+                metricName, Tags.of(tags), object, value -> (double) mapper.applyAsLong(value)));
     this.mapper = mapper;
   }
 
   @Override
-  public double value() {
+  public void set(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public long value() {
     if (refObject.get() == null) {
-      return 0d;
+      return 0L;
     }
-    return mapper.applyAsDouble(refObject.get());
+    return mapper.applyAsLong(refObject.get());
+  }
+
+  @Override
+  public void incr(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
+  }
+
+  @Override
+  public void decr(long value) {
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }

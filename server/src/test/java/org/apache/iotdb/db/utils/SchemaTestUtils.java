@@ -18,25 +18,22 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+
+import java.util.List;
+
+import static org.junit.Assert.assertFalse;
 
 public class SchemaTestUtils {
 
   public static MeasurementPath getMeasurementPath(String pathPatternString)
       throws MetadataException {
-    PartialPath path = new PartialPath(pathPatternString);
-    return new MeasurementPath(
-        path,
-        new MeasurementSchema(
-            path.getMeasurement(),
-            TSDataType.DOUBLE,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED));
+    PartialPath pathPattern = new PartialPath(pathPatternString);
+    List<MeasurementPath> measurementPaths = IoTDB.metaManager.getMeasurementPaths(pathPattern);
+    assertFalse(measurementPaths.isEmpty());
+    return measurementPaths.get(0);
   }
 }

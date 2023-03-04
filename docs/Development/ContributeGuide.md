@@ -101,7 +101,7 @@ Precautions:
 We use the [Spotless
 plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps(Take idea as an example):
 
-1. Download the  [google-java-format
+1. Download the [google-java-format
    plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), it can be installed in IDEA (Preferences -> plugins -> search google-java-format), [More detailed setup manual](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)
 2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 3. In the plugin settings, enable the plugin and keep the default Google code style (2-space indents)
@@ -119,25 +119,7 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    <blank line>
    import static all other imports
 ```
-8. Before you submit codes, you can use `mvn spotless:check` to check your codes manually,
-and use `mvn spotless:apply` to format your codes.
 
-## Code Sytle
-We use the [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) to make Java codes obey a consistent ruleset defined in [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) under the project root.
-
-You can reference the code style rules in the file. After development, you can use `mvn validate` to check whether your codes satisfy the style rules.
-
-Besides, when you develop in an IDE, some default code style configurations may be conflict with those rules.
-
-In IDEA, you can follow these steps to change those inconsistent style formatting rules:
-
-### Disable using wildcard import
-
-1. Navigate to Java code style configuration page (Preferences... -> Editor -> Code Style -> Java).
-2. Switch to the 'imports' tab.
-3. In the 'General' section, enable 'Use single class import' option.
-4. Change 'Class count to use import with '\*'' to 999 or another very large number.
-5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
 ## Contributing code
 
@@ -174,10 +156,24 @@ If the version after eclipse 2019
 
 import -> Maven -> Existing Maven Projects
 
+## Debugging code
+
+
+* Server main function：`server/src/main/java/org/apache/iotdb/db/service/IoTDB`, can be started in debug mode.
+* Cli：`cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"
+* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):`server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl`
+* all jdbc statements：`executeStatement(TSExecuteStatementReq req)`
+* jdbc query：`executeQueryStatement(TSExecuteStatementReq req)`	
+* native Write interface：`insertRecord(TSInsertRecordReq req)`
+`insertTablet(TSInsertTabletReq req)`
+
+* Storage engine`org.apache.iotdb.db.engine.StorageEngine`
+* Query engine `org.apache.iotdb.db.qp.QueryProcessor`
+
 
 # Frequent Questions When Compiling the Source Code
 
->Q: I could not download thrift-* tools, like `Could not get content
+I could not download thrift-* tools, like `Could not get content
 org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
 
  It is due to some network problems (especially in China), you can:
@@ -190,18 +186,6 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-
- 
- >Q: IConfigNodeRPCService class is unrecognized (IDEA can not find the class even though we have generated it)
-
- It is because Thrift generate the file too large, which exceeds the lines that IDEA can parse by default. You can find that file and then you will see IDEA claims that. To make it work, you can:
- 
- * Click "Help" menu of IDEA
- * Choose "Edit Customed Properties"
- * On the opened file (`idea.properties`), add: `idea.max.intellisense.filesize=9000`
- * Restart IDEA
- 
- 
 
 
 ## Recommended Debug Tool 

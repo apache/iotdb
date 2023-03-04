@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -45,44 +44,32 @@ public class IoTDBSortedShowTimeseriesIT {
 
   private static String[] sqls =
       new String[] {
-        "CREATE DATABASE root.turbine",
-        "CREATE DATABASE root.ln",
+        "SET STORAGE GROUP TO root.turbine",
+        "SET STORAGE GROUP TO root.ln",
         "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine this is a test1') "
-            + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
+            + "tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)",
         "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine this is a test2') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+            + "tags(unit=kw, description='turbine this is a test2') attributes(H_Alarm=99.9, M_Alarm=44.4)",
         "create timeseries root.turbine.d0.s2(cpu) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='cores', 'description'='turbine this is a cpu') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+            + "tags(unit=cores, description='turbine this is a cpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
         "create timeseries root.turbine.d0.s3(gpu0) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='cores', 'description'='turbine this is a gpu') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+            + "tags(unit=cores, description='turbine this is a gpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
         "create timeseries root.turbine.d0.s4(tpu0) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='cores', 'description'='turbine this is a tpu') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+            + "tags(unit=cores, description='turbine this is a tpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
         "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine this is a test3') "
-            + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
+            + "tags(description='turbine this is a test3') attributes(H_Alarm=9, M_Alarm=5)",
         "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
-            + "attributes('MaxValue'='100', 'MinValue'='1')",
+            + "tags(unit=f, description='turbine d2 this is a test1') attributes(MaxValue=100, MinValue=1)",
         "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
-            + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
+            + "tags(unit=kw, description='turbine d2 this is a test2') attributes(MaxValue=99.9, MinValue=44.4)",
         "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine d2 this is a test3') "
-            + "attributes('MaxValue'='9', 'MinValue'='5')",
+            + "tags(description='turbine d2 this is a test3') attributes(MaxValue=9, MinValue=5)",
         "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='c', 'description'='ln this is a test1') "
-            + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
+            + "tags(unit=c, description='ln this is a test1') attributes(H_Alarm=1000, M_Alarm=500)",
         "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='w', 'description'='ln this is a test2') "
-            + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
+            + "tags(unit=w, description='ln this is a test2') attributes(H_Alarm=9.9, M_Alarm=4.4)",
         "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='ln this is a test3') "
-            + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
+            + "tags(description='ln this is a test3') attributes(H_Alarm=90, M_Alarm=50)",
         "insert into root.turbine.d0(timestamp,s0) values(1, 1)",
         "insert into root.turbine.d0(timestamp,s1) values(2, 2)",
         "insert into root.turbine.d0(timestamp,s2) values(3, 3)",
@@ -169,21 +156,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + resultSet.getString("alias")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + resultSet.getString("storage group")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + resultSet.getString("compression")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + resultSet.getString("tags")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
+                + resultSet.getString("attributes");
 
         assertTrue(retArray1.contains(ans));
         count++;
@@ -196,21 +183,21 @@ public class IoTDBSortedShowTimeseriesIT {
       count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + resultSet.getString("alias")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + resultSet.getString("storage group")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + resultSet.getString("compression")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + resultSet.getString("tags")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
+                + resultSet.getString("attributes");
         System.out.println("\"" + ans + "\",");
         assertTrue(retArray2.contains(ans));
         count++;
@@ -249,21 +236,21 @@ public class IoTDBSortedShowTimeseriesIT {
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + resultSet.getString("alias")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + resultSet.getString("storage group")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + resultSet.getString("compression")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + resultSet.getString("tags")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
+                + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;
@@ -292,27 +279,27 @@ public class IoTDBSortedShowTimeseriesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show LATEST timeseries where 'unit'='cores'");
+      boolean hasResultSet = statement.execute("show LATEST timeseries where unit=cores");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
       while (resultSet.next()) {
         String ans =
-            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+            resultSet.getString("timeseries")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + resultSet.getString("alias")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + resultSet.getString("storage group")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + resultSet.getString("dataType")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + resultSet.getString("encoding")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + resultSet.getString("compression")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + resultSet.getString("tags")
                 + ","
-                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
+                + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;

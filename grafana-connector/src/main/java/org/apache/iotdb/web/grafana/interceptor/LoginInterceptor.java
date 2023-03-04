@@ -55,9 +55,6 @@ public class LoginInterceptor extends HandlerInterceptorAdapter {
         response.sendError(HttpStatus.UNAUTHORIZED.value(), "Username or password incorrect");
         return false;
       }
-    } else {
-      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Username or password incorrect");
-      return false;
     }
     return true;
   }

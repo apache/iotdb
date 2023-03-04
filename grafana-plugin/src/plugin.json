@@ -2,11 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
   "name": "Apache IoTDB",
-  "id": "apache-iotdb-datasource",
+  "id": "iotdb",
   "metrics": true,
-  "backend": true,
-  "alerting": true,
-  "executable": "gpx_apache_iotdb_datasource",
   "info": {
     "description": "Apache IoTDB",
     "author": {
@@ -39,7 +36,7 @@
         "url": "https://github.com/apache/iotdb/blob/master/LICENSE"
       }
     ],
-    "screenshots": [{ "name": "addDataSource", "path": "img/addIoTDBDataSource.png" },{ "name": "showData", "path": "img/showData.png" }],
+    "screenshots": [],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },

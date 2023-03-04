@@ -71,13 +71,11 @@ public class TsFileReaderTest {
 
     TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
     // make multi pages in one group
-    int oldPointNumInPage = tsFileConfig.getMaxNumberOfPointsInPage();
-    int oldGroupSizeInByte = tsFileConfig.getGroupSizeInByte();
     tsFileConfig.setMaxNumberOfPointsInPage(100);
     tsFileConfig.setGroupSizeInByte(100 * 1024 * 1024);
     TsFileWriter tsFileWriter = new TsFileWriter(file, new Schema(), tsFileConfig);
 
-    Path path = new Path("t", "id", true);
+    Path path = new Path("t", "id");
     tsFileWriter.registerTimeseries(
         new Path(path.getDevice()),
         new MeasurementSchema("id", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
@@ -122,8 +120,6 @@ public class TsFileReaderTest {
 
     tsFileReader.close();
     file.delete();
-    tsFileConfig.setGroupSizeInByte(oldGroupSizeInByte);
-    tsFileConfig.setMaxNumberOfPointsInPage(oldPointNumInPage);
   }
 
   @Test
@@ -147,14 +143,14 @@ public class TsFileReaderTest {
     IExpression IExpression =
         BinaryExpression.or(
             BinaryExpression.and(
-                new SingleSeriesExpression(new Path("d1", "s1", true), filter),
-                new SingleSeriesExpression(new Path("d1", "s4", true), filter2)),
+                new SingleSeriesExpression(new Path("d1", "s1"), filter),
+                new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
             new GlobalTimeExpression(filter3));
 
     QueryExpression queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1", true))
-            .addSelectedPath(new Path("d1", "s4", true))
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"))
             .setExpression(IExpression);
     QueryDataSet queryDataSet = tsFile.query(queryExpression);
     long aimedTimestamp = 1480562618000L;
@@ -166,8 +162,8 @@ public class TsFileReaderTest {
 
     queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1", true))
-            .addSelectedPath(new Path("d1", "s4", true));
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
     int count = 0;
@@ -181,8 +177,8 @@ public class TsFileReaderTest {
 
     queryExpression =
         QueryExpression.create()
-            .addSelectedPath(new Path("d1", "s1", true))
-            .addSelectedPath(new Path("d1", "s4", true))
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"))
             .setExpression(new GlobalTimeExpression(filter3));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
@@ -211,8 +207,8 @@ public class TsFileReaderTest {
 
   void queryTest2() throws IOException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1", "s6", true));
-    paths.add(new Path("d2", "s1", true));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
 
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
 
@@ -230,8 +226,8 @@ public class TsFileReaderTest {
 
   void queryNonExistPathTest() throws Exception {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1", "s1", true));
-    paths.add(new Path("d2", "s1", true));
+    paths.add(new Path("d1", "s1"));
+    paths.add(new Path("d2", "s1"));
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {
@@ -249,10 +245,10 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s1", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s1"));
 
       long rowCount = queryAndPrint(paths, tsFileReader, null);
       Assert.assertNotEquals(0, rowCount);
@@ -267,10 +263,10 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s2", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s2"));
 
       IExpression timeFilter =
           BinaryExpression.and(
@@ -289,13 +285,13 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s2", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s2"));
 
       IExpression valueFilter =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.ltEq(9L));
+          new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.ltEq(9L));
       long rowCount = queryAndPrint(paths, tsFileReader, valueFilter);
       Assert.assertNotEquals(0, rowCount);
     }
@@ -309,15 +305,15 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s1", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s1"));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.ltEq(10000L));
       IExpression binaryExpression = BinaryExpression.and(valueFilter1, valueFilter2);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -332,15 +328,15 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s1", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s1"));
 
       IExpression valueFilter =
           BinaryExpression.and(
-              new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(7000L)),
-              new SingleSeriesExpression(new Path("d1", "s1", true), ValueFilter.ltEq(10000L)));
+              new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.gtEq(7000L)),
+              new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.ltEq(10000L)));
       IExpression timeFilter =
           BinaryExpression.and(
               new GlobalTimeExpression(TimeFilter.gtEq(2000)),
@@ -359,15 +355,15 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s2", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s1", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s2"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s1"));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
@@ -387,15 +383,15 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s3", true));
-      paths.add(new Path("d2", "s1", true));
-      paths.add(new Path("d2", "s2", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s3"));
+      paths.add(new Path("d2", "s1"));
+      paths.add(new Path("d2", "s2"));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
@@ -415,16 +411,16 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s9", true));
-      paths.add(new Path("d2", "s1", true));
-      paths.add(new Path("d2", "s8", true));
-      paths.add(new Path("d9", "s8", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s9"));
+      paths.add(new Path("d2", "s1"));
+      paths.add(new Path("d2", "s8"));
+      paths.add(new Path("d9", "s8"));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s1", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(
@@ -444,15 +440,15 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1", true));
-      paths.add(new Path("d1", "s9", true));
-      paths.add(new Path("d2", "s1", true));
-      paths.add(new Path("d9", "s8", true));
+      paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s9"));
+      paths.add(new Path("d2", "s1"));
+      paths.add(new Path("d9", "s8"));
 
       IExpression valueFilter1 =
-          new SingleSeriesExpression(new Path("d2", "s9", true), ValueFilter.gtEq(100L));
+          new SingleSeriesExpression(new Path("d2", "s9"), ValueFilter.gtEq(100L));
       IExpression valueFilter2 =
-          new SingleSeriesExpression(new Path("d1", "s2", true), ValueFilter.ltEq(10000L));
+          new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.ltEq(10000L));
       IExpression valueFilter = BinaryExpression.and(valueFilter1, valueFilter2);
       IExpression timeFilter =
           BinaryExpression.and(

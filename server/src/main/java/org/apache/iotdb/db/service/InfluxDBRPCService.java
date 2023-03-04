@@ -19,55 +19,49 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
-import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.service.ThriftService;
-import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.RPCServiceException;
+import org.apache.iotdb.db.service.thrift.ThriftService;
+import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.service.thrift.handler.InfluxDBServiceThriftHandler;
-import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.service.thrift.impl.IInfluxDBServiceWithHandler;
-import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService.Processor;
 
 public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServiceMBean {
-  private IInfluxDBServiceWithHandler impl;
+  private InfluxDBServiceImpl impl;
 
   public static InfluxDBRPCService getInstance() {
     return InfluxDBServiceHolder.INSTANCE;
   }
 
   @Override
+  public ThriftService getImplementation() {
+    return getInstance();
+  }
+
+  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    if (IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getRpcImplClassName()
-        .equals(ClientRPCServiceImpl.class.getName())) {
-      impl =
-          (IInfluxDBServiceWithHandler)
-              Class.forName(NewInfluxDBServiceImpl.class.getName()).newInstance();
-    } else {
-      impl =
-          (IInfluxDBServiceWithHandler)
-              Class.forName(IoTDBDescriptor.getInstance().getConfig().getInfluxDBImplClassName())
-                  .newInstance();
-    }
+    impl =
+        (InfluxDBServiceImpl)
+            Class.forName(IoTDBDescriptor.getInstance().getConfig().getInfluxDBImplClassName())
+                .newInstance();
     initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
 
   @Override
-  public void initThriftServiceThread() throws IllegalAccessException {
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INFLUXDB_RPC_PROCESSOR.getName(),
+              ThreadName.INFLUXDB_CLIENT.getName(),
               config.getRpcAddress(),
               config.getInfluxDBRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -77,7 +71,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INFLUXDB_RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.INFLUXDB_SERVICE.getName());
   }
 
   @Override

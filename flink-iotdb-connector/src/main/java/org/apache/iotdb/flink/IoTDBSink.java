@@ -86,7 +86,6 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
             sessionPoolSize);
   }
 
-  @SuppressWarnings("unsafeThreadSchedule")
   void initScheduler() {
     if (batchSize > 0) {
       scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
