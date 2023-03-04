@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.SeriesBitmapReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -493,6 +494,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public SeriesReader createSeriesReader(
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public SeriesBitmapReader createSeriesBitmapReader(
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,

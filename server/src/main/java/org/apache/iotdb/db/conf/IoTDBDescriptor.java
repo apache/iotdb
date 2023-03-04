@@ -553,6 +553,17 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "concurrent_compaction_thread",
                 Integer.toString(conf.getConcurrentCompactionThread()))));
+    conf.setMaxCompactionLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_compaction_level", Integer.toString(conf.getMaxCompactionLevel()))));
+    conf.setMaxFileNumInLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_file_num_in_level", Integer.toString(conf.getMaxFileNumInLevel()))));
+    conf.setCompactionSelectFileMethod(
+        properties.getProperty(
+            "compaction_select_file_method", conf.getCompactionSelectFileMethod()));
     conf.setTargetCompactionFileSize(
         Long.parseLong(
             properties.getProperty(

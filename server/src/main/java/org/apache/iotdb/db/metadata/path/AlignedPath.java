@@ -37,7 +37,9 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesBitmapReader;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
+import org.apache.iotdb.db.query.reader.series.SeriesBitmapReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -270,6 +272,28 @@ public class AlignedPath extends PartialPath {
       TsFileFilter fileFilter,
       boolean ascending) {
     return new AlignedSeriesReader(
+        this,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
+        fileFilter,
+        ascending);
+  }
+
+  @Override
+  public SeriesBitmapReader createSeriesBitmapReader(
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    return new AlignedSeriesBitmapReader(
         this,
         allSensors,
         dataType,
