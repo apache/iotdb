@@ -37,12 +37,12 @@ statement
 
 ddlStatement
     : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery
+    | createFunction | createTrigger | createPipePlugin | createContinuousQuery
     | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
-    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | dropFunction | dropTrigger | dropPipePlugin | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
+    | showFunctions | showTriggers | showPipePlugins | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -119,10 +119,10 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClause?
     ;
 
-uriClasue
+uriClause
     : USING URI uri
     ;
 
@@ -136,7 +136,7 @@ createTrigger
         triggerEventClause
         ON prefixPath
         AS className=STRING_LITERAL
-        uriClasue?
+        uriClause?
         triggerAttributeClause?
     ;
 
@@ -154,6 +154,11 @@ triggerAttributeClause
 
 triggerAttribute
     : key=attributeKey operator_eq value=attributeValue
+    ;
+
+// Create Pipe Plugin
+createPipePlugin
+    : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 // Create Continuous Query
@@ -223,6 +228,11 @@ deleteTimeseriesOfSchemaTemplate
 // Drop Function
 dropFunction
     : DROP FUNCTION udfName=identifier
+    ;
+
+// Drop Pipe Plugin
+dropPipePlugin
+    : DROP PIPEPLUGIN pluginName=identifier
     ;
 
 // Drop Trigger
@@ -327,6 +337,11 @@ showFunctions
 // Show Triggers
 showTriggers
     : SHOW TRIGGERS
+    ;
+
+// Show Pipe Plugins
+showPipePlugins
+    : SHOW PIPEPLUGINS
     ;
 
 // Show Continuous Queries

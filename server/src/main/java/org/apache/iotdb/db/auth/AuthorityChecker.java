@@ -237,6 +237,12 @@ public class AuthorityChecker {
         return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       case SHOW_CONTINUOUS_QUERIES:
         return PrivilegeType.SHOW_CONTINUOUS_QUERIES.ordinal();
+      case CREATE_PIPEPLUGIN:
+        return PrivilegeType.CREATE_PIPEPLUGIN.ordinal();
+      case DROP_PIPEPLUGIN:
+        return PrivilegeType.DROP_PIPEPLUGIN.ordinal();
+      case SHOW_PIPEPLUGINS:
+        return PrivilegeType.SHOW_PIPEPLUGINS.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

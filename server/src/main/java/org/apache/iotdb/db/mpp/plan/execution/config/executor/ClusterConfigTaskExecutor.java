@@ -32,12 +32,15 @@ import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
+import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -47,8 +50,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -109,6 +114,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
@@ -336,7 +342,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "URI is empty, please specify the URI.",
-                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
         jarFileName = new File(uriString).getName();
@@ -346,7 +352,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             future.setException(
                 new IoTDBException(
                     "The scheme of URI is not set, please specify the scheme of URI.",
-                    TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
+                    TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
             return future;
           }
           if (!uri.getScheme().equals("file")) {
@@ -470,7 +476,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 getUDFTableResp.getStatus().message, getUDFTableResp.getStatus().code));
         return future;
       }
-      // convert triggerTable and buildTsBlock
+      // convert UDFTable and buildTsBlock
       ShowFunctionsTask.buildTsBlock(getUDFTableResp.getAllUDFInformation(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
@@ -507,7 +513,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "URI is empty, please specify the URI.",
-                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.TRIGGER_DOWNLOAD_ERROR.getStatusCode()));
           return future;
         }
         jarFileName = new File(uriString).getName();
@@ -651,6 +657,170 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
 
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createPipePlugin(
+      CreatePipePluginStatement createPipePluginStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final String pluginName = createPipePluginStatement.getPluginName();
+    final String className = createPipePluginStatement.getClassName();
+    final String uriString = createPipePluginStatement.getUriString();
+
+    if (uriString == null || uriString.isEmpty()) {
+      future.setException(
+          new IoTDBException(
+              "Failed to create pipe plugin, because the URI is empty.",
+              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+      return future;
+    }
+
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      String libRoot;
+      ByteBuffer jarFile;
+      String jarMd5;
+
+      final String jarFileName = new File(uriString).getName();
+      try {
+        URI uri = new URI(uriString);
+        if (uri.getScheme() == null) {
+          future.setException(
+              new IoTDBException(
+                  "The scheme of URI is not set, please specify the scheme of URI.",
+                  TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+          return future;
+        }
+        if (!uri.getScheme().equals("file")) {
+          // Download executable
+          ExecutableResource resource =
+              PipePluginExecutableManager.getInstance()
+                  .request(Collections.singletonList(uriString));
+          String jarFilePathUnderTempDir =
+              PipePluginExecutableManager.getInstance()
+                      .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                  + File.separator
+                  + jarFileName;
+          // libRoot should be the path of the specified jar
+          libRoot = jarFilePathUnderTempDir;
+          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
+        } else {
+          // libRoot should be the path of the specified jar
+          libRoot = new File(new URI(uriString)).getAbsolutePath();
+          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+          // ConfigNode.
+          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+          // Set md5 of the jar file
+          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
+        }
+      } catch (IOException | URISyntaxException e) {
+        LOGGER.warn(
+            "Failed to get executable for PipePlugin({}) using URI: {}, the cause is: {}",
+            createPipePluginStatement.getPluginName(),
+            createPipePluginStatement.getUriString(),
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to get executable for PipePlugin"
+                    + createPipePluginStatement.getPluginName()
+                    + "', please check the URI.",
+                TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+        return future;
+      }
+
+      // try to create instance, this request will fail if creation is not successful
+      try (PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
+        // ensure that jar file contains the class and the class is a pipe plugin
+        Class<?> clazz = Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+        clazz.getDeclaredConstructor().newInstance();
+      } catch (ClassNotFoundException
+          | NoSuchMethodException
+          | InstantiationException
+          | IllegalAccessException
+          | InvocationTargetException
+          | ClassCastException e) {
+        LOGGER.warn(
+            "Failed to create function when try to create PipePlugin({}) instance first, the cause is: {}",
+            createPipePluginStatement.getPluginName(),
+            e);
+        future.setException(
+            new IoTDBException(
+                "Failed to load class '"
+                    + createPipePluginStatement.getClassName()
+                    + "', because it's not found in jar file: "
+                    + createPipePluginStatement.getUriString(),
+                TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
+        return future;
+      }
+
+      final TSStatus executionStatus =
+          client.createPipePlugin(
+              new TCreatePipePluginReq()
+                  .setPluginName(pluginName)
+                  .setClassName(className)
+                  .setJarFile(jarFile)
+                  .setJarMD5(jarMd5)
+                  .setJarName(
+                      String.format(
+                          "%s-%s.%s",
+                          jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                          jarMd5,
+                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1))));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to create PipePlugin {}({}) because {}",
+            pluginName,
+            className,
+            executionStatus.getMessage());
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropPipePlugin(String pluginName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus executionStatus = client.dropPipePlugin(new TDropPipePluginReq(pluginName));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("[{}] Failed to drop pipe plugin {}.", executionStatus, pluginName);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPipePlugins() {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TGetPipePluginTableResp getPipePluginTableResp = client.getPipePluginTable();
+      if (getPipePluginTableResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                getPipePluginTableResp.getStatus().message,
+                getPipePluginTableResp.getStatus().code));
+        return future;
+      }
+      // convert PipePluginTable and buildTsBlock
+      ShowFunctionsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginInformation(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
     return future;
   }
 
