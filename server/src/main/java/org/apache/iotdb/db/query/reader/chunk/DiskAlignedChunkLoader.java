@@ -64,4 +64,20 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
     }
     return new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
   }
+
+  public IChunkReader getChunkPrefetchReader(IChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+    Chunk timeChunk =
+        ChunkCache.getInstance()
+            .get((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata(), debug);
+    List<Chunk> valueChunkList = new ArrayList<>();
+    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      valueChunkList.add(
+          valueChunkMetadata == null
+              ? null
+              : ChunkCache.getInstance().get((ChunkMetadata) valueChunkMetadata, debug));
+    }
+    return new AlignedChunkReader(timeChunk, valueChunkList, timeFilter, true);
+  }
 }

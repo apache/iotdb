@@ -46,6 +46,7 @@ public class CompactionScheduler {
     if (!tsFileManager.isAllowCompaction()) {
       return;
     }
+
     tryToSubmitCrossSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),
@@ -53,6 +54,7 @@ public class CompactionScheduler {
         timePartition,
         tsFileManager,
         new CrossSpaceCompactionTaskFactory());
+
     tryToSubmitInnerSpaceCompactionTask(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getVirtualStorageGroup(),

@@ -374,13 +374,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space copaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space copaction for unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private boolean enableCrossSpaceCompaction = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -408,6 +408,12 @@ public class IoTDBConfig {
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
+
+  private int maxCompactionLevel = 100;
+
+  private int maxFileNumInLevel = 50;
+
+  private String compactionSelectFileMethod = "mcc";
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
@@ -443,10 +449,10 @@ public class IoTDBConfig {
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleIntervalInMs = 60_000L;
+  private long compactionScheduleIntervalInMs = 1_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
+  private long compactionSubmissionIntervalInMs = 1_000L;
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
@@ -2547,8 +2553,32 @@ public class IoTDBConfig {
     return targetCompactionFileSize;
   }
 
+  public int getMaxCompactionLevel() {
+    return maxCompactionLevel;
+  }
+
+  public int getMaxFileNumInLevel() {
+    return maxFileNumInLevel;
+  }
+
+  public String getCompactionSelectFileMethod() {
+    return compactionSelectFileMethod;
+  }
+
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public void setMaxCompactionLevel(int maxCompactionLevel) {
+    this.maxCompactionLevel = maxCompactionLevel;
+  }
+
+  public void setMaxFileNumInLevel(int maxFileNumInLevel) {
+    this.maxFileNumInLevel = maxFileNumInLevel;
+  }
+
+  public void setCompactionSelectFileMethod(String compactionSelectFileMethod) {
+    this.compactionSelectFileMethod = compactionSelectFileMethod;
   }
 
   public long getTargetChunkSize() {

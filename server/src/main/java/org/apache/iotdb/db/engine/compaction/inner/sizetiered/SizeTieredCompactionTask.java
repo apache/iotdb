@@ -90,7 +90,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
-    // Here is tmpTargetFile, which is xxx.target
     TsFileResource targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
@@ -196,13 +195,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         FileUtils.delete(logFile);
       }
 
-      if (targetTsFileResource.isDeleted()) {
-        // target resource is empty after compaction, then delete it
-        targetTsFileResource.remove();
-      } else {
-        // set target resource to CLOSED, so that it can be selected to compact
-        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      }
     } catch (Throwable throwable) {
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (sizeTieredCompactionLogger != null) {
