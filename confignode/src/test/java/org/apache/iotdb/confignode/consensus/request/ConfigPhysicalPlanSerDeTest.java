@@ -137,7 +137,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigNodeRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.junit.Assert.assertEquals;
@@ -1183,7 +1183,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void GetRegionIdPlanTest() throws IOException {
     GetRegionIdPlan getRegionIdPlan0 =
         new GetRegionIdPlan(
-            "root.test", ConfigNodeRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
+            "root.test", ConfigRegion, new TSeriesPartitionSlot(1), new TTimePartitionSlot(0));
     GetRegionIdPlan getRegionIdPlan1 =
         (GetRegionIdPlan)
             ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());

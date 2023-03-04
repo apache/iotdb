@@ -427,6 +427,34 @@ carefully evaluated. The current Core-level metrics are as follows:
 | schema_engine | name="schema_region_number"                                  | AutoGauge | Number of SchemaRegion                 |
 | schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]" | AutoGauge | Memory usgae for each SchemaRegion     |
 | schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Timeseries count for each SchemaRegion |
+#### 4.2.17 Write Performance
+
+| Metric                    | Tags                                                                  | Type      | Description                                            |
+|---------------------------|:----------------------------------------------------------------------|-----------|--------------------------------------------------------|
+| wal_node_num              | name="wal_nodes_num"                                                  | AutoGauge | Num of WALNode                                         |
+| wal_cost                  | stage="make_checkpoint"  type="<checkpoint_type>"                     | Timer     | Time cost of make checkpoints for all checkpoint type  |
+| wal_cost                  | type="serialize_one_wal_info_entry"                                   | Timer     | Time cost of serialize one WALInfoEntry                |
+| wal_cost                  | stage="sync_wal_buffer" type="<force_flag>"                           | Timer     | Time cost of sync WALBuffer                            |
+| wal_buffer                | name="used_ratio"                                                     | Histogram | Used ratio of WALBuffer                                |
+| wal_cost                  | stage="serialize_wal_entry" type="serialize_wal_entry_total"          | Timer     | Time cost of WALBuffer serialize task                  |
+| wal_node_info             | name="effective_info_ratio" type="<wal_node_id>"                      | Histogram | Effective info ratio of WALNode                        |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_snapshot" type="<wal_node_id>"  | Histogram | Ram of oldest memTable when cause snapshot             |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_flush" type="<wal_node_id>"     | Histogram | Ram of oldest memTable when cause flush                |
+| flush_sub_task_cost       | type="sort_task"                                                      | Timer     | Time cost of sort series in flush sort stage           |
+| flush_sub_task_cost       | type="encoding_task"                                                  | Timer     | Time cost of sub encoding task in flush encoding stage |
+| flush_sub_task_cost       | type="io_task"                                                        | Timer     | Time cost of sub io task in flush io stage             |
+| flush_cost                | stage="write_plan_indices"                                            | Timer     | Time cost of write plan indices                        |
+| flush_cost                | stage="sort"                                                          | Timer     | Time cost of flush sort stage                          |
+| flush_cost                | stage="encoding"                                                      | Timer     | Time cost of flush encoding stage                      |
+| flush_cost                | stage="io"                                                            | Timer     | Time cost of flush io stage                            |
+| pending_flush_task        | type="pending_task_num"                                               | AutoGauge | Num of pending flush task num                          |
+| pending_flush_task        | type="pending_sub_task_num"                                           | AutoGauge | Num of pending flush sub task num                      |
+| flushing_mem_table_status | name="mem_table_size" region="DataRegion[<data_region_id>]"           | Histogram | Size of flushing memTable                              |
+| flushing_mem_table_status | name="total_point_num" region="DataRegion[<data_region_id>]"          | Histogram | Point num of flushing memTable                         |
+| flushing_mem_table_status | name="series_num" region="DataRegion[<data_region_id>]"               | Histogram | Series num of flushing memTable                        |
+| flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Point num of flushing memChunk                         |
+| flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | TsFile Compression ratio of flushing memTable          |
+| flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | TsFile size of flushing memTable                       |
 
 ### 4.3. Normal level Metrics
 
@@ -457,19 +485,19 @@ thread information, class information, and the server's CPU usage.
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.metrics" through the "MBeans" tab, and you can
 view the specific values of all monitoring metrics in the sidebar.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://user-images.githubusercontent.com/46039728/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
 #### 5.1.2. Get other relevant data
 
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.service" through the "MBeans" tab, as shown in
 the image below, to understand the basic status of the service
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
 In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can use MXBean and expand
 the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ### 5.2. Prometheus
 
@@ -519,7 +547,7 @@ can be used to collect and store monitoring indicators, and Grafana can be used 
 
 The following picture describes the relationships among IoTDB, Prometheus and Grafana
 
-![iotdb_prometheus_grafana](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/iotdb_prometheus_grafana.png)
+![iotdb_prometheus_grafana](/img/UserGuide/System-Tools/Metrics/iotdb_prometheus_grafana.png)
 
 1. Along with running, IoTDB will collect its metrics continuously.
 2. Prometheus scrapes metrics from IoTDB at a constant interval (can be configured).
@@ -559,7 +587,7 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
-![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
+![Apache IoTDB Dashboard](/img/UserGuide/System-Tools/Metrics/dashboard.png)
 
 ##### 5.2.4.1. How to get Apache IoTDB Dashboard
 

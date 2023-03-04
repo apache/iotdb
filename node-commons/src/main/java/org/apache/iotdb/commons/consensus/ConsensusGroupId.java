@@ -71,8 +71,8 @@ public abstract class ConsensusGroupId {
         groupId = new DataRegionId(id);
       } else if (type == TConsensusGroupType.SchemaRegion.getValue()) {
         groupId = new SchemaRegionId(id);
-      } else if (type == TConsensusGroupType.ConfigNodeRegion.getValue()) {
-        groupId = new ConfigNodeRegionId(id);
+      } else if (type == TConsensusGroupType.ConfigRegion.getValue()) {
+        groupId = new ConfigRegionId(id);
       } else {
         throw new IllegalArgumentException(
             "Unrecognized TConsensusGroupType: " + type + " with id = " + id);
@@ -96,8 +96,8 @@ public abstract class ConsensusGroupId {
       case DataRegion:
         format.append("DataRegion");
         break;
-      case ConfigNodeRegion:
-        format.append("ConfigNodeRegion");
+      case ConfigRegion:
+        format.append("ConfigRegion");
         break;
     }
 

@@ -123,10 +123,10 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
-import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
-import org.apache.iotdb.db.mpp.execution.operator.window.SeriesWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.VariationWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -189,8 +189,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySeriesParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
@@ -773,6 +773,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
   }
 
+  @Deprecated
   @Override
   public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
@@ -1464,27 +1465,35 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
         WindowParameter windowParameter;
         switch (windowType) {
-          case EVENT_WINDOW:
-            String controlColumn = node.getGroupByExpression().getExpressionString();
+          case VARIATION_WINDOW:
+            Expression groupByVariationExpression = node.getGroupByExpression();
+            if (groupByVariationExpression == null) {
+              throw new IllegalArgumentException("groupByVariationExpression can't be null");
+            }
+            String controlColumn = groupByVariationExpression.getExpressionString();
             TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
             windowParameter =
-                new EventWindowParameter(
+                new VariationWindowParameter(
                     controlColumnType,
                     layout.get(controlColumn).get(0).getValueColumnIndex(),
                     node.isOutputEndTime(),
                     ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
                     ((GroupByVariationParameter) groupByParameter).getDelta());
             break;
-          case SERIES_WINDOW:
+          case CONDITION_WINDOW:
+            Expression groupByConditionExpression = node.getGroupByExpression();
+            if (groupByConditionExpression == null) {
+              throw new IllegalArgumentException("groupByConditionExpression can't be null");
+            }
             windowParameter =
-                new SeriesWindowParameter(
+                new ConditionWindowParameter(
                     node.isOutputEndTime(),
-                    ((GroupBySeriesParameter) groupByParameter).isIgnoringNull(),
+                    ((GroupByConditionParameter) groupByParameter).isIgnoringNull(),
                     layout
-                        .get(node.getGroupByExpression().getExpressionString())
+                        .get(groupByConditionExpression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex(),
-                    ((GroupBySeriesParameter) groupByParameter).getKeepExpression());
+                    ((GroupByConditionParameter) groupByParameter).getKeepExpression());
             break;
           case SESSION_WINDOW:
             windowParameter =
@@ -1746,6 +1755,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
+  @Deprecated
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -1887,10 +1897,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 IdentitySinkOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
@@ -1922,10 +1929,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ShuffleHelperOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    // TODO implement pipeline division for shuffle sink
+    context.setDegreeOfParallelism(1);
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
@@ -2350,7 +2356,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // children after pipelining
     List<Operator> parentPipelineChildren = new ArrayList<>();
     int finalExchangeNum = context.getExchangeSumNum();
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode localChild : node.getChildren()) {
         Operator childOperation = localChild.accept(this, context);
@@ -2415,6 +2421,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // Otherwise, the first group will belong to the parent pipeline
           if (i == 0) {
             for (int j = startIndex; j < endIndex; j++) {
+              context.setDegreeOfParallelism(1);
               Operator childOperation = node.getChildren().get(j).accept(this, context);
               parentPipelineChildren.add(childOperation);
               afterwardsNodes.add(node.getChildren().get(j));
@@ -2424,7 +2431,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LocalExecutionPlanContext subContext = context.createSubContext();
           subContext.setDegreeOfParallelism(1);
           // Create partial parent operator for children
-          PlanNode partialParentNode = null;
+          PlanNode partialParentNode;
           if (endIndex - startIndex == 1) {
             partialParentNode = node.getChildren().get(startIndex);
           } else {
@@ -2519,7 +2526,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int finalExchangeNum = context.getExchangeSumNum();
 
     // 1. divide every child to pipeline using the max dop
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode childSource : node.getChildren()) {
         Operator childOperation = childSource.accept(this, context);
@@ -2552,7 +2559,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           subContext.setISink(localSinkChannel);
           subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
-          int curChildPipelineNum = subContext.getPipelineNumber() - originPipeNum;
+          // OneByOneChild may be divided into more than dop pipelines, but the number of running
+          // actually is dop
+          int curChildPipelineNum =
+              Math.min(dopForChild, subContext.getPipelineNumber() - originPipeNum);
           childPipelineNums.add(curChildPipelineNum);
           sumOfChildPipelines += curChildPipelineNum;
           // If sumOfChildPipelines > dopForChild, we have to wait until some pipelines finish
