@@ -116,8 +116,12 @@ public class PipePluginInformation {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     PipePluginInformation that = (PipePluginInformation) o;
     return Objects.equals(pluginName, that.pluginName)
         && Objects.equals(className, that.className)

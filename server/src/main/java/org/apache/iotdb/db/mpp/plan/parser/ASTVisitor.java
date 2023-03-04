@@ -814,11 +814,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create PipePlugin =====================================================================
   @Override
   public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
-    String uriString = parseAndValidateURI(ctx.uriClause());
     return new CreatePipePluginStatement(
         parseIdentifier(ctx.pluginName.getText()),
         parseStringLiteral(ctx.className.getText()),
-        uriString);
+        parseAndValidateURI(ctx.uriClause()));
   }
 
   // Drop PipePlugin =====================================================================

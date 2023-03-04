@@ -425,7 +425,7 @@ public interface IManager {
   /** Drop pipe plugin */
   TSStatus dropPipePlugin(String pluginName);
 
-  /** Show pipe plugin */
+  /** Show pipe plugins */
   TGetPipePluginTableResp getPipePluginTable();
 
   /** Merge on all DataNodes */

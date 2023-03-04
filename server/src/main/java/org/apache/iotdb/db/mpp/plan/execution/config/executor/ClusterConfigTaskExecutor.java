@@ -663,28 +663,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createPipePlugin(
       CreatePipePluginStatement createPipePluginStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String pluginName = createPipePluginStatement.getPluginName();
-    String className = createPipePluginStatement.getClassName();
-    String uriString = createPipePluginStatement.getUriString();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final String pluginName = createPipePluginStatement.getPluginName();
+    final String className = createPipePluginStatement.getClassName();
+    final String uriString = createPipePluginStatement.getUriString();
 
-    try (ConfigNodeClient client =
+    if (uriString == null || uriString.isEmpty()) {
+      future.setException(
+          new IoTDBException(
+              "Failed to create pipe plugin, because the URI is empty.",
+              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+      return future;
+    }
+
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       String libRoot;
-      String jarFileName;
       ByteBuffer jarFile;
       String jarMd5;
 
-      if (uriString == null || uriString.isEmpty()) {
-        future.setException(
-            new IoTDBException(
-                "Failed to create pipe plugin, because the URI is empty.",
-                TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
-        return future;
-      }
-
-      jarFileName = new File(uriString).getName();
-
+      final String jarFileName = new File(uriString).getName();
       try {
         URI uri = new URI(uriString);
         if (uri.getScheme() == null) {
@@ -731,17 +729,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
         return future;
       }
-      TCreatePipePluginReq tCreatePipePluginReq = new TCreatePipePluginReq();
-      tCreatePipePluginReq.setPluginName(pluginName);
-      tCreatePipePluginReq.setClassName(className);
-      tCreatePipePluginReq.setJarFile(jarFile);
-      tCreatePipePluginReq.setJarMD5(jarMd5);
-      tCreatePipePluginReq.setJarName(
-          String.format(
-              "%s-%s.%s",
-              jarFileName.substring(0, jarFileName.lastIndexOf(".")),
-              jarMd5,
-              jarFileName.substring(jarFileName.lastIndexOf(".") + 1)));
 
       // try to create instance, this request will fail if creation is not successful
       try (PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
@@ -768,7 +755,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      final TSStatus executionStatus = client.createPipePlugin(tCreatePipePluginReq);
+      final TSStatus executionStatus =
+          client.createPipePlugin(
+              new TCreatePipePluginReq()
+                  .setPluginName(pluginName)
+                  .setClassName(className)
+                  .setJarFile(jarFile)
+                  .setJarMD5(jarMd5)
+                  .setJarName(
+                      String.format(
+                          "%s-%s.%s",
+                          jarFileName.substring(0, jarFileName.lastIndexOf(".")),
+                          jarMd5,
+                          jarFileName.substring(jarFileName.lastIndexOf(".") + 1))));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "Failed to create PipePlugin {}({}) because {}",
@@ -779,7 +778,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-
     } catch (ClientManagerException | TException | IOException e) {
       future.setException(e);
     }
@@ -788,11 +786,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> dropPipePlugin(String pluginName) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       final TSStatus executionStatus = client.dropPipePlugin(new TDropPipePluginReq(pluginName));
-
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn("[{}] Failed to drop pipe plugin {}.", executionStatus, pluginName);
         future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
@@ -807,8 +804,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showPipePlugins() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPipePluginTableResp getPipePluginTableResp = client.getPipePluginTable();
       if (getPipePluginTableResp.getStatus().getCode()
