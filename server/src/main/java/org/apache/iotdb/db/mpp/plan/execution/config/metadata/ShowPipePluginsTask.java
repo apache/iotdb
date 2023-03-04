@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.pipe.PipePluginInformation;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
@@ -50,29 +50,24 @@ public class ShowPipePluginsTask implements IConfigTask {
 
   public static void buildTsBlock(
       List<ByteBuffer> allPipePluginsInformation, SettableFuture<ConfigTaskResult> future) {
-    final List<PipePluginInformation> pipePluginInformationList = new ArrayList<>();
+    final List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
     if (allPipePluginsInformation != null) {
       for (final ByteBuffer pipePluginInformationByteBuffer : allPipePluginsInformation) {
-        pipePluginInformationList.add(
-            PipePluginInformation.deserialize(pipePluginInformationByteBuffer));
+        pipePluginMetaList.add(PipePluginMeta.deserialize(pipePluginInformationByteBuffer));
       }
     }
-    pipePluginInformationList.sort(Comparator.comparing(PipePluginInformation::getPluginName));
+    pipePluginMetaList.sort(Comparator.comparing(PipePluginMeta::getPluginName));
 
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipePluginsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final PipePluginInformation pipePluginInformation : pipePluginInformationList) {
+    for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(Binary.valueOf(pipePluginInformation.getPluginName()));
-      builder
-          .getColumnBuilder(1)
-          .writeBinary(Binary.valueOf(pipePluginInformation.getPluginType()));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginInformation.getClassName()));
+      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(pipePluginMeta.getPluginName()));
+      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getPluginType()));
+      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
       builder.declarePosition();
     }
 

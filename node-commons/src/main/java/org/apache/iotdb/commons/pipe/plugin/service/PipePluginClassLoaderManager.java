@@ -17,15 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.service;
+package org.apache.iotdb.commons.pipe.plugin.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.io.IOException;
 
+@NotThreadSafe
 public class PipePluginClassLoaderManager implements IService {
 
   private final String libRoot;

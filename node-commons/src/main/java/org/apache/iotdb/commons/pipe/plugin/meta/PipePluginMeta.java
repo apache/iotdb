@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe;
+package org.apache.iotdb.commons.pipe.plugin.meta;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,16 +28,16 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipePluginInformation {
+public class PipePluginMeta {
   private String pluginName;
   private String className;
   private String pluginType;
   private String jarName;
   private String jarMD5;
 
-  private PipePluginInformation() {}
+  private PipePluginMeta() {}
 
-  public PipePluginInformation(String pluginName, String className, String pluginType) {
+  public PipePluginMeta(String pluginName, String className, String pluginType) {
     this.pluginName = pluginName;
     this.className = className;
     this.pluginType = pluginType;
@@ -98,18 +98,17 @@ public class PipePluginInformation {
     ReadWriteIOUtils.write(jarMD5, outputStream);
   }
 
-  public static PipePluginInformation deserialize(ByteBuffer buffer) {
-    PipePluginInformation pipePluginInformation = new PipePluginInformation();
-    pipePluginInformation.setPluginName(
-        Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
-    pipePluginInformation.setClassName(ReadWriteIOUtils.readString(buffer));
-    pipePluginInformation.setPluginType(ReadWriteIOUtils.readString(buffer));
-    pipePluginInformation.setJarName(ReadWriteIOUtils.readString(buffer));
-    pipePluginInformation.setJarMD5(ReadWriteIOUtils.readString(buffer));
-    return pipePluginInformation;
+  public static PipePluginMeta deserialize(ByteBuffer buffer) {
+    PipePluginMeta pipePluginMeta = new PipePluginMeta();
+    pipePluginMeta.setPluginName(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
+    pipePluginMeta.setClassName(ReadWriteIOUtils.readString(buffer));
+    pipePluginMeta.setPluginType(ReadWriteIOUtils.readString(buffer));
+    pipePluginMeta.setJarName(ReadWriteIOUtils.readString(buffer));
+    pipePluginMeta.setJarMD5(ReadWriteIOUtils.readString(buffer));
+    return pipePluginMeta;
   }
 
-  public static PipePluginInformation deserialize(InputStream inputStream) throws IOException {
+  public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
@@ -122,7 +121,7 @@ public class PipePluginInformation {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    PipePluginInformation that = (PipePluginInformation) o;
+    PipePluginMeta that = (PipePluginMeta) o;
     return Objects.equals(pluginName, that.pluginName)
         && Objects.equals(className, that.className)
         && Objects.equals(pluginType, that.pluginType)

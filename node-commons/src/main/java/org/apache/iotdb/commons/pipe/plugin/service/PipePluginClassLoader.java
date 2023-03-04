@@ -17,9 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.service;
+package org.apache.iotdb.commons.pipe.plugin.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+
+import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;
 import java.net.URL;
@@ -30,26 +32,27 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@ThreadSafe
 public class PipePluginClassLoader extends URLClassLoader {
 
   private final String libRoot;
 
   /**
-   * If activeQueriesCount is equals to 0, it means that there is no query using this classloader.
-   * This classloader can only be closed when activeQueriesCount is equals to 0.
+   * If activeInstanceCount is equals to 0, it means that there is no instance using this
+   * classloader. This classloader can only be closed when activeInstanceCount is equals to 0.
    */
-  private final AtomicLong activeQueriesCount;
+  private final AtomicLong activeInstanceCount;
 
   /**
    * If this classloader is marked as deprecated, then this classloader can be closed after all
-   * queries that use this classloader are completed.
+   * instances that use this classloader are closed.
    */
   private volatile boolean deprecated;
 
   public PipePluginClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
-    activeQueriesCount = new AtomicLong(0);
+    activeInstanceCount = new AtomicLong(0);
     deprecated = false;
     addURLs();
   }
@@ -65,22 +68,22 @@ public class PipePluginClassLoader extends URLClassLoader {
     }
   }
 
-  public void acquire() {
-    activeQueriesCount.incrementAndGet();
+  public synchronized void acquire() {
+    activeInstanceCount.incrementAndGet();
   }
 
-  public void release() throws IOException {
-    activeQueriesCount.decrementAndGet();
+  public synchronized void release() throws IOException {
+    activeInstanceCount.decrementAndGet();
     closeIfPossible();
   }
 
-  public void markAsDeprecated() throws IOException {
+  public synchronized void markAsDeprecated() throws IOException {
     deprecated = true;
     closeIfPossible();
   }
 
-  public void closeIfPossible() throws IOException {
-    if (deprecated && activeQueriesCount.get() == 0) {
+  private void closeIfPossible() throws IOException {
+    if (deprecated && activeInstanceCount.get() == 0) {
       close();
     }
   }
