@@ -27,12 +27,10 @@ import numpy as np
 import pandas as pd
 import multiprocessing as mp
 
-sys.path.append("..")
-
-from algorithm import model_factory
-from datats import data_factory
-from debug import debug_dataset, debug_model
-from datats.utils.timefeatures import data_transform, timestamp_transform
+from iotdb.mlnode.algorithm import model_factory
+from iotdb.mlnode.datats import data_factory
+from iotdb.mlnode.debug import debug_dataset, debug_model
+from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 from model_storager import modelStorager
 from torch.utils.data import DataLoader
 

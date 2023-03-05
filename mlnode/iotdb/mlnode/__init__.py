@@ -16,6 +16,6 @@
 # under the License.
 #
 
-from . import algorithm, data_provider
+from . import algorithm, datats
 
-__all__ = ['algorithm', 'data_provider']
+__all__ = ['algorithm', 'datats']
