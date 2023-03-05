@@ -177,7 +177,6 @@ public class SeriesScanUtil {
 
     this.dataSource.setUnSeqFileOrderIndex(unSeqFileOrderIndex);
     this.orderUtils.setSeqFileIndexList(seqFileIndexList);
-    this.curSeqFileIndex = seqFileIndexIterator.next();
     this.curUnseqFileIndex = 0;
   }
 
@@ -1375,6 +1374,11 @@ public class SeriesScanUtil {
     @Override
     public void setSeqFileIndexList(List<Integer> seqFileIndexList) {
       seqFileIndexIterator = Lists.reverse(seqFileIndexList).iterator();
+      if (seqFileIndexIterator.hasNext()) {
+        curSeqFileIndex = seqFileIndexIterator.next();
+      } else {
+        curSeqFileIndex = -1;
+      }
     }
   }
 
@@ -1510,6 +1514,11 @@ public class SeriesScanUtil {
     @Override
     public void setSeqFileIndexList(List<Integer> seqFileIndexList) {
       seqFileIndexIterator = seqFileIndexList.iterator();
+      if (seqFileIndexIterator.hasNext()) {
+        curSeqFileIndex = seqFileIndexIterator.next();
+      } else {
+        curSeqFileIndex = dataSource.getSeqResourcesSize();
+      }
     }
   }
 }
