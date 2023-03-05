@@ -78,4 +78,6 @@ public interface Accumulator {
   TSDataType[] getIntermediateType();
 
   TSDataType getFinalType();
+
+  Accumulator copy();
 }

@@ -51,13 +51,13 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected TsBlock inputTsBlock;
 
-  protected final ITimeRangeIterator timeRangeIterator;
+  protected ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   protected TimeRange curTimeRange;
 
   // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
-  protected final List<Aggregator> aggregators;
+  protected List<Aggregator> aggregators;
 
   // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
@@ -93,6 +93,22 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
+  }
+
+  public void setAggregators(List<Aggregator> aggregators) {
+    this.aggregators = aggregators;
+  }
+
+  public void setTimeRangeIterator(ITimeRangeIterator timeRangeIterator) {
+    this.timeRangeIterator = timeRangeIterator;
+  }
+
+  public List<Aggregator> getAggregators() {
+    return aggregators;
+  }
+
+  public ITimeRangeIterator getTimeRangeIterator() {
+    return timeRangeIterator;
   }
 
   @Override

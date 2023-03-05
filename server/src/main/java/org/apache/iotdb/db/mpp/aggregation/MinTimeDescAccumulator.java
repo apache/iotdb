@@ -48,4 +48,9 @@ public class MinTimeDescAccumulator extends MinTimeAccumulator {
   public boolean hasFinalResult() {
     return false;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MinTimeDescAccumulator();
+  }
 }

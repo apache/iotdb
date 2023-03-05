@@ -129,4 +129,9 @@ public class MaxTimeAccumulator implements Accumulator {
     initResult = true;
     maxTime = Math.max(maxTime, curTime);
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MaxTimeAccumulator();
+  }
 }

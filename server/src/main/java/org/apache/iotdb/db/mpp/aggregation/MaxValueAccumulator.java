@@ -322,4 +322,9 @@ public class MaxValueAccumulator implements Accumulator {
       maxResult.setDouble(maxVal);
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MaxValueAccumulator(seriesDataType);
+  }
 }

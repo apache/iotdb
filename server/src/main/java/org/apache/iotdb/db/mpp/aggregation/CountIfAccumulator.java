@@ -152,4 +152,9 @@ public class CountIfAccumulator implements Accumulator {
   public TSDataType getFinalType() {
     return TSDataType.INT64;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new CountIfAccumulator(keepEvaluator, ignoreNull);
+  }
 }

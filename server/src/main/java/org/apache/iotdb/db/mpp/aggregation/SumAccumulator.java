@@ -214,4 +214,9 @@ public class SumAccumulator implements Accumulator {
     }
     return curPositionCount;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new SumAccumulator(seriesDataType);
+  }
 }

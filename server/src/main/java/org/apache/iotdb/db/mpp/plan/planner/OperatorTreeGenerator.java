@@ -122,6 +122,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregatio
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanTraverseOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanTraverseOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
@@ -367,14 +368,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LocalExecutionPlanContext context,
       SeriesSourceNode node,
       SeriesScanOptions.Builder seriesScanOptionsBuilder) {
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SeriesScanTraverseOperator.class.getSimpleName());
-
     int dop = context.getDegreeOfParallelism();
     List<AbstractDataSourceOperator> scanOperatorList = new ArrayList<>();
     List<Operator> childSourceOperator = new ArrayList<>();
@@ -419,8 +412,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.setExchangeSumNum(context.getExchangeSumNum() + 1);
       }
     }
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SeriesScanTraverseOperator.class.getSimpleName());
     SeriesScanTraverseOperator traverseOperator =
         new SeriesScanTraverseOperator(
+            node.getPlanNodeId(),
             operatorContext,
             node.getSeriesPath(),
             node.getScanOrder(),
@@ -437,15 +439,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SeriesAggregationScanOperator.class.getSimpleName());
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
 
+    boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
@@ -475,37 +472,50 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    SeriesAggregationScanOperator aggregateScanOperator =
-        new SeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            scanOptionsBuilder.build(),
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            node.getGroupByTimeParameter(),
-            maxReturnSize);
+    if (context.getDegreeOfParallelism() == 1) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  SeriesAggregationScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
-    return aggregateScanOperator;
+      SeriesAggregationScanOperator aggregateScanOperator =
+          new SeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              scanOptionsBuilder.build(),
+              operatorContext,
+              aggregators,
+              timeRangeIterator,
+              node.getGroupByTimeParameter(),
+              maxReturnSize);
+
+      ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
+      return aggregateScanOperator;
+    } else {
+      return divideSplitToPipeline(
+          context,
+          node,
+          scanOptionsBuilder,
+          aggregators,
+          timeRangeIterator,
+          groupByTimeParameter,
+          maxReturnSize);
+    }
   }
 
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     AlignedPath seriesPath = node.getAlignedPath();
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
+
     boolean ascending = node.getScanOrder() == Ordering.ASC;
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AlignedSeriesAggregationScanOperator.class.getSimpleName());
     List<Aggregator> aggregators = new ArrayList<>();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       checkArgument(
@@ -547,24 +557,134 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
-        new AlignedSeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            scanOptionsBuilder.build(),
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            groupByTimeParameter,
-            maxReturnSize);
+    if (context.getDegreeOfParallelism() == 1) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedSeriesAggregationScanOperator.class.getSimpleName());
 
-    ((DataDriverContext) context.getDriverContext())
-        .addSourceOperator(seriesAggregationScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.getDriverContext().setInputDriver(true);
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
-    return seriesAggregationScanOperator;
+      AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
+          new AlignedSeriesAggregationScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getScanOrder(),
+              scanOptionsBuilder.build(),
+              operatorContext,
+              aggregators,
+              timeRangeIterator,
+              groupByTimeParameter,
+              maxReturnSize);
+
+      ((DataDriverContext) context.getDriverContext())
+          .addSourceOperator(seriesAggregationScanOperator);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
+      return seriesAggregationScanOperator;
+    } else {
+      return divideSplitToPipeline(
+          context,
+          node,
+          scanOptionsBuilder,
+          aggregators,
+          timeRangeIterator,
+          groupByTimeParameter,
+          maxReturnSize);
+    }
+  }
+
+  private Operator divideSplitToPipeline(
+      LocalExecutionPlanContext context,
+      SeriesSourceNode node,
+      SeriesScanOptions.Builder seriesScanOptionsBuilder,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    int dop = context.getDegreeOfParallelism();
+    List<AbstractDataSourceOperator> scanOperatorList = new ArrayList<>();
+    List<Operator> childSourceOperator = new ArrayList<>();
+    for (int i = 0; i < dop; i++) {
+      PlanNodeId planNodeId = new PlanNodeId(String.format("%s-%d", node.getPlanNodeId(), i));
+      // the first split belongs to parentPipeline
+      LocalExecutionPlanContext subContext = (i == 0) ? context : context.createSubContext();
+      OperatorContext scanOperatorContext;
+      AbstractDataSourceOperator aggScanOperator;
+      if (node instanceof SeriesAggregationScanNode) {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    SeriesAggregationScanOperator.class.getSimpleName());
+        aggScanOperator =
+            new SeriesAggregationScanOperator(
+                planNodeId,
+                node.getScanOrder(),
+                scanOperatorContext,
+                aggregators,
+                timeRangeIterator,
+                groupByTimeParameter,
+                maxReturnSize);
+      } else {
+        scanOperatorContext =
+            subContext
+                .getDriverContext()
+                .addOperatorContext(
+                    subContext.getNextOperatorId(),
+                    planNodeId,
+                    AlignedSeriesAggregationScanOperator.class.getSimpleName());
+        aggScanOperator =
+            new AlignedSeriesAggregationScanOperator(
+                planNodeId,
+                ((AlignedSeriesScanNode) node).getAlignedPath(),
+                node.getScanOrder(),
+                scanOperatorContext,
+                aggregators,
+                timeRangeIterator,
+                groupByTimeParameter,
+                maxReturnSize);
+      }
+
+      scanOperatorList.add(aggScanOperator);
+      if (i == 0) {
+        childSourceOperator.add(aggScanOperator);
+        context.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+      } else {
+        subContext.getTimeSliceAllocator().recordExecutionWeight(scanOperatorContext, 1);
+        Operator exchangeOperator =
+            createNewPipelineForChildOperation(
+                context, subContext, aggScanOperator, planNodeId, false);
+        childSourceOperator.add(exchangeOperator);
+        context.setExchangeSumNum(context.getExchangeSumNum() + 1);
+      }
+    }
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SeriesAggregationScanTraverseOperator.class.getSimpleName());
+    SeriesAggregationScanTraverseOperator traverseOperator =
+        new SeriesAggregationScanTraverseOperator(
+            node.getPlanNodeId(),
+            operatorContext,
+            node.getSeriesPath(),
+            node.getScanOrder(),
+            childSourceOperator,
+            scanOperatorList,
+            seriesScanOptionsBuilder,
+            (node instanceof AlignedSeriesAggregationScanNode),
+            aggregators,
+            timeRangeIterator.copy(),
+            maxReturnSize);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(traverseOperator);
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return traverseOperator;
   }
 
   @Override

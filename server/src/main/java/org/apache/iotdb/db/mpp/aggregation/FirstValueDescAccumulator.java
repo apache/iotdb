@@ -154,4 +154,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     }
     return curPositionCount;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new FirstValueDescAccumulator(seriesDataType);
+  }
 }

@@ -199,4 +199,17 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     curTimeRange = null;
     hasCachedTimeRange = false;
   }
+
+  @Override
+  public ITimeRangeIterator copy() {
+    return new AggrWindowIterator(
+        startTime,
+        endTime,
+        interval,
+        slidingStep,
+        isAscending,
+        isSlidingStepByMonth,
+        isIntervalByMonth,
+        leftCRightO);
+  }
 }

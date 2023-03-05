@@ -43,7 +43,7 @@ public class Aggregator {
   protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
-  protected final AggregationStep step;
+  protected AggregationStep step;
 
   protected IWindow curWindow;
 
@@ -165,5 +165,21 @@ public class Aggregator {
   public void updateWindow(IWindow curWindow) {
     reset();
     this.curWindow = curWindow;
+  }
+
+  public Accumulator getAccumulator() {
+    return accumulator;
+  }
+
+  public void setStep(AggregationStep step) {
+    this.step = step;
+  }
+
+  public AggregationStep getStep() {
+    return step;
+  }
+
+  public Aggregator copy() {
+    return new Aggregator(accumulator.copy(), step, inputLocationList);
   }
 }

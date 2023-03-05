@@ -229,4 +229,9 @@ public class AvgAccumulator implements Accumulator {
     }
     return curPositionCount;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new AvgAccumulator(seriesDataType);
+  }
 }

@@ -170,4 +170,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
 
     return curPositionCount;
   }
+
+  @Override
+  public Accumulator copy() {
+    return new LastValueDescAccumulator(seriesDataType);
+  }
 }

@@ -322,4 +322,9 @@ public class MinValueAccumulator implements Accumulator {
       minResult.setDouble(minVal);
     }
   }
+
+  @Override
+  public Accumulator copy() {
+    return new MinValueAccumulator(seriesDataType);
+  }
 }

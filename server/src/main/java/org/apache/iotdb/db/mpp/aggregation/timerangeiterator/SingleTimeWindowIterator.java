@@ -76,4 +76,9 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   public long getTotalIntervalNum() {
     return 1;
   }
+
+  @Override
+  public ITimeRangeIterator copy() {
+    return new SingleTimeWindowIterator(startTime, endTime);
+  }
 }

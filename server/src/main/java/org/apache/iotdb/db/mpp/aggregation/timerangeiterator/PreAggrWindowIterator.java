@@ -190,4 +190,10 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       return intervalNum * 2 + 2;
     }
   }
+
+  @Override
+  public ITimeRangeIterator copy() {
+    return new PreAggrWindowIterator(
+        startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
+  }
 }

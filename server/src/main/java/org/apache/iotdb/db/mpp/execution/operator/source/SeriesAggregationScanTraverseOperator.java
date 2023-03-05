@@ -22,102 +22,57 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions.Builder;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-
-import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class SeriesScanTraverseOperator extends AbstractSourceOperator
+public class SeriesAggregationScanTraverseOperator extends AggregationOperator
     implements DataSourceOperator {
 
-  private final PartialPath seriesPath;
-  private final Ordering scanOrder;
-  private List<Operator> childSourceOperator;
-  private int curChildIndex;
+  protected final PlanNodeId sourceId;
+  protected final PartialPath seriesPath;
+  protected final Ordering scanOrder;
 
-  private List<AbstractDataSourceOperator> scanOperatorList;
-  private final boolean isAligned;
-  private final SeriesScanOptions.Builder seriesScanOptionsBuilder;
-  private final int dop;
+  protected List<AbstractDataSourceOperator> scanOperatorList;
+  protected final boolean isAligned;
+  protected final SeriesScanOptions.Builder seriesScanOptionsBuilder;
+  protected final int dop;
 
-  public SeriesScanTraverseOperator(
+  public SeriesAggregationScanTraverseOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath seriesPath,
       Ordering scanOrder,
       List<Operator> childSourceOperator,
       List<AbstractDataSourceOperator> scanOperatorList,
-      SeriesScanOptions.Builder seriesScanOptionsBuilder,
-      boolean isAligned) {
+      Builder seriesScanOptionsBuilder,
+      boolean isAligned,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      long maxReturnSize) {
+    super(operatorContext, aggregators, timeRangeIterator, childSourceOperator, maxReturnSize);
     this.sourceId = sourceId;
-    this.operatorContext = operatorContext;
     this.seriesPath = seriesPath;
     this.scanOrder = scanOrder;
-    this.childSourceOperator = childSourceOperator;
     this.scanOperatorList = scanOperatorList;
     this.dop = childSourceOperator.size();
     this.seriesScanOptionsBuilder = seriesScanOptionsBuilder;
     this.isAligned = isAligned;
-  }
-
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    if (!isCurChildValid()) {
-      return NOT_BLOCKED;
-    }
-    return childSourceOperator.get(curChildIndex).isBlocked();
-  }
-
-  @Override
-  public TsBlock next() {
-    if (!childSourceOperator.get(curChildIndex).hasNextWithTimer()) {
-      getNextChildIndex();
-      return null;
-    }
-    return childSourceOperator.get(curChildIndex).nextWithTimer();
-  }
-
-  @Override
-  public boolean hasNext() {
-    return isCurChildValid();
-  }
-
-  @Override
-  public void close() throws Exception {
-    for (Operator child : childSourceOperator) {
-      child.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
-    return !this.hasNextWithTimer();
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return maxReturnSize;
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return maxReturnSize;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
   }
 
   @Override
@@ -146,8 +101,13 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       }
     }
     if (seqFileNum == 0) {
-      childSourceOperator = Collections.emptyList();
-      initFirstChildIndex();
+      // leave one to generate empty result
+      closeRedundantSourceOperator(1);
+      SeriesScanUtil seriesScanUtil = createSeriesScanUtil(seriesScanOptionsBuilder.build());
+      seriesScanUtil.initQueryDataSource(
+          dataSource, Collections.emptyList(), dataSource.getUnSeqFileOrderIndex());
+      scanOperatorList.get(0).setSeriesScanUtil(seriesScanUtil);
+      updateAggregators();
       return;
     }
 
@@ -207,7 +167,7 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
           // if there is no more tsFile can be processed
         } else {
           closeRedundantSourceOperator(i);
-          initFirstChildIndex();
+          updateAggregators();
           return;
         }
       }
@@ -221,15 +181,67 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
       seriesScanUtil.initQueryDataSource(
           dataSource, seqFileIndexList, dataSource.getUnSeqFileOrderIndex());
       scanOperatorList.get(i).setSeriesScanUtil(seriesScanUtil);
-      if (childSourceOperator.get(i) instanceof ExchangeOperator) {
-        ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
+      if (children.get(i) instanceof ExchangeOperator) {
+        ((ExchangeOperator) children.get(i)).allowRunning();
       }
       // update next time range
       startTime = curMaxTime + 1;
       endTime = Math.min(startTime + avgTime, maxTime);
     }
-    // initialize first child index
-    initFirstChildIndex();
+    updateAggregators();
+  }
+
+  /**
+   * Aggregators and timeRangeIterators of all scanOperators were the same reference to reduce
+   * memory footprint, now we reallocate aggregators and deep copy timeRangeIterator according to
+   * actual used aggScanOperator.
+   */
+  private void updateAggregators() {
+    List<Aggregator> childAggregators = new ArrayList<>();
+    for (int i = 0; i < scanOperatorList.size(); i++) {
+      AbstractSeriesAggregationScanOperator scanOperator =
+          (AbstractSeriesAggregationScanOperator) scanOperatorList.get(i);
+      if (i == 0) {
+        for (Aggregator oldAggregator : scanOperator.getAggregators()) {
+          Aggregator newAggregator = oldAggregator.copy();
+          newAggregator.setStep(AggregationStep.PARTIAL);
+          childAggregators.add(newAggregator);
+        }
+        scanOperator.setAggregators(childAggregators);
+      } else {
+        List<Aggregator> aggregators = new ArrayList<>();
+        childAggregators.forEach(newAggregator -> aggregators.add(newAggregator.copy()));
+        scanOperator.setAggregators(aggregators);
+      }
+      scanOperator.setTimeRangeIterator(timeRangeIterator.copy());
+    }
+    // update aggregator of traverse operator
+    for (int i = 0; i < aggregators.size(); i++) {
+      AggregationStep newStep =
+          aggregators.get(i).getStep().isOutputPartial()
+              ? AggregationStep.INTERMEDIATE
+              : AggregationStep.FINAL;
+      // calculate new input location
+      List<InputLocation[]> inputLocationList = new ArrayList<>();
+      int columnIndex = 0;
+      for (Aggregator childAggregator : childAggregators) {
+        int partialResultLen = childAggregator.getOutputType().length;
+        for (int j = 0; j < scanOperatorList.size(); j++) {
+          if (partialResultLen == 1) {
+            inputLocationList.add(new InputLocation[] {new InputLocation(j, columnIndex)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  new InputLocation(j, columnIndex), new InputLocation(j, columnIndex + 1)
+                });
+          }
+        }
+        columnIndex += partialResultLen;
+      }
+      Aggregator newAggregator =
+          new Aggregator(aggregators.get(i).getAccumulator().copy(), newStep, inputLocationList);
+      aggregators.set(i, newAggregator);
+    }
   }
 
   private Filter getGlobalTimeFilter() {
@@ -246,11 +258,11 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
    * immediately that won't waste system resource.
    */
   private void closeRedundantSourceOperator(int index) {
-    for (int i = index; i < childSourceOperator.size(); i++) {
+    for (int i = index; i < children.size(); i++) {
       scanOperatorList.get(i).setFinished(true);
-      ((ExchangeOperator) childSourceOperator.get(i)).allowRunning();
+      ((ExchangeOperator) children.get(i)).allowRunning();
     }
-    childSourceOperator = new ArrayList<>(childSourceOperator.subList(0, index));
+    children = new ArrayList<>(children.subList(0, index));
     scanOperatorList = new ArrayList<>(scanOperatorList.subList(0, index));
   }
 
@@ -264,28 +276,8 @@ public class SeriesScanTraverseOperator extends AbstractSourceOperator
     }
   }
 
-  private void initFirstChildIndex() {
-    // initialize first child index
-    if (scanOrder.isAscending()) {
-      curChildIndex = 0;
-    } else {
-      curChildIndex = childSourceOperator.size() - 1;
-    }
-  }
-
-  private void getNextChildIndex() {
-    if (scanOrder.isAscending()) {
-      curChildIndex++;
-    } else {
-      curChildIndex--;
-    }
-  }
-
-  private boolean isCurChildValid() {
-    if (scanOrder.isAscending()) {
-      return curChildIndex < childSourceOperator.size();
-    } else {
-      return curChildIndex >= 0;
-    }
+  @Override
+  public PlanNodeId getSourceId() {
+    return sourceId;
   }
 }
