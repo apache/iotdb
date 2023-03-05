@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions.Builder;
@@ -107,7 +106,7 @@ public class SeriesAggregationScanTraverseOperator extends AggregationOperator
       seriesScanUtil.initQueryDataSource(
           dataSource, Collections.emptyList(), dataSource.getUnSeqFileOrderIndex());
       scanOperatorList.get(0).setSeriesScanUtil(seriesScanUtil);
-      updateAggregators();
+      updateAggregatorsInputLocation();
       return;
     }
 
@@ -167,7 +166,7 @@ public class SeriesAggregationScanTraverseOperator extends AggregationOperator
           // if there is no more tsFile can be processed
         } else {
           closeRedundantSourceOperator(i);
-          updateAggregators();
+          updateAggregatorsInputLocation();
           return;
         }
       }
@@ -188,7 +187,7 @@ public class SeriesAggregationScanTraverseOperator extends AggregationOperator
       startTime = curMaxTime + 1;
       endTime = Math.min(startTime + avgTime, maxTime);
     }
-    updateAggregators();
+    updateAggregatorsInputLocation();
   }
 
   /**
@@ -196,51 +195,26 @@ public class SeriesAggregationScanTraverseOperator extends AggregationOperator
    * memory footprint, now we reallocate aggregators and deep copy timeRangeIterator according to
    * actual used aggScanOperator.
    */
-  private void updateAggregators() {
-    List<Aggregator> childAggregators = new ArrayList<>();
-    for (int i = 0; i < scanOperatorList.size(); i++) {
-      AbstractSeriesAggregationScanOperator scanOperator =
-          (AbstractSeriesAggregationScanOperator) scanOperatorList.get(i);
-      if (i == 0) {
-        for (Aggregator oldAggregator : scanOperator.getAggregators()) {
-          Aggregator newAggregator = oldAggregator.copy();
-          newAggregator.setStep(AggregationStep.PARTIAL);
-          childAggregators.add(newAggregator);
-        }
-        scanOperator.setAggregators(childAggregators);
-      } else {
-        List<Aggregator> aggregators = new ArrayList<>();
-        childAggregators.forEach(newAggregator -> aggregators.add(newAggregator.copy()));
-        scanOperator.setAggregators(aggregators);
-      }
-      scanOperator.setTimeRangeIterator(timeRangeIterator.copy());
-    }
-    // update aggregator of traverse operator
+  private void updateAggregatorsInputLocation() {
+    int columnIndex = 0;
+    List<Aggregator> childAggregators =
+        ((AbstractSeriesAggregationScanOperator) scanOperatorList.get(0)).getAggregators();
     for (int i = 0; i < aggregators.size(); i++) {
-      AggregationStep newStep =
-          aggregators.get(i).getStep().isOutputPartial()
-              ? AggregationStep.INTERMEDIATE
-              : AggregationStep.FINAL;
       // calculate new input location
       List<InputLocation[]> inputLocationList = new ArrayList<>();
-      int columnIndex = 0;
-      for (Aggregator childAggregator : childAggregators) {
-        int partialResultLen = childAggregator.getOutputType().length;
-        for (int j = 0; j < scanOperatorList.size(); j++) {
-          if (partialResultLen == 1) {
-            inputLocationList.add(new InputLocation[] {new InputLocation(j, columnIndex)});
-          } else {
-            inputLocationList.add(
-                new InputLocation[] {
-                  new InputLocation(j, columnIndex), new InputLocation(j, columnIndex + 1)
-                });
-          }
+      int partialResultLen = childAggregators.get(i).getOutputType().length;
+      for (int j = 0; j < scanOperatorList.size(); j++) {
+        if (partialResultLen == 1) {
+          inputLocationList.add(new InputLocation[] {new InputLocation(j, columnIndex)});
+        } else {
+          inputLocationList.add(
+              new InputLocation[] {
+                new InputLocation(j, columnIndex), new InputLocation(j, columnIndex + 1)
+              });
         }
-        columnIndex += partialResultLen;
       }
-      Aggregator newAggregator =
-          new Aggregator(aggregators.get(i).getAccumulator().copy(), newStep, inputLocationList);
-      aggregators.set(i, newAggregator);
+      columnIndex += partialResultLen;
+      aggregators.get(i).setInputLocationList(inputLocationList);
     }
   }
 
@@ -264,6 +238,7 @@ public class SeriesAggregationScanTraverseOperator extends AggregationOperator
     }
     children = new ArrayList<>(children.subList(0, index));
     scanOperatorList = new ArrayList<>(scanOperatorList.subList(0, index));
+    inputOperatorsCount = children.size();
   }
 
   private SeriesScanUtil createSeriesScanUtil(SeriesScanOptions scanOptions) {

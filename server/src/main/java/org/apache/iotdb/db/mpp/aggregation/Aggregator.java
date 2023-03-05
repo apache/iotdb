@@ -179,6 +179,10 @@ public class Aggregator {
     return step;
   }
 
+  public void setInputLocationList(List<InputLocation[]> inputLocationList) {
+    this.inputLocationList = inputLocationList;
+  }
+
   public Aggregator copy() {
     return new Aggregator(accumulator.copy(), step, inputLocationList);
   }

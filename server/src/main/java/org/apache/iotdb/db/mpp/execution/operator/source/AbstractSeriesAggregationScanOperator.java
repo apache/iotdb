@@ -128,6 +128,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean hasNext() {
+    if (finished) {
+      return false;
+    }
     return timeRangeIterator.hasNextTimeRange();
   }
 

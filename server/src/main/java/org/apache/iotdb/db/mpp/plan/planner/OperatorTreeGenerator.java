@@ -191,6 +191,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -605,12 +606,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int dop = context.getDegreeOfParallelism();
     List<AbstractDataSourceOperator> scanOperatorList = new ArrayList<>();
     List<Operator> childSourceOperator = new ArrayList<>();
+
+    List<Aggregator> childAggregators = new ArrayList<>();
+    for (Aggregator oldAggregator : aggregators) {
+      Aggregator newAggregator = oldAggregator.copy();
+      newAggregator.setStep(AggregationStep.PARTIAL);
+      childAggregators.add(newAggregator);
+    }
     for (int i = 0; i < dop; i++) {
       PlanNodeId planNodeId = new PlanNodeId(String.format("%s-%d", node.getPlanNodeId(), i));
       // the first split belongs to parentPipeline
       LocalExecutionPlanContext subContext = (i == 0) ? context : context.createSubContext();
       OperatorContext scanOperatorContext;
       AbstractDataSourceOperator aggScanOperator;
+      List<Aggregator> aggregatorsCopy = new ArrayList<>();
+      childAggregators.forEach(aggregator -> aggregatorsCopy.add(aggregator.copy()));
+
       if (node instanceof SeriesAggregationScanNode) {
         scanOperatorContext =
             subContext
@@ -624,8 +635,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 planNodeId,
                 node.getScanOrder(),
                 scanOperatorContext,
-                aggregators,
-                timeRangeIterator,
+                aggregatorsCopy,
+                timeRangeIterator.copy(),
                 groupByTimeParameter,
                 maxReturnSize);
       } else {
@@ -639,11 +650,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         aggScanOperator =
             new AlignedSeriesAggregationScanOperator(
                 planNodeId,
-                ((AlignedSeriesScanNode) node).getAlignedPath(),
+                ((AlignedSeriesAggregationScanNode) node).getAlignedPath(),
                 node.getScanOrder(),
                 scanOperatorContext,
-                aggregators,
-                timeRangeIterator,
+                aggregatorsCopy,
+                timeRangeIterator.copy(),
                 groupByTimeParameter,
                 maxReturnSize);
       }
@@ -662,6 +673,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
+    // update aggregator of traverse operator
+    List<Aggregator> parentAggregators = new ArrayList<>();
+    for (Aggregator oldAggregator : aggregators) {
+      Aggregator newAggregator = oldAggregator.copy();
+      newAggregator.setStep(
+          oldAggregator.getStep().isOutputPartial()
+              ? AggregationStep.INTERMEDIATE
+              : AggregationStep.FINAL);
+      parentAggregators.add(newAggregator);
+    }
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -679,7 +700,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             scanOperatorList,
             seriesScanOptionsBuilder,
             (node instanceof AlignedSeriesAggregationScanNode),
-            aggregators,
+            parentAggregators,
             timeRangeIterator.copy(),
             maxReturnSize);
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(traverseOperator);
