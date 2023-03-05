@@ -15,10 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from exception import BadNodeUrlError
-from log import logger
 
-from utils.thrift.common.ttypes import TEndPoint
+
+from log import logger
+from exception import BadNodeUrlError
+from iotdb.thrift.common.ttypes import TEndPoint
+from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
@@ -46,3 +48,9 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
     except ValueError as e:
         logger.warning("Illegal endpoint url format: {} ({})".format(endpoint_url, e))
         raise BadNodeUrlError(endpoint_url)
+
+
+def parse_training_request(req: TCreateTrainingTaskReq):
+    #TODO
+    model_config, data_config, trial_config = {}, {}, {}
+    return model_config, data_config, trial_config

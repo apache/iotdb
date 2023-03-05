@@ -15,12 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import logging
-import os
-from logging.config import fileConfig
 
+
+import os
+import logging
+from logging.config import fileConfig
 from constant import (MLNODE_CONF_DIRECTORY_NAME,
-                                   MLNODE_LOG_CONF_FILE_NAME)
+                      MLNODE_LOG_CONF_FILE_NAME)
 
 log_conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_LOG_CONF_FILE_NAME)
 if os.path.exists(log_conf_file):

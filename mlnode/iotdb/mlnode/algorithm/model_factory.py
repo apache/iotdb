@@ -17,21 +17,21 @@
 #
 
 
-from .models.DLinear import *
-from .models.NBeats import *
+from iotdb.mlnode.algorithm.models.DLinear import *
+from iotdb.mlnode.algorithm.models.NBeats import *
 
 
 support_forecasting_model = []
 support_forecasting_model.extend(DLinear.support_model_names)
 support_forecasting_model.extend(NBeats.support_model_names)
 
+"""
+Common configs for all forecasting model with default values
+"""
 
-"""
-Common configs for all forecating model with default values
-"""
+
 def _common_cfg(**kwargs):
     return {
-        'task_type': 'm',
         'input_len': 96,
         'pred_len': 96,
         'input_vars': 1,
@@ -39,24 +39,22 @@ def _common_cfg(**kwargs):
         **kwargs
     }
 
+
 """
-Task configs, which is all 'multivariate forecasting' currently
+Common forecasting task configs
 """
 support_common_cfgs = {
     # univariate forecasting
     's': _common_cfg(
-        task_type='s',
         input_vars=1,
         output_vars=1),
 
     # univariate forecasting with observable exogenous variables
     'ms': _common_cfg(
-        task_type='ms',
         output_vars=1),
 
-    # multivariate forecasting
-    'm': _common_cfg(
-        task_type='m'),
+    # multivariate forecasting, current support this only
+    'm': _common_cfg(),
 }
 
 
@@ -90,34 +88,39 @@ def create_forecast_model(
 
     Args:
         model_name: see available models by `list_model`
+        task_type: 'm' for multivariate forecasting, 'ms' for covariate forecasting, 's' for univariate forecasting
         input_len: time length of model input 
         pred_len: time length of model output
-
+        input_vars: number of input series
+        output_vars: number of output series
+        kwargs: for specific model configs, see returned `model_config` with kwargs=None
     Returns:
         model: torch.nn.Module
         model_config: dict of model configurations
     """
     if not is_model(model_name):
-        raise RuntimeError('Unknown model (%s)' % model_name)
-    if task_type not in ['s', 'ms', 'm']:
-        raise RuntimeError('Unknown task (%s)' % task_type)
+        raise RuntimeError(f'Unknown forecasting model: ({model_name}),'
+                           f' which should be one of {list_model()}')
+    if task_type not in support_common_cfgs.keys():
+        raise RuntimeError(f'Unknown forecasting task type: ({task_type})'
+                           f' which should be one of {support_common_cfgs.keys()}')
 
     common_cfg = support_common_cfgs[task_type]
-    common_cfg['input_len']=input_len
-    common_cfg['pred_len']=pred_len
-    common_cfg['input_vars']=input_vars
-    common_cfg['output_vars']=output_vars
+    common_cfg['input_len'] = input_len
+    common_cfg['pred_len'] = pred_len
+    common_cfg['input_vars'] = input_vars
+    common_cfg['output_vars'] = output_vars
+    assert input_len > 0 and pred_len > 0, 'Length of input/output series should larger than 0'
+    assert input_vars > 0 and output_vars > 0, 'Number of input/output series should larger than 0'
 
     create_fn = eval(model_name)
     model, model_config = create_fn(
-        common_config=common_cfg, 
+        common_config=common_cfg,
         **kwargs
     )
-    model_config['model_name']=model_name
+    model_config['task_type'] = task_type
+    model_config['model_name'] = model_name
 
     return model, model_config
 
 
-def load_model(model, checkpoint_path):
-    # TODO, this duty should covered by model_stroager
-    return model

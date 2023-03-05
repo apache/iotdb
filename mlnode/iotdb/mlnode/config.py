@@ -18,13 +18,12 @@
 import os
 
 from dynaconf import Dynaconf
-
 from constant import (MLNODE_CONF_DIRECTORY_NAME,
-                                   MLNODE_CONF_FILE_NAME)
+                      MLNODE_CONF_FILE_NAME)
 from exception import BadNodeUrlError
 from log import logger
 from util import parse_endpoint_url
-from utils.thrift.common.ttypes import TEndPoint
+from iotdb.thrift.common.ttypes import TEndPoint
 
 
 class MLNodeConfig(object):
@@ -39,7 +38,7 @@ class MLNodeConfig(object):
         # Target DataNode to be connected by MLNode
         self.__mn_target_data_node: TEndPoint = TEndPoint("127.0.0.1", 10730)
 
-        # Compacity of MLNode Training Trial Pool
+        # Capacity of MLNode Training Trial Pool
         self.__process_pool_num: int = 20
 
     def get_mn_rpc_address(self) -> str:
@@ -68,7 +67,7 @@ class MLNodeConfig(object):
 
     def get_mn_process_pool_num(self) -> int:
         return self.__process_pool_num
-    
+
     def set_mn_process_pool_num(self, process_pool_num: int) -> None:
         self.__process_pool_num = process_pool_num
 

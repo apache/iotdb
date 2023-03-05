@@ -19,16 +19,15 @@
 
 import torch
 import torch.nn as nn
-import numpy as np
 from typing import Tuple
 
-
-__all__ = ['NBeats', 'nbeats'] #, 'nbeats_s', 'nbeats_t']
-
+__all__ = ['NBeats', 'nbeats']  # , 'nbeats_s', 'nbeats_t']
 
 """
 Specific configs for NBeats with default values
 """
+
+
 def _model_cfg(**kwargs):
     return {
         'block_type': 'g',
@@ -39,6 +38,7 @@ def _model_cfg(**kwargs):
         # 'degree_of_polynomial': 3,
         **kwargs
     }
+
 
 """
 Specific configs for NBeats variants
@@ -124,7 +124,7 @@ class GenericBasis(nn.Module):
 
 class NBeatsBlock(nn.Module):
     """
-    N-BEATS block which takes a basis function as an argument.
+    N-BEATS block which takes a basis function as an argument
     """
 
     def __init__(self,
@@ -134,12 +134,14 @@ class NBeatsBlock(nn.Module):
                  layers: int,
                  layer_size: int):
         """
-        N-BEATS block.
-        :param input_size: Insample size.
-        :param theta_size:  Number of parameters for the basis function.
-        :param basis_function: Basis function which takes the parameters and produces backcast and forecast.
-        :param layers: Number of layers.
-        :param layer_size: Layer size.
+        N-BEATS block
+
+        Args:
+            input_size: input sample size
+            theta_size:  number of parameters for the basis function
+            basis_function: basis function which takes the parameters and produces backcast and forecast
+            layers: number of layers
+            layer_size: layer size
         """
         super().__init__()
         self.layers = nn.ModuleList([nn.Linear(in_features=input_size, out_features=layer_size)] +
@@ -178,6 +180,13 @@ class NBeatsUnivar(nn.Module):
         return forecast
 
 
+block_dict = {
+    'g': GenericBasis,
+    # 't': TrendBasis,
+    # 's': SeasonalityBasis,
+}
+
+
 class NBeats(nn.Module):
     """
     Neural Basis Expansion Analysis Time Series
@@ -185,56 +194,55 @@ class NBeats(nn.Module):
     support_model_names = support_model_cfgs.keys()
 
     def __init__(
-        self, 
-        block_type='g',
-        d_model=128,
-        inner_layers=4,
-        outer_layers=4,
-        # harmonics=4,
-        # degree_of_polynomial=3,
-        input_len=96, 
-        pred_len=96, 
-        input_vars=1,
-        output_vars=1,
-        task_type='m', # TODO, support ms
+            self,
+            block_type='g',
+            d_model=128,
+            inner_layers=4,
+            outer_layers=4,
+            # harmonics=4,
+            # degree_of_polynomial=3,
+            input_len=96,
+            pred_len=96,
+            input_vars=1,
+            output_vars=1,
+            task_type='m',  # TODO, support ms
+            model_name='nbeats',
     ):
         super(NBeats, self).__init__()
-        block_dict = {
-            'g': GenericBasis,
-            # 't': TrendBasis,
-            # 's': SeasonalityBasis,
-        }
-        self.enc_in = input_vars
 
+        self.enc_in = input_vars
         self.block = block_dict[block_type]
-        
+        self.task_type = task_type
+        self.model_name = model_name
 
         self.model = NBeatsUnivar(torch.nn.ModuleList([NBeatsBlock(input_size=input_len,
-                                                             theta_size=input_len + pred_len,
-                                                             basis_function=self.block(backcast_size=input_len,
-                                                                                        forecast_size=pred_len,
-                                                                                        # harmonics=harmonics,
-                                                                                        # degree_of_polynomial=degree_of_polynomial
-                                                                                        ),
-                                                             layers=inner_layers,
-                                                             layer_size=d_model)
-                                                 for _ in range(outer_layers)]))
+                                                                   theta_size=input_len + pred_len,
+                                                                   basis_function=self.block(backcast_size=input_len,
+                                                                                             forecast_size=pred_len,
+                                                                                             # harmonics=harmonics,
+                                                                                             # degree_of_polynomial=degree_of_polynomial
+                                                                                             ),
+                                                                   layers=inner_layers,
+                                                                   layer_size=d_model)
+                                                       for _ in range(outer_layers)]))
 
     def forward(self, x, x_t, y, y_t):
         # x: [Batch, Input length, Channel]
         res = []
         for i in range(self.enc_in):
-            dec_out = self.model(x[:,:,i])
+            dec_out = self.model(x[:, :, i])
             res.append(dec_out)
-        return torch.stack(res, dim=-1) # to [Batch, Output length, Channel]
+        return torch.stack(res, dim=-1)  # to [Batch, Output length, Channel]
 
 
-def nbeats(common_config, d_model=128, inner_layers=4, outer_layers=4):
+def nbeats(common_config, d_model=128, inner_layers=4, outer_layers=4, **kwargs):
     cfg = support_model_cfgs['nbeats']
     cfg.update(**common_config)
-    cfg['d_model']=d_model
-    cfg['inner_layers']=inner_layers
-    cfg['outer_layers']=outer_layers
+    assert d_model > 0, 'Model dimension (d_model) of nbeats should larger than 0'
+    assert inner_layers > 0 and outer_layers > 0, 'Number of inner/outer layers of nbeats should larger than 0'
+    cfg['d_model'] = d_model
+    cfg['inner_layers'] = inner_layers
+    cfg['outer_layers'] = outer_layers
     return NBeats(**cfg), cfg
 
 # #TODO: test model usability

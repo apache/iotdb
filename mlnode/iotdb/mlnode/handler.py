@@ -15,17 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
 
-from utils.thrift.common.ttypes import TSStatus
-from utils.thrift.mlnode import IMLNodeRPCService
-from utils.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
-                                        TDeleteModelReq, TForecastReq,
+
+from enum import Enum
+from iotdb.thrift.common.ttypes import TSStatus
+from iotdb.thrift.mlnode import IMLNodeRPCService
+from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+                                        TDeleteModelReq,
+                                        TForecastReq,
                                         TForecastResp)
 
-
-from manager import Manager
+from iotdb.mlnode.manager import Manager
+from iotdb.mlnode.util import parse_training_request
 from debug import *
+
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
@@ -46,17 +49,18 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         pass
 
     def delete_model(self, req: TDeleteModelReq):
+        #TODO
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def create_training_task(self, req: TCreateTrainingTaskReq):
         # TODO: parse_request
-        
-        config = default_configs()
+        # config = parse_training_request()
+        config = debug_model_config(), debug_data_config(), debug_trial_config()
         self.taskManager.create_single_training_task_pool(config)
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
-    def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
-        forecast_result = b'forecast result'
-        self.taskManager.create_inference_task_pool(default_configs())
-        return TForecastResp(status, forecast_result)
+    # def forecast(self, req: TForecastReq):
+    #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")
+    #     forecast_result = b'forecast result'
+    #     self.taskManager.create_inference_task_pool(default_configs())
+    #     return TForecastResp(status, forecast_result)
