@@ -56,7 +56,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         # TODO: parse_request
         # config = parse_training_request()
         config = debug_model_config(), debug_data_config(), debug_trial_config()
-        self.taskManager.create_single_training_task_pool(config)
+        self.taskManager.submit_single_training_task(config)
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     # def forecast(self, req: TForecastReq):

@@ -58,19 +58,19 @@ def _create_tuning_task(configs, task_map, task_id):
     study = optuna.create_study(direction='minimize')
     study.optimize(TrainingTrialObjective(configs), n_trials=20)
     pid = os.getpid()
-    task_map[task_id][pid] = 'finished'
+    task_map[task_id][trial_id] = pid
 
 
-def _create_inference_task(configs, task_map, task_id):
-    trial = ForecastingInferenceTrial(configs, debug_inference_data())
-    trial.start()
+# def _create_inference_task(configs, task_map, task_id):
+#     trial = ForecastingInferenceTrial(configs, debug_inference_data())
+#     trial.start()
 
 
 class Manager(object):
     def __init__(self, pool_num):
         """
         resource_manager: a manager that manage resources shared between processes
-        task_map: a map shared between processes and storing the tasks' states
+        task_map: a map shared between processes and storing the tasks' states #TODO: trial_id-pid
         pool: a multiprocessing process pool
         """
         self.resource_manager = mp.Manager()
@@ -78,7 +78,7 @@ class Manager(object):
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
         self.pool = mp.Pool(pool_num)
 
-    def create_single_training_task_pool(self, configs):
+    def submit_single_training_task(self, configs):
         """
         Create a single training task based on configs; will add a process to the pool
         """
@@ -96,14 +96,14 @@ class Manager(object):
         self.task_map[task_id] = self.resource_manager.dict()
         return task_id
 
-    def create_inference_task_pool(self, configs):
-        """
-        Create an inference based on configs; will add the inference process to the pool
-        """
-        task_id = self.generate_taskid()
-        self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id,))
-        self.task_map[task_id] = self.resource_manager.dict()
-        return task_id
+    # def create_inference_task_pool(self, configs):
+    #     """
+    #     Create an inference based on configs; will add the inference process to the pool
+    #     """
+    #     task_id = self.generate_taskid()
+    #     self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id,))
+    #     self.task_map[task_id] = self.resource_manager.dict()
+    #     return task_id
 
     def kill_process(self, pid):
         """
