@@ -117,6 +117,7 @@ public abstract class AbstractCsvTool {
   protected static String timeFormat;
   protected static Session session;
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCsvTool.class);
+
   protected AbstractCsvTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
@@ -138,8 +139,7 @@ public abstract class AbstractCsvTool {
     zoneId = ZoneId.of(session.getTimeZone());
   }
 
-  protected static void parseBasicParams(CommandLine commandLine)
-      throws ArgsErrorException {
+  protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
     host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
@@ -265,7 +265,7 @@ public abstract class AbstractCsvTool {
           csvPrinter = csvFormat.print(new PrintWriter(filePath));
         } catch (IOException e) {
           e.printStackTrace();
-          return ;
+          return;
         }
       }
       try {
