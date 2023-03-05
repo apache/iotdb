@@ -106,3 +106,52 @@ select count_if(s1=0 & s2=0, 3, 'ignoreNull'='false'), count_if(s1=1 & s2=0, 3, 
 |                                                                       1|                                                                       1|
 +------------------------------------------------------------------------+------------------------------------------------------------------------+
 ```
+
+## TIME_DURATION
+### 语法
+```sql
+select
+    time_duration(Path),[COMMA time_duration(Path)]...
+    from <Path> [COMMA <Path>]...
+    [WHERE whereCondition]
+    [GROUP BY groupByCondition]
+    [HAVING havingCondition]
+    [FILL ({PREVIOUS | LINEAR | constant})]
+    [LIMIT rowLimit]
+    [SLIMIT seriesLimit]
+    [SOFFSET seriesOffset]
+    [OFFSET rowOffset]
+    [ALIGN BY {TIME | DEVICE}]
+    [ODERBY BY {ASC | DESC}]
+```
+### 使用示例
+#### 准备数据
+```sql
+"CREATE DATABASE root.db",
+"CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN tags(city=Beijing)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1, 2, 10, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(2, null, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(3, 10, 0, null)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(4, 303, 30, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(5, null, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(6, 110, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(7, 302, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(8, 110, null, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(9, 60, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(10,70, 20, null)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1677570934, 30, 0, true)",
+```
+
+查询：
+```sql
+select time_duration(s1) from root.db.d1.s1
+```
+
+输出
+```
++----------------------------+
+|time_duration(root.db.d1.s1)|
++----------------------------+
+|                  1677570933|
++----------------------------+
+```

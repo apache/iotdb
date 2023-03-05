@@ -130,8 +130,6 @@ public class SlidingWindowAggregatorFactory {
       case SUM:
       case AVG:
       case COUNT:
-      case TIME_DURATION:
-        return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
             accumulator, inputLocationList, step, maxComparators.get(dataType));
@@ -153,6 +151,8 @@ public class SlidingWindowAggregatorFactory {
             : new EmptyQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case COUNT_IF:
         throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
+      case TIME_DURATION:
+        throw new SemanticException("TIME_DURATION with slidingWindow is not supported now");
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType);
     }

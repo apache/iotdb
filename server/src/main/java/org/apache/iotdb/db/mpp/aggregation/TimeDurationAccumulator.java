@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 public class TimeDurationAccumulator implements Accumulator {
   protected long minTime = Long.MAX_VALUE;
   protected long maxTime = Long.MIN_VALUE;
+  protected boolean initResult = false;
 
   @Override
   public int addInput(Column[] column, IWindow window, boolean ignoringNull) {
@@ -54,6 +55,7 @@ public class TimeDurationAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
+    initResult = true;
     updateMaxTime(partialResult[0].getLong(0));
     updateMinTime(partialResult[1].getLong(0));
   }
@@ -69,23 +71,37 @@ public class TimeDurationAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
+    initResult = true;
     maxTime = finalResult.getLong(0);
     minTime = 0L;
   }
 
   @Override
   public void outputIntermediate(ColumnBuilder[] tsBlockBuilder) {
-    tsBlockBuilder[0].writeLong(maxTime);
-    tsBlockBuilder[1].writeLong(minTime);
+    if (!initResult) {
+      tsBlockBuilder[0].appendNull();
+      tsBlockBuilder[1].appendNull();
+    } else {
+      tsBlockBuilder[0].writeLong(maxTime);
+      tsBlockBuilder[1].writeLong(minTime);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder tsBlockBuilder) {
-    tsBlockBuilder.writeLong(maxTime - minTime);
+    if (!initResult) {
+      tsBlockBuilder.appendNull();
+    } else {
+      tsBlockBuilder.writeLong(maxTime - minTime);
+    }
   }
 
   @Override
-  public void reset() {}
+  public void reset() {
+    initResult = false;
+    this.maxTime = 0L;
+    this.minTime = Long.MAX_VALUE;
+  }
 
   @Override
   public boolean hasFinalResult() {
@@ -99,14 +115,16 @@ public class TimeDurationAccumulator implements Accumulator {
 
   @Override
   public TSDataType getFinalType() {
-    return TSDataType.getTsDataType((byte) 2);
+    return TSDataType.INT64;
   }
 
   protected void updateMaxTime(long curTime) {
+    initResult = true;
     maxTime = Math.max(maxTime, curTime);
   }
 
   protected void updateMinTime(long curTime) {
+    initResult = true;
     minTime = Math.min(minTime, curTime);
   }
 }
