@@ -21,4 +21,6 @@ home: true
     under the License.
 
 -->
+<client-only>
 <IoTDB/>
+</client-only>

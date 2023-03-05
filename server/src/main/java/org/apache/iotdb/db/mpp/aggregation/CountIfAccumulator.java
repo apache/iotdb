@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory.KeepEvaluator;
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -47,23 +47,16 @@ public class CountIfAccumulator implements Accumulator {
     this.ignoreNull = ignoreNull;
   }
 
-  // Column should be like: | ControlColumn | Time | Value |
+  // Column should be like: | Time | Value |
   @Override
-  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-    for (int i = 0; i < curPositionCount; i++) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
       // skip null value in control column
-      // the input parameter 'ignoringNull' effects on ControlColumn
-      if (ignoringNull && column[0].isNull(i)) {
+      // the input parameter 'bitMap' and 'lastIndex' effects on ControlColumn
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-
-      if (column[2].isNull(i)) {
-        // the member variable 'ignoreNull' effects on calculation of ValueColumn
+      if (column[1].isNull(i)) {
         if (!this.ignoreNull) {
           // data point segment was over, judge whether to count
           if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
@@ -73,7 +66,7 @@ public class CountIfAccumulator implements Accumulator {
           lastPointIsSatisfy = false;
         }
       } else {
-        if (column[2].getBoolean(i)) {
+        if (column[1].getBoolean(i)) {
           keep++;
           lastPointIsSatisfy = true;
         } else {
@@ -86,8 +79,6 @@ public class CountIfAccumulator implements Accumulator {
         }
       }
     }
-
-    return curPositionCount;
   }
 
   @Override

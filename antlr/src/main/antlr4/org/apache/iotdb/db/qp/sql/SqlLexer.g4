@@ -454,6 +454,14 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
+PIPEPLUGIN
+    : P I P E P L U G I N
+    ;
+
+PIPEPLUGINS
+    : P I P E P L U G I N S
+    ;
+
 POLICY
     : P O L I C Y
     ;

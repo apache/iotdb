@@ -330,6 +330,8 @@ public class ConfigNodeDescriptor {
 
     conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
 
+    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
+
     conf.setTimePartitionInterval(
         Long.parseLong(
             properties

@@ -199,8 +199,6 @@ public class IoTConsensusServerImpl {
         }
       }
       long writeToStateMachineStartTime = System.nanoTime();
-      IndexedConsensusRequest indexedConsensusRequest =
-          buildIndexedConsensusRequestForLocalRequest(request);
       // statistic the time of checking write block
       MetricService.getInstance()
           .getOrCreateHistogram(
@@ -213,6 +211,8 @@ public class IoTConsensusServerImpl {
               Tag.REGION.toString(),
               this.consensusGroupId)
           .update(writeToStateMachineStartTime - getStateMachineLockTime);
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
@@ -220,7 +220,6 @@ public class IoTConsensusServerImpl {
             getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
-      // TODO wal and memtable
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
       TSStatus result = stateMachine.write(planNode);
       long writeToStateMachineEndTime = System.nanoTime();

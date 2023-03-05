@@ -117,7 +117,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
         // clear previous aggregation result
         for (Aggregator aggregator : aggregators) {
-          aggregator.updateTimeRange(curTimeRange);
+          aggregator.reset();
         }
       }
 
