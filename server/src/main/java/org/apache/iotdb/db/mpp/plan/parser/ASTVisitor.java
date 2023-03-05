@@ -106,6 +106,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
@@ -113,6 +114,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropPipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -127,6 +129,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -713,13 +716,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
-    if (ctx.uriClasue() == null) {
+    if (ctx.uriClause() == null) {
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
           false);
     } else {
-      String uriString = parseAndValidateURI(ctx.uriClasue());
+      String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -728,7 +731,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private String parseAndValidateURI(IoTDBSqlParser.UriClasueContext ctx) {
+  private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     try {
       URI uri = new URI(uriString);
@@ -768,7 +771,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             parseAttributeValue(triggerAttributeContext.value));
       }
     }
-    if (ctx.uriClasue() == null) {
+    if (ctx.uriClause() == null) {
       return new CreateTriggerStatement(
           parseIdentifier(ctx.triggerName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -781,7 +784,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parsePrefixPath(ctx.prefixPath()),
           attributes);
     } else {
-      String uriString = parseAndValidateURI(ctx.uriClasue());
+      String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateTriggerStatement(
           parseIdentifier(ctx.triggerName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -806,6 +809,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
     return new ShowTriggersStatement();
+  }
+
+  // Create PipePlugin =====================================================================
+  @Override
+  public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
+    return new CreatePipePluginStatement(
+        parseIdentifier(ctx.pluginName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        parseAndValidateURI(ctx.uriClause()));
+  }
+
+  // Drop PipePlugin =====================================================================
+  @Override
+  public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
+    return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
+  }
+
+  // Show PipePlugins =====================================================================
+  @Override
+  public Statement visitShowPipePlugins(IoTDBSqlParser.ShowPipePluginsContext ctx) {
+    return new ShowPipePluginsStatement();
   }
 
   // Show Child Paths =====================================================================

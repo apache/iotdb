@@ -106,7 +106,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getMergedReadOperationForDisk().getOrDefault(diskID, 0L),
           TYPE,
-          MERGED_WRITE,
+          MERGED_READ,
           NAME,
           diskID);
       metricService.createAutoGauge(
@@ -115,7 +115,7 @@ public class DiskMetrics implements IMetricSet {
           diskMetricsManager,
           x -> x.getMergedWriteOperationForDisk().getOrDefault(diskID, 0L),
           TYPE,
-          MERGED_READ,
+          MERGED_WRITE,
           NAME,
           diskID);
       metricService.createAutoGauge(
