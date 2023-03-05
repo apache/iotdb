@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 public class TimeDurationAccumulator implements Accumulator {
   protected long minTime = Long.MAX_VALUE;
@@ -31,23 +31,17 @@ public class TimeDurationAccumulator implements Accumulator {
   protected boolean initResult = false;
 
   @Override
-  public int addInput(Column[] column, IWindow window, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!window.satisfy(column[0], i)) {
-        return i;
-      }
-      window.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateMaxTime(column[1].getLong(i));
-        updateMinTime(column[1].getLong(i));
+      if (!column[1].isNull(i)) {
+        initResult = true;
+        updateMaxTime(column[0].getLong(i));
+        updateMinTime(column[0].getLong(i));
       }
     }
-    return curPositionCount;
   }
 
   @Override
