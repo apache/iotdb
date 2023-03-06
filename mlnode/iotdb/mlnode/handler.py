@@ -15,17 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+
 from enum import Enum
-
-from utils.thrift.common.ttypes import TSStatus
-from utils.thrift.mlnode import IMLNodeRPCService
-from utils.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
-                                        TDeleteModelReq, TForecastReq,
+from iotdb.thrift.common.ttypes import TSStatus
+from iotdb.thrift.mlnode import IMLNodeRPCService
+from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+                                        TDeleteModelReq,
+                                        TForecastReq,
                                         TForecastResp)
+from iotdb.mlnode.manager import Manager
+from iotdb.mlnode.log import logger
+from iotdb.mlnode.util import parse_training_request
+from iotdb.mlnode.debug import *
 
-
-from manager import Manager
-from debug import *
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
@@ -43,20 +46,21 @@ def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         self.taskManager = Manager(10)
-        pass
 
-    def delete_model(self, req: TDeleteModelReq):
+    def deleteModel(self, req: TDeleteModelReq):  # TODO
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
-    def create_training_task(self, req: TCreateTrainingTaskReq):
+    def createTrainingTask(self, req: TCreateTrainingTaskReq):
         # TODO: parse_request
-        
-        config = default_configs()
-        self.taskManager.submit_single_training_task(config)
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        data_conf, model_conf, trial_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
+        print(data_conf, model_conf, trial_conf)
+        # config = debug_model_config(), debug_data_config(), debug_trial_config()
+        # self.taskManager.submit_single_training_task(config)
 
-    def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
-        forecast_result = b'forecast result'
-        self.taskManager.create_inference_task_pool(default_configs())
-        return TForecastResp(status, forecast_result)
+        return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")  # TODO: other status
+
+    # def forecast(self, req: TForecastReq):
+    #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")
+    #     forecast_result = b'forecast result'
+    #     self.taskManager.create_inference_task_pool(default_configs())
+    #     return TForecastResp(status, forecast_result)

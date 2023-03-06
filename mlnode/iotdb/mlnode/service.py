@@ -15,19 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+
 import threading
 import time
-
 import multiprocessing as mp
-
+from iotdb.mlnode.log import logger
 from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
-
-from config import config
-from handler import MLNodeRPCServiceHandler
-from log import logger
-from utils.thrift.mlnode import IMLNodeRPCService
+from iotdb.mlnode.config import config
+from iotdb.mlnode.handler import MLNodeRPCServiceHandler
+from iotdb.thrift.mlnode import IMLNodeRPCService
 
 
 class RPCService(threading.Thread):
@@ -57,6 +56,6 @@ class MLNode(object):
 
 
 if __name__ == "__main__":
-    mp.set_start_method('spawn', force=True) # to use gpu in forked processes
+    mp.set_start_method('spawn', force=True)  # to use gpu in forked processes
     server = MLNode()
     server.start()

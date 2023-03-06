@@ -17,15 +17,16 @@
 #
 
 
+import math
 import torch
 import torch.nn as nn
-import math
 
 
 class SeasonalLayernorm(nn.Module):
     """
     Special designed layernorm for the seasonal part
     """
+
     def __init__(self, channels):
         super(SeasonalLayernorm, self).__init__()
         self.layernorm = nn.LayerNorm(channels)
@@ -40,6 +41,7 @@ class MovingAvg(nn.Module):
     """
     Moving average block to highlight the trend of time series
     """
+
     def __init__(self, kernel_size, stride):
         super(MovingAvg, self).__init__()
         self.kernel_size = kernel_size
@@ -47,7 +49,7 @@ class MovingAvg(nn.Module):
 
     def forward(self, x):
         # padding on the both ends of time series
-        front = x[:, 0:1, :].repeat(1, self.kernel_size - 1-math.floor((self.kernel_size - 1) // 2), 1)
+        front = x[:, 0:1, :].repeat(1, self.kernel_size - 1 - math.floor((self.kernel_size - 1) // 2), 1)
         end = x[:, -1:, :].repeat(1, math.floor((self.kernel_size - 1) // 2), 1)
         x = torch.cat([front, x, end], dim=1)
         x = self.avg(x.permute(0, 2, 1))
@@ -59,6 +61,7 @@ class SeriesDecomp(nn.Module):
     """
     Series decomposition block
     """
+
     def __init__(self, kernel_size):
         super(SeriesDecomp, self).__init__()
         self.moving_avg = MovingAvg(kernel_size, stride=1)
@@ -73,17 +76,18 @@ class SeriesDecompMulti(nn.Module):
     """
     Series decomposition block
     """
+
     def __init__(self, kernel_size):
         super(SeriesDecompMulti, self).__init__()
         self.moving_avg = [MovingAvg(kernel, stride=1) for kernel in kernel_size]
         self.layer = torch.nn.Linear(1, len(kernel_size))
 
     def forward(self, x):
-        moving_mean=[]
+        moving_mean = []
         for func in self.moving_avg:
             moving_avg = func(x)
             moving_mean.append(moving_avg.unsqueeze(-1))
-        moving_mean=torch.cat(moving_mean,dim=-1)
-        moving_mean = torch.sum(moving_mean*nn.Softmax(-1)(self.layer(x.unsqueeze(-1))),dim=-1)
+        moving_mean = torch.cat(moving_mean, dim=-1)
+        moving_mean = torch.sum(moving_mean * nn.Softmax(-1)(self.layer(x.unsqueeze(-1))), dim=-1)
         res = x - moving_mean
         return res, moving_mean

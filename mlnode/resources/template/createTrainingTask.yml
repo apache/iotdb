@@ -1,0 +1,49 @@
+# default config for createTrainingTask
+
+# data config
+---
+test:
+source_type: file
+filename: dataset/exchange_rate/exchange_rate.csv
+ip: 127.0.0.1
+#port: 6667
+#username: root
+#password: root
+#sql:
+#  train: SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01
+#  val: SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01
+#  test: SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01
+query_expressions: [SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01, SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01]
+query_filter: ''
+dataset_type: window
+time_embed: h
+input_len: 96
+pred_len: 96
+
+# model config
+---
+model_name: dlinear  
+input_len: 96
+pred_len: 96
+input_vars: 7
+output_vars: 7
+task_type: m
+kernel_size: 25
+block_type: g
+d_model: 128
+inner_layers: 4
+outer_layers: 4
+
+# trail config
+---
+model_id: 0
+task_type: m
+input_len: 96
+pred_len: 96
+input_vars: 7
+output_vars: 7
+learning_rate: 0.0001
+batch_size: 32
+num_workers: 0
+epochs: 10
+metric_name: [MSE, MAE]

@@ -1,12 +1,29 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
 import os
 import json
 import torch
 import shutil
 from pylru import lrucache
-
-
-ML_MODEL_DIR = 'ml_models'
-CACHESIZE=30
+from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
+                                   MLNODE_MODEL_STORAGE_CACHESIZE)
 
 
 # TODO: Concurrency
@@ -24,9 +41,9 @@ class ModelStorager(object):
         fold_path = f'{self.root_path}/mid_{model_id}/'
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
-        torch.jit.save(torch.jit.script(model), 
-            f'{fold_path}/tid_{trial_id}.pt', 
-            _extra_files={'model_config': json.dumps(model_config)})
+        torch.jit.save(torch.jit.script(model),
+                       f'{fold_path}/tid_{trial_id}.pt',
+                       _extra_files={'model_config': json.dumps(model_config)})
         return os.path.exists(f'{fold_path}/tid_{trial_id}.pt')
 
     def load_model(self, model_id, trial_id):
@@ -35,8 +52,7 @@ class ModelStorager(object):
             return self._loaded_model_cache[file_path]
         else:
             if not os.path.exists(file_path):
-                print('Unknown model (%s)' % file_path)
-                return None
+                raise RuntimeError('Model path (%s) is not found' % file_path)
             else:
                 tmp_dict = {'model_config': ''}
                 jit_model = torch.jit.load(file_path, _extra_files=tmp_dict)
@@ -54,7 +70,7 @@ class ModelStorager(object):
         """
         file_path = f'{self.root_path}/mid_{model_id}/tid_{trial_id}.pt'
         self._remove_from_cache(file_path)
-        if os.path.exists(file_path):    
+        if os.path.exists(file_path):
             os.remove(file_path)
         return not os.path.exists(file_path)
 
@@ -63,18 +79,18 @@ class ModelStorager(object):
         Return: True if successfully deleted
         """
         folder_path = f'{self.root_path}/mid_{model_id}/'
-        for file_name in os.listdir(folder_path):
-            self._remove_from_cache(f'{folder_path}/{file_name}')
-        if os.path.exists(folder_path):    
+        if os.path.exists(folder_path):
+            for file_name in os.listdir(folder_path):
+                self._remove_from_cache(f'{folder_path}/{file_name}')
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
-    def send_model(): #TODO: inference on db in future
+    def send_model(self):  # TODO: inference on db in future
         pass
 
 
-
-modelStorager = ModelStorager(root_path=ML_MODEL_DIR, cache_size=CACHESIZE)
+modelStorager = ModelStorager(root_path=MLNODE_MODEL_STORAGE_DIR,
+                              cache_size=MLNODE_MODEL_STORAGE_CACHESIZE)
 
 # Usage:
 

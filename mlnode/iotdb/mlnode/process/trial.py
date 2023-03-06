@@ -18,24 +18,20 @@
 
 
 import os
-import sys
 import torch
-import argparse
 import time
-
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 
-from iotdb.mlnode.algorithm import model_factory
-from iotdb.mlnode.datats import data_factory
-from iotdb.mlnode.debug import debug_dataset, debug_model
+from iotdb.mlnode.algorithm.model_factory import create_forecast_model
+from iotdb.mlnode.datats.data_factory import create_forecasting_dataset
+from iotdb.mlnode.debug import debug_data_config, debug_model_config
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
-from model_storager import modelStorager
+from iotdb.mlnode.storage.model_storager import modelStorager
 from torch.utils.data import DataLoader
 
 
-def parseTrialConfig(**kwargs):
+def parse_trial_config(**kwargs):
     return {
         "batch_size": 32,
         "learning_rate": 0.0001,
@@ -49,19 +45,22 @@ def parseTrialConfig(**kwargs):
         **kwargs
     }
 
-def parseModelConfig(**kwargs):
+
+def parse_model_config(**kwargs):
     return {
         **kwargs
     }
 
-def parseDataConfig(**kwargs):
+
+def parse_data_config(**kwargs):
     return {
         **kwargs
     }
+
 
 class BasicTrial(object):
     def __init__(self, configs, model_configs, data_configs):
-        self.trial_configs = parseTrialConfig(**configs)
+        self.trial_configs = parse_trial_config(**configs)
         self.model, self.model_cfg = self._build_model()
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
@@ -70,11 +69,10 @@ class BasicTrial(object):
         self.model_id = configs["model_id"]
         self.trial_id = configs["trial_id"]
 
-
-    def _build_model(self): 
+    def _build_model(self):
         raise NotImplementedError
 
-    def _build_data(self): 
+    def _build_data(self):
         raise NotImplementedError
 
     def _acquire_device(self):
@@ -86,7 +84,6 @@ class BasicTrial(object):
             device = torch.device('cpu')
         return device
 
-
     def start(self):
         raise NotImplementedError
 
@@ -95,11 +92,11 @@ class ForecastingTrainingTrial(BasicTrial):
     def __init__(self, trial_configs, model_configs, data_configs):
         super(ForecastingTrainingTrial, self).__init__(trial_configs, model_configs, data_configs)
 
-    def _build_model(self): # MODEL Factory
-        model, model_cfg = debug_model()        
+    def _build_model(self):  # MODEL Factory
+        model, model_cfg = debug_model()
         return model, model_cfg
-    
-    def _build_data(self): # virtual method
+
+    def _build_data(self):  # virtual method
         train_dataset, train_cfg = debug_dataset()
         train_loader = DataLoader(
             train_dataset,
@@ -108,8 +105,8 @@ class ForecastingTrainingTrial(BasicTrial):
             drop_last=True
         )
         return train_dataset, train_loader
-        
-    def train(self, model, optimizer, criterion, dataloader, epoch): # TODO: remove configs
+
+    def train(self, model, optimizer, criterion, dataloader, epoch):  # TODO: remove configs
         model.train()
         train_loss = []
         print("start training...")
@@ -134,22 +131,20 @@ class ForecastingTrainingTrial(BasicTrial):
             train_loss.append(loss.item())
 
             if (i + 1) % 50 == 0:
-               print('\titers: {0}, epoch: {1} | loss: {2:.7f}'.format(i + 1, epoch + 1, loss.item()))
-            
+                print('\titers: {0}, epoch: {1} | loss: {2:.7f}'.format(i + 1, epoch + 1, loss.item()))
+
             loss.backward()
             optimizer.step()
 
-        
         train_loss = np.average(train_loss)
         print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'.format(epoch + 1, time.time() - epoch_time, train_loss))
 
         return train_loss
-    
+
     def validate(self, model, criterion, dataloader, epoch):
         model.eval()
         val_loss = []
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
-
             batch_x = batch_x.float().to(self.device)
             batch_y = batch_y.float().to(self.device)
 
@@ -163,12 +158,11 @@ class ForecastingTrainingTrial(BasicTrial):
             outputs = outputs[:, -self.trial_configs["pred_len"]:]
             batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
             loss = criterion(outputs, batch_y)
-            val_loss.append(loss.item())         
+            val_loss.append(loss.item())
 
         val_loss = np.average(val_loss)
         print('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
         return val_loss
-    
 
     def start(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.trial_configs["learning_rate"])
@@ -176,13 +170,13 @@ class ForecastingTrainingTrial(BasicTrial):
 
         best_loss = np.inf
         for epoch in range(self.trial_configs["epochs"]):
-            train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch) 
+            train_loss = self.train(self.model, optimizer, criterion, self.dataloader, epoch)
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
                 # modelStorager.save_model(self.model, self.model_cfg, self.model_id, 1)
         return best_loss
-        
+
 
 class ForecastingInferenceTrial(BasicTrial):
     def __init__(self, args, data_raw):
@@ -195,9 +189,9 @@ class ForecastingInferenceTrial(BasicTrial):
         super(ForecastingInferenceTrial, self).__init__(args)
         self.input_len = args.seq_len
         self.output_len = args.pred_len
-        self.data, self.data_stamp = data_transform(data_raw) # suppose data is in pandas.dataframe format, col 0 is timestamp
+        self.data, self.data_stamp = data_transform(
+            data_raw)  # suppose data is in pandas.dataframe format, col 0 is timestamp
         self.model = modelStorager.load_best_model_by_id(self.model_id)
-
 
     def data_align(self, data, data_stamp):
         """
@@ -211,13 +205,14 @@ class ForecastingInferenceTrial(BasicTrial):
         if data.shape[0] < self.input_len:
             extra_len = self.input_len - data.shape[0]
             data = np.concatenate([data[:1, :].repeat(extra_len, 1), data], axis=0)
-            extrapolated_timestamp = pd.date_range(data_stamp[0] - mean_timedelta, periods=extra_len, freq=mean_timedelta)
+            extrapolated_timestamp = pd.date_range(data_stamp[0] - mean_timedelta, periods=extra_len,
+                                                   freq=mean_timedelta)
             data_stamp = np.concatenate([extrapolated_timestamp, data_stamp])
         else:
             data = data[-self.input_len:, :]
             data_stamp = data_stamp[-self.input_len:]
 
-        data = data[None, :] # add batch dim
+        data = data[None, :]  # add batch dim
         return data, data_stamp
 
     def inference(self, model, data, data_stamp, out_timestamp):
@@ -225,9 +220,8 @@ class ForecastingInferenceTrial(BasicTrial):
         B, L, C = data.shape
         dec_inp = torch.zeros((B, self.output_len, C)).to(self.device)
         output = model(data, data_stamp, dec_inp, out_timestamp)
-        
+
         return output
-        
 
     def start(self):
         data, data_stamp = self.data_align(self.data, self.data_stamp)
@@ -247,7 +241,7 @@ class ForecastingInferenceTrial(BasicTrial):
         output = self.inference(self.model, data, data_stamp, out_timestamp)
         print("inference finished.")
         return output, out_timestamp_raw
-        
+
 
 if __name__ == '__main__':
     configs = {

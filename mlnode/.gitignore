@@ -7,7 +7,5 @@ __pycache__/
 /*.egg-info/
 
 thrift/
-ModelData/
-ml_models/
-
 poetry.lock
+ml_models/

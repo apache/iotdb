@@ -37,7 +37,7 @@ poetry build
 - Step 2: install
 
 ```shell
-pip install dist/apache_iotdb_mlnode-1.0.0-py3-none-any.whl --force-reinstall
+pip install dist/apache_iotdb_mlnode-1.0.0-py3-none-any.whl --force-reinstall # add `--no-dependencies` if not the first installation
 ```
 
 - Step 3: start node

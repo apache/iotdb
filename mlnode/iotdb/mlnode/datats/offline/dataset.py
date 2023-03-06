@@ -18,14 +18,13 @@
 
 
 from torch.utils.data import Dataset
-from ..utils.timefeatures import time_features
-from ..data_source import DataSource
+from iotdb.mlnode.datats.utils.timefeatures import time_features
+from iotdb.mlnode.datats.offline.data_source import DataSource
 
-# for multivariate forecasting only
+# currently support for multivariate forecasting only
 
 
 __all__ = ['TimeSeriesDataset', 'WindowDataset']
-
 
 
 class TimeSeriesDataset(Dataset):
@@ -37,17 +36,17 @@ class TimeSeriesDataset(Dataset):
         time_embed: embedding frequency, see `utils/timefeatures.py` for more detail
 
     Returns:
-        Random accessable dataset
+        Random accessible dataset
     """
-    def __init__(self, data_source: DataSource, time_embed='h', **kwargs):  
+
+    def __init__(self, data_source: DataSource, time_embed='h', **kwargs):
         self.time_embed = time_embed
-        self.data = data_source.data
-        self.data_stamp = data_source.data_stamp
-        self.data_stamp = time_features(data_source.data_stamp, time_embed=self.time_embed).transpose(1, 0)
+        self.data = data_source.get_data()
+        self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
         self.n_vars = self.data.shape[-1]
 
     def get_variable_num(self):
-        return self.n_vars # number of series in data_source 
+        return self.n_vars  # number of series in data_source
 
     def __getitem__(self, index):
         seq = self.data[index]
@@ -70,14 +69,15 @@ class WindowDataset(TimeSeriesDataset):
         pred_len: output window size (unit) right after the input window [I+1, I+2, ... I+P]
 
     Returns:
-        Random accessable dataset
+        Random accessible dataset
     """
+
     def __init__(self, data_source, input_len=96, pred_len=96, time_embed='h', **kwargs):
         self.time_embed = time_embed
         self.input_len = input_len
         self.pred_len = pred_len
-        self.data = data_source.data
-        self.data_stamp = time_features(data_source.data_stamp, time_embed=self.time_embed).transpose(1, 0)
+        self.data = data_source.get_data()
+        self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
         self.n_vars = self.data.shape[-1]
 
     def __getitem__(self, index):
@@ -95,6 +95,10 @@ class WindowDataset(TimeSeriesDataset):
         return len(self.data) - self.input_len - self.pred_len + 1
 
 
-#TODO: should be more simple, numpy array maybe
+# TODO: should be more simple, numpy array maybe
 class InferenceDataset(Dataset):
-    pass
+    def __init__(self):
+        pass
+
+    def __getitem__(self, index):
+        pass

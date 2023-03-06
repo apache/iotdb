@@ -25,40 +25,48 @@ class DataSource(object):
     Pre-fetched in multi-variate time series in memory
 
     Args:
-        type: available choice in ['file', 'sql', 'thrift']
+        source_type: available choice in ['file', 'sql', 'thrift']
         filename: for file type, the file location in `csv` format
         session and sql: for sql type
 
-    Returns:
-        self.data: time seires value (Numpy.Array)
-        self.data_stamp: timestamp value 
+    Methods:
+        get_data: returns self.data, the time series value (Numpy.2DArray)
+        get_timestamp: returns self.timestamp, the aligned timestamp value
     """
-    def __init__(self, type='file', filename=None, session=None, sql=None, **kwargs):
-        self.type = type
+
+    def __init__(self, source_type='file', filename=None, session=None, sql=None, **kwargs):
+        self.source_type = source_type
         self.data = None
-        self.data_stamp = None
-        if self.type == 'file':
+        self.timestamp = None
+        if self.source_type == 'file':
             self._read_file_data__(filename)
-        elif self.type == 'sql':
+        elif self.source_type == 'sql':
             self._read_sql_data__(session, sql)
-        elif self.type == 'thrift':
-            raise NotImplementedError('Unknow data source type (%s)'% type)
+        elif self.source_type == 'thrift':
+            raise NotImplementedError('Unknown data source type (%s)' % type)
         else:
-            raise NotImplementedError('Unknow data source type (%s)'% type)
+            raise NotImplementedError('Unknown data source type (%s)' % type)
 
     def _read_file_data__(self, filename):
         raw_data = pd.read_csv(filename)
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
-        self.data_stamp = pd.to_datetime(raw_data[raw_data.columns[0]].values)
+        self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values)
 
     def _read_sql_data__(self, session, sql):
         result = session.execute_query_statement(sql)
-        assert result, "Failed to fetch data from database (%s)" % sql  
+        assert result, "Failed to fetch data from database (%s)" % sql
         raw_data = result.todf()
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
-        self.data_stamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True).tz_convert('Asia/Shanghai') # for iotdb
+        self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True).tz_convert(
+            'Asia/Shanghai')  # for iotdb
 
-    def _read_thrift_data__(self): #TODO
+    def _read_thrift_data__(self):  # TODO
         pass
+
+    def get_data(self):
+        return self.data
+
+    def get_timestamp(self):
+        return self.timestamp

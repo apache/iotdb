@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import sys
 
+
+import sys
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.service import MLNode
 

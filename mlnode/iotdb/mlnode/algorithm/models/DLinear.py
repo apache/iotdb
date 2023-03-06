@@ -19,15 +19,15 @@
 
 import torch
 import torch.nn as nn
-from .layers.decomp_layer import SeriesDecomp
-
+from iotdb.mlnode.algorithm.layers.decomp_layer import SeriesDecomp
 
 __all__ = ['DLinear', 'dlinear', 'dlinear_individual']
-
 
 """
 Specific configs for DLinear with default values
 """
+
+
 def _model_cfg(**kwargs):
     return {
         'individual': False,
@@ -54,14 +54,15 @@ class DLinear(nn.Module):
     support_model_names = support_model_cfgs.keys()
 
     def __init__(
-        self,
-        individual=False,
-        kernel_size=25,
-        input_len=96, 
-        pred_len=96, 
-        input_vars=1,
-        output_vars=1,
-        task_type='m', # TODO, support ms
+            self,
+            individual=False,
+            kernel_size=25,
+            input_len=96,
+            pred_len=96,
+            input_vars=1,
+            output_vars=1,
+            task_type='m',  # TODO, support ms
+            model_name='dlinear',
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -69,6 +70,8 @@ class DLinear(nn.Module):
         self.kernel_size = kernel_size
         self.individual = individual
         self.channels = input_vars
+        self.task_type = task_type
+        self.model_name = model_name
 
         # decomposition Kernel Size
         self.decomposition = SeriesDecomp(kernel_size)
@@ -78,41 +81,43 @@ class DLinear(nn.Module):
             self.Linear_Trend = nn.ModuleList()
 
             for _ in range(self.channels):
-                self.Linear_Seasonal.append(nn.Linear(self.input_len,self.pred_len))
-                self.Linear_Trend.append(nn.Linear(self.input_len,self.pred_len))
+                self.Linear_Seasonal.append(nn.Linear(self.input_len, self.pred_len))
+                self.Linear_Trend.append(nn.Linear(self.input_len, self.pred_len))
         else:
-            self.Linear_Seasonal = nn.Linear(self.input_len,self.pred_len)
-            self.Linear_Trend = nn.Linear(self.input_len,self.pred_len)
-
+            self.Linear_Seasonal = nn.Linear(self.input_len, self.pred_len)
+            self.Linear_Trend = nn.Linear(self.input_len, self.pred_len)
 
     def forward(self, x, x_t, y, y_t):
         # x: [Batch, Input length, Channel]
         seasonal_init, trend_init = self.decomposition(x)
-        seasonal_init, trend_init = seasonal_init.permute(0,2,1), trend_init.permute(0,2,1)
+        seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
         if self.individual:
-            seasonal_output = torch.zeros([seasonal_init.size(0),seasonal_init.size(1),self.pred_len],dtype=seasonal_init.dtype).to(seasonal_init.device)
-            trend_output = torch.zeros([trend_init.size(0),trend_init.size(1),self.pred_len],dtype=trend_init.dtype).to(trend_init.device)
+            seasonal_output = torch.zeros([seasonal_init.size(0), seasonal_init.size(1), self.pred_len],
+                                          dtype=seasonal_init.dtype).to(seasonal_init.device)
+            trend_output = torch.zeros([trend_init.size(0), trend_init.size(1), self.pred_len],
+                                       dtype=trend_init.dtype).to(trend_init.device)
             for i in range(self.channels):
-                seasonal_output[:,i,:] = self.Linear_Seasonal[i](seasonal_init[:,i,:])
-                trend_output[:,i,:] = self.Linear_Trend[i](trend_init[:,i,:])
+                seasonal_output[:, i, :] = self.Linear_Seasonal[i](seasonal_init[:, i, :])
+                trend_output[:, i, :] = self.Linear_Trend[i](trend_init[:, i, :])
         else:
             seasonal_output = self.Linear_Seasonal(seasonal_init)
             trend_output = self.Linear_Trend(trend_init)
 
         x = seasonal_output + trend_output
-        return x.permute(0,2,1) # to [Batch, Output length, Channel]
+        return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-def dlinear(common_config, kernel_size=25):
+def dlinear(common_config, kernel_size=25, **kwargs):
     cfg = support_model_cfgs['dlinear']
     cfg.update(**common_config)
-    cfg['kernel_size']=kernel_size
+    assert kernel_size > 0, 'Kernel size of dlinear should larger than 0'
+    cfg['kernel_size'] = kernel_size
     return DLinear(**cfg), cfg
 
 
-def dlinear_individual(common_config, kernel_size=25):
+def dlinear_individual(common_config, kernel_size=25, **kwargs):
     cfg = support_model_cfgs['dlinear_individual']
     cfg.update(**common_config)
-    cfg['kernel_size']=kernel_size
+    assert kernel_size > 0, 'Kernel size of dlinear_individual should larger than 0'
+    cfg['kernel_size'] = kernel_size
     return DLinear(**cfg), cfg
-

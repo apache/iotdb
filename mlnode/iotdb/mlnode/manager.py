@@ -15,18 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import multiprocessing as mp
 
-from subprocess import call
-from mlnode.iotdb.mlnode.process.trial import ForecastingTrainingTrial, ForecastingInferenceTrial
-from datafactory.build_dataset_debug import *
 
-import psutil
 import sys
 import os
 import time
 import signal
 import optuna
+import psutil
+import multiprocessing as mp
+from subprocess import call
+from iotdb.mlnode.process.trial import ForecastingTrainingTrial, ForecastingInferenceTrial
+
 
 class TrainingTrialObjective:
     """
@@ -34,9 +34,10 @@ class TrainingTrialObjective:
     and return the optimization objective. 
     Optuna will try to minimize the objective.
     """
+
     def __init__(self, configs):
         self.configs = configs
-    
+
     def __call__(self, trial: optuna.Trial):
         configs = self.configs
         configs.learning_rate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
@@ -45,21 +46,25 @@ class TrainingTrialObjective:
         loss = task.start()
         return loss
 
+
 def _create_training_task(configs, task_map, task_id):
     trial = ForecastingTrainingTrial(configs)
-    trial.start() 
+    trial.start()
     pid = os.getpid()
     task_map[task_id][pid] = 'finished'
 
-def _create_tunning_task(configs, task_map, task_id):
+
+def _create_tuning_task(configs, task_map, task_id):
     study = optuna.create_study(direction='minimize')
     study.optimize(TrainingTrialObjective(configs), n_trials=20)
     pid = os.getpid()
-    task_map[task_id][trial_id] = pid
+    task_map[task_id] = pid
 
-def _create_inference_task(configs, task_map, task_id):
-    trial = ForecastingInferenceTrial(configs, debug_inference_data())
-    trial.start()
+
+# def _create_inference_task(configs, task_map, task_id):
+#     trial = ForecastingInferenceTrial(configs, debug_inference_data())
+#     trial.start()
+
 
 class Manager(object):
     def __init__(self, pool_num):
@@ -70,7 +75,7 @@ class Manager(object):
         """
         self.resource_manager = mp.Manager()
         self.task_map = self.resource_manager.dict()
-        signal.signal(signal.SIGCHLD, signal.SIG_IGN) # leave to the os to clean up zombie processes
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
         self.pool = mp.Pool(pool_num)
 
     def submit_single_training_task(self, configs):
@@ -79,27 +84,27 @@ class Manager(object):
         # TODO: extract code pieces
         """
         task_id = self.generate_taskid()
-        self.pool.apply_async(_create_training_task, args=(configs, self.task_map, task_id, ))
+        self.pool.apply_async(_create_training_task, args=(configs, self.task_map, task_id,))
         self.task_map[task_id] = self.resource_manager.dict()
         return task_id
-    
+
     def create_tune_training_task_pool(self, configs):
         """
         Create a tuning task based on configs; will add a optuna process to the pool
         """
         task_id = self.generate_taskid()
-        self.pool.apply_async(_create_tunning_task, args=(configs, self.task_map, task_id, ))
+        self.pool.apply_async(_create_tuning_task, args=(configs, self.task_map, task_id,))
         self.task_map[task_id] = self.resource_manager.dict()
         return task_id
-    
-    def create_inference_task_pool(self, configs):
-        """
-        Create an inference based on configs; will add the inference process to the pool
-        """
-        task_id = self.generate_taskid()
-        self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id, ))
-        self.task_map[task_id] = self.resource_manager.dict()
-        return task_id
+
+    # def create_inference_task_pool(self, configs):
+    #     """
+    #     Create an inference based on configs; will add the inference process to the pool
+    #     """
+    #     task_id = self.generate_taskid()
+    #     self.pool.apply_async(_create_inference_task, args=(configs, self.task_map, task_id,))
+    #     self.task_map[task_id] = self.resource_manager.dict()
+    #     return task_id
 
     def kill_process(self, pid):
         """
@@ -114,7 +119,7 @@ class Manager(object):
         else:
             cmds = ['kill', str(pid)]
             call(cmds)
-    
+
     def _generate_taskid(self):
         """
         Generate a unique task id
@@ -123,7 +128,7 @@ class Manager(object):
 
     def _get_task_state(self, task_id):
         return self.task_map[task_id]
-        
+
 
 # TaskManager = Manager(10)
 
@@ -137,7 +142,3 @@ if __name__ == '__main__':
     #     manager.update_process_state()
     #     print(manager.task_map[task_id])
     pass
-
-
-
-
