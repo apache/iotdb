@@ -242,7 +242,7 @@ public class PartitionCache {
           }
           // if failed, then try to fetch all databases from config node
           try (ConfigNodeClient client =
-              configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+              configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
             TDatabaseSchemaResp storageGroupSchemaResp =
                 client.getMatchedDatabaseSchemas(ROOT_PATH);
             TSStatus tsStatus = storageGroupSchemaResp.getStatus();
@@ -276,7 +276,7 @@ public class PartitionCache {
               return;
             }
             try (ConfigNodeClient client =
-                configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+                configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
               // try to get database needed to be created from missed device
               Set<String> databaseNamesNeedCreated = new HashSet<>();
               for (String devicePath : result.getMissedDevices()) {
