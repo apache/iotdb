@@ -78,7 +78,6 @@ public class TimePartitionManager {
         memCost += memSize - timePartitionInfo.memSize;
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
-        logger.error("{}", timePartitionInfoMemoryThreshold);
         if (memCost > timePartitionInfoMemoryThreshold) {
           evictOldPartition();
         }
