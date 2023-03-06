@@ -11,7 +11,6 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.List;
 
-//import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer.replaceRawPathWithGroupedPath;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
@@ -34,7 +33,7 @@ public class ReplaceRawPathWithGroupedPathVisitor extends ReconstructVisitor<Gro
                 break;
             }
         }
-        return reconstructFunctionExpression((FunctionExpression) functionExpression, childrenExpressions);
+        return reconstructFunctionExpression(functionExpression, childrenExpressions);
     }
 
     @Override

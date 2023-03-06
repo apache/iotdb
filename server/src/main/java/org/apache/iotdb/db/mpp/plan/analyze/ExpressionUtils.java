@@ -58,7 +58,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ExpressionUtils {
-
+  public static List<Expression> cartesianProductAllKindsOfExpression(Expression expression, List<List<Expression>> childResultsList) {
+    if (expression instanceof TernaryExpression) {
+      return reconstructTernaryExpressions(
+              expression, childResultsList.get(0), childResultsList.get(1), childResultsList.get(2));
+    }
+    if (expression instanceof BinaryExpression) {
+      return reconstructBinaryExpressions(
+              expression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));
+    }
+    if (expression instanceof UnaryExpression) {
+      return reconstructUnaryExpressions((UnaryExpression) expression, childResultsList.get(0));
+    }
+    if (expression instanceof FunctionExpression) {
+      return reconstructFunctionExpressions((FunctionExpression) expression, childResultsList);
+    }
+    throw new IllegalArgumentException(
+            "unsupported expression type: " + expression.getExpressionType());
+  }
   public static Expression reconstructAllKindsOfExpression(
       Expression expression, List<Expression> childResults) {
     if (expression instanceof TernaryExpression) {

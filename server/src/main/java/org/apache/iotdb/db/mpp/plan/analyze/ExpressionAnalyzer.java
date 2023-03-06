@@ -42,10 +42,12 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -435,76 +437,77 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> removeWildcardInExpression(
       Expression expression, ISchemaTree schemaTree) {
-    if (expression instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          removeWildcardInExpression(
-              ((TernaryExpression) expression).getFirstExpression(), schemaTree);
-      List<Expression> secondExpressions =
-          removeWildcardInExpression(
-              ((TernaryExpression) expression).getSecondExpression(), schemaTree);
-      List<Expression> thirdExpressions =
-          removeWildcardInExpression(
-              ((TernaryExpression) expression).getThirdExpression(), schemaTree);
-      return reconstructTernaryExpressions(
-          expression, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (expression instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          removeWildcardInExpression(
-              ((BinaryExpression) expression).getLeftExpression(), schemaTree);
-      List<Expression> rightExpressions =
-          removeWildcardInExpression(
-              ((BinaryExpression) expression).getRightExpression(), schemaTree);
-      return reconstructBinaryExpressions(
-          expression.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (expression instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          removeWildcardInExpression(((UnaryExpression) expression).getExpression(), schemaTree);
-      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
-    } else if (expression instanceof FunctionExpression) {
-      // One by one, remove the wildcards from the input expressions. In most cases, an expression
-      // will produce multiple expressions after removing the wildcards. We use extendedExpressions
-      // to collect the produced expressions.
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression originExpression : expression.getExpressions()) {
-        List<Expression> actualExpressions =
-            removeWildcardInExpression(originExpression, schemaTree);
-        if (actualExpressions.isEmpty()) {
-          // Let's ignore the eval of the function which has at least one non-existence series as
-          // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
-          return Collections.emptyList();
-        }
-        extendedExpressions.add(actualExpressions);
-
-        // We just process first input Expression of AggregationFunction,
-        // keep other input Expressions as origin and bind Type
-        // If AggregationFunction need more than one input series,
-        // we need to reconsider the process of it
-        if (expression.isBuiltInAggregationFunctionExpression()) {
-          List<Expression> children = expression.getExpressions();
-          bindTypeForAggregationNonSeriesInputExpressions(
-              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
-          break;
-        }
-      }
-
-      // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
-      // removing all wildcards. We use actualExpressions to collect them.
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-
-      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath path = ((TimeSeriesOperand) expression).getPath();
-      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
-      return reconstructTimeSeriesOperands(actualPaths);
-    } else if (expression instanceof TimestampOperand) {
-      return Collections.singletonList(expression);
-    } else if (expression instanceof ConstantOperand) {
-      return Collections.singletonList(expression);
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new RemoveWildcardInExpressionVisitor().process(expression, schemaTree);
+//    if (expression instanceof TernaryExpression) {
+//      List<Expression> firstExpressions =
+//          removeWildcardInExpression(
+//              ((TernaryExpression) expression).getFirstExpression(), schemaTree);
+//      List<Expression> secondExpressions =
+//          removeWildcardInExpression(
+//              ((TernaryExpression) expression).getSecondExpression(), schemaTree);
+//      List<Expression> thirdExpressions =
+//          removeWildcardInExpression(
+//              ((TernaryExpression) expression).getThirdExpression(), schemaTree);
+//      return reconstructTernaryExpressions(
+//          expression, firstExpressions, secondExpressions, thirdExpressions);
+//    } else if (expression instanceof BinaryExpression) {
+//      List<Expression> leftExpressions =
+//          removeWildcardInExpression(
+//              ((BinaryExpression) expression).getLeftExpression(), schemaTree);
+//      List<Expression> rightExpressions =
+//          removeWildcardInExpression(
+//              ((BinaryExpression) expression).getRightExpression(), schemaTree);
+//      return reconstructBinaryExpressions(
+//          expression.getExpressionType(), leftExpressions, rightExpressions);
+//    } else if (expression instanceof UnaryExpression) {
+//      List<Expression> childExpressions =
+//          removeWildcardInExpression(((UnaryExpression) expression).getExpression(), schemaTree);
+//      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
+//    } else if (expression instanceof FunctionExpression) {
+//      // One by one, remove the wildcards from the input expressions. In most cases, an expression
+//      // will produce multiple expressions after removing the wildcards. We use extendedExpressions
+//      // to collect the produced expressions.
+//      List<List<Expression>> extendedExpressions = new ArrayList<>();
+//      for (Expression originExpression : expression.getExpressions()) {
+//        List<Expression> actualExpressions =
+//            removeWildcardInExpression(originExpression, schemaTree);
+//        if (actualExpressions.isEmpty()) {
+//          // Let's ignore the eval of the function which has at least one non-existence series as
+//          // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
+//          return Collections.emptyList();
+//        }
+//        extendedExpressions.add(actualExpressions);
+//
+//        // We just process first input Expression of AggregationFunction,
+//        // keep other input Expressions as origin and bind Type
+//        // If AggregationFunction need more than one input series,
+//        // we need to reconsider the process of it
+//        if (expression.isBuiltInAggregationFunctionExpression()) {
+//          List<Expression> children = expression.getExpressions();
+//          bindTypeForAggregationNonSeriesInputExpressions(
+//              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
+//          break;
+//        }
+//      }
+//
+//      // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
+//      // removing all wildcards. We use actualExpressions to collect them.
+//      List<List<Expression>> childExpressionsList = new ArrayList<>();
+//      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+//
+//      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
+//    } else if (expression instanceof TimeSeriesOperand) {
+//      PartialPath path = ((TimeSeriesOperand) expression).getPath();
+//      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
+//      return reconstructTimeSeriesOperands(actualPaths);
+//    } else if (expression instanceof TimestampOperand) {
+//      return Collections.singletonList(expression);
+//    } else if (expression instanceof ConstantOperand) {
+//      return Collections.singletonList(expression);
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + expression.getExpressionType());
+//    }
   }
 
   /**
@@ -1199,60 +1202,61 @@ public class ExpressionAnalyzer {
    */
   public static Expression bindTypeForTimeSeriesOperand(
       Expression predicate, List<ColumnHeader> columnHeaders) {
-    if (predicate instanceof TernaryExpression) {
-      Expression firstExpression =
-          bindTypeForTimeSeriesOperand(
-              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders);
-      Expression secondExpression =
-          bindTypeForTimeSeriesOperand(
-              ((TernaryExpression) predicate).getSecondExpression(), columnHeaders);
-      Expression thirdExpression =
-          bindTypeForTimeSeriesOperand(
-              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders);
-      return reconstructTernaryExpression(
-          predicate, firstExpression, secondExpression, thirdExpression);
-    } else if (predicate instanceof BinaryExpression) {
-      Expression leftExpression =
-          bindTypeForTimeSeriesOperand(
-              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders);
-      Expression rightExpression =
-          bindTypeForTimeSeriesOperand(
-              ((BinaryExpression) predicate).getRightExpression(), columnHeaders);
-      return reconstructBinaryExpression(
-          predicate.getExpressionType(), leftExpression, rightExpression);
-    } else if (predicate instanceof UnaryExpression) {
-      Expression expression =
-          bindTypeForTimeSeriesOperand(
-              ((UnaryExpression) predicate).getExpression(), columnHeaders);
-      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
-    } else if (predicate instanceof FunctionExpression) {
-      List<Expression> expressions = predicate.getExpressions();
-      List<Expression> childrenExpressions = new ArrayList<>();
-      for (Expression expression : expressions) {
-        childrenExpressions.add(bindTypeForTimeSeriesOperand(expression, columnHeaders));
-      }
-      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
-    } else if (predicate instanceof TimeSeriesOperand) {
-      String oldPathString = ((TimeSeriesOperand) predicate).getPath().getFullPath();
-      // There are not too many TimeSeriesOperand and columnHeaders in our case,
-      // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
-      for (ColumnHeader columnHeader : columnHeaders) {
-        if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
-          try {
-            return reconstructTimeSeriesOperand(
-                new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
-          } catch (IllegalPathException ignored) {
-          }
-        }
-      }
-      throw new SemanticException(
-          String.format("please ensure input[%s] is correct", oldPathString));
-    } else if (predicate instanceof LeafOperand) {
-      return predicate;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
-    }
+    return new BindTypeForTimeSeriesOperandVisitor().process(predicate, columnHeaders);
+//    if (predicate instanceof TernaryExpression) {
+//      Expression firstExpression =
+//          bindTypeForTimeSeriesOperand(
+//              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders);
+//      Expression secondExpression =
+//          bindTypeForTimeSeriesOperand(
+//              ((TernaryExpression) predicate).getSecondExpression(), columnHeaders);
+//      Expression thirdExpression =
+//          bindTypeForTimeSeriesOperand(
+//              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders);
+//      return reconstructTernaryExpression(
+//          predicate, firstExpression, secondExpression, thirdExpression);
+//    } else if (predicate instanceof BinaryExpression) {
+//      Expression leftExpression =
+//          bindTypeForTimeSeriesOperand(
+//              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders);
+//      Expression rightExpression =
+//          bindTypeForTimeSeriesOperand(
+//              ((BinaryExpression) predicate).getRightExpression(), columnHeaders);
+//      return reconstructBinaryExpression(
+//          predicate.getExpressionType(), leftExpression, rightExpression);
+//    } else if (predicate instanceof UnaryExpression) {
+//      Expression expression =
+//          bindTypeForTimeSeriesOperand(
+//              ((UnaryExpression) predicate).getExpression(), columnHeaders);
+//      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
+//    } else if (predicate instanceof FunctionExpression) {
+//      List<Expression> expressions = predicate.getExpressions();
+//      List<Expression> childrenExpressions = new ArrayList<>();
+//      for (Expression expression : expressions) {
+//        childrenExpressions.add(bindTypeForTimeSeriesOperand(expression, columnHeaders));
+//      }
+//      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
+//    } else if (predicate instanceof TimeSeriesOperand) {
+//      String oldPathString = ((TimeSeriesOperand) predicate).getPath().getFullPath();
+//      // There are not too many TimeSeriesOperand and columnHeaders in our case,
+//      // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
+//      for (ColumnHeader columnHeader : columnHeaders) {
+//        if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
+//          try {
+//            return reconstructTimeSeriesOperand(
+//                new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
+//          } catch (IllegalPathException ignored) {
+//          }
+//        }
+//      }
+//      throw new SemanticException(
+//          String.format("please ensure input[%s] is correct", oldPathString));
+//    } else if (predicate instanceof LeafOperand) {
+//      return predicate;
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + predicate.getExpressionType());
+//    }
   }
 
   public static boolean isDeviceViewNeedSpecialProcess(Expression expression) {

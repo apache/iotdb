@@ -16,6 +16,7 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAl
  * should use them to reconstruct 1 new result to upper level.
  */
 public class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
+  // process every child, then reconstruct a new expression
   public Expression reconstructFromChild(Expression expression) {
     List<Expression> childResult = new ArrayList<>();
     expression.getExpressions().forEach(child -> childResult.add(process(child, null)));
