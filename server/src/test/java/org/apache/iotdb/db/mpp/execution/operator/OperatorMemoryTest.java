@@ -226,6 +226,21 @@ public class OperatorMemoryTest {
   }
 
   @Test
+  public void pipelineExchangeOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(null, null, null, child.calculateMaxReturnSize());
+
+    assertEquals(1024L, exchangeOperator.calculateMaxPeekMemory());
+    assertEquals(1024L, exchangeOperator.calculateMaxReturnSize());
+    assertEquals(0, exchangeOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
   public void lastCacheScanOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(1024L);

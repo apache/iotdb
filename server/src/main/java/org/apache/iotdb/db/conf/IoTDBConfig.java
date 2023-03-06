@@ -141,8 +141,6 @@ public class IoTDBConfig {
   /** Memory allocated for the consensus layer */
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
-  private volatile int maxQueryDeduplicatedPathNum = 1000;
-
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -2487,14 +2485,6 @@ public class IoTDBConfig {
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
-  }
-
-  public int getMaxQueryDeduplicatedPathNum() {
-    return maxQueryDeduplicatedPathNum;
-  }
-
-  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
   public int getCheckPeriodWhenInsertBlocked() {

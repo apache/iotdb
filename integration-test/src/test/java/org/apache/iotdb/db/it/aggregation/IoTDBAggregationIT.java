@@ -46,7 +46,9 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
@@ -971,5 +973,12 @@ public class IoTDBAggregationIT {
     String[] retArray = new String[] {"0,null,"};
     resultSetEqualWithDescOrderTest(
         "select count(s1), sum(s1) from root.test.noDataRegion", expectedHeader, retArray);
+
+    expectedHeader = new String[] {DEVICE, count("s1"), sum("s1")};
+    retArray = new String[] {"root.test.noDataRegion,0,null,"};
+    resultSetEqualTest(
+        "select count(s1), sum(s1) from root.test.noDataRegion align by device",
+        expectedHeader,
+        retArray);
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
+import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
+import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
@@ -108,6 +110,12 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case UNSET_TEMPLATE_PROCEDURE:
         procedure = new UnsetTemplateProcedure();
+        break;
+      case CREATE_MODEL_PROCEDURE:
+        procedure = new CreateModelProcedure();
+        break;
+      case DROP_MODEL_PROCEDURE:
+        procedure = new DropModelProcedure();
         break;
       default:
         LOGGER.error("unknown Procedure type: " + typeCode);

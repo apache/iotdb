@@ -234,7 +234,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will add the new ConfigNode Peer into ConfigNodeRegion
+   * Leader will add the new ConfigNode Peer into ConfigRegion
    *
    * @param configNodeLocation The new ConfigNode
    * @throws AddPeerException When addPeer doesn't success

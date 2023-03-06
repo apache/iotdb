@@ -19,7 +19,7 @@
 
 -->
 
-# ConfigNode 配置参数
+## ConfigNode 配置参数
 
 IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下。
 
@@ -27,7 +27,7 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 
 * `iotdb-confignode.properties`：IoTDB ConfigNode 的配置文件。
 
-## 环境配置项（confignode-env.sh/bat）
+### 环境配置项（confignode-env.sh/bat）
 
 环境配置项主要用于对 ConfigNode 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。ConfigNode 启动时，此部分配置会被传给 JVM，详细配置项说明如下：
 
@@ -58,11 +58,11 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 |默认值|默认与最大堆内存相等|
 |改后生效方式|重启服务生效|
 
-## 系统配置项（iotdb-confignode.properties）
+### 系统配置项（iotdb-confignode.properties）
 
 IoTDB 集群的全局配置通过 ConfigNode 配置。
 
-### Config Node RPC 配置
+#### Config Node RPC 配置
 
 * cn\_internal\_address
 
@@ -82,7 +82,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 10710                  |
 | 改后生效方式 | 重启服务生效                |
 
-### 共识协议
+#### 共识协议
 
 * cn\_consensus\_port
 
@@ -93,7 +93,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 10720                 |
 | 改后生效方式 | 重启服务生效                |
 
-### 目标 Config Node 配置
+#### 目标 Config Node 配置
 
 * cn\_target\_config\_node\_list
 
@@ -104,7 +104,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 127.0.0.1:10710                       |
 | 改后生效方式 | 重启服务生效                                |
 
-### 数据目录
+#### 数据目录
 
 * cn\_system\_dir
 
@@ -124,7 +124,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |默认值| data/confignode/consensus（Windows：data\\configndoe\\consensus） |
 |改后生效方式| 重启服务生效                                             |
 
-### Thrift RPC 配置
+#### Thrift RPC 配置
 
 * cn\_rpc\_thrift\_compression\_enable
 
@@ -207,4 +207,4 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |  默认值   | 300                                                          |
 | 改后生效方式 | 重启服务生效                                                       |
 
-### Metric 监控配置
+#### Metric 监控配置
