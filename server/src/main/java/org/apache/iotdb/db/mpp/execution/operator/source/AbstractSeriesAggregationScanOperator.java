@@ -166,7 +166,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean isFinished() {
-    return finished.get() || finished.compareAndSet(false, !hasNextWithTimer());
+    finished.compareAndSet(false, !hasNextWithTimer());
+    return finished.get();
   }
 
   protected void calculateNextAggregationResult() {
