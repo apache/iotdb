@@ -125,3 +125,56 @@ Result:
 |                                                                       1|                                                                       1|
 +------------------------------------------------------------------------+------------------------------------------------------------------------+
 ```
+
+## TIME_DURATION
+### Grammar
+```sql
+    time_duration(Path)
+```
+### Example
+#### raw data
+```sql
++----------+-------------+
+|      Time|root.db.d1.s1|
++----------+-------------+
+|         1|           70|
+|         3|           10|
+|         4|          303|
+|         6|          110|
+|         7|          302|
+|         8|          110|
+|         9|           60|
+|        10|           70|
+|1677570934|           30|
++----------+-------------+
+```
+#### Insert sql
+```sql
+"CREATE DATABASE root.db",
+"CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN tags(city=Beijing)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1, 2, 10, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(2, null, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(3, 10, 0, null)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(4, 303, 30, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(5, null, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(6, 110, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(7, 302, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(8, 110, null, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(9, 60, 20, true)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(10,70, 20, null)",
+"INSERT INTO root.db.d1(timestamp,s1,s2,s3) values(1677570934, 30, 0, true)",
+```
+
+SQL:
+```sql
+select time_duration(s1) from root.db.d1.s1
+```
+
+Result:
+```
++----------------------------+
+|time_duration(root.db.d1.s1)|
++----------------------------+
+|                  1677570933|
++----------------------------+
+```

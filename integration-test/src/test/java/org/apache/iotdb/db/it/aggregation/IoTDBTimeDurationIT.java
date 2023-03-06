@@ -160,7 +160,7 @@ public class IoTDBTimeDurationIT {
     expectedHeader = new String[] {"time_duration(root.*.d1.s1)", "time_duration(root.*.d2.s1)"};
     retArray = new String[] {"8,8,"};
     resultSetEqualTest(
-        "select time_duration(s1) from root.** where time < 10 group by level=2",
+        "select time_duration(s1) from root.** where time < 10 group by level=1",
         expectedHeader,
         retArray);
 
@@ -279,7 +279,7 @@ public class IoTDBTimeDurationIT {
         };
     retArray = new String[] {"1677570933,1677570938,1677570933,1677570938,"};
     resultSetEqualTest(
-        "select time_duration(s1),time_duration(s2) from root.** group by level=2",
+        "select time_duration(s1),time_duration(s2) from root.** group by level=1",
         expectedHeader,
         retArray);
 

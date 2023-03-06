@@ -110,22 +110,26 @@ select count_if(s1=0 & s2=0, 3, 'ignoreNull'='false'), count_if(s1=1 & s2=0, 3, 
 ## TIME_DURATION
 ### 语法
 ```sql
-select
-    time_duration(Path),[COMMA time_duration(Path)]...
-    from <Path> [COMMA <Path>]...
-    [WHERE whereCondition]
-    [GROUP BY groupByCondition]
-    [HAVING havingCondition]
-    [FILL ({PREVIOUS | LINEAR | constant})]
-    [LIMIT rowLimit]
-    [SLIMIT seriesLimit]
-    [SOFFSET seriesOffset]
-    [OFFSET rowOffset]
-    [ALIGN BY {TIME | DEVICE}]
-    [ODERBY BY {ASC | DESC}]
+    time_duration(Path)
 ```
 ### 使用示例
 #### 准备数据
+```
++----------+-------------+
+|      Time|root.db.d1.s1|
++----------+-------------+
+|         1|           70|
+|         3|           10|
+|         4|          303|
+|         6|          110|
+|         7|          302|
+|         8|          110|
+|         9|           60|
+|        10|           70|
+|1677570934|           30|
++----------+-------------+
+```
+#### 写入语句
 ```sql
 "CREATE DATABASE root.db",
 "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN tags(city=Beijing)",
