@@ -85,7 +85,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.LOCAL_SCHEDULE);
@@ -95,7 +95,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW.toString(),
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.REMOTE_SCHEDULE);
