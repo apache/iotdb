@@ -343,4 +343,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
     return this;
   }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
+    dnConfig.setWriteMemoryProportion(writeMemoryProportion);
+    cnConfig.setWriteMemoryProportion(writeMemoryProportion);
+    return this;
+  }
 }
