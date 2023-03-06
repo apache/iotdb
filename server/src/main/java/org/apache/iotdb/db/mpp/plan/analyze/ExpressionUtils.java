@@ -22,7 +22,20 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.plan.expression.binary.*;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
@@ -42,17 +55,19 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class ExpressionUtils {
 
-  public static Expression reconstructAllExpression(Expression expression, List<Expression> childResults) {
+  public static Expression reconstructAllKindsOfExpression(
+      Expression expression, List<Expression> childResults) {
     if (expression instanceof TernaryExpression) {
-      return reconstructTernaryExpression(expression, childResults.get(0), childResults.get(1), childResults.get(2));
+      return reconstructTernaryExpression(
+          expression, childResults.get(0), childResults.get(1), childResults.get(2));
     }
     if (expression instanceof BinaryExpression) {
-      return reconstructBinaryExpression(expression.getExpressionType(), childResults.get(0), childResults.get(1));
+      return reconstructBinaryExpression(
+          expression.getExpressionType(), childResults.get(0), childResults.get(1));
     }
     if (expression instanceof UnaryExpression) {
       return reconstructUnaryExpression((UnaryExpression) expression, childResults.get(0));
@@ -61,7 +76,7 @@ public class ExpressionUtils {
       return reconstructFunctionExpression((FunctionExpression) expression, childResults);
     }
     throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
+        "unsupported expression type: " + expression.getExpressionType());
   }
 
   public static List<Expression> reconstructTimeSeriesOperands(

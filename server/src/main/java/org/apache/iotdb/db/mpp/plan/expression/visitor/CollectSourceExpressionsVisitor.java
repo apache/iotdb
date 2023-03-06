@@ -9,18 +9,20 @@ import java.util.Collections;
 import java.util.List;
 
 public class CollectSourceExpressionsVisitor extends CollectVisitor {
-    @Override
-    public List<Expression> visitFunctionExpression(FunctionExpression functionExpression, Void context) {
-        return collectFromChild(functionExpression);
-    }
+  @Override
+  public List<Expression> visitFunctionExpression(
+      FunctionExpression functionExpression, Void context) {
+    return collectFromChild(functionExpression);
+  }
 
-    @Override
-    public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
-        return Collections.singletonList(timeSeriesOperand);
-    }
+  @Override
+  public List<Expression> visitTimeSeriesOperand(
+      TimeSeriesOperand timeSeriesOperand, Void context) {
+    return Collections.singletonList(timeSeriesOperand);
+  }
 
-    @Override
-    public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
-        return Collections.emptyList();
-    }
+  @Override
+  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
+    return Collections.emptyList();
+  }
 }
