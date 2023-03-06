@@ -9,3 +9,5 @@ __pycache__/
 thrift/
 ModelData/
 ml_models/
+
+poetry.lock

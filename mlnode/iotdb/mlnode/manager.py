@@ -76,6 +76,7 @@ class Manager(object):
     def submit_single_training_task(self, configs):
         """
         Create a single training task based on configs; will add a process to the pool
+        # TODO: extract code pieces
         """
         task_id = self.generate_taskid()
         self.pool.apply_async(_create_training_task, args=(configs, self.task_map, task_id, ))
