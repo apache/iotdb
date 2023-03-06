@@ -13,7 +13,7 @@ import java.util.List;
  * Simply collects result from child-expression. For example, two child give me 3 and 4 results, I
  * will return 3+4 = 7 results to upper level.
  */
-public class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expression>> {
+public class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expression>, Void> {
   protected List<Expression> collectFromChild(Expression expression) {
     List<Expression> result = new ArrayList<>();
     for (Expression child : expression.getExpressions()) result.addAll(process(child, null));

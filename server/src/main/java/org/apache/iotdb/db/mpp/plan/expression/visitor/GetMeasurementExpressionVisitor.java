@@ -9,7 +9,7 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GetMeasurementExpressionVisitor extends ReconstructVisitor {
+public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
     @Override
     public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
         List<Expression> childExpressions = new ArrayList<>();

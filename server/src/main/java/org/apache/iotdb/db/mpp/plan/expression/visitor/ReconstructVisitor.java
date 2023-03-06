@@ -15,7 +15,7 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAl
  * Collect result from child, then reconstruct. For example, two child each give me 1 result, I
  * should use them to reconstruct 1 new result to upper level.
  */
-public class ReconstructVisitor extends ExpressionAnalyzeVisitor<Expression> {
+public class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
   public Expression reconstructFromChild(Expression expression) {
     List<Expression> childResult = new ArrayList<>();
     expression.getExpressions().forEach(child -> childResult.add(process(child, null)));
@@ -23,22 +23,22 @@ public class ReconstructVisitor extends ExpressionAnalyzeVisitor<Expression> {
   }
 
   @Override
-  public Expression visitTernaryExpression(TernaryExpression ternaryExpression, Void context) {
+  public Expression visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
     return reconstructFromChild(ternaryExpression);
   }
 
   @Override
-  public Expression visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
+  public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     return reconstructFromChild(binaryExpression);
   }
 
   @Override
-  public Expression visitUnaryExpression(UnaryExpression unaryExpression, Void context) {
+  public Expression visitUnaryExpression(UnaryExpression unaryExpression, C context) {
     return reconstructFromChild(unaryExpression);
   }
 
   @Override
-  public Expression visitLeafOperand(LeafOperand leafOperand, Void context) {
+  public Expression visitLeafOperand(LeafOperand leafOperand, C context) {
     return leafOperand;
   }
 }

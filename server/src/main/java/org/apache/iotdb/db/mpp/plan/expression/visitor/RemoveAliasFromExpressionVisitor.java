@@ -9,7 +9,7 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor {
+public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor<Void> {
     @Override
     public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
         List<Expression> childResult = new ArrayList<>();

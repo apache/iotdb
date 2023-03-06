@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpress
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -602,60 +603,61 @@ public class ExpressionAnalyzer {
   public static Expression replaceRawPathWithGroupedPath(
       Expression expression,
       GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
-    if (expression instanceof TernaryExpression) {
-      Expression firstExpression =
-          replaceRawPathWithGroupedPath(
-              ((TernaryExpression) expression).getFirstExpression(), rawPathToGroupedPathMap);
-      Expression secondExpression =
-          replaceRawPathWithGroupedPath(
-              ((TernaryExpression) expression).getSecondExpression(), rawPathToGroupedPathMap);
-      Expression thirdExpression =
-          replaceRawPathWithGroupedPath(
-              ((TernaryExpression) expression).getThirdExpression(), rawPathToGroupedPathMap);
-      return reconstructTernaryExpression(
-          expression, firstExpression, secondExpression, thirdExpression);
-    } else if (expression instanceof BinaryExpression) {
-      Expression leftExpression =
-          replaceRawPathWithGroupedPath(
-              ((BinaryExpression) expression).getLeftExpression(), rawPathToGroupedPathMap);
-      Expression rightExpression =
-          replaceRawPathWithGroupedPath(
-              ((BinaryExpression) expression).getRightExpression(), rawPathToGroupedPathMap);
-      return reconstructBinaryExpression(
-          expression.getExpressionType(), leftExpression, rightExpression);
-    } else if (expression instanceof UnaryExpression) {
-      Expression childExpression =
-          replaceRawPathWithGroupedPath(
-              ((UnaryExpression) expression).getExpression(), rawPathToGroupedPathMap);
-      return reconstructUnaryExpression((UnaryExpression) expression, childExpression);
-    } else if (expression instanceof FunctionExpression) {
-      List<Expression> childrenExpressions = new ArrayList<>();
-      for (Expression childExpression : expression.getExpressions()) {
-        childrenExpressions.add(
-            replaceRawPathWithGroupedPath(childExpression, rawPathToGroupedPathMap));
-
-        // We just process first input Expression of AggregationFunction.
-        // If AggregationFunction need more than one input series,
-        // we need to reconsider the process of it
-        if (expression.isBuiltInAggregationFunctionExpression()) {
-          List<Expression> children = expression.getExpressions();
-          for (int i = 1; i < children.size(); i++) {
-            childrenExpressions.add(children.get(i));
-          }
-          break;
-        }
-      }
-      return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
-      PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
-      return reconstructTimeSeriesOperand(groupedPath);
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      return expression;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new ReplaceRawPathWithGroupedPathVisitor().process(expression, rawPathToGroupedPathMap);
+//    if (expression instanceof TernaryExpression) {
+//      Expression firstExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((TernaryExpression) expression).getFirstExpression(), rawPathToGroupedPathMap);
+//      Expression secondExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((TernaryExpression) expression).getSecondExpression(), rawPathToGroupedPathMap);
+//      Expression thirdExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((TernaryExpression) expression).getThirdExpression(), rawPathToGroupedPathMap);
+//      return reconstructTernaryExpression(
+//          expression, firstExpression, secondExpression, thirdExpression);
+//    } else if (expression instanceof BinaryExpression) {
+//      Expression leftExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((BinaryExpression) expression).getLeftExpression(), rawPathToGroupedPathMap);
+//      Expression rightExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((BinaryExpression) expression).getRightExpression(), rawPathToGroupedPathMap);
+//      return reconstructBinaryExpression(
+//          expression.getExpressionType(), leftExpression, rightExpression);
+//    } else if (expression instanceof UnaryExpression) {
+//      Expression childExpression =
+//          replaceRawPathWithGroupedPath(
+//              ((UnaryExpression) expression).getExpression(), rawPathToGroupedPathMap);
+//      return reconstructUnaryExpression((UnaryExpression) expression, childExpression);
+//    } else if (expression instanceof FunctionExpression) {
+//      List<Expression> childrenExpressions = new ArrayList<>();
+//      for (Expression childExpression : expression.getExpressions()) {
+//        childrenExpressions.add(
+//            replaceRawPathWithGroupedPath(childExpression, rawPathToGroupedPathMap));
+//
+//        // We just process first input Expression of AggregationFunction.
+//        // If AggregationFunction need more than one input series,
+//        // we need to reconsider the process of it
+//        if (expression.isBuiltInAggregationFunctionExpression()) {
+//          List<Expression> children = expression.getExpressions();
+//          for (int i = 1; i < children.size(); i++) {
+//            childrenExpressions.add(children.get(i));
+//          }
+//          break;
+//        }
+//      }
+//      return reconstructFunctionExpression((FunctionExpression) expression, childrenExpressions);
+//    } else if (expression instanceof TimeSeriesOperand) {
+//      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+//      PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
+//      return reconstructTimeSeriesOperand(groupedPath);
+//    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+//      return expression;
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + expression.getExpressionType());
+//    }
   }
 
   /**
