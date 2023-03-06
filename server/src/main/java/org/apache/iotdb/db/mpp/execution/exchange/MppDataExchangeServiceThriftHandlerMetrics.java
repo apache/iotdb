@@ -42,11 +42,11 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
     MetricService.getInstance()
         .createAutoGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             thriftConnectionNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
-            "MPPDataExchange");
+            "MPPDataExchangeRPC");
   }
 
   @Override
@@ -56,7 +56,7 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
             MetricType.AUTO_GAUGE,
             Metric.THRIFT_CONNECTIONS.toString(),
             Tag.NAME.toString(),
-            "MPPDataExchange");
+            "MPPDataExchangeRPC");
   }
 
   @Override

@@ -54,6 +54,8 @@ public class IoTConsensusClientPool {
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
+                  .setPrintLogWhenEncounterException(
+                      config.getRpc().isPrintLogWhenThriftClientEncounterException())
                   .build()),
           new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
               .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
@@ -83,6 +85,8 @@ public class IoTConsensusClientPool {
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(
                       config.getRpc().getSelectorNumOfClientManager())
+                  .setPrintLogWhenEncounterException(
+                      config.getRpc().isPrintLogWhenThriftClientEncounterException())
                   .build(),
               ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()

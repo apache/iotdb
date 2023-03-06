@@ -301,7 +301,7 @@ public class PartitionInfo implements SnapshotProcessor {
       plan.getPartitionSlotsMap()
           .forEach(
               (storageGroup, partitionSlots) -> {
-                if (isStorageGroupExisted(storageGroup)) {
+                if (isDatabaseExisted(storageGroup)) {
                   schemaPartition.put(storageGroup, new SchemaPartitionTable());
 
                   if (!databasePartitionTables
@@ -340,7 +340,7 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getPartitionSlotsMap()
         .forEach(
             (storageGroup, partitionSlots) -> {
-              if (isStorageGroupExisted(storageGroup)) {
+              if (isDatabaseExisted(storageGroup)) {
                 dataPartition.put(storageGroup, new DataPartitionTable());
 
                 if (!databasePartitionTables
@@ -387,8 +387,8 @@ public class PartitionInfo implements SnapshotProcessor {
     }
   }
 
-  private boolean isStorageGroupExisted(String storageGroup) {
-    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(storageGroup);
+  public boolean isDatabaseExisted(String database) {
+    final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     return databasePartitionTable != null && !databasePartitionTable.isPredeleted();
   }
 
@@ -402,7 +402,7 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getAssignedSchemaPartition()
         .forEach(
             (storageGroup, schemaPartitionTable) -> {
-              if (isStorageGroupExisted(storageGroup)) {
+              if (isDatabaseExisted(storageGroup)) {
                 databasePartitionTables
                     .get(storageGroup)
                     .createSchemaPartition(schemaPartitionTable);
@@ -422,7 +422,7 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getAssignedDataPartition()
         .forEach(
             (storageGroup, dataPartitionTable) -> {
-              if (isStorageGroupExisted(storageGroup)) {
+              if (isDatabaseExisted(storageGroup)) {
                 databasePartitionTables.get(storageGroup).createDataPartition(dataPartitionTable);
               }
             });
@@ -436,7 +436,7 @@ public class PartitionInfo implements SnapshotProcessor {
     Map<String, SchemaPartitionTable> schemaPartitionMap = new ConcurrentHashMap<>();
 
     matchedStorageGroups.stream()
-        .filter(this::isStorageGroupExisted)
+        .filter(this::isDatabaseExisted)
         .forEach(
             storageGroup -> {
               schemaPartitionMap.put(storageGroup, new SchemaPartitionTable());
@@ -534,7 +534,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (isStorageGroupExisted(storageGroup)) {
+          if (isDatabaseExisted(storageGroup)) {
             result.put(
                 storageGroup,
                 databasePartitionTables
@@ -559,7 +559,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
     partitionSlotsMap.forEach(
         (storageGroup, partitionSlots) -> {
-          if (isStorageGroupExisted(storageGroup)) {
+          if (isDatabaseExisted(storageGroup)) {
             result.put(
                 storageGroup,
                 databasePartitionTables
@@ -646,7 +646,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public int getRegionGroupCount(String database, TConsensusGroupType type)
       throws DatabaseNotExistsException {
-    if (!isStorageGroupExisted(database)) {
+    if (!isDatabaseExisted(database)) {
       throw new DatabaseNotExistsException(database);
     }
 
@@ -785,7 +785,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public DataSet getRegionId(GetRegionIdPlan plan) {
-    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+    if (!isDatabaseExisted(plan.getStorageGroup())) {
       return new GetRegionIdResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
@@ -797,7 +797,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
-    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+    if (!isDatabaseExisted(plan.getStorageGroup())) {
       return new GetTimeSlotListResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
@@ -809,7 +809,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public DataSet getSeriesSlotList(GetSeriesSlotListPlan plan) {
-    if (!isStorageGroupExisted(plan.getStorageGroup())) {
+    if (!isDatabaseExisted(plan.getStorageGroup())) {
       return new GetSeriesSlotListResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }

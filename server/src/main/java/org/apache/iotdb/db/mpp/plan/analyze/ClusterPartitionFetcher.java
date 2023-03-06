@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -73,7 +73,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private final PartitionCache partitionCache;
 
-  private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
+  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
       ConfigNodeClientManager.getInstance();
 
   private static final class ClusterPartitionFetcherHolder {
@@ -97,7 +97,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
@@ -129,7 +129,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
@@ -161,7 +161,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level) {
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
@@ -180,7 +180,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
     if (null == dataPartition) {
       try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
@@ -207,7 +207,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     // and there is no need to update cache because since we will never fetch it from cache, the
     // update operation will be only time waste
     try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TDataPartitionTableResp dataPartitionTableResp =
           client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
       if (dataPartitionTableResp.getStatus().getCode()
@@ -231,7 +231,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     if (null == dataPartition) {
       // Do not use data partition cache
       try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
@@ -261,7 +261,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     if (null == dataPartition) {
       try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
         TDataPartitionTableResp dataPartitionTableResp = client.getOrCreateDataPartitionTable(req);
 

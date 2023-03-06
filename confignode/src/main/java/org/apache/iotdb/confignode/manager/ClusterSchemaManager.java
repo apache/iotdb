@@ -380,38 +380,51 @@ public class ClusterSchemaManager {
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all StorageGroupSchemas
-    Map<String, TDatabaseSchema> storageGroupSchemaMap =
+    Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
-    if (storageGroupSchemaMap.size() == 0) {
+    if (databaseSchemaMap.size() == 0) {
       // Skip when there are no StorageGroups
       return;
     }
 
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
-    int storageGroupNum = storageGroupSchemaMap.size();
+    int databaseNum = databaseSchemaMap.size();
+
+    for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
+      if (!getPartitionManager().isDatabaseExisted(databaseSchema.getName())) {
+        // filter the pre deleted database
+        databaseNum--;
+      }
+    }
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
-    for (TDatabaseSchema storageGroupSchema : storageGroupSchemaMap.values()) {
+    for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       try {
         // Adjust maxSchemaRegionGroupNum for each StorageGroup.
         // All StorageGroups share the DataNodes equally.
         // The allocated SchemaRegionGroups will not be shrunk.
-        int allocatedSchemaRegionGroupCount =
-            getPartitionManager()
-                .getRegionGroupCount(
-                    storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
+        int allocatedSchemaRegionGroupCount;
+        try {
+          allocatedSchemaRegionGroupCount =
+              getPartitionManager()
+                  .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
+        } catch (DatabaseNotExistsException e) {
+          // ignore the pre deleted database
+          continue;
+        }
+
         int maxSchemaRegionGroupNum =
             calcMaxRegionGroupNum(
-                storageGroupSchema.getMinSchemaRegionGroupNum(),
+                databaseSchema.getMinSchemaRegionGroupNum(),
                 SCHEMA_REGION_PER_DATA_NODE,
                 dataNodeNum,
-                storageGroupNum,
-                storageGroupSchema.getSchemaReplicationFactor(),
+                databaseNum,
+                databaseSchema.getSchemaReplicationFactor(),
                 allocatedSchemaRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-            storageGroupSchema.getName(),
+            databaseSchema.getName(),
             maxSchemaRegionGroupNum);
 
         // Adjust maxDataRegionGroupNum for each StorageGroup.
@@ -419,23 +432,22 @@ public class ClusterSchemaManager {
         // The allocated DataRegionGroups will not be shrunk.
         int allocatedDataRegionGroupCount =
             getPartitionManager()
-                .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
+                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
-                storageGroupSchema.getMinDataRegionGroupNum(),
+                databaseSchema.getMinDataRegionGroupNum(),
                 DATA_REGION_PER_PROCESSOR,
                 totalCpuCoreNum,
-                storageGroupNum,
-                storageGroupSchema.getDataReplicationFactor(),
+                databaseNum,
+                databaseSchema.getDataReplicationFactor(),
                 allocatedDataRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
-            storageGroupSchema.getName(),
+            databaseSchema.getName(),
             maxDataRegionGroupNum);
 
         adjustMaxRegionGroupNumPlan.putEntry(
-            storageGroupSchema.getName(),
-            new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
+            databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Adjust maxRegionGroupNum failed because StorageGroup doesn't exist", e);
       }
