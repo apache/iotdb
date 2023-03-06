@@ -26,7 +26,7 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
 
   protected SeriesScanUtil seriesScanUtil;
 
-  protected boolean finished = false;
+  protected volatile boolean finished = false;
 
   @Override
   public void initQueryDataSource(QueryDataSource dataSource) {
