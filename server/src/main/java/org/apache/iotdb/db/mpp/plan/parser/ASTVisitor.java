@@ -2819,7 +2819,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return new CreateSchemaTemplateStatement(
-        name, measurementsList, dataTypesList, encodingsList, compressorsList);
+        name,
+        measurementsList,
+        dataTypesList,
+        encodingsList,
+        compressorsList,
+        ctx.ALIGNED() != null);
   }
 
   void parseAttributeClause(

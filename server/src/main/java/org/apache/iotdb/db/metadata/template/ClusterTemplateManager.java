@@ -114,7 +114,7 @@ public class ClusterTemplateManager implements ITemplateManager {
               statement.getDataTypes(),
               statement.getEncodings(),
               statement.getCompressors(),
-              statement.getAlignedDeviceId());
+              statement.isAligned());
       req.setName(template.getName());
       req.setSerializedTemplate(template.serialize());
     } catch (IllegalPathException e) {

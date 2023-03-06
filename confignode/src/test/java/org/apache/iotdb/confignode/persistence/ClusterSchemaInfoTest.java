@@ -43,7 +43,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -144,14 +143,11 @@ public class ClusterSchemaInfoTest {
   }
 
   private Template newSchemaTemplate(String name) throws IllegalPathException {
-    List<String> measurements =
-            Arrays.asList(name + "_" + "temperature",name + "_" + "status");
-    List<TSDataType> dataTypes =
-            Arrays.asList( TSDataType.FLOAT,TSDataType.BOOLEAN);
-    List<TSEncoding> encodings =
-            Arrays.asList( TSEncoding.RLE, TSEncoding.PLAIN);
+    List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
     List<CompressionType> compressors =
-            Arrays.asList( CompressionType.SNAPPY,CompressionType.SNAPPY);
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
   }
 }

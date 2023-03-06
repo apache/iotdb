@@ -19,14 +19,6 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,14 +34,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class Template implements Serializable {
 
@@ -65,48 +52,32 @@ public class Template implements Serializable {
   }
 
   public Template(
-          String name,
-          List<String> measurements,
-          List<TSDataType> dataTypes,
-          List<TSEncoding> encodings,
-          List<CompressionType> compressors)
-          throws IllegalPathException {
+      String name,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws IllegalPathException {
     this(name, measurements, dataTypes, encodings, compressors, false);
   }
 
   public Template(
-          String name,
-          List<String> measurements,
-          List<TSDataType> dataTypes,
-          List<TSEncoding> encodings,
-          List<CompressionType> compressors,
-          boolean isAligned)
-          throws IllegalPathException {
+      String name,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned)
+      throws IllegalPathException {
     this.isDirectAligned = isAligned;
     this.schemaMap = new HashMap<>();
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
-      IMeasurementSchema schema = new MeasurementSchema(measurements.get(i),dataTypes.get(i),encodings.get(i),compressors.get(i));
+      IMeasurementSchema schema =
+          new MeasurementSchema(
+              measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));
       schemaMap.put(schema.getMeasurementId(), schema);
     }
-  }
-
-  public Template(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors,
-      Set<String> alignedDeviceId)
-      throws IllegalPathException {
-    // for compatibly
-    boolean isAlign = false;
-    for (int i = 0; i < measurements.size(); i++) {
-      if(measurements.get(i).size()>1){
-        isAlign = true;
-      }
-    }
-
   }
 
   public int getId() {
@@ -142,178 +113,33 @@ public class Template implements Serializable {
   }
 
   // region construct template tree
-  /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
-  private void constructTemplateTree(String[] alignedPaths, IMeasurementSchema[] schemas)
-      throws IllegalPathException {
-    // Only for aligned Paths, with common direct prefix
-    String[] pathNodes;
-    IMNode commonPar;
-    String prefix = null;
-    List<String> measurementNames = new ArrayList<>();
-    IMeasurementMNode leafNode;
-
-    // deduplicate
-    Set<String> pathSet = new HashSet<>(Arrays.asList(alignedPaths));
-    if (pathSet.size() != alignedPaths.length) {
-      throw new IllegalPathException("Duplication in paths.");
-    }
-
-    Set<String> checkSet = new HashSet<>();
-    for (String path : alignedPaths) {
-      // check aligned whether legal, and records measurements name
-      if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + path);
-      }
-      pathNodes = PathUtils.splitPathToDetachedNodes(path);
-
-      if (pathNodes.length == 1) {
-        prefix = "";
-      } else {
-        prefix = joinBySeparator(Arrays.copyOf(pathNodes, pathNodes.length - 1));
-      }
-
-      if (checkSet.isEmpty()) {
-        checkSet.add(prefix);
-      }
-      if (!checkSet.contains(prefix)) {
-        throw new IllegalPathException(
-            "Aligned measurements get different paths, " + alignedPaths[0]);
-      }
-
-      measurementNames.add(pathNodes[pathNodes.length - 1]);
-    }
-
-    synchronized (this) {
-      if (prefix.equals("")) {
-        isDirectAligned = true;
-      }
-      for (int i = 0; i <= measurementNames.size() - 1; i++) {
-        // find the parent and add nodes to template
-        if ("".equals(prefix)) {
-          leafNode =
-              MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
-          directNodes.put(leafNode.getName(), leafNode);
-        } else {
-          commonPar = constructEntityPath(alignedPaths[0]);
-          commonPar.getAsEntityMNode().setAligned(true);
-          leafNode =
-              MeasurementMNode.getMeasurementMNode(
-                  commonPar.getAsEntityMNode(), measurementNames.get(i), schemas[i], null);
-          commonPar.addChild(leafNode);
-        }
-        schemaMap.put(getFullPathWithoutTemplateName(leafNode), schemas[i]);
-      }
-    }
-  }
-
-  /** Construct single measurement, only check path conflict and duplication */
-  private IMeasurementMNode constructTemplateTree(String path, IMeasurementSchema schema)
-      throws IllegalPathException {
-    if (getPathNodeInTemplate(path) != null) {
-      throw new IllegalPathException("Path duplicated: " + path);
-    }
-    String[] pathNode = PathUtils.splitPathToDetachedNodes(path);
-    IMNode cur = constructEntityPath(path);
-
-    synchronized (this) {
-      IMeasurementMNode leafNode =
-          MeasurementMNode.getMeasurementMNode(
-              (IEntityMNode) cur, pathNode[pathNode.length - 1], schema, null);
-      if (cur == null) {
-        directNodes.put(leafNode.getName(), leafNode);
-      } else {
-        cur.addChild(leafNode);
-      }
-      schemaMap.put(getFullPathWithoutTemplateName(leafNode), schema);
-      return leafNode;
-    }
-  }
 
   private IMeasurementSchema constructSchema(
       String nodeName, TSDataType dataType, TSEncoding encoding, CompressionType compressor) {
     return new MeasurementSchema(nodeName, dataType, encoding, compressor);
   }
 
-  private IMeasurementSchema[] constructSchemas(
-      String[] nodeNames,
-      TSDataType[] dataTypes,
-      TSEncoding[] encodings,
-      CompressionType[] compressors)
-      throws IllegalPathException {
-    MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
-    for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] =
-          new MeasurementSchema(
-              new PartialPath(nodeNames[i]).getMeasurement(),
-              dataTypes[i],
-              encodings[i],
-              compressors[i]);
-    }
-    return schemas;
-  }
   // endregion
 
   // region append of template
 
-  public void addAlignedMeasurements(
+  public void addMeasurements(
       String[] measurements,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
       CompressionType[] compressors)
       throws IllegalPathException {
-    IMeasurementSchema[] schema;
-    String prefix;
-    String[] pathNode;
-    String[] leafNodes = new String[measurements.length];
-
-    // If prefix exists and not aligned, it will throw exception
-    // Prefix equality will be checked in constructTemplateTree
-    pathNode = PathUtils.splitPathToDetachedNodes(measurements[0]);
-    prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-    IMNode targetNode = getPathNodeInTemplate(prefix);
-    if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
-        || (prefix.equals("") && !this.isDirectAligned())) {
-      throw new IllegalPathException(prefix, "path already exists but not aligned");
-    }
-
-    for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
-      leafNodes[i] = pathNode[pathNode.length - 1];
-    }
-    schema = constructSchemas(leafNodes, dataTypes, encodings, compressors);
-    constructTemplateTree(measurements, schema);
-  }
-
-  public void addUnalignedMeasurements(
-      String[] measurements,
-      TSDataType[] dataTypes,
-      TSEncoding[] encodings,
-      CompressionType[] compressors)
-      throws IllegalPathException {
-    String prefix;
-    String[] pathNode;
-
-    // deduplicate
-    Set<String> pathSet = new HashSet<>(Arrays.asList(measurements));
-    if (pathSet.size() != measurements.length) {
-      throw new IllegalPathException("Duplication in paths.");
-    }
-
-    for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = PathUtils.splitPathToDetachedNodes(measurements[i]);
-
-      // If prefix exists and aligned, it will throw exception
-      prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-      IMNode parNode = getPathNodeInTemplate(prefix);
-      if ((parNode != null && parNode.getAsEntityMNode().isAligned())
-          || (prefix.equals("") && this.isDirectAligned())) {
-        throw new IllegalPathException(measurements[i], "path already exists and aligned");
+    // check exists
+    for (String measurement : measurements) {
+      if (schemaMap.containsKey(measurement)) {
+        throw new IllegalPathException(measurement, "path already exists");
       }
-
+    }
+    // construct
+    for (int i = 0; i < measurements.length; i++) {
       IMeasurementSchema schema =
-          constructSchema(
-              pathNode[pathNode.length - 1], dataTypes[i], encodings[i], compressors[i]);
-      constructTemplateTree(measurements[i], schema);
+          constructSchema(measurements[i], dataTypes[i], encodings[i], compressors[i]);
+      schemaMap.put(measurements[i], schema);
     }
   }
 

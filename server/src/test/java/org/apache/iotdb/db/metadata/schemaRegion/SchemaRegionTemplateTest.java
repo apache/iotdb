@@ -71,10 +71,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList("s1","s2"),
+            Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-            Arrays.asList( CompressionType.SNAPPY,CompressionType.SNAPPY));
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -131,10 +131,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList("s1","s2"),
+            Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-            Arrays.asList( CompressionType.SNAPPY,CompressionType.SNAPPY));
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -182,10 +182,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList("s1","s2"),
+            Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-            Arrays.asList( CompressionType.SNAPPY,CompressionType.SNAPPY));
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
@@ -233,10 +233,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Template template =
         new Template(
             "t1",
-            Arrays.asList("s1","s2"),
+            Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
-            Arrays.asList( CompressionType.SNAPPY,CompressionType.SNAPPY));
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
