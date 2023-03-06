@@ -176,6 +176,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     AsyncPlanNodeSender asyncPlanNodeSender =
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
+    // TODO @spricoder remote and local
     // sync dispatch to local
     for (FragmentInstance localInstance : localInstances) {
       try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
