@@ -91,7 +91,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public boolean hasNext() {
-    if (finished) {
+    if (finished.get()) {
       return false;
     }
     if (retainedTsBlock != null) {
@@ -129,9 +129,9 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
-      finished = builder.isEmpty();
+      finished.set(builder.isEmpty());
 
-      return !finished;
+      return !finished.get();
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     }
