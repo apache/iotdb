@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.BindTypeForTimeSeriesOper
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatDeviceAndRemoveWildcardVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInExpressionVisitor;
@@ -248,75 +249,77 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> concatExpressionWithSuffixPaths(
       Expression expression, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
-    if (expression instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          concatExpressionWithSuffixPaths(
-              ((TernaryExpression) expression).getFirstExpression(), prefixPaths, patternTree);
-      List<Expression> secondExpressions =
-          concatExpressionWithSuffixPaths(
-              ((TernaryExpression) expression).getSecondExpression(), prefixPaths, patternTree);
-      List<Expression> thirdExpressions =
-          concatExpressionWithSuffixPaths(
-              ((TernaryExpression) expression).getThirdExpression(), prefixPaths, patternTree);
-      return reconstructTernaryExpressions(
-          expression, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (expression instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          concatExpressionWithSuffixPaths(
-              ((BinaryExpression) expression).getLeftExpression(), prefixPaths, patternTree);
-      List<Expression> rightExpressions =
-          concatExpressionWithSuffixPaths(
-              ((BinaryExpression) expression).getRightExpression(), prefixPaths, patternTree);
-      return reconstructBinaryExpressions(
-          expression.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (expression instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          concatExpressionWithSuffixPaths(
-              ((UnaryExpression) expression).getExpression(), prefixPaths, patternTree);
-      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
-    } else if (expression instanceof FunctionExpression) {
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression suffixExpression : expression.getExpressions()) {
-        extendedExpressions.add(
-            concatExpressionWithSuffixPaths(suffixExpression, prefixPaths, patternTree));
-
-        // We just process first input Expression of AggregationFunction,
-        // keep other input Expressions as origin
-        // If AggregationFunction need more than one input series,
-        // we need to reconsider the process of it
-        if (expression.isBuiltInAggregationFunctionExpression()) {
-          List<Expression> children = expression.getExpressions();
-          for (int i = 1; i < children.size(); i++) {
-            extendedExpressions.add(Collections.singletonList(children.get(i)));
-          }
-          break;
-        }
-      }
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
-      List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-        actualPaths.add(rawPath);
-        patternTree.appendPathPattern(rawPath);
-      } else {
-        for (PartialPath prefixPath : prefixPaths) {
-          PartialPath concatPath = prefixPath.concatPath(rawPath);
-          patternTree.appendPathPattern(concatPath);
-          actualPaths.add(concatPath);
-        }
-      }
-      return reconstructTimeSeriesOperands(actualPaths);
-    } else if (expression instanceof TimestampOperand) {
-      return Collections.singletonList(expression);
-    } else if (expression instanceof ConstantOperand) {
-      return Collections.singletonList(expression);
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new ConcatExpressionWithSuffixPathsVisitor().process(expression,
+            new ConcatExpressionWithSuffixPathsVisitor.Context(prefixPaths, patternTree));
+//    if (expression instanceof TernaryExpression) {
+//      List<Expression> firstExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((TernaryExpression) expression).getFirstExpression(), prefixPaths, patternTree);
+//      List<Expression> secondExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((TernaryExpression) expression).getSecondExpression(), prefixPaths, patternTree);
+//      List<Expression> thirdExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((TernaryExpression) expression).getThirdExpression(), prefixPaths, patternTree);
+//      return reconstructTernaryExpressions(
+//          expression, firstExpressions, secondExpressions, thirdExpressions);
+//    } else if (expression instanceof BinaryExpression) {
+//      List<Expression> leftExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((BinaryExpression) expression).getLeftExpression(), prefixPaths, patternTree);
+//      List<Expression> rightExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((BinaryExpression) expression).getRightExpression(), prefixPaths, patternTree);
+//      return reconstructBinaryExpressions(
+//          expression.getExpressionType(), leftExpressions, rightExpressions);
+//    } else if (expression instanceof UnaryExpression) {
+//      List<Expression> childExpressions =
+//          concatExpressionWithSuffixPaths(
+//              ((UnaryExpression) expression).getExpression(), prefixPaths, patternTree);
+//      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
+//    } else if (expression instanceof FunctionExpression) {
+//      List<List<Expression>> extendedExpressions = new ArrayList<>();
+//      for (Expression suffixExpression : expression.getExpressions()) {
+//        extendedExpressions.add(
+//            concatExpressionWithSuffixPaths(suffixExpression, prefixPaths, patternTree));
+//
+//        // We just process first input Expression of AggregationFunction,
+//        // keep other input Expressions as origin
+//        // If AggregationFunction need more than one input series,
+//        // we need to reconsider the process of it
+//        if (expression.isBuiltInAggregationFunctionExpression()) {
+//          List<Expression> children = expression.getExpressions();
+//          for (int i = 1; i < children.size(); i++) {
+//            extendedExpressions.add(Collections.singletonList(children.get(i)));
+//          }
+//          break;
+//        }
+//      }
+//      List<List<Expression>> childExpressionsList = new ArrayList<>();
+//      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+//      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
+//    } else if (expression instanceof TimeSeriesOperand) {
+//      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+//      List<PartialPath> actualPaths = new ArrayList<>();
+//      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+//        actualPaths.add(rawPath);
+//        patternTree.appendPathPattern(rawPath);
+//      } else {
+//        for (PartialPath prefixPath : prefixPaths) {
+//          PartialPath concatPath = prefixPath.concatPath(rawPath);
+//          patternTree.appendPathPattern(concatPath);
+//          actualPaths.add(concatPath);
+//        }
+//      }
+//      return reconstructTimeSeriesOperands(actualPaths);
+//    } else if (expression instanceof TimestampOperand) {
+//      return Collections.singletonList(expression);
+//    } else if (expression instanceof ConstantOperand) {
+//      return Collections.singletonList(expression);
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + expression.getExpressionType());
+//    }
   }
 
   /**
