@@ -525,7 +525,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   /**
-   * Used for SeriesScanNode and AlignedSeriesScanNode
+   * Used for SeriesScanNode and AlignedSeriesScanNode.
    *
    * @param node SeriesScanNode or AlignedSeriesScanNode
    */
@@ -601,7 +601,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   /**
-   * Used for SeriesAggregationScanNode and AlignedSeriesAggregationScanNode
+   * Used for SeriesAggregationScanNode and AlignedSeriesAggregationScanNode.
    *
    * @param node SeriesAggregationScanNode or AlignedSeriesAggregationScanNode
    */

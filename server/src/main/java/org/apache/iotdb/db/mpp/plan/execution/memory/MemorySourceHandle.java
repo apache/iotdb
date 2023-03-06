@@ -112,5 +112,7 @@ public class MemorySourceHandle implements ISourceHandle {
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {}
 
   @Override
-  public void allowRunning() {}
+  public void allowRunning() {
+    // do nothing
+  }
 }
