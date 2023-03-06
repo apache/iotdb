@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1677469194439,
+  "iteration": 1678086742631,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -800,10 +800,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1540,10 +1536,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1641,8 +1633,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
+          "exemplar": true,
           "expr": "sum(rate(performance_overview_detail_seconds_sum{instance=\"$instance\"}[1m]) / rate(performance_overview_detail_seconds_count{instance=\"$instance\"}[1m])) by (instance, stage)",
           "hide": false,
+          "interval": "",
           "legendFormat": "{{stage}}",
           "range": true,
           "refId": "B"
@@ -1743,10 +1737,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1822,6 +1812,205 @@
         "x": 0,
         "y": 42
       },
+      "id": 58,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "sum(rate(performance_overview_schedule_overview_seconds_sum{instance=\"$instance\"}[1m]) / rate(performance_overview_schedule_overview_seconds_count{instance=\"$instance\"}[1m])) by (stage)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{stage}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Average Time Consumed Of Schedule Overview",
+      "type": "timeseries"
+    },
+    {
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "performance_overview_schedule_overview_seconds{instance=~\"$instance\", quantile=\"0.99\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{stage}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "P99 Time Consumed Of Schedule Overview",
+      "type": "timeseries"
+    },
+    {
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "empty",
+                "result": {
+                  "index": 1,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 50
+      },
       "id": 47,
       "options": {
         "legend": {
@@ -1844,8 +2033,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
+          "exemplar": true,
           "expr": "sum(rate(performance_overview_schedule_detail_seconds_sum{instance=\"$instance\"}[1m]) / rate(performance_overview_schedule_detail_seconds_count{instance=\"$instance\"}[1m])) by (stage)",
           "hide": false,
+          "interval": "",
           "legendFormat": "{{stage}}",
           "range": true,
           "refId": "B"
@@ -1911,9 +2102,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 42
+        "y": 50
       },
-      "id": 28,
+      "id": 59,
       "options": {
         "legend": {
           "calcs": [
@@ -2000,7 +2191,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 50
+        "y": 58
       },
       "id": 11,
       "options": {
@@ -2110,7 +2301,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 50
+        "y": 58
       },
       "id": 51,
       "options": {
@@ -2200,7 +2391,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 50
+        "y": 58
       },
       "id": 13,
       "options": {
@@ -2243,7 +2434,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "id": 34,
       "panels": [],
@@ -2315,7 +2506,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 59
+        "y": 67
       },
       "id": 15,
       "options": {
@@ -2415,7 +2606,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 59
+        "y": 67
       },
       "id": 18,
       "options": {
@@ -2519,7 +2710,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 59
+        "y": 67
       },
       "id": 17,
       "options": {
@@ -2620,7 +2811,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 67
+        "y": 75
       },
       "id": 48,
       "options": {
@@ -2733,7 +2924,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 67
+        "y": 75
       },
       "id": 52,
       "options": {
@@ -2821,7 +3012,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 67
+        "y": 75
       },
       "id": 49,
       "options": {
@@ -2982,7 +3173,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 75
+        "y": 83
       },
       "id": 44,
       "options": {
@@ -3143,7 +3334,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 75
+        "y": 83
       },
       "id": 16,
       "options": {
@@ -3319,7 +3510,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 75
+        "y": 83
       },
       "id": 20,
       "options": {
@@ -3425,6 +3616,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Performance Overview Dashboard",
   "uid": "ZRfEph04k",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
