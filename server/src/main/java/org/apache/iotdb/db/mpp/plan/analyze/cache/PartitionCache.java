@@ -89,7 +89,7 @@ public class PartitionCache {
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
   /** the cache of data partition table, from database to data partition table. */
   private final Cache<String, DataPartitionTable> dataPartitionCache;
-  /** the cache of region replica set, from consensus group id to region replica set */
+  /** the cache of region replica set, from consensus group id to region replica set. */
   private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
@@ -132,7 +132,6 @@ public class PartitionCache {
           }
         };
     getDatabaseCacheResult(result, devicePaths, fetchDatabases, autoCreateDatabases);
-    // TODO spricoder check result
     return result.getResultMap();
   }
 
