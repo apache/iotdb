@@ -33,7 +33,7 @@ public interface CommonConfig {
 
   CommonConfig setCompressor(String compressor);
 
-  CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
+  CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
   CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB);
 

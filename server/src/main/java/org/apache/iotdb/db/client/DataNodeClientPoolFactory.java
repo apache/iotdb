@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -37,11 +37,11 @@ public class DataNodeClientPoolFactory {
   private DataNodeClientPoolFactory() {}
 
   public static class ConfigNodeClientPoolFactory
-      implements IClientPoolFactory<ConfigNodeRegionId, ConfigNodeClient> {
+      implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {
 
     @Override
-    public KeyedObjectPool<ConfigNodeRegionId, ConfigNodeClient> createClientPool(
-        ClientManager<ConfigNodeRegionId, ConfigNodeClient> manager) {
+    public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
       return new GenericKeyedObjectPool<>(
           new ConfigNodeClient.Factory(
               manager,
@@ -58,11 +58,11 @@ public class DataNodeClientPoolFactory {
   }
 
   public static class ClusterDeletionConfigNodeClientPoolFactory
-      implements IClientPoolFactory<ConfigNodeRegionId, ConfigNodeClient> {
+      implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {
 
     @Override
-    public KeyedObjectPool<ConfigNodeRegionId, ConfigNodeClient> createClientPool(
-        ClientManager<ConfigNodeRegionId, ConfigNodeClient> manager) {
+    public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
       return new GenericKeyedObjectPool<>(
           new ConfigNodeClient.Factory(
               manager,
