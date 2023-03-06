@@ -23,12 +23,14 @@
 package org.apache.iotdb.consensus.natraft.protocol;
 
 import java.util.Collections;
+import java.util.function.Consumer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -193,6 +195,7 @@ public class RaftMember {
   protected LogSequencer logSequencer;
   private volatile LogAppender logAppender;
   private FlowBalancer flowBalancer;
+  private Consumer<ConsensusGroupId> onRemove;
 
   public RaftMember(
       String storageDir,
@@ -202,7 +205,8 @@ public class RaftMember {
       List<Peer> newNodes,
       ConsensusGroupId groupId,
       IStateMachine stateMachine,
-      IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager) {
+      IClientManager<TEndPoint, AsyncRaftServiceClient> clientManager,
+      Consumer<ConsensusGroupId> onRemove) {
     this.config = config;
     this.storageDir = storageDir;
     initConfig();
@@ -226,21 +230,65 @@ public class RaftMember {
 
     this.clientManager = clientManager;
     this.stateMachine = stateMachine;
-    this.logManager =
-        new DirectorySnapshotRaftLogManager(
-            new SyncLogDequeSerializer(groupId, config),
-            new AsyncLogApplier(new BaseApplier(stateMachine), name, config),
-            name,
-            stateMachine,
-            config);
+
     this.votingLogList = new VotingLogList(this);
     this.logAppender = appenderFactory.create(this, config);
     this.logSequencer = SEQUENCER_FACTORY.create(this, config);
     this.logDispatcher = new LogDispatcher(this, config);
     this.heartbeatReqHandler = new HeartbeatReqHandler(this);
     this.electionReqHandler = new ElectionReqHandler(this);
+    this.logManager =
+        new DirectorySnapshotRaftLogManager(
+            new SyncLogDequeSerializer(groupId, config),
+            new AsyncLogApplier(new BaseApplier(stateMachine, this), name, config),
+            name,
+            stateMachine,
+            config,
+            this::examineUnappliedEntry);
+    this.onRemove = onRemove;
 
     initPeerMap();
+  }
+
+  public void applyConfigChange(ConfigChangeEntry configChangeEntry) {
+    List<Peer> newNodes = configChangeEntry.getNewPeers();
+    if (!newNodes.equals(this.newNodes)) {
+      return;
+    }
+
+    if (newNodes.contains(thisNode)) {
+      applyNewNodes();
+    }
+  }
+
+  public void applyNewNodes() {
+    try {
+      logManager.getLock().writeLock().lock();
+      logDispatcher.applyNewNodes();
+      allNodes = newNodes;
+      newNodes = null;
+      persistConfiguration();
+    } finally {
+      logManager.getLock().writeLock().unlock();
+    }
+  }
+
+  public void remove() {
+    stop();
+    FileUtils.deleteDirectory(new File(storageDir));
+    onRemove.accept(groupId);
+  }
+
+  private void examineUnappliedEntry(List<Entry> entries) {
+    ConfigChangeEntry configChangeEntry = null;
+    for (Entry entry : entries) {
+      if (entry instanceof  ConfigChangeEntry) {
+        configChangeEntry = (ConfigChangeEntry) entry;
+      }
+    }
+    if (configChangeEntry != null) {
+      setNewNodes(configChangeEntry.getNewPeers());
+    }
   }
 
   public void recoverConfiguration() {
@@ -1238,5 +1286,77 @@ public class RaftMember {
     List<Peer> newPeers = new ArrayList<>(allNodes);
     newPeers.add(newPeer);
     return changeConfig(newPeers);
+  }
+
+  public TSStatus removePeer(Peer toRemove) {
+    List<Peer> allNodes = getAllNodes();
+    if (!allNodes.contains(toRemove)) {
+      return StatusUtils.OK.deepCopy().setMessage("Peer already removed");
+    }
+
+    List<Peer> newPeers = new ArrayList<>(allNodes);
+    newPeers.remove(toRemove);
+    return changeConfig(newPeers);
+  }
+
+  public TSStatus updatePeer(Peer oldPeer, Peer newPeer) {
+    List<Peer> allNodes = getAllNodes();
+    if (!allNodes.contains(oldPeer)) {
+      return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage("Peer already removed");
+    }
+    if (allNodes.contains(newPeer)) {
+      return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage("Peer already exists");
+    }
+
+    List<Peer> newPeers = new ArrayList<>(allNodes);
+    newPeers.remove(oldPeer);
+    newPeers.add(newPeer);
+    return changeConfig(newPeers);
+  }
+
+  public void triggerSnapshot() {
+    logManager.takeSnapshot(this);
+  }
+
+  public TSStatus transferLeader(Peer peer) {
+    if (thisNode.equals(peer)) {
+      return StatusUtils.OK;
+    }
+    if (!isLeader()) {
+      return StatusUtils.NO_LEADER.deepCopy().setMessage("This node is not a leader");
+    }
+    if (!allNodes.contains(peer)) {
+      return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage("Peer not in this group");
+    }
+
+    AsyncRaftServiceClient client = getClient(peer.getEndpoint());
+    try {
+      return SyncClientAdaptor.forceElection(client, groupId);
+    } catch (TException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public TSStatus forceElection() {
+    if (isLeader()) {
+      return StatusUtils.OK;
+    }
+
+    heartbeatThread.setLastHeartbeatReceivedTime(0);
+    heartbeatThread.notifyHeartbeat();
+    long waitStart = System.currentTimeMillis();
+    long maxWait = 10_000L;
+    while (!isLeader() && (System.currentTimeMillis() - waitStart) < maxWait) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        return StatusUtils.TIME_OUT;
+      }
+    }
+    if (isLeader()) {
+      return StatusUtils.OK;
+    } else {
+      return StatusUtils.TIME_OUT;
+    }
   }
 }

@@ -187,6 +187,26 @@ public class LogDispatcher {
     return new DispatcherThread(node, logBlockingQueue);
   }
 
+  public void applyNewNodes() {
+    allNodes = newNodes;
+    newNodes = null;
+
+    List<Peer> nodesToRemove = new ArrayList<>();
+    for (Entry<Peer, ExecutorService> entry : executorServices.entrySet()) {
+      if (!allNodes.contains(entry.getKey())) {
+        nodesToRemove.add(entry.getKey());
+      }
+    }
+    for (Peer peer : nodesToRemove) {
+      ExecutorService executorService = executorServices.remove(peer);
+      executorService.shutdownNow();
+      nodesRate.remove(peer);
+      nodesRateLimiter.remove(peer);
+      nodesEnabled.remove(peer);
+      nodesLogQueuesMap.remove(peer);
+    }
+  }
+
   protected class DispatcherThread implements Runnable {
 
     Peer receiver;
@@ -312,12 +332,11 @@ public class LogDispatcher {
     }
 
     public AppendNodeEntryHandler getAppendNodeEntryHandler(
-        VotingEntry log, Peer node, int quorumSize) {
+        VotingEntry log, Peer node) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setDirectReceiver(node);
       handler.setLog(log);
       handler.setMember(member);
-      handler.setQuorumSize(quorumSize);
       return handler;
     }
 
@@ -329,7 +348,7 @@ public class LogDispatcher {
         singleEntryHandlers = new ArrayList<>(batch.size());
         for (VotingEntry sendLogRequest : batch) {
           AppendNodeEntryHandler handler =
-              getAppendNodeEntryHandler(sendLogRequest, receiver, sendLogRequest.getQuorumSize());
+              getAppendNodeEntryHandler(sendLogRequest, receiver);
           singleEntryHandlers.add(handler);
         }
       }

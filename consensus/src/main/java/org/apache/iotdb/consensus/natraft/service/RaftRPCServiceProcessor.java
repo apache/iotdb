@@ -180,6 +180,13 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   }
 
   @Override
+  public void forceElection(TConsensusGroupId groupId, AsyncMethodCallback<TSStatus> resultHandler)
+      throws TException {
+    RaftMember member = getMember(groupId);
+    resultHandler.onComplete(member.forceElection());
+  }
+
+  @Override
   public void readFile(
       String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {

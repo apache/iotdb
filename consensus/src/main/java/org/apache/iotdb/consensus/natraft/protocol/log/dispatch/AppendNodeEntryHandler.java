@@ -50,7 +50,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   protected RaftMember member;
   protected VotingEntry log;
   protected Peer directReceiver;
-  protected int quorumSize;
 
   public AppendNodeEntryHandler() {}
 
@@ -150,7 +149,4 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     this.directReceiver = follower;
   }
 
-  public void setQuorumSize(int quorumSize) {
-    this.quorumSize = quorumSize;
-  }
 }

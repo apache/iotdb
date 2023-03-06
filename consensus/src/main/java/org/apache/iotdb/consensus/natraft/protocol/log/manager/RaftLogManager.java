@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
+import java.util.function.Consumer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -111,7 +112,8 @@ public abstract class RaftLogManager {
       LogApplier applier,
       String name,
       IStateMachine stateMachine,
-      RaftConfig config) {
+      RaftConfig config,
+      Consumer<List<Entry>> unappliedEntryExaminer) {
     this.logApplier = applier;
     this.name = name;
     this.stateMachine = stateMachine;
@@ -119,7 +121,7 @@ public abstract class RaftLogManager {
     this.config = config;
 
     initConf();
-    initEntries();
+    initEntries(unappliedEntryExaminer);
 
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
@@ -154,9 +156,11 @@ public abstract class RaftLogManager {
     }
   }
 
-  private void initEntries() {
+  private void initEntries(Consumer<List<Entry>> unappliedEntryExaminer) {
     LogManagerMeta meta = stableEntryManager.getMeta();
     List<Entry> allEntriesAfterAppliedIndex = stableEntryManager.getAllEntriesAfterAppliedIndex();
+    unappliedEntryExaminer.accept(allEntriesAfterAppliedIndex);
+
     entries = new ArrayList<>();
     if (!allEntriesAfterAppliedIndex.isEmpty()) {
       entries.addAll(allEntriesAfterAppliedIndex);

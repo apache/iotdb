@@ -206,16 +206,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return systemDir + File.separator + groupId + File.separator + "raftLog" + File.separator;
   }
 
-  @TestOnly
-  String getLogDir() {
-    return logDir;
-  }
-
-  @TestOnly
-  File getMetaFile() {
-    return metaFile;
-  }
-
   /** for log tools */
   @Override
   public LogManagerMeta getMeta() {

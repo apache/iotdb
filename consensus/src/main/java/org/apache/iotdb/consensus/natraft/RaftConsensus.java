@@ -48,6 +48,7 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
+import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -129,7 +130,8 @@ public class RaftConsensus implements IConsensus {
                   null,
                   consensusGroupId,
                   registry.apply(consensusGroupId),
-                  clientManager);
+                  clientManager,
+                  this::onMemberRemoved);
           stateMachineMap.put(consensusGroupId, raftMember);
           raftMember.start();
         }
@@ -179,6 +181,9 @@ public class RaftConsensus implements IConsensus {
     }
   }
 
+  public void onMemberRemoved(ConsensusGroupId groupId) {
+    stateMachineMap.remove(groupId);
+  }
 
   public boolean createNewMemberIfAbsent(ConsensusGroupId groupId, Peer thisPeer,
       List<Peer> peers, List<Peer> newPeers) {
@@ -194,7 +199,8 @@ public class RaftConsensus implements IConsensus {
           }
           RaftMember impl =
               new RaftMember(
-                  path, config, thisPeer, peers, newPeers, groupId, registry.apply(groupId), clientManager);
+                  path, config, thisPeer, peers, newPeers, groupId, registry.apply(groupId),
+                  clientManager, this::onMemberRemoved);
           impl.start();
           return impl;
         });
@@ -250,32 +256,69 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    return StatusUtils.toGenericResponse(impl.addPeer(peer));
   }
 
   @Override
   public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    return StatusUtils.toGenericResponse(impl.removePeer(peer));
   }
 
   @Override
   public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    return StatusUtils.toGenericResponse(impl.updatePeer(oldPeer, newPeer));
   }
 
   @Override
   public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    return StatusUtils.toGenericResponse(impl.changeConfig(newPeers));
   }
 
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    return StatusUtils.toGenericResponse(impl.transferLeader(newLeader));
   }
 
   @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftMember impl = stateMachineMap.get(groupId);
+    if (impl == null) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
+    }
+    impl.triggerSnapshot();
+    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
+import java.util.function.Consumer;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.LogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.DirectorySnapshot;
@@ -45,8 +47,9 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
       LogApplier applier,
       String name,
       IStateMachine stateMachine,
-      RaftConfig config) {
-    super(stableEntryManager, applier, name, stateMachine, config);
+      RaftConfig config,
+      Consumer<List<Entry>> unappliedEntryExaminer) {
+    super(stableEntryManager, applier, name, stateMachine, config, unappliedEntryExaminer);
   }
 
   @Override

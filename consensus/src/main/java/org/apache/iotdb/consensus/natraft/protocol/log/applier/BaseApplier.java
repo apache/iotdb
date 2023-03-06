@@ -24,17 +24,21 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /** BaseApplier use PlanExecutor to execute PhysicalPlans. */
 public class BaseApplier implements LogApplier {
 
-  IStateMachine stateMachine;
+  protected IStateMachine stateMachine;
+  protected RaftMember member;
 
-  public BaseApplier(IStateMachine stateMachine) {
+  public BaseApplier(IStateMachine stateMachine, RaftMember member) {
     this.stateMachine = stateMachine;
+    this.member = member;
   }
 
   @TestOnly
@@ -53,6 +57,8 @@ public class BaseApplier implements LogApplier {
         if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           e.setException(new ConsensusException(status.message + ":" + status.code));
         }
+      } else if (e instanceof ConfigChangeEntry) {
+        member.applyConfigChange(((ConfigChangeEntry) e));
       }
     } catch (Exception ex) {
       e.setException(ex);

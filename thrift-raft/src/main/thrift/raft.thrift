@@ -166,14 +166,16 @@ service RaftService {
   void ping()
 
   /**
-    * Ask the leader for its commit index, used to check whether the node has caught up with the
-    * leader.
-    **/
-    RequestCommitIndexResponse requestCommitIndex(1:common.TConsensusGroupId groupId)
+   * Ask the leader for its commit index, used to check whether the node has caught up with the
+   * leader.
+   **/
+   RequestCommitIndexResponse requestCommitIndex(1:common.TConsensusGroupId groupId)
 
-    /**
-      * Read a chunk of a file from the client. If the remaining of the file does not have enough
-      * bytes, only the remaining will be returned.
-      **/
-      binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+   /**
+   * Read a chunk of a file from the client. If the remaining of the file does not have enough
+   * bytes, only the remaining will be returned.
+   **/
+   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+
+   common.TSStatus forceElection(1:common.TConsensusGroupId groupId)
 }

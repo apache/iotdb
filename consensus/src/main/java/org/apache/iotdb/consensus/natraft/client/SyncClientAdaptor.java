@@ -83,6 +83,14 @@ public class SyncClientAdaptor {
     return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
   }
 
+  public static TSStatus forceElection(
+      AsyncRaftServiceClient client, ConsensusGroupId groupId)
+      throws TException, InterruptedException {
+    GenericHandler<TSStatus> matchTermHandler = new GenericHandler<>(client.getEndpoint());
+    client.forceElection(groupId.convertToTConsensusGroupId(), matchTermHandler);
+    return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
+  }
+
   public static ByteBuffer readFile(
       AsyncRaftServiceClient client, String remotePath, long offset, int fetchSize)
       throws InterruptedException, TException {

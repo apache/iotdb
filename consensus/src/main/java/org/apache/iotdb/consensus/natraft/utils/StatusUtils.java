@@ -21,7 +21,12 @@ package org.apache.iotdb.consensus.natraft.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse.Builder;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient.Factory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.checkerframework.checker.units.qual.C;
 
 public class StatusUtils {
 
@@ -89,5 +94,18 @@ public class StatusUtils {
     TSStatus newStatus = status.deepCopy();
     newStatus.setRedirectNode(redirectedNode);
     return newStatus;
+  }
+
+  public static ConsensusGenericResponse toGenericResponse(TSStatus status) {
+    Builder builder = ConsensusGenericResponse.newBuilder();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      builder.setSuccess(true);
+    } else {
+      builder.setSuccess(false);
+      builder.setException(
+          new ConsensusException(String.format("%d:%s", status.getCode(), status.getMessage())));
+    }
+
+    return ConsensusGenericResponse.newBuilder().build();
   }
 }
