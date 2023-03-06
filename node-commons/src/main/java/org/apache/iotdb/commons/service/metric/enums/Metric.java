@@ -98,7 +98,9 @@ public enum Metric {
   DATA_REGION_MEM_COST,
   SCHEMA_REGION,
   SCHEMA_ENGINE,
-  SESSION_IDLE_TIME;
+  SESSION_IDLE_TIME,
+
+  MEMTABLE_COUNT;
 
   @Override
   public String toString() {

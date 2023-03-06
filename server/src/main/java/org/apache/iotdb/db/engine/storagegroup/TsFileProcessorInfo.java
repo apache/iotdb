@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
@@ -36,6 +38,9 @@ public class TsFileProcessorInfo {
     this.memCost = 0L;
     this.metrics =
         new TsFileProcessorInfoMetrics(dataRegionInfo.getDataRegion().getDatabaseName(), this);
+    MetricService.getInstance()
+        .getOrCreateGauge(Metric.MEMTABLE_COUNT.toString(), MetricLevel.CORE)
+        .incr(1);
     MetricService.getInstance().addMetricSet(metrics);
   }
 
@@ -56,6 +61,9 @@ public class TsFileProcessorInfo {
     dataRegionInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
     MetricService.getInstance().removeMetricSet(metrics);
+    MetricService.getInstance()
+        .getOrCreateGauge(Metric.MEMTABLE_COUNT.toString(), MetricLevel.CORE)
+        .decr(1);
   }
 
   /** get memCost */
