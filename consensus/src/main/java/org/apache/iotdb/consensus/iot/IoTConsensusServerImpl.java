@@ -221,7 +221,17 @@ public class IoTConsensusServerImpl {
             indexedConsensusRequest.getSearchIndex());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
+      long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(planNode);
+      MetricService.getInstance()
+          .timer(
+              System.nanoTime() - startWriteTime,
+              TimeUnit.NANOSECONDS,
+              Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.STAGE.toString(),
+              "stateMachine");
+
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()

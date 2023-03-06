@@ -19,10 +19,14 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
@@ -132,7 +136,17 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         }
         IConsensusRequest deserializedRequest =
             applicationStateMachine.deserializeRequest(applicationRequest);
+
+        long startWriteTime = System.nanoTime();
         TSStatus result = applicationStateMachine.write(deserializedRequest);
+        MetricService.getInstance()
+            .timer(
+                System.nanoTime() - startWriteTime,
+                TimeUnit.NANOSECONDS,
+                Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.STAGE.toString(),
+                "stateMachine");
 
         if (firstTry) {
           finalStatus = result;

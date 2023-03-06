@@ -71,6 +71,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   public static final String SCHEMA_VALIDATE = "schema_validate";
   public static final String TRIGGER = "trigger";
   public static final String CONSENSUS = "consensus";
+  public static final String STATEMACHINE = "stateMachine";
   public static final String LOCK = "lock";
   public static final String MEMORY_BLOCK = "memory_block";
   public static final String WAL = "wal";
@@ -110,6 +111,13 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
             Tag.STAGE.toString(),
             CONSENSUS));
+    metricInfoMap.put(
+        STATEMACHINE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            Tag.STAGE.toString(),
+            STATEMACHINE));
     metricInfoMap.put(
         LOCK,
         new MetricInfo(
