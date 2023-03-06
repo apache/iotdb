@@ -517,7 +517,7 @@ public class IoTDBConfig {
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated proportion for time partition info */
-  private long allocateMemoryForTimePartitionInfo = 0;
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -1785,7 +1785,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
-    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForSchema() {

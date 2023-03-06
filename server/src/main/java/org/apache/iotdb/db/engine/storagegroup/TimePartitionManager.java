@@ -107,7 +107,10 @@ public class TimePartitionManager {
       }
 
       while (memCost > timePartitionInfoMemoryThreshold) {
-        TimePartitionInfo timePartitionInfo = treeSet.first();
+        TimePartitionInfo timePartitionInfo = treeSet.pollFirst();
+        if (timePartitionInfo == null) {
+          return;
+        }
         memCost -= timePartitionInfo.memSize;
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
