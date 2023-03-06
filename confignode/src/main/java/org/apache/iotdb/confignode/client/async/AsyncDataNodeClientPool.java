@@ -115,8 +115,8 @@ public class AsyncDataNodeClientPool {
       try {
         clientHandler.getCountDownLatch().await();
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+        Thread.currentThread().interrupt();
       }
 
       // Check if there is a DataNode that fails to execute the request, and retry if there exists
