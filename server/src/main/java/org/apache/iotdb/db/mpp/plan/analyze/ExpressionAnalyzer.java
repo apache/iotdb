@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -1098,60 +1099,61 @@ public class ExpressionAnalyzer {
   }
 
   public static Expression getMeasurementExpression(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      Expression firstExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
-      Expression secondExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getSecondExpression());
-      Expression thirdExpression =
-          getMeasurementExpression(((TernaryExpression) expression).getThirdExpression());
-      return reconstructTernaryExpressions(
-              expression,
-              Collections.singletonList(firstExpression),
-              Collections.singletonList(secondExpression),
-              Collections.singletonList(thirdExpression))
-          .get(0);
-    } else if (expression instanceof BinaryExpression) {
-      Expression leftExpression =
-          getMeasurementExpression(((BinaryExpression) expression).getLeftExpression());
-      Expression rightExpression =
-          getMeasurementExpression(((BinaryExpression) expression).getRightExpression());
-      return reconstructBinaryExpressions(
-              expression.getExpressionType(),
-              Collections.singletonList(leftExpression),
-              Collections.singletonList(rightExpression))
-          .get(0);
-    } else if (expression instanceof UnaryExpression) {
-      Expression childExpression =
-          getMeasurementExpression(((UnaryExpression) expression).getExpression());
-      return reconstructUnaryExpressions(
-              (UnaryExpression) expression, Collections.singletonList(childExpression))
-          .get(0);
-    } else if (expression instanceof FunctionExpression) {
-      List<Expression> childExpressions = new ArrayList<>();
-      for (Expression suffixExpression : expression.getExpressions()) {
-        childExpressions.add(getMeasurementExpression(suffixExpression));
-      }
-      return new FunctionExpression(
-          ((FunctionExpression) expression).getFunctionName(),
-          ((FunctionExpression) expression).getFunctionAttributes(),
-          childExpressions);
-    } else if (expression instanceof TimeSeriesOperand) {
-      MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
-      PartialPath measurement = new PartialPath(rawPath.getMeasurement(), false);
-      MeasurementPath measurementWithSchema =
-          new MeasurementPath(measurement, rawPath.getMeasurementSchema());
-      if (rawPath.isMeasurementAliasExists()) {
-        measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
-      }
-      measurementWithSchema.setTagMap(rawPath.getTagMap());
-      return new TimeSeriesOperand(measurementWithSchema);
-    } else if (expression instanceof LeafOperand) {
-      return expression;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new GetMeasurementExpressionVisitor().process(expression, null);
+//    if (expression instanceof TernaryExpression) {
+//      Expression firstExpression =
+//          getMeasurementExpression(((TernaryExpression) expression).getFirstExpression());
+//      Expression secondExpression =
+//          getMeasurementExpression(((TernaryExpression) expression).getSecondExpression());
+//      Expression thirdExpression =
+//          getMeasurementExpression(((TernaryExpression) expression).getThirdExpression());
+//      return reconstructTernaryExpressions(
+//              expression,
+//              Collections.singletonList(firstExpression),
+//              Collections.singletonList(secondExpression),
+//              Collections.singletonList(thirdExpression))
+//          .get(0);
+//    } else if (expression instanceof BinaryExpression) {
+//      Expression leftExpression =
+//          getMeasurementExpression(((BinaryExpression) expression).getLeftExpression());
+//      Expression rightExpression =
+//          getMeasurementExpression(((BinaryExpression) expression).getRightExpression());
+//      return reconstructBinaryExpressions(
+//              expression.getExpressionType(),
+//              Collections.singletonList(leftExpression),
+//              Collections.singletonList(rightExpression))
+//          .get(0);
+//    } else if (expression instanceof UnaryExpression) {
+//      Expression childExpression =
+//          getMeasurementExpression(((UnaryExpression) expression).getExpression());
+//      return reconstructUnaryExpressions(
+//              (UnaryExpression) expression, Collections.singletonList(childExpression))
+//          .get(0);
+//    } else if (expression instanceof FunctionExpression) {
+//      List<Expression> childExpressions = new ArrayList<>();
+//      for (Expression suffixExpression : expression.getExpressions()) {
+//        childExpressions.add(getMeasurementExpression(suffixExpression));
+//      }
+//      return new FunctionExpression(
+//          ((FunctionExpression) expression).getFunctionName(),
+//          ((FunctionExpression) expression).getFunctionAttributes(),
+//          childExpressions);
+//    } else if (expression instanceof TimeSeriesOperand) {
+//      MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
+//      PartialPath measurement = new PartialPath(rawPath.getMeasurement(), false);
+//      MeasurementPath measurementWithSchema =
+//          new MeasurementPath(measurement, rawPath.getMeasurementSchema());
+//      if (rawPath.isMeasurementAliasExists()) {
+//        measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
+//      }
+//      measurementWithSchema.setTagMap(rawPath.getTagMap());
+//      return new TimeSeriesOperand(measurementWithSchema);
+//    } else if (expression instanceof LeafOperand) {
+//      return expression;
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + expression.getExpressionType());
+//    }
   }
 
   public static Expression evaluatePredicate(Expression predicate) {
