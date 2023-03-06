@@ -31,6 +31,8 @@ mn_rpc_address = "127.0.0.1"
 # Datatype: int
 mn_rpc_port = 10810
 
+process_pool_num = 20
+
 ####################
 ### Target Config Node
 ####################

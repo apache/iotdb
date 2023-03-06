@@ -17,12 +17,12 @@
 #
 
 
-import psutil
 import sys
 import os
 import time
 import signal
 import optuna
+import psutil
 import multiprocessing as mp
 from subprocess import call
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial, ForecastingInferenceTrial
@@ -58,7 +58,7 @@ def _create_tuning_task(configs, task_map, task_id):
     study = optuna.create_study(direction='minimize')
     study.optimize(TrainingTrialObjective(configs), n_trials=20)
     pid = os.getpid()
-    task_map[task_id][trial_id] = pid
+    task_map[task_id] = pid
 
 
 # def _create_inference_task(configs, task_map, task_id):

@@ -1,16 +1,13 @@
-from datats.data_factory import create_forecasting_dataset
-from iotdb.mlnode.datats.offline.data_source import DataSource
-from algorithm.model_factory import create_forecast_model
-from iotdb.Session import Session
+# from datats.data_factory import create_forecasting_dataset
+# from iotdb.mlnode.datats.offline.data_source import DataSource
+# from algorithm.model_factory import create_forecast_model
+# from iotdb.Session import Session
 
 
-def debug_data_config():
-    data_config = {
-        # ---configs for DataSource---
-        'source_type': 'file',  # or 'sql'
+def debug_config():
+    config = {
+        'source_type': 'file',
         'filename': 'dataset/exchange_rate/exchange_rate.csv',
-
-        # should obtain a session, while source_type='sql' (ununsed in current config)
         'ip': '127.0.0.1',
         'port': '6667',
         'username': 'root',
@@ -21,7 +18,51 @@ def debug_data_config():
             # overlap lead to sample loss
             'test': 'SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01',
         },
+        'dataset_type': 'window',
+        'time_embed': 'h',
+        'input_len': 96,
+        'pred_len': 96,
+        'model_name': 'dlinear',
+        'input_vars': 7,
+        'output_vars': 7,
+        'task_type': 'm',
+        'kernel_size': 25,
+        'block_type': 'g',
+        'd_model': 128,
+        'inner_layers': 4,
+        'outer_layers': 4,
+        'model_id': 0,
+        'learning_rate': 1e-4,
+        'batch_size': 32,
+        'num_workers': 0,
+        'epochs': 10,
+        'metric_name': ['MSE', 'MAE'],
+    }
+    return config
 
+
+def debug_data_config():
+    data_config = {
+        # ---configs for DataSource---
+        'source_type': 'file',  # or 'sql'
+        'filename': 'dataset/exchange_rate/exchange_rate.csv',
+
+        # should obtain a session, when source_type='sql' (unused in current config)
+        # this session is pre-built by mlnode, not from training request
+
+        # 'ip': '127.0.0.1',
+        # 'port': '6667',
+        # 'username': 'root',
+        # 'password': 'root',
+        # 'sql': {
+        #     'train': 'SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01',
+        #     'val': 'SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01',
+        #     # overlap lead to sample loss
+        #     'test': 'SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01',
+        # },
+
+        'query_expressions': ['SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01', 'SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01'],
+        'query_filter': '',
         # ---configs for Dataset---
         'dataset_type': 'window',  # or 'timeseries'
         'time_embed': 'h',
@@ -41,30 +82,27 @@ def debug_model_config():
         'input_vars': 7,  # can obtain from dataset_cfg
         'output_vars': 7,
         'task_type': 'm',
-
         'kernel_size': 25,
-
         'block_type': 'g',  # (ununsed in current config)
         'd_model': 128,
         'inner_layers': 4,
         'outer_layers': 4,
     }
-
     return model_cfg
 
 
 def debug_trial_config():
     #TODO
+    # model_id
     # task_type
     # input_len
     # pred_len
     # input_vars
     # output_vars
     # learning_rate
-    # batch_size=32
-    # num_workers=0
-    # epochs=10
-    # lradj='type1'
+    # batch_size
+    # num_workers
+    # epochs
     # metric_name
     pass
 
@@ -118,11 +156,11 @@ def debug_trial_config():
 #     return model, model_cfg
 
 
-if __name__ == '__main__':
-    model, model_cfg = debug_model()
-    print(model_cfg)
-    dataset, dataset_config = debug_dataset()
-    print(dataset_config)
+# if __name__ == '__main__':
+#     model, model_cfg = debug_model()
+#     print(model_cfg)
+#     dataset, dataset_config = debug_dataset()
+#     print(dataset_config)
 
 # import argparse
 # import torch

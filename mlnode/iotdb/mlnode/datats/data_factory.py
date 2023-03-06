@@ -57,6 +57,7 @@ def create_forecasting_dataset(
         dataset_type: available choice in ['window', 'timeseries']
         data_source: offline multi-variate time series for a while (all pre-fetched in memory)
         kwargs: for specific dataset configs, see returned `dataset_config` with kwargs=None
+
     Returns:
         dataset: torch.nn.Module
         dataset_config: dict of dataset configurations

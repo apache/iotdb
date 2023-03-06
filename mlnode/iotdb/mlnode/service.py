@@ -20,7 +20,7 @@
 import threading
 import time
 import multiprocessing as mp
-from log import logger
+from iotdb.mlnode.log import logger
 from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport

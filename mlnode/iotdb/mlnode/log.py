@@ -20,8 +20,8 @@
 import os
 import logging
 from logging.config import fileConfig
-from constant import (MLNODE_CONF_DIRECTORY_NAME,
-                      MLNODE_LOG_CONF_FILE_NAME)
+from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
+                                   MLNODE_LOG_CONF_FILE_NAME)
 
 log_conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_LOG_CONF_FILE_NAME)
 if os.path.exists(log_conf_file):

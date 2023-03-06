@@ -15,14 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import os
 
+
+import os
 from dynaconf import Dynaconf
-from constant import (MLNODE_CONF_DIRECTORY_NAME,
+from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
                       MLNODE_CONF_FILE_NAME)
-from exception import BadNodeUrlError
-from log import logger
-from util import parse_endpoint_url
+from iotdb.mlnode.exception import BadNodeUrlError
+from iotdb.mlnode.util import parse_endpoint_url
+from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint
 
 

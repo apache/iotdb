@@ -17,10 +17,13 @@
 #
 
 
-from log import logger
-from exception import BadNodeUrlError
+import os
+import yaml
+from iotdb.mlnode.exception import BadNodeUrlError
+from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq
+from iotdb.mlnode.constant import MLNODE_REQUEST_TEMPLATE
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
@@ -50,7 +53,35 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         raise BadNodeUrlError(endpoint_url)
 
 
-def parse_training_request(req: TCreateTrainingTaskReq):
-    #TODO
-    model_config, data_config, trial_config = {}, {}, {}
-    return model_config, data_config, trial_config
+def parse_training_request(req: TCreateTrainingTaskReq):  # TODO: extend for other request
+    """
+    Parse TCreateTrainingTaskReq with given yaml template
+
+    Args:
+        req: TCreateTrainingTaskReq
+
+    Returns:
+        data_conf: configurations related to data
+        model_conf: configurations related to model
+        trial_conf: configurations related to training
+    """
+    config = req.modelConfigs
+    config.update(model_id=req.modelId)
+    config.update(query_expressions=str(req.queryExpressions))
+    config.update(queue_filter=req.queryFilter)
+    # config = {k: eval(v) for k, v in config.items()}
+
+    yaml_path = os.path.join(MLNODE_REQUEST_TEMPLATE, 'createTrainingTask.yml')
+    with open(yaml_path, 'r') as f:  # TODO: add exception check
+        default_confs = yaml.safe_load_all(f)
+        data_conf, model_conf, trial_conf = tuple(default_confs)
+
+    for k, v in config.items():
+        if k in data_conf.keys():
+            data_conf[k] = v if type(data_conf[k]) is str else eval(v)
+        if k in model_conf.keys():
+            model_conf[k] = v if type(model_conf[k]) is str else eval(v)
+        if k in trial_conf.keys():
+            trial_conf[k] = v if type(trial_conf[k]) is str else eval(v)
+
+    return data_conf, model_conf, trial_conf

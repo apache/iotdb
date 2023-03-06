@@ -24,10 +24,10 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq,
                                         TForecastReq,
                                         TForecastResp)
-
 from iotdb.mlnode.manager import Manager
+from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import parse_training_request
-from debug import *
+from iotdb.mlnode.debug import *
 
 
 class TSStatusCode(Enum):
@@ -46,18 +46,18 @@ def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         self.taskManager = Manager(10)
-        pass
 
-    def delete_model(self, req: TDeleteModelReq):
-        #TODO
+    def deleteModel(self, req: TDeleteModelReq):  # TODO
         return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
-    def create_training_task(self, req: TCreateTrainingTaskReq):
+    def createTrainingTask(self, req: TCreateTrainingTaskReq):
         # TODO: parse_request
-        # config = parse_training_request()
-        config = debug_model_config(), debug_data_config(), debug_trial_config()
-        self.taskManager.submit_single_training_task(config)
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+        data_conf, model_conf, trial_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
+        print(data_conf, model_conf, trial_conf)
+        # config = debug_model_config(), debug_data_config(), debug_trial_config()
+        # self.taskManager.submit_single_training_task(config)
+
+        return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")  # TODO: other status
 
     # def forecast(self, req: TForecastReq):
     #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")

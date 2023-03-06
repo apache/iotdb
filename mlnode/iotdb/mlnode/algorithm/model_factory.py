@@ -94,6 +94,7 @@ def create_forecast_model(
         input_vars: number of input series
         output_vars: number of output series
         kwargs: for specific model configs, see returned `model_config` with kwargs=None
+
     Returns:
         model: torch.nn.Module
         model_config: dict of model configurations

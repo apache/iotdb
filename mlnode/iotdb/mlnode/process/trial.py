@@ -25,7 +25,7 @@ import pandas as pd
 
 from iotdb.mlnode.algorithm.model_factory import create_forecast_model
 from iotdb.mlnode.datats.data_factory import create_forecasting_dataset
-from iotdb.mlnode.debug import debug_dataset, debug_model
+from iotdb.mlnode.debug import debug_data_config, debug_model_config
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 from iotdb.mlnode.storage.model_storager import modelStorager
 from torch.utils.data import DataLoader
