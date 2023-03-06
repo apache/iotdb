@@ -17,11 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.multi;
+package org.apache.iotdb.db.mpp.plan.expression.multi.builtin;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF
-}
+public interface BuiltInFunctionHelper {}

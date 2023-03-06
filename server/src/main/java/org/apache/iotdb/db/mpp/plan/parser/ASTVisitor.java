@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -2355,8 +2356,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // type check of input expressions is put in ExpressionTypeAnalyzer
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       checkAggregationFunctionInput(functionExpression);
-    } else if (functionExpression.isBuiltInFunction()) {
-      checkBuiltInFunctionInput(functionExpression);
+    } else if (functionExpression.isBuiltInScalarFunction()) {
+      checkBuiltInScalarFunctionInput(functionExpression);
     }
     return functionExpression;
   }
@@ -2391,22 +2392,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void checkBuiltInFunctionInput(FunctionExpression functionExpression) {
-    final String functionName = functionExpression.getFunctionName().toLowerCase();
-    switch (functionName) {
-      case SqlConstant.DIFF:
-        checkFunctionExpressionInputSize(
-            functionExpression.getExpressionString(),
-            functionExpression.getExpressions().size(),
-            1);
-        return;
-      default:
-        throw new IllegalArgumentException(
-            "Invalid BuiltInFunction: " + functionExpression.getFunctionName());
-    }
+  private void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression) {
+    BuiltInScalarFunctionHelperFactory.createHelper(functionExpression.getFunctionName())
+        .checkBuiltInScalarFunctionInput(functionExpression);
   }
 
-  private void checkFunctionExpressionInputSize(
+  public static void checkFunctionExpressionInputSize(
       String expressionString, int actual, int... expected) {
     for (int expect : expected) {
       if (expect == actual) {

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -102,8 +102,8 @@ public class FunctionExpression extends Expression {
     final String functionName = this.functionName.toLowerCase();
     if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName)) {
       functionType = FunctionType.AGGREGATION_FUNCTION;
-    } else if (BuiltinFunction.getNativeFunctionNames().contains(functionName)) {
-      functionType = FunctionType.BUILT_IN_FUNCTION;
+    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
     } else {
       functionType = FunctionType.UDF;
     }
@@ -117,11 +117,11 @@ public class FunctionExpression extends Expression {
     return functionType == FunctionType.AGGREGATION_FUNCTION;
   }
 
-  public Boolean isBuiltInFunction() {
+  public Boolean isBuiltInScalarFunction() {
     if (functionType == null) {
       initializeFunctionType();
     }
-    return functionType == FunctionType.BUILT_IN_FUNCTION;
+    return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
   }
 
   @Override
@@ -211,8 +211,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression()
-        || (isBuiltInFunction() && BuiltinFunction.isMappable(functionName))) {
+    if (isBuiltInAggregationFunctionExpression() || (isBuiltInScalarFunction())) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)

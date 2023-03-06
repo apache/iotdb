@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBUDTFBuiltinFunctionIT {
+public class IoTDBUDTFBuiltinScalarFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (0, 0, 0, 0, 0, true, '0', 0, 0)",
