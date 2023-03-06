@@ -52,12 +52,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
+  public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
 
@@ -249,6 +244,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
     return this;
   }
 }

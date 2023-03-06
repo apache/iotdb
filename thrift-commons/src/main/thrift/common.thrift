@@ -36,7 +36,7 @@ struct TSStatus {
 }
 
 enum TConsensusGroupType {
-  ConfigNodeRegion,
+  ConfigRegion,
   DataRegion,
   SchemaRegion
 }
@@ -140,4 +140,23 @@ enum TAggregationType {
   MIN_VALUE,
   EXTREME,
   COUNT_IF
+}
+
+// for MLNode
+enum TrainingState {
+  PENDING,
+  RUNNING,
+  FINISHED,
+  FAILED,
+  DROPPING
+}
+
+enum ModelTask {
+  FORECAST
+}
+
+enum EvaluateMetric {
+  MSE,
+  MAE,
+  RMSE
 }

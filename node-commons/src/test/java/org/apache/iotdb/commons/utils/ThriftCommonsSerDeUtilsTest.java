@@ -20,8 +20,10 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -56,6 +58,34 @@ public class ThriftCommonsSerDeUtilsTest {
           ThriftCommonsSerDeUtils.deserializeTEndPoint(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
       Assert.assertEquals(endPoint0, endPoint1);
+    }
+  }
+
+  @Test
+  public void readWriteTDataNodeConfigurationTest() throws IOException {
+    TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
+    dataNodeLocation0.setDataNodeId(0);
+    dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
+
+    TNodeResource dataNodeResource0 = new TNodeResource();
+    dataNodeResource0.setCpuCoreNum(16);
+    dataNodeResource0.setMaxMemory(2022213861);
+
+    TDataNodeConfiguration dataNodeConfiguration0 = new TDataNodeConfiguration();
+    dataNodeConfiguration0.setLocation(dataNodeLocation0);
+    dataNodeConfiguration0.setResource(dataNodeResource0);
+
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(dataNodeConfiguration0, outputStream);
+      TDataNodeConfiguration dataNodeConfiguration1 =
+          ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      Assert.assertEquals(dataNodeConfiguration0, dataNodeConfiguration1);
     }
   }
 
@@ -108,7 +138,7 @@ public class ThriftCommonsSerDeUtilsTest {
   @Test
   public void readWriteTConsensusGroupIdTest() throws IOException {
     TConsensusGroupId consensusGroupId0 =
-        new TConsensusGroupId(TConsensusGroupType.ConfigNodeRegion, 0);
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, 0);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId0, outputStream);

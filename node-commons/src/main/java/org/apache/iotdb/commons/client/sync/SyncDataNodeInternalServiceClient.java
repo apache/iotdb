@@ -32,7 +32,6 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
@@ -41,23 +40,26 @@ import java.net.SocketException;
 public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Client
     implements ThriftClient, AutoCloseable {
 
+  private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public SyncDataNodeInternalServiceClient(
-      TProtocolFactory protocolFactory,
-      int connectionTimeout,
+      ThriftClientProperty property,
       TEndPoint endpoint,
       ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
       throws TTransportException {
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
-                    connectionTimeout))));
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                        TConfigurationConst.defaultTConfiguration,
+                        endpoint.getIp(),
+                        endpoint.getPort(),
+                        property.getConnectionTimeoutMs()))));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
@@ -98,6 +100,11 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
   }
 
   @Override
+  public boolean printLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  @Override
   public String toString() {
     return String.format("SyncDataNodeInternalServiceClient{%s}", endpoint);
   }
@@ -124,9 +131,8 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeInternalServiceClient.class,
               SyncDataNodeInternalServiceClient.class.getConstructor(
-                  TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty.getProtocolFactory(),
-              thriftClientProperty.getConnectionTimeoutMs(),
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
               endpoint,
               clientManager));
     }
