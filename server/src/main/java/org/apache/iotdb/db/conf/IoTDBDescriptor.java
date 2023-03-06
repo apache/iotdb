@@ -1608,7 +1608,6 @@ public class IoTDBDescriptor {
     proportions = allocationRatioForWrite.split(":");
     int proportionForMemTable = Integer.parseInt(proportions[0].replace("\\", "").trim());
     int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
-    logger.info("proportionForTimePartitionInfo = {}", proportionForTimePartitionInfo);
 
     double memtableProportionForWrite =
         ((double) (proportionForMemTable)
