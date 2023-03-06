@@ -23,13 +23,14 @@ import time
 import numpy as np
 import pandas as pd
 
-from iotdb.mlnode.algorithm.model_factory import create_forecast_model
-from iotdb.mlnode.datats.data_factory import create_forecasting_dataset
 from iotdb.mlnode.debug import debug_data_config, debug_model_config
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 from iotdb.mlnode.storage.model_storager import modelStorager
 from torch.utils.data import DataLoader
-
+from iotdb.mlnode.datats.offline.data_source import DataSource
+from iotdb.mlnode.datats import data_factory
+from iotdb.mlnode.algorithm import model_factory
+from iotdb.mlnode.debug import *
 
 def parse_trial_config(**kwargs):
     return {
@@ -61,18 +62,18 @@ def parse_data_config(**kwargs):
 class BasicTrial(object):
     def __init__(self, configs, model_configs, data_configs):
         self.trial_configs = parse_trial_config(**configs)
-        self.model, self.model_cfg = self._build_model()
+        self.model = self._build_model(model_configs)
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
-        self.dataset, self.dataloader = self._build_data()
+        self.dataset, self.dataloader = self._build_data(data_configs)
 
         self.model_id = configs["model_id"]
         self.trial_id = configs["trial_id"]
 
-    def _build_model(self):
+    def _build_model(self, model_config):
         raise NotImplementedError
 
-    def _build_data(self):
+    def _build_data(self, data_config):
         raise NotImplementedError
 
     def _acquire_device(self):
@@ -92,12 +93,21 @@ class ForecastingTrainingTrial(BasicTrial):
     def __init__(self, trial_configs, model_configs, data_configs):
         super(ForecastingTrainingTrial, self).__init__(trial_configs, model_configs, data_configs)
 
-    def _build_model(self):  # MODEL Factory
-        model, model_cfg = debug_model()
-        return model, model_cfg
+    def _build_model(self, model_config):
+        model, _ = model_factory.create_forecast_model(
+            **model_config
+        )
+        return model
 
-    def _build_data(self):  # virtual method
-        train_dataset, train_cfg = debug_dataset()
+    def _build_data(self, data_config):
+        train_data_source = DataSource(
+            data_config['source_type'],
+            filename=data_config['filename']
+        )
+        train_dataset, _ = data_factory.create_forecasting_dataset(
+            dataset_type=data_config['dataset_type'],
+            data_source=train_data_source
+        )
         train_loader = DataLoader(
             train_dataset,
             batch_size=self.trial_configs["batch_size"],
@@ -106,7 +116,7 @@ class ForecastingTrainingTrial(BasicTrial):
         )
         return train_dataset, train_loader
 
-    def train(self, model, optimizer, criterion, dataloader, epoch):  # TODO: remove configs
+    def train(self, model, optimizer, criterion, dataloader, epoch):
         model.train()
         train_loss = []
         print("start training...")
@@ -114,7 +124,6 @@ class ForecastingTrainingTrial(BasicTrial):
         epoch_time = time.time()
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(dataloader):
             optimizer.zero_grad()
-
             batch_x = batch_x.float().to(self.device)
             batch_y = batch_y.float().to(self.device)
 
@@ -248,5 +257,5 @@ if __name__ == '__main__':
         "model_id": 1,
         "trial_id": 1
     }
-    trial = ForecastingTrainingTrial(configs, None, None)
+    trial = ForecastingTrainingTrial(configs, debug_model_config(), debug_data_config())
     trial.start()

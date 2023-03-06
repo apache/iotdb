@@ -5,7 +5,7 @@
 test:
 source_type: file
 filename: dataset/exchange_rate/exchange_rate.csv
-ip: 127.0.0.1
+#ip: 127.0.0.1
 #port: 6667
 #username: root
 #password: root

@@ -45,7 +45,7 @@ def debug_data_config():
     data_config = {
         # ---configs for DataSource---
         'source_type': 'file',  # or 'sql'
-        'filename': 'dataset/exchange_rate/exchange_rate.csv',
+        'filename': 'iotdb/mlnode/dataset/ETT-small/ETTh1.csv',
 
         # should obtain a session, when source_type='sql' (unused in current config)
         # this session is pre-built by mlnode, not from training request
