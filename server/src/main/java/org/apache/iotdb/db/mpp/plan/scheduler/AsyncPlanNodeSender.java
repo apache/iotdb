@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
@@ -46,6 +47,7 @@ public class AsyncPlanNodeSender {
   private final List<FragmentInstance> instances;
   private final CountDownLatch countDownLatch;
   private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+  private final long sendTime;
 
   public AsyncPlanNodeSender(
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -55,6 +57,7 @@ public class AsyncPlanNodeSender {
     this.instances = instances;
     this.countDownLatch = new CountDownLatch(instances.size());
     this.instanceId2RespMap = new ConcurrentHashMap<>();
+    this.sendTime = System.nanoTime();
   }
 
   public void sendAll() {
@@ -79,6 +82,8 @@ public class AsyncPlanNodeSender {
 
   public void waitUntilCompleted() throws InterruptedException {
     countDownLatch.await();
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleRemoteCost(System.nanoTime() - sendTime);
   }
 
   public Future<FragInstanceDispatchResult> getResult() {

@@ -81,6 +81,26 @@ public class PerformanceOverviewMetricsManager {
         PerformanceOverviewMetrics.SCHEDULER);
   }
 
+  public void recordScheduleLocalCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewMetrics.LOCAL_SCHEDULE);
+  }
+
+  public void recordScheduleRemoteCost(long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        PerformanceOverviewMetrics.REMOTE_SCHEDULE);
+  }
+
   public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,

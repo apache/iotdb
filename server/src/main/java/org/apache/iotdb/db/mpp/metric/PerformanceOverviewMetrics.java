@@ -66,6 +66,8 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   private static final String PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL =
       Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString();
 
+  public static final String LOCAL_SCHEDULE = "local_scheduler";
+  public static final String REMOTE_SCHEDULE = "remote_scheduler";
   public static final String SCHEMA_VALIDATE = "schema_validate";
   public static final String TRIGGER = "trigger";
   public static final String CONSENSUS = "consensus";
@@ -76,6 +78,20 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   public static final String LAST_CACHE = "last_cache";
 
   static {
+    metricInfoMap.put(
+        LOCAL_SCHEDULE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            Tag.STAGE.toString(),
+            LOCAL_SCHEDULE));
+    metricInfoMap.put(
+        REMOTE_SCHEDULE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            Tag.STAGE.toString(),
+            REMOTE_SCHEDULE));
     metricInfoMap.put(
         SCHEMA_VALIDATE,
         new MetricInfo(
