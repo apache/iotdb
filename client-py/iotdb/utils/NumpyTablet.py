@@ -105,7 +105,10 @@ class NumpyTablet(object):
                 values_tobe_packed = []
                 for str_list in value:
                     # Fot TEXT, it's same as the original solution
-                    value_bytes = bytes(str_list, "utf-8")
+                    if isinstance(str_list, str):
+                        value_bytes = bytes(str_list, "utf-8")
+                    else:
+                        value_bytes = str_list
                     format_str_list.append("i")
                     format_str_list.append(str(len(value_bytes)))
                     format_str_list.append("s")
