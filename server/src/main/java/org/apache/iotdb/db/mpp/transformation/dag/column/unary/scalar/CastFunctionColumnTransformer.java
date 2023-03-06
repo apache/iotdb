@@ -39,19 +39,28 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         switch (childColumnTransformer.getType().getTypeEnum()) {
           case INT32:
             cast(columnBuilder, childColumnTransformer.getType().getInt(column, i));
+            break;
           case INT64:
             cast(columnBuilder, childColumnTransformer.getType().getLong(column, i));
+            break;
           case FLOAT:
             cast(columnBuilder, childColumnTransformer.getType().getFloat(column, i));
+            break;
           case DOUBLE:
             cast(columnBuilder, childColumnTransformer.getType().getDouble(column, i));
+            break;
           case BOOLEAN:
             cast(columnBuilder, childColumnTransformer.getType().getBoolean(column, i));
+            break;
           case BINARY:
-            cast(columnBuilder, childColumnTransformer.getType().getBoolean(column, i));
+            cast(columnBuilder, childColumnTransformer.getType().getBinary(column, i));
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(
+                    "Unsupported source dataType: %s",
+                    childColumnTransformer.getType().getTypeEnum()));
         }
-        returnType.writeDouble(
-            columnBuilder, -childColumnTransformer.getType().getDouble(column, i));
       } else {
         columnBuilder.appendNull();
       }
@@ -62,16 +71,22 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, value);
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, value);
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value);
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value);
+        break;
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0);
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
@@ -82,16 +97,22 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, (int) value);
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, value);
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value);
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value);
+        break;
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0L);
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
@@ -102,16 +123,22 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, (int) value);
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, (long) value);
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value);
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value);
+        break;
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0f);
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
@@ -122,16 +149,22 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, (int) value);
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, (long) value);
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, (float) value);
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value);
+        break;
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0);
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
@@ -142,16 +175,22 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, value ? 1 : 0);
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, value ? 1L : 0);
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value ? 1.0f : 0);
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value ? 1.0 : 0);
+        break;
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value);
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
@@ -163,17 +202,23 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     switch (returnType.getTypeEnum()) {
       case INT32:
         returnType.writeInt(columnBuilder, (int) Double.parseDouble(stringValue));
+        break;
       case INT64:
         returnType.writeLong(columnBuilder, (long) Double.parseDouble(stringValue));
+        break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, (float) Double.parseDouble(stringValue));
+        break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, Double.parseDouble(stringValue));
+        break;
       case BOOLEAN:
         returnType.writeBoolean(
             columnBuilder, !("false".equals(stringValue) || "".equals(stringValue)));
+        break;
       case BINARY:
         returnType.writeBinary(columnBuilder, value);
+        break;
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));

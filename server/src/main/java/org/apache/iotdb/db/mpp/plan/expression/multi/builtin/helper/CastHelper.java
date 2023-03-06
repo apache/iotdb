@@ -49,7 +49,7 @@ public class CastHelper implements BuiltInScalarFunctionHelper {
     if (!functionExpression.getFunctionAttributes().containsKey("type")) {
       throw new SemanticException("Function Cast must specify a target data type.");
     }
-    return TSDataType.valueOf(functionExpression.getFunctionAttributes().get("type"));
+    return TSDataType.valueOf(functionExpression.getFunctionAttributes().get("type").toUpperCase());
   }
 
   @Override
