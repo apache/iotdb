@@ -45,9 +45,11 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatDeviceAndRemoveWildcardVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterByDeviceVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -676,74 +678,76 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> concatDeviceAndRemoveWildcard(
       Expression expression, PartialPath devicePath, ISchemaTree schemaTree) {
-    if (expression instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((TernaryExpression) expression).getFirstExpression(), devicePath, schemaTree);
-      List<Expression> secondExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((TernaryExpression) expression).getSecondExpression(), devicePath, schemaTree);
-      List<Expression> thirdExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((TernaryExpression) expression).getThirdExpression(), devicePath, schemaTree);
-      return reconstructTernaryExpressions(
-          expression, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (expression instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((BinaryExpression) expression).getLeftExpression(), devicePath, schemaTree);
-      List<Expression> rightExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((BinaryExpression) expression).getRightExpression(), devicePath, schemaTree);
-      return reconstructBinaryExpressions(
-          expression.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (expression instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          concatDeviceAndRemoveWildcard(
-              ((UnaryExpression) expression).getExpression(), devicePath, schemaTree);
-      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
-    } else if (expression instanceof FunctionExpression) {
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression suffixExpression : expression.getExpressions()) {
-        List<Expression> concatedExpression =
-            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
-        if (concatedExpression != null && !concatedExpression.isEmpty()) {
-          extendedExpressions.add(concatedExpression);
-        }
-
-        // We just process first input Expression of AggregationFunction,
-        // keep other input Expressions as origin and bind Type
-        // If AggregationFunction need more than one input series,
-        // we need to reconsider the process of it
-        if (expression.isBuiltInAggregationFunctionExpression()) {
-          List<Expression> children = expression.getExpressions();
-          bindTypeForAggregationNonSeriesInputExpressions(
-              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
-          break;
-        }
-      }
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath measurement = ((TimeSeriesOperand) expression).getPath();
-      PartialPath concatPath = devicePath.concatPath(measurement);
-
-      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (actualPaths.isEmpty()) {
-        return Collections.emptyList();
-      }
-      List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
-      return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (expression instanceof TimestampOperand) {
-      // do nothing in the case of "where time > 5"
-      return Collections.singletonList(expression);
-    } else if (expression instanceof ConstantOperand) {
-      return Collections.singletonList(expression);
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
+    return new ConcatDeviceAndRemoveWildcardVisitor().process(
+            expression, new ConcatDeviceAndRemoveWildcardVisitor.Context(devicePath, schemaTree));
+//    if (expression instanceof TernaryExpression) {
+//      List<Expression> firstExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((TernaryExpression) expression).getFirstExpression(), devicePath, schemaTree);
+//      List<Expression> secondExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((TernaryExpression) expression).getSecondExpression(), devicePath, schemaTree);
+//      List<Expression> thirdExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((TernaryExpression) expression).getThirdExpression(), devicePath, schemaTree);
+//      return reconstructTernaryExpressions(
+//          expression, firstExpressions, secondExpressions, thirdExpressions);
+//    } else if (expression instanceof BinaryExpression) {
+//      List<Expression> leftExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((BinaryExpression) expression).getLeftExpression(), devicePath, schemaTree);
+//      List<Expression> rightExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((BinaryExpression) expression).getRightExpression(), devicePath, schemaTree);
+//      return reconstructBinaryExpressions(
+//          expression.getExpressionType(), leftExpressions, rightExpressions);
+//    } else if (expression instanceof UnaryExpression) {
+//      List<Expression> childExpressions =
+//          concatDeviceAndRemoveWildcard(
+//              ((UnaryExpression) expression).getExpression(), devicePath, schemaTree);
+//      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
+//    } else if (expression instanceof FunctionExpression) {
+//      List<List<Expression>> extendedExpressions = new ArrayList<>();
+//      for (Expression suffixExpression : expression.getExpressions()) {
+//        List<Expression> concatedExpression =
+//            concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
+//        if (concatedExpression != null && !concatedExpression.isEmpty()) {
+//          extendedExpressions.add(concatedExpression);
+//        }
+//
+//        // We just process first input Expression of AggregationFunction,
+//        // keep other input Expressions as origin and bind Type
+//        // If AggregationFunction need more than one input series,
+//        // we need to reconsider the process of it
+//        if (expression.isBuiltInAggregationFunctionExpression()) {
+//          List<Expression> children = expression.getExpressions();
+//          bindTypeForAggregationNonSeriesInputExpressions(
+//              ((FunctionExpression) expression).getFunctionName(), children, extendedExpressions);
+//          break;
+//        }
+//      }
+//      List<List<Expression>> childExpressionsList = new ArrayList<>();
+//      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+//      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
+//    } else if (expression instanceof TimeSeriesOperand) {
+//      PartialPath measurement = ((TimeSeriesOperand) expression).getPath();
+//      PartialPath concatPath = devicePath.concatPath(measurement);
+//
+//      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
+//      if (actualPaths.isEmpty()) {
+//        return Collections.emptyList();
+//      }
+//      List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
+//      return reconstructTimeSeriesOperands(noStarPaths);
+//    } else if (expression instanceof TimestampOperand) {
+//      // do nothing in the case of "where time > 5"
+//      return Collections.singletonList(expression);
+//    } else if (expression instanceof ConstantOperand) {
+//      return Collections.singletonList(expression);
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + expression.getExpressionType());
+//    }
   }
 
   /**
@@ -754,76 +758,78 @@ public class ExpressionAnalyzer {
    */
   public static List<Expression> removeWildcardInFilterByDevice(
       Expression predicate, PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
-    if (predicate instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          removeWildcardInFilterByDevice(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              devicePath,
-              schemaTree,
-              isWhere);
-      List<Expression> secondExpressions =
-          removeWildcardInFilterByDevice(
-              ((TernaryExpression) predicate).getSecondExpression(),
-              devicePath,
-              schemaTree,
-              isWhere);
-      List<Expression> thirdExpressions =
-          removeWildcardInFilterByDevice(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              devicePath,
-              schemaTree,
-              isWhere);
-      return reconstructTernaryExpressions(
-          predicate, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (predicate instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          removeWildcardInFilterByDevice(
-              ((BinaryExpression) predicate).getLeftExpression(), devicePath, schemaTree, isWhere);
-      List<Expression> rightExpressions =
-          removeWildcardInFilterByDevice(
-              ((BinaryExpression) predicate).getRightExpression(), devicePath, schemaTree, isWhere);
-      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
-        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
-        resultExpressions.addAll(rightExpressions);
-        return resultExpressions;
-      }
-      return reconstructBinaryExpressions(
-          predicate.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (predicate instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          removeWildcardInFilterByDevice(
-              ((UnaryExpression) predicate).getExpression(), devicePath, schemaTree, isWhere);
-      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
-    } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
-        throw new SemanticException("aggregate functions are not supported in WHERE clause");
-      }
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression suffixExpression : predicate.getExpressions()) {
-        extendedExpressions.add(
-            removeWildcardInFilterByDevice(suffixExpression, devicePath, schemaTree, isWhere));
-      }
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
-    } else if (predicate instanceof TimeSeriesOperand) {
-      PartialPath measurement = ((TimeSeriesOperand) predicate).getPath();
-      PartialPath concatPath = devicePath.concatPath(measurement);
-
-      List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.isEmpty()) {
-        return Collections.singletonList(new NullOperand());
-      }
-      return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (predicate instanceof TimestampOperand) {
-      // do nothing in the case of "where time > 5"
-      return Collections.singletonList(predicate);
-    } else if (predicate instanceof ConstantOperand) {
-      return Collections.singletonList(predicate);
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
-    }
+    return new RemoveWildcardInFilterByDeviceVisitor()
+            .process(predicate, new RemoveWildcardInFilterByDeviceVisitor.Context(devicePath, schemaTree, isWhere));
+//    if (predicate instanceof TernaryExpression) {
+//      List<Expression> firstExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((TernaryExpression) predicate).getFirstExpression(),
+//              devicePath,
+//              schemaTree,
+//              isWhere);
+//      List<Expression> secondExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((TernaryExpression) predicate).getSecondExpression(),
+//              devicePath,
+//              schemaTree,
+//              isWhere);
+//      List<Expression> thirdExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((TernaryExpression) predicate).getThirdExpression(),
+//              devicePath,
+//              schemaTree,
+//              isWhere);
+//      return reconstructTernaryExpressions(
+//          predicate, firstExpressions, secondExpressions, thirdExpressions);
+//    } else if (predicate instanceof BinaryExpression) {
+//      List<Expression> leftExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((BinaryExpression) predicate).getLeftExpression(), devicePath, schemaTree, isWhere);
+//      List<Expression> rightExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((BinaryExpression) predicate).getRightExpression(), devicePath, schemaTree, isWhere);
+//      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
+//        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
+//        resultExpressions.addAll(rightExpressions);
+//        return resultExpressions;
+//      }
+//      return reconstructBinaryExpressions(
+//          predicate.getExpressionType(), leftExpressions, rightExpressions);
+//    } else if (predicate instanceof UnaryExpression) {
+//      List<Expression> childExpressions =
+//          removeWildcardInFilterByDevice(
+//              ((UnaryExpression) predicate).getExpression(), devicePath, schemaTree, isWhere);
+//      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
+//    } else if (predicate instanceof FunctionExpression) {
+//      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
+//        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+//      }
+//      List<List<Expression>> extendedExpressions = new ArrayList<>();
+//      for (Expression suffixExpression : predicate.getExpressions()) {
+//        extendedExpressions.add(
+//            removeWildcardInFilterByDevice(suffixExpression, devicePath, schemaTree, isWhere));
+//      }
+//      List<List<Expression>> childExpressionsList = new ArrayList<>();
+//      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+//      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
+//    } else if (predicate instanceof TimeSeriesOperand) {
+//      PartialPath measurement = ((TimeSeriesOperand) predicate).getPath();
+//      PartialPath concatPath = devicePath.concatPath(measurement);
+//
+//      List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
+//      if (noStarPaths.isEmpty()) {
+//        return Collections.singletonList(new NullOperand());
+//      }
+//      return reconstructTimeSeriesOperands(noStarPaths);
+//    } else if (predicate instanceof TimestampOperand) {
+//      // do nothing in the case of "where time > 5"
+//      return Collections.singletonList(predicate);
+//    } else if (predicate instanceof ConstantOperand) {
+//      return Collections.singletonList(predicate);
+//    } else {
+//      throw new IllegalArgumentException(
+//          "unsupported expression type: " + predicate.getExpressionType());
+//    }
   }
 
   /**
