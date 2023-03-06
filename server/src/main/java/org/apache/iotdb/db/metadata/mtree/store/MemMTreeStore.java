@@ -38,6 +38,7 @@ import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,22 +49,31 @@ import java.util.function.Consumer;
 public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
-  private MemSchemaRegionStatistics regionStatistics;
+  private final MemSchemaRegionStatistics regionStatistics;
+  private final TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator;
 
   private IMemMNode root;
 
-  public MemMTreeStore(PartialPath rootPath, MemSchemaRegionStatistics regionStatistics) {
+  public MemMTreeStore(
+      PartialPath rootPath,
+      MemSchemaRegionStatistics regionStatistics,
+      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
     this.root =
         new DatabaseMNode(
             null,
             rootPath.getTailNode(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     this.regionStatistics = regionStatistics;
+    this.templateMNodeGenerator = templateMNodeGenerator;
   }
 
-  private MemMTreeStore(IMemMNode root, MemSchemaRegionStatistics regionStatistics) {
+  private MemMTreeStore(
+      IMemMNode root,
+      MemSchemaRegionStatistics regionStatistics,
+      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
     this.root = root;
     this.regionStatistics = regionStatistics;
+    this.templateMNodeGenerator = templateMNodeGenerator;
   }
 
   @Override
@@ -109,8 +119,9 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       IMemMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
     if (parent.isEntity()) {
-      AbstractTraverserIterator iterator =
-          new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+      AbstractTraverserIterator<IMemMNode> iterator =
+          new MemoryTraverserIterator(
+              this, parent.getAsEntityMNode(), templateMap, templateMNodeGenerator);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {
@@ -211,11 +222,13 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public static MemMTreeStore loadFromSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      MemSchemaRegionStatistics regionStatistics)
+      MemSchemaRegionStatistics regionStatistics,
+      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
-        regionStatistics);
+        regionStatistics,
+        templateMNodeGenerator);
   }
 
   private void requestMemory(int size) {

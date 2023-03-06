@@ -18,24 +18,26 @@
  */
 package org.apache.iotdb.db.metadata.newnode;
 
-import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Iterator;
 
-public class MemTemplateMNodeGenerator implements TemplateMNodeGenerator<IMemMNode> {
+public class CacheTemplateMNodeGenerator implements TemplateMNodeGenerator<ICacheMNode> {
 
   @Override
-  public IMemMNode getChild(Template template, String name) {
+  public ICacheMNode getChild(Template template, String name) {
     IMeasurementSchema schema = template.getSchema(name);
-    return schema == null ? null : new MeasurementMNode(null, name, template.getSchema(name), null);
+    return schema == null
+        ? null
+        : new CacheMeasurementMNode(null, name, template.getSchema(name), null);
   }
 
   @Override
-  public Iterator<IMemMNode> getChildren(Template template) {
-    return new Iterator<IMemMNode>() {
+  public Iterator<ICacheMNode> getChildren(Template template) {
+    return new Iterator<ICacheMNode>() {
       private final Iterator<IMeasurementSchema> schemas =
           template.getSchemaMap().values().iterator();
 
@@ -45,9 +47,9 @@ public class MemTemplateMNodeGenerator implements TemplateMNodeGenerator<IMemMNo
       }
 
       @Override
-      public IMemMNode next() {
+      public ICacheMNode next() {
         IMeasurementSchema schema = schemas.next();
-        return new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
+        return new CacheMeasurementMNode(null, schema.getMeasurementId(), schema, null);
       }
     };
   }

@@ -35,22 +35,25 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  * TraverserIterator for traversing device node. The iterator returns the filtered child nodes in
  * the mtree and the child nodes in the template.
  */
-public abstract class AbstractTraverserIterator implements IMNodeIterator {
-  private final IMNodeIterator directChildrenIterator;
-  private Iterator<IMNode> templateChildrenIterator;
-  protected IMNode nextMatchedNode;
+public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements IMNodeIterator<N> {
+  private final IMNodeIterator<N> directChildrenIterator;
+  private Iterator<N> templateChildrenIterator;
+  protected N nextMatchedNode;
   protected boolean usingDirectChildrenIterator = true;
   // if true, the pre deleted measurement or pre deactivated template won't be processed
   private boolean skipPreDeletedSchema = false;
 
   protected AbstractTraverserIterator(
-      IMTreeStore store, IDeviceMNode parent, Map<Integer, Template> templateMap)
+      IMTreeStore<N> store,
+      IDeviceMNode<N> parent,
+      Map<Integer, Template> templateMap,
+      TemplateMNodeGenerator<N> templateMNodeGenerator)
       throws MetadataException {
-    this.directChildrenIterator = store.getChildrenIterator(parent);
+    this.directChildrenIterator = store.getChildrenIterator(parent.getAsMNode());
     if (templateMap != null && parent.isUseTemplate()) {
       Template template = getActivatedSchemaTemplate(parent, templateMap);
       if (template != null) {
-        templateChildrenIterator = TemplateMNodeGenerator.getChildren(template);
+        templateChildrenIterator = templateMNodeGenerator.getChildren(template);
       }
     }
   }
@@ -60,7 +63,7 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   }
 
   private Template getActivatedSchemaTemplate(
-      IDeviceMNode node, Map<Integer, Template> templateMap) {
+      IDeviceMNode<N> node, Map<Integer, Template> templateMap) {
     // new cluster, the used template is directly recorded as template id in device mnode
     if (node.getSchemaTemplateId() != NON_TEMPLATE) {
       if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {
@@ -99,11 +102,11 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   }
 
   @Override
-  public IMNode next() {
+  public N next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    IMNode result = nextMatchedNode;
+    N result = nextMatchedNode;
     nextMatchedNode = null;
     return result;
   }

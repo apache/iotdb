@@ -62,6 +62,7 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -107,6 +108,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
   private volatile ICacheMNode storageGroupMNode;
   private final ICacheMNode rootNode;
   private final Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter;
+  private final TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator;
   private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
@@ -116,10 +118,18 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       Runnable flushCallback,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
       int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics)
+      CachedSchemaRegionStatistics regionStatistics,
+      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
+    this.templateMNodeGenerator = templateMNodeGenerator;
+    store =
+        new CachedMTreeStore(
+            storageGroupPath,
+            schemaRegionId,
+            regionStatistics,
+            flushCallback,
+            templateMNodeGenerator);
     this.storageGroupMNode = store.getRoot();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -145,13 +155,15 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       PartialPath storageGroupPath,
       CachedMTreeStore store,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
-      Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter)
+      Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter,
+      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
       throws MetadataException {
     this.store = store;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
+    this.templateMNodeGenerator = templateMNodeGenerator;
 
     // recover measurement
     try (MeasurementCollector<Void, ICacheMNode> collector =
@@ -192,14 +204,21 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       CachedSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
       Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter,
-      Runnable flushCallback)
+      Runnable flushCallback,
+      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
         CachedMTreeStore.loadFromSnapshot(
-            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
+            snapshotDir,
+            storageGroupFullPath,
+            schemaRegionId,
+            regionStatistics,
+            flushCallback,
+            templateMNodeGenerator),
         measurementProcess,
-        tagGetter);
+        tagGetter,
+        templateMNodeGenerator);
   }
 
   // endregion
@@ -733,7 +752,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
             return null;
           }
         }) {
-      collector.setTemplateMap(templateMap);
+      collector.setTemplateMap(templateMap, templateMNodeGenerator);
       collector.traverse();
     }
     return result;
@@ -1068,7 +1087,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
           }
         };
 
-    collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate());
+    collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), templateMNodeGenerator);
     Traverser<ITimeSeriesSchemaInfo, ICacheMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       traverser =

@@ -33,7 +33,7 @@ public class MNodeUtils {
    * @param node node to be transformed
    * @return generated entityMNode
    */
-  public static<N extends IMNode<N>> IDeviceMNode<N> setToEntity(IMNode<N> node) {
+  public static <N extends IMNode<N>> IDeviceMNode<N> setToEntity(IMNode<N> node) {
     IDeviceMNode<N> entityMNode;
     if (node.isEntity()) {
       entityMNode = node.getAsEntityMNode();
@@ -64,7 +64,7 @@ public class MNodeUtils {
    * @param entityMNode node to be transformed
    * @return generated NoEntity node
    */
-  public static<N extends IMNode<N>> IMNode<N> setToInternal(IDeviceMNode<N> entityMNode) {
+  public static <N extends IMNode<N>> IMNode<N> setToInternal(IDeviceMNode<N> entityMNode) {
     IMNode<N> node;
     IMNode<N> parent = entityMNode.getParent();
     if (entityMNode.isDatabase()) {

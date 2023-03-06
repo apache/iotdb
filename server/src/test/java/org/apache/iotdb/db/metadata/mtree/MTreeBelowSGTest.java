@@ -24,8 +24,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
+import org.apache.iotdb.db.metadata.newnode.CacheTemplateMNodeGenerator;
+import org.apache.iotdb.db.metadata.newnode.MemTemplateMNodeGenerator;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
@@ -100,11 +101,15 @@ public abstract class MTreeBelowSGTest {
                   // do nothing
                 },
                 0,
-                new CachedSchemaRegionStatistics(0, new CachedSchemaEngineStatistics()));
+                new CachedSchemaRegionStatistics(0, new CachedSchemaEngineStatistics()),
+                new CacheTemplateMNodeGenerator());
       } else {
         mtree =
             new MTreeBelowSGMemoryImpl(
-                path, null, new MemSchemaRegionStatistics(0, new MemSchemaEngineStatistics()));
+                path,
+                null,
+                new MemSchemaRegionStatistics(0, new MemSchemaEngineStatistics()),
+                new MemTemplateMNodeGenerator());
       }
       usedMTree.add(mtree);
       return mtree;

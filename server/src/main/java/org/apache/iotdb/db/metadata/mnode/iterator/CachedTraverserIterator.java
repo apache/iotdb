@@ -20,18 +20,23 @@ package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import java.util.Map;
 
-public class CachedTraverserIterator extends AbstractTraverserIterator {
-  private final IMTreeStore store;
+public class CachedTraverserIterator extends AbstractTraverserIterator<ICacheMNode> {
+  private final IMTreeStore<ICacheMNode> store;
 
   public CachedTraverserIterator(
-      IMTreeStore store, IDeviceMNode parent, Map<Integer, Template> templateMap)
+      IMTreeStore<ICacheMNode> store,
+      IDeviceMNode<ICacheMNode> parent,
+      Map<Integer, Template> templateMap,
+      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
       throws MetadataException {
-    super(store, parent, templateMap);
+    super(store, parent, templateMap, templateMNodeGenerator);
     this.store = store;
   }
 

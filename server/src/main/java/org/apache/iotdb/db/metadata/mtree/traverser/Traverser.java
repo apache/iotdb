@@ -60,6 +60,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
+  protected TemplateMNodeGenerator<N> templateMNodeGenerator;
 
   // if true, the pre deleted measurement or pre deactivated template won't be processed
   protected boolean skipPreDeletedSchema = false;
@@ -126,10 +127,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
         Template template = templateMap.get(templateId);
         // if null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage
-        if (template != null) {
-          child =
-              TemplateMNodeGenerator.getChild(
-                  templateMap.get(templateId), childName);
+        if (template != null && templateMNodeGenerator != null) {
+          child = templateMNodeGenerator.getChild(templateMap.get(templateId), childName);
         }
       }
     }
@@ -171,8 +170,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
   }
 
-  public void setTemplateMap(Map<Integer, Template> templateMap) {
+  public void setTemplateMap(
+      Map<Integer, Template> templateMap, TemplateMNodeGenerator<N> templateMNodeGenerator) {
     this.templateMap = templateMap;
+    this.templateMNodeGenerator = templateMNodeGenerator;
   }
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {

@@ -19,33 +19,12 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Iterator;
 
-// TODO: it will be generic later
-public class TemplateMNodeGenerator {
-  public static IMNode getChild(Template template, String name) {
-    IMeasurementSchema schema = template.getSchema(name);
-    return schema == null ? null : new MeasurementMNode(null, name, template.getSchema(name), null);
-  }
+public interface TemplateMNodeGenerator<N extends IMNode<N>> {
 
-  public static Iterator<IMNode> getChildren(Template template) {
-    return new Iterator<IMNode>() {
-      private final Iterator<IMeasurementSchema> schemas =
-          template.getSchemaMap().values().iterator();
+  N getChild(Template template, String name);
 
-      @Override
-      public boolean hasNext() {
-        return schemas.hasNext();
-      }
-
-      @Override
-      public IMNode next() {
-        IMeasurementSchema schema = schemas.next();
-        return new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
-      }
-    };
-  }
+  Iterator<N> getChildren(Template template);
 }
