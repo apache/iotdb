@@ -436,6 +436,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | wal_cost                  | type="serialize_one_wal_info_entry"                                   | Timer     | Time cost of serialize one WALInfoEntry                |
 | wal_cost                  | stage="sync_wal_buffer" type="<force_flag>"                           | Timer     | Time cost of sync WALBuffer                            |
 | wal_buffer                | name="used_ratio"                                                     | Histogram | Used ratio of WALBuffer                                |
+| wal_buffer                | name="entries_count"                                                  | Histogram | Entries Count of WALBuffer                             |
 | wal_cost                  | stage="serialize_wal_entry" type="serialize_wal_entry_total"          | Timer     | Time cost of WALBuffer serialize task                  |
 | wal_node_info             | name="effective_info_ratio" type="<wal_node_id>"                      | Histogram | Effective info ratio of WALNode                        |
 | wal_node_info             | name="oldest_mem_table_ram_when_cause_snapshot" type="<wal_node_id>"  | Histogram | Ram of oldest memTable when cause snapshot             |
