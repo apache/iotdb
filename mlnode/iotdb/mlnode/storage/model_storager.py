@@ -94,9 +94,14 @@ modelStorager = ModelStorager(root_path=MLNODE_MODEL_STORAGE_DIR,
                               cache_size=MLNODE_MODEL_STORAGE_CACHESIZE)
 
 # Usage:
+# from iotdb.mlnode.algorithm.model_factory import create_forecast_model
+# from iotdb.mlnode.storage.model_storager import modelStorager
 
-# modelStorager.save_model(nn.Module, model_config, model_id, trial_id)
-# model(TorchScript.ScriptModule), model_cfg(Dict) = modelStorager.load_model(model_config, model_id, trial_id)
-# output = model(torch.randn(3, input_len, input_vars))
-# modelStorager.delect_model(model_id, trial_id)
-# modelStorager.delect_trial(trial_id)
+# model, model_cfg = create_forecast_model(model_name='nbeats')
+# modelStorager.save_model(model, model_cfg, model_id: int, trial_id: int)
+# model, model_cfg = modelStorager.load_model(model_id: int, trial_id: int)
+# modelStorager.delete_trial(model_id: int, trial_id: int) #
+# modelStorager.delete_model(model_id: int) # delete all model with responding trials
+
+
+
