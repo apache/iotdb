@@ -123,6 +123,7 @@ public class CacheMemoryManager {
             }
           } catch (InterruptedException e) {
             logger.info("ReleaseTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
           }
         });
     flushTaskMonitor.submit(
@@ -142,6 +143,7 @@ public class CacheMemoryManager {
             }
           } catch (InterruptedException e) {
             logger.info("FlushTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
           }
         });
   }
@@ -182,6 +184,7 @@ public class CacheMemoryManager {
           logger.warn(
               "Interrupt because the release task and flush task did not finish within {} milliseconds.",
               MAX_WAITING_TIME_WHEN_RELEASING);
+          Thread.currentThread().interrupt();
         }
       }
     }
