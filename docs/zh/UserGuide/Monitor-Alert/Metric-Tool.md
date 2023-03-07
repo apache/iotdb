@@ -436,6 +436,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Flush时该memTable内平均每个Memchunk中的point数量    |
 | flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | Flush MemTable时对应的TsFile的压缩率             |
 | flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | Flush的MemTable对应的TsFile大小                |
+| data_region_mem_cost      | name="data_region_mem_cost"                                           | AutoGauge | DataRegion内存占用                           |
 
 ### 4.3. Normal 级别监控指标
 

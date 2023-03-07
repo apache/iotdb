@@ -456,6 +456,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Point num of flushing memChunk                         |
 | flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | TsFile Compression ratio of flushing memTable          |
 | flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | TsFile size of flushing memTable                       |
+| data_region_mem_cost      | name="data_region_mem_cost"                                           | AutoGauge | Mem cost of data regions                               |
 
 ### 4.3. Normal level Metrics
 
