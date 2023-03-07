@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -128,23 +127,6 @@ public class PlanFragment {
       TDataNodeLocation result = getNodeLocation(child);
       if (result != null) {
         return result;
-      }
-    }
-    return null;
-  }
-
-  public PlanNode getPlanNodeById(PlanNodeId nodeId) {
-    return getPlanNodeById(planNodeTree, nodeId);
-  }
-
-  private PlanNode getPlanNodeById(PlanNode root, PlanNodeId nodeId) {
-    if (root.getPlanNodeId().equals(nodeId)) {
-      return root;
-    }
-    for (PlanNode child : root.getChildren()) {
-      PlanNode node = getPlanNodeById(child, nodeId);
-      if (node != null) {
-        return node;
       }
     }
     return null;

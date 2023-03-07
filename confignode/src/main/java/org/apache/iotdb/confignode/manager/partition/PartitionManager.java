@@ -32,9 +32,9 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -50,7 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
-import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
@@ -63,16 +63,16 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
-import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
-import org.apache.iotdb.confignode.persistence.metric.PartitionInfoMetrics;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
+import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -88,15 +88,19 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -505,15 +509,15 @@ public class PartitionManager {
   }
 
   /**
-   * Get the DataNodes who contain the specific StorageGroup's Schema or Data
+   * Get the DataNodes who contain the specified Database's Schema or Data
    *
-   * @param storageGroup The specific StorageGroup's name
+   * @param database The specific Database's name
    * @param type SchemaRegion or DataRegion
    * @return Set<TDataNodeLocation>, the related DataNodes
    */
-  public Set<TDataNodeLocation> getStorageGroupRelatedDataNodes(
-      String storageGroup, TConsensusGroupType type) {
-    return partitionInfo.getStorageGroupRelatedDataNodes(storageGroup, type);
+  public Set<TDataNodeLocation> getDatabaseRelatedDataNodes(
+      String database, TConsensusGroupType type) {
+    return partitionInfo.getDatabaseRelatedDataNodes(database, type);
   }
 
   /**
@@ -550,26 +554,55 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup The specified StorageGroup
+   * @param database The specified Database
    * @return All Regions' RegionReplicaSet of the specified StorageGroup
    */
-  public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
-    return partitionInfo.getAllReplicaSets(storageGroup);
+  public List<TRegionReplicaSet> getAllReplicaSets(String database) {
+    return partitionInfo.getAllReplicaSets(database);
   }
 
   /**
    * Only leader use this interface.
    *
-   * <p>Get the number of RegionGroups currently owned by the specific StorageGroup
+   * <p>Get the number of Regions currently owned by the specified DataNode
    *
-   * @param storageGroup StorageGroupName
+   * @param dataNodeId The specified DataNode
    * @param type SchemaRegion or DataRegion
-   * @return Number of Regions currently owned by the specific StorageGroup
-   * @throws DatabaseNotExistsException When the specific StorageGroup doesn't exist
+   * @return The number of Regions currently owned by the specified DataNode
    */
-  public int getRegionGroupCount(String storageGroup, TConsensusGroupType type)
+  public int getRegionCount(int dataNodeId, TConsensusGroupType type) {
+    return partitionInfo.getRegionCount(dataNodeId, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the number of RegionGroups currently owned by the specified Database
+   *
+   * @param database DatabaseName
+   * @param type SchemaRegion or DataRegion
+   * @return Number of Regions currently owned by the specified Database
+   * @throws DatabaseNotExistsException When the specified Database doesn't exist
+   */
+  public int getRegionGroupCount(String database, TConsensusGroupType type)
       throws DatabaseNotExistsException {
-    return partitionInfo.getRegionGroupCount(storageGroup, type);
+    return partitionInfo.getRegionGroupCount(database, type);
+  }
+
+  public boolean isDatabaseExisted(String database) {
+    return partitionInfo.isDatabaseExisted(database);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the assigned SeriesPartitionSlots count in the specified Database
+   *
+   * @param database The specified Database
+   * @return The assigned SeriesPartitionSlots count
+   */
+  public int getAssignedSeriesPartitionSlotsCount(String database) {
+    return partitionInfo.getAssignedSeriesPartitionSlotsCount(database);
   }
 
   /**
@@ -600,25 +633,22 @@ public class PartitionManager {
       throw new NoAvailableRegionGroupException(type);
     }
 
-    result.sort(new PartitionComparator());
+    result.sort(
+        (o1, o2) -> {
+          // Use the number of partitions as the first priority
+          if (o1.getLeft() < o2.getLeft()) {
+            return -1;
+          } else if (o1.getLeft() > o2.getLeft()) {
+            return 1;
+          } else {
+            // Use RegionGroup status as second priority, Running > Available > Discouraged
+            return getRegionGroupStatus(o1.getRight())
+                .compareTo(getRegionGroupStatus(o2.getRight()));
+          }
+        });
     return result;
   }
 
-  class PartitionComparator implements Comparator<Pair<Long, TConsensusGroupId>> {
-
-    @Override
-    public int compare(Pair<Long, TConsensusGroupId> o1, Pair<Long, TConsensusGroupId> o2) {
-      // Use partition number as first priority
-      if (o1.getLeft() < o2.getLeft()) {
-        return -1;
-      } else if (o1.getLeft() > o2.getLeft()) {
-        return 1;
-      } else {
-        // Use RegionGroup status as second priority, Running > Available > Discouraged
-        return getRegionGroupStatus(o1.getRight()).compareTo(getRegionGroupStatus(o2.getRight()));
-      }
-    }
-  }
   /**
    * Only leader use this interface
    *
@@ -647,10 +677,6 @@ public class PartitionManager {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
         new PreDeleteDatabasePlan(storageGroup, preDeleteType);
     getConsensusManager().write(preDeleteDatabasePlan);
-  }
-
-  public void addMetrics() {
-    MetricService.getInstance().addMetricSet(new PartitionInfoMetrics(partitionInfo));
   }
 
   /**
@@ -730,6 +756,7 @@ public class PartitionManager {
   public GetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
     return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
   }
+
   /**
    * get database for region
    *
@@ -754,69 +781,198 @@ public class PartitionManager {
                 List<RegionMaintainTask> regionMaintainTaskList =
                     partitionInfo.getRegionMaintainEntryList();
 
-                if (!regionMaintainTaskList.isEmpty()) {
-                  for (RegionMaintainTask entry : regionMaintainTaskList) {
-                    TSStatus status;
-                    switch (entry.getType()) {
-                      case CREATE:
-                        RegionCreateTask createEntry = (RegionCreateTask) entry;
-                        LOGGER.info(
-                            "Start to create Region: {} on DataNode: {}",
-                            createEntry.getRegionReplicaSet().getRegionId(),
-                            createEntry.getTargetDataNode());
-                        switch (createEntry.getRegionReplicaSet().getRegionId().getType()) {
-                          case SchemaRegion:
-                            // Create SchemaRegion
-                            status =
-                                SyncDataNodeClientPool.getInstance()
-                                    .sendSyncRequestToDataNodeWithRetry(
-                                        createEntry.getTargetDataNode().getInternalEndPoint(),
-                                        new TCreateSchemaRegionReq(
-                                            createEntry.getRegionReplicaSet(),
-                                            createEntry.getStorageGroup()),
-                                        DataNodeRequestType.CREATE_SCHEMA_REGION);
-                            break;
+                if (regionMaintainTaskList.isEmpty()) {
+                  return;
+                }
 
-                          case DataRegion:
-                          default:
-                            // Create DataRegion
-                            status =
-                                SyncDataNodeClientPool.getInstance()
-                                    .sendSyncRequestToDataNodeWithRetry(
-                                        createEntry.getTargetDataNode().getInternalEndPoint(),
-                                        new TCreateDataRegionReq(
-                                                createEntry.getRegionReplicaSet(),
-                                                createEntry.getStorageGroup())
-                                            .setTtl(createEntry.getTTL()),
-                                        DataNodeRequestType.CREATE_DATA_REGION);
-                        }
-                        break;
+                // group tasks by region id
+                Map<TConsensusGroupId, Queue<RegionMaintainTask>> regionMaintainTaskMap =
+                    new HashMap<>();
+                for (RegionMaintainTask regionMaintainTask : regionMaintainTaskList) {
+                  regionMaintainTaskMap
+                      .computeIfAbsent(regionMaintainTask.getRegionId(), k -> new LinkedList<>())
+                      .add(regionMaintainTask);
+                }
 
-                      case DELETE:
-                      default:
-                        // Delete Region
-                        RegionDeleteTask deleteEntry = (RegionDeleteTask) entry;
+                while (!regionMaintainTaskMap.isEmpty()) {
+                  // select same type task from each region group
+                  List<RegionMaintainTask> selectedRegionMaintainTask = new ArrayList<>();
+                  RegionMaintainType currentType = null;
+                  for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry :
+                      regionMaintainTaskMap.entrySet()) {
+                    RegionMaintainTask regionMaintainTask = entry.getValue().peek();
+                    if (regionMaintainTask == null) {
+                      continue;
+                    }
+
+                    if (currentType == null) {
+                      currentType = regionMaintainTask.getType();
+                      selectedRegionMaintainTask.add(entry.getValue().peek());
+                    } else {
+                      if (!currentType.equals(regionMaintainTask.getType())) {
+                        continue;
+                      }
+
+                      if (currentType.equals(RegionMaintainType.DELETE)
+                          || entry
+                              .getKey()
+                              .getType()
+                              .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
+                        // delete or same create task
+                        selectedRegionMaintainTask.add(entry.getValue().peek());
+                      }
+                    }
+                  }
+
+                  if (selectedRegionMaintainTask.isEmpty()) {
+                    break;
+                  }
+
+                  Set<TConsensusGroupId> successfulTask = new HashSet<>();
+                  switch (currentType) {
+                    case CREATE:
+                      // create region
+                      switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
+                        case SchemaRegion:
+                          // create SchemaRegion
+                          AsyncClientHandler<TCreateSchemaRegionReq, TSStatus>
+                              createSchemaRegionHandler =
+                                  new AsyncClientHandler<>(
+                                      DataNodeRequestType.CREATE_SCHEMA_REGION);
+                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
+                            RegionCreateTask schemaRegionCreateTask =
+                                (RegionCreateTask) regionMaintainTask;
+                            LOGGER.info(
+                                "Start to create Region: {} on DataNode: {}",
+                                schemaRegionCreateTask.getRegionReplicaSet().getRegionId(),
+                                schemaRegionCreateTask.getTargetDataNode());
+                            createSchemaRegionHandler.putRequest(
+                                schemaRegionCreateTask.getRegionId().getId(),
+                                new TCreateSchemaRegionReq(
+                                    schemaRegionCreateTask.getRegionReplicaSet(),
+                                    schemaRegionCreateTask.getStorageGroup()));
+                            createSchemaRegionHandler.putDataNodeLocation(
+                                schemaRegionCreateTask.getRegionId().getId(),
+                                schemaRegionCreateTask.getTargetDataNode());
+                          }
+
+                          AsyncDataNodeClientPool.getInstance()
+                              .sendAsyncRequestToDataNodeWithRetry(createSchemaRegionHandler);
+
+                          for (Map.Entry<Integer, TSStatus> entry :
+                              createSchemaRegionHandler.getResponseMap().entrySet()) {
+                            if (entry.getValue().getCode()
+                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                              successfulTask.add(
+                                  new TConsensusGroupId(
+                                      TConsensusGroupType.SchemaRegion, entry.getKey()));
+                            }
+                          }
+                          break;
+                        case DataRegion:
+                          // create DataRegion
+                          AsyncClientHandler<TCreateDataRegionReq, TSStatus>
+                              createDataRegionHandler =
+                                  new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
+                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
+                            RegionCreateTask dataRegionCreateTask =
+                                (RegionCreateTask) regionMaintainTask;
+                            LOGGER.info(
+                                "Start to create Region: {} on DataNode: {}",
+                                dataRegionCreateTask.getRegionReplicaSet().getRegionId(),
+                                dataRegionCreateTask.getTargetDataNode());
+                            createDataRegionHandler.putRequest(
+                                dataRegionCreateTask.getRegionId().getId(),
+                                new TCreateDataRegionReq(
+                                        dataRegionCreateTask.getRegionReplicaSet(),
+                                        dataRegionCreateTask.getStorageGroup())
+                                    .setTtl(dataRegionCreateTask.getTTL()));
+                            createDataRegionHandler.putDataNodeLocation(
+                                dataRegionCreateTask.getRegionId().getId(),
+                                dataRegionCreateTask.getTargetDataNode());
+                          }
+
+                          AsyncDataNodeClientPool.getInstance()
+                              .sendAsyncRequestToDataNodeWithRetry(createDataRegionHandler);
+
+                          for (Map.Entry<Integer, TSStatus> entry :
+                              createDataRegionHandler.getResponseMap().entrySet()) {
+                            if (entry.getValue().getCode()
+                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                              successfulTask.add(
+                                  new TConsensusGroupId(
+                                      TConsensusGroupType.DataRegion, entry.getKey()));
+                            }
+                          }
+                          break;
+                      }
+                      break;
+                    case DELETE:
+                      // delete region
+                      AsyncClientHandler<TConsensusGroupId, TSStatus> deleteRegionHandler =
+                          new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
+                      Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
+                      for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
+                        RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
                         LOGGER.info(
                             "Start to delete Region: {} on DataNode: {}",
-                            deleteEntry.getRegionId(),
-                            deleteEntry.getTargetDataNode());
-                        status =
-                            SyncDataNodeClientPool.getInstance()
-                                .sendSyncRequestToDataNodeWithRetry(
-                                    deleteEntry.getTargetDataNode().getInternalEndPoint(),
-                                    deleteEntry.getRegionId(),
-                                    DataNodeRequestType.DELETE_REGION);
-                    }
+                            regionDeleteTask.getRegionId(),
+                            regionDeleteTask.getTargetDataNode());
+                        deleteRegionHandler.putRequest(
+                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
+                        deleteRegionHandler.putDataNodeLocation(
+                            regionDeleteTask.getRegionId().getId(),
+                            regionDeleteTask.getTargetDataNode());
+                        regionIdMap.put(
+                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
+                      }
 
-                    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      // Poll the head entry if success
-                      getConsensusManager().write(new PollRegionMaintainTaskPlan());
-                    } else {
-                      // Here we just break and wait until next schedule task
-                      // due to all the RegionMaintainEntry should be executed by
-                      // the order of they were offered
+                      long startTime = System.currentTimeMillis();
+                      AsyncDataNodeClientPool.getInstance()
+                          .sendAsyncRequestToDataNodeWithRetry(deleteRegionHandler);
+
+                      LOGGER.info(
+                          "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));
+
+                      for (Map.Entry<Integer, TSStatus> entry :
+                          deleteRegionHandler.getResponseMap().entrySet()) {
+                        if (entry.getValue().getCode()
+                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                          successfulTask.add(regionIdMap.get(entry.getKey()));
+                        }
+                      }
                       break;
-                    }
+                  }
+
+                  if (successfulTask.isEmpty()) {
+                    break;
+                  }
+
+                  for (TConsensusGroupId regionId : successfulTask) {
+                    regionMaintainTaskMap.compute(
+                        regionId,
+                        (k, v) -> {
+                          if (v == null) {
+                            throw new IllegalStateException();
+                          }
+                          v.poll();
+                          if (v.isEmpty()) {
+                            return null;
+                          } else {
+                            return v;
+                          }
+                        });
+                  }
+
+                  // Poll the head entry if success
+                  getConsensusManager()
+                      .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+
+                  if (successfulTask.size() < selectedRegionMaintainTask.size()) {
+                    // Here we just break and wait until next schedule task
+                    // due to all the RegionMaintainEntry should be executed by
+                    // the order of they were offered
+                    break;
                   }
                 }
               }
@@ -886,7 +1042,35 @@ public class PartitionManager {
   }
 
   /**
-   * Safely get RegionStatus
+   * Count the number of cluster Regions with specified RegionStatus
+   *
+   * @param type The specified RegionGroupType
+   * @param status The specified statues
+   * @return The number of cluster Regions with specified RegionStatus
+   */
+  public int countRegionWithSpecifiedStatus(TConsensusGroupType type, RegionStatus... status) {
+    AtomicInteger result = new AtomicInteger(0);
+    regionGroupCacheMap.forEach(
+        (regionGroupId, regionGroupCache) -> {
+          if (type.equals(regionGroupId.getType())) {
+            regionGroupCache
+                .getStatistics()
+                .getRegionStatisticsMap()
+                .values()
+                .forEach(
+                    regionStatistics -> {
+                      if (Arrays.stream(status)
+                          .anyMatch(s -> s.equals(regionStatistics.getRegionStatus()))) {
+                        result.getAndIncrement();
+                      }
+                    });
+          }
+        });
+    return result.get();
+  }
+
+  /**
+   * Safely get RegionStatus.
    *
    * @param consensusGroupId Specified RegionGroupId
    * @param dataNodeId Specified RegionReplicaId
@@ -899,7 +1083,7 @@ public class PartitionManager {
   }
 
   /**
-   * Safely get RegionGroupStatus
+   * Safely get RegionGroupStatus.
    *
    * @param consensusGroupId Specified RegionGroupId
    * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
@@ -910,7 +1094,7 @@ public class PartitionManager {
         : RegionGroupStatus.Disabled;
   }
 
-  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched */
+  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched. */
   public void initRegionGroupHeartbeatCache() {
     regionGroupCacheMap.clear();
     getAllReplicaSets()

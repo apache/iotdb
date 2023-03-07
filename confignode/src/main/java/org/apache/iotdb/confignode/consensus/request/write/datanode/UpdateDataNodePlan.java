@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.datanode;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -30,42 +31,49 @@ import java.util.Objects;
 
 public class UpdateDataNodePlan extends ConfigPhysicalPlan {
 
-  private TDataNodeLocation dataNodeLocation;
+  private TDataNodeConfiguration dataNodeConfiguration;
 
   public UpdateDataNodePlan() {
     super(ConfigPhysicalPlanType.UpdateDataNodeConfiguration);
   }
 
-  public UpdateDataNodePlan(TDataNodeLocation datanodeLocation) {
+  public UpdateDataNodePlan(TDataNodeConfiguration dataNodeConfiguration) {
     this();
-    this.dataNodeLocation = datanodeLocation;
+    this.dataNodeConfiguration = dataNodeConfiguration;
   }
 
-  public TDataNodeLocation getDataNodeLocation() {
-    return dataNodeLocation;
+  public TDataNodeConfiguration getDataNodeConfiguration() {
+    return dataNodeConfiguration;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNodeLocation, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(dataNodeConfiguration, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    dataNodeLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
+    dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!getType().equals(((UpdateDataNodePlan) o).getType())) {
+      return false;
+    }
     UpdateDataNodePlan that = (UpdateDataNodePlan) o;
-    return dataNodeLocation.equals(that.dataNodeLocation);
+    return dataNodeConfiguration.equals(that.dataNodeConfiguration);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeLocation);
+    return Objects.hash(getType(), dataNodeConfiguration);
   }
 }

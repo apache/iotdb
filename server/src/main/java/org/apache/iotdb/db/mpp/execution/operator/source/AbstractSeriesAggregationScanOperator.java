@@ -131,7 +131,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
       // clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
+        aggregator.reset();
       }
 
       // calculate aggregation result on current time window

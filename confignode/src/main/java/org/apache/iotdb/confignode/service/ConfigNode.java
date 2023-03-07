@@ -205,18 +205,6 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
-  private void initConfigManager() {
-    try {
-      configManager = new ConfigManager();
-    } catch (IOException e) {
-      LOGGER.error("Can't start ConfigNode consensus group!", e);
-      stop();
-    }
-    // Add some Metrics for configManager
-    configManager.addMetrics();
-    LOGGER.info("Successfully initialize ConfigManager.");
-  }
-
   private void setUpInternalServices() throws StartupException, IOException {
     // Setup JMXService
     registerManager.register(new JMXService());
@@ -233,15 +221,27 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully setup internal services.");
   }
 
+  private void initConfigManager() {
+    try {
+      configManager = new ConfigManager();
+    } catch (IOException e) {
+      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      stop();
+    }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
+    LOGGER.info("Successfully initialize ConfigManager.");
+  }
+
   /** Register Non-seed ConfigNode when first startup */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
+            configManager.getClusterParameters(),
             new TConfigNodeLocation(
                 INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-            configManager.getClusterParameters());
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

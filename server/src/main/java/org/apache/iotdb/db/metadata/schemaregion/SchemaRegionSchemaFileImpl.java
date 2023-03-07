@@ -41,6 +41,8 @@ import org.apache.iotdb.db.metadata.logfile.MLogDescriptionReader;
 import org.apache.iotdb.db.metadata.logfile.MLogDescriptionWriter;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
@@ -119,6 +121,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
+@SchemaRegion(mode = "Schema_File")
 public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
@@ -149,20 +152,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private final ISeriesNumerMonitor seriesNumerMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionSchemaFileImpl(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      ISeriesNumerMonitor seriesNumerMonitor)
+  public SchemaRegionSchemaFileImpl(ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = storageGroup.getFullPath();
-    this.schemaRegionId = schemaRegionId;
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
-    this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new CachedSchemaRegionStatistics(schemaRegionId.getId());
+    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
+    this.regionStatistics =
+        new CachedSchemaRegionStatistics(
+            schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
     init();
   }
 
@@ -225,6 +227,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (usingMLog && !isRecovering) {
       try {
         logDescriptionWriter.updateCheckPoint(logWriter.position());
+        regionStatistics.setMLogCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
             "Update {} failed because {}",
@@ -277,6 +280,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
+      regionStatistics.setMLogLength(logWriter.position());
     }
   }
 
@@ -300,6 +304,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    return new SchemaRegionCachedMetric(regionStatistics);
   }
 
   /** Init from metadata log file. */

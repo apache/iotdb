@@ -35,12 +35,12 @@ public class ReleaseFlushStrategyNumBasedImpl implements IReleaseFlushStrategy {
 
   @Override
   public boolean isExceedReleaseThreshold() {
-    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getCachedMNodeNum()
+    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getUnpinnedMNodeNum()
         > capacity * 0.6;
   }
 
   @Override
   public boolean isExceedFlushThreshold() {
-    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getCachedMNodeNum() > capacity;
+    return engineStatistics.getPinnedMNodeNum() + engineStatistics.getUnpinnedMNodeNum() > capacity;
   }
 }

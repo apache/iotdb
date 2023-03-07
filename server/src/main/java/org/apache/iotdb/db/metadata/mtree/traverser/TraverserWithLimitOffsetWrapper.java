@@ -26,14 +26,14 @@ import java.util.NoSuchElementException;
 
 public class TraverserWithLimitOffsetWrapper<R> extends Traverser<R> {
   private final Traverser<R> traverser;
-  private final int limit;
-  private final int offset;
+  private final long limit;
+  private final long offset;
   private final boolean hasLimit;
 
   private int count = 0;
   int curOffset = 0;
 
-  public TraverserWithLimitOffsetWrapper(Traverser<R> traverser, int limit, int offset) {
+  public TraverserWithLimitOffsetWrapper(Traverser<R> traverser, long limit, long offset) {
     this.traverser = traverser;
     this.limit = limit;
     this.offset = offset;

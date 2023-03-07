@@ -67,6 +67,8 @@ public class AccumulatorFactory {
         return new CountIfAccumulator(
             initKeepEvaluator(inputExpressions.get(1)),
             Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
+      case TIME_DURATION:
+        return new TimeDurationAccumulator();
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

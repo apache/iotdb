@@ -44,7 +44,7 @@ public class UnsetTemplateProcedureTest {
     Template template = new Template();
     template.setId(0);
     template.setName("t1");
-    template.addUnalignedMeasurements(
+    template.addMeasurements(
         new String[] {"s1", "s2"},
         new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
         new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
