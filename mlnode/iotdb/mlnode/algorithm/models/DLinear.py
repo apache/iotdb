@@ -77,17 +77,17 @@ class DLinear(nn.Module):
         self.decomposition = SeriesDecomp(kernel_size)
 
         if self.individual:
-            self.Linear_Seasonal = nn.ModuleList()
-            self.Linear_Trend = nn.ModuleList()
-
-            for _ in range(self.channels):
-                self.Linear_Seasonal.append(nn.Linear(self.input_len, self.pred_len))
-                self.Linear_Trend.append(nn.Linear(self.input_len, self.pred_len))
+            self.Linear_Seasonal = nn.ModuleList(
+                [nn.Linear(self.input_len, self.pred_len) for _ in range(self.channels)]
+            )
+            self.Linear_Trend = nn.ModuleList(
+                [nn.Linear(self.input_len, self.pred_len) for _ in range(self.channels)]
+            )
         else:
             self.Linear_Seasonal = nn.Linear(self.input_len, self.pred_len)
             self.Linear_Trend = nn.Linear(self.input_len, self.pred_len)
 
-    def forward(self, x, x_t, y, y_t):
+    def forward(self, x, **kwargs):
         # x: [Batch, Input length, Channel]
         seasonal_init, trend_init = self.decomposition(x)
         seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
@@ -96,9 +96,10 @@ class DLinear(nn.Module):
                                           dtype=seasonal_init.dtype).to(seasonal_init.device)
             trend_output = torch.zeros([trend_init.size(0), trend_init.size(1), self.pred_len],
                                        dtype=trend_init.dtype).to(trend_init.device)
-            for i in range(self.channels):
-                seasonal_output[:, i, :] = self.Linear_Seasonal[i](seasonal_init[:, i, :])
-                trend_output[:, i, :] = self.Linear_Trend[i](trend_init[:, i, :])
+            for i, linear_season_layer in enumerate(self.Linear_Seasonal):
+                seasonal_output[:, i, :] = linear_season_layer(seasonal_init[:, i, :])
+            for i, linear_trend_layer in enumerate(self.Linear_Trend):
+                trend_output[:, i, :] = linear_trend_layer(trend_init[:, i, :])
         else:
             seasonal_output = self.Linear_Seasonal(seasonal_init)
             trend_output = self.Linear_Trend(trend_init)

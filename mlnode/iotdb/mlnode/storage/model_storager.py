@@ -41,7 +41,8 @@ class ModelStorager(object):
         fold_path = f'{self.root_path}/mid_{model_id}/'
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
-        torch.jit.save(torch.jit.script(model),
+        sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
+        torch.jit.save(torch.jit.trace(model, sample_input),
                        f'{fold_path}/tid_{trial_id}.pt',
                        _extra_files={'model_config': json.dumps(model_config)})
         return os.path.exists(f'{fold_path}/tid_{trial_id}.pt')

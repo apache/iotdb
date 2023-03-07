@@ -226,7 +226,7 @@ class NBeats(nn.Module):
                                                                    layer_size=d_model)
                                                        for _ in range(outer_layers)]))
 
-    def forward(self, x, x_t, y, y_t):
+    def forward(self, x, **kwargs):
         # x: [Batch, Input length, Channel]
         res = []
         for i in range(self.enc_in):
