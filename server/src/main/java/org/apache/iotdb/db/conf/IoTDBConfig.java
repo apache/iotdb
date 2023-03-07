@@ -141,8 +141,6 @@ public class IoTDBConfig {
   /** Memory allocated for the consensus layer */
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
-  private volatile int maxQueryDeduplicatedPathNum = 1000;
-
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -487,6 +485,9 @@ public class IoTDBConfig {
   private int subCompactionTaskNum = 4;
 
   private boolean enableCompactionValidation = true;
+
+  /** The size of candidate compaction task queue. */
+  private int candidateCompactionTaskQueueSize = 50;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -1784,7 +1785,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
-    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -2484,14 +2484,6 @@ public class IoTDBConfig {
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
-  }
-
-  public int getMaxQueryDeduplicatedPathNum() {
-    return maxQueryDeduplicatedPathNum;
-  }
-
-  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
   public int getCheckPeriodWhenInsertBlocked() {
@@ -3594,6 +3586,14 @@ public class IoTDBConfig {
 
   public void setEnableCompactionValidation(boolean enableCompactionValidation) {
     this.enableCompactionValidation = enableCompactionValidation;
+  }
+
+  public int getCandidateCompactionTaskQueueSize() {
+    return candidateCompactionTaskQueueSize;
+  }
+
+  public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
+    this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
   public boolean isEnableAuditLog() {

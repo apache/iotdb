@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -82,7 +83,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
 
       // clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
+        ((SlidingWindowAggregator) aggregator).updateTimeRange(curTimeRange);
       }
     }
 
@@ -129,7 +130,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     }
 
     for (Aggregator aggregator : aggregators) {
-      aggregator.processTsBlock(inputTsBlock, true);
+      ((SlidingWindowAggregator) aggregator).processTsBlock(inputTsBlock);
     }
 
     inputTsBlock = inputTsBlock.skipFirst();

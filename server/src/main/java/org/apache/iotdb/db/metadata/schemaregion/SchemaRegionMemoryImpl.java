@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
+import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -117,6 +119,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
+@SchemaRegion(mode = MetadataConstant.DEFAULT_SCHEMA_ENGINE_MODE)
 public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionMemoryImpl.class);
@@ -144,14 +147,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private final ISeriesNumerMonitor seriesNumerMonitor;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionMemoryImpl(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      ISeriesNumerMonitor seriesNumerMonitor)
-      throws MetadataException {
+  public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
-    storageGroupFullPath = storageGroup.getFullPath();
-    this.schemaRegionId = schemaRegionId;
+    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
@@ -168,9 +167,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    this.seriesNumerMonitor = seriesNumerMonitor;
-    this.regionStatistics = new MemSchemaRegionStatistics(schemaRegionId.getId());
-
+    this.seriesNumerMonitor = schemaRegionParams.getSeriesNumberMonitor();
+    this.regionStatistics =
+        new MemSchemaRegionStatistics(
+            schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
     init();
   }
 
@@ -275,6 +275,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public MemSchemaRegionStatistics getSchemaRegionStatistics() {
     return regionStatistics;
+  }
+
+  @Override
+  public ISchemaRegionMetric createSchemaRegionMetric() {
+    return new SchemaRegionMemMetric(regionStatistics);
   }
 
   /**
@@ -768,10 +773,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
 
     regionStatistics.deleteTimeseries(1L);
@@ -785,24 +787,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  /**
-   * @param path full path from root to leaf node
-   * @return After delete if the schema region is empty, return its path, otherwise return null
-   */
-  private PartialPath deleteOneTimeseriesUpdateStatistics(PartialPath path)
+  /** @param path full path from root to leaf node */
+  private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
-    Pair<PartialPath, IMeasurementMNode> pair =
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-
-    IMeasurementMNode measurementMNode = pair.right;
+    IMeasurementMNode measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-    PartialPath storageGroupPath = pair.left;
 
     regionStatistics.deleteTimeseries(1L);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
-    return storageGroupPath;
   }
   // endregion
 

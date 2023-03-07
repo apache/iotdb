@@ -63,7 +63,9 @@ public class AuditLogger {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private AuditLogger() {}
+  private AuditLogger() {
+    // empty constructor
+  }
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
@@ -184,6 +186,8 @@ public class AuditLogger {
       case STOP_PIPE:
       case DROP_PIPE:
       case DEACTIVATE_TEMPLATE:
+      case CREATE_PIPEPLUGIN:
+      case DROP_PIPEPLUGIN:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:
@@ -227,6 +231,7 @@ public class AuditLogger {
       case FETCH_SCHEMA:
       case COUNT:
       case SHOW_TRIGGERS:
+      case SHOW_PIPEPLUGINS:
         return AuditLogOperation.QUERY;
       default:
         logger.error("Unrecognizable operator type ({}) for audit log", type);

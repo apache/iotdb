@@ -93,8 +93,8 @@ struct TRuntimeConfiguration {
 }
 
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-  2: required string clusterName
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
 }
 
 struct TDataNodeRegisterResp {
@@ -113,10 +113,6 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-}
-
-struct TDataNodeUpdateReq {
-  1: required common.TDataNodeLocation dataNodeLocation
 }
 
 struct TDataNodeRemoveReq {
@@ -343,10 +339,10 @@ struct TClusterParameters {
 }
 
 struct TConfigNodeRegisterReq {
-  1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required TClusterParameters clusterParameters
+  1: required TClusterParameters clusterParameters
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TConfigNodeRegisterResp {
@@ -437,6 +433,25 @@ struct TGetJarInListResp {
 struct TGetDataNodeLocationsResp {
   1: required common.TSStatus status
   2: required list<common.TDataNodeLocation> dataNodeLocationList
+}
+
+// Pipe Plugin
+struct TCreatePipePluginReq {
+  1: required string pluginName
+  2: required string className
+  4: required string jarName
+  5: required binary jarFile
+  6: required string jarMD5
+}
+
+struct TDropPipePluginReq {
+  1: required string pluginName
+}
+
+// Get PipePlugin table from config node
+struct TGetPipePluginTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allPipePluginInformation
 }
 
 // Show cluster
@@ -670,11 +685,12 @@ struct TUnsetSchemaTemplateReq{
 
 struct TCreateModelReq {
   1: required string modelId
-  2: required byte modelTask
-  3: required bool isAuto
-  4: required map<string, string> modelConfigs
-  5: required list<string> queryExpressions
-  6: optional string queryFilter
+  2: required common.ModelTask modelTask
+  3: required string modelType
+  4: required list<string> queryExpressions
+  5: optional string queryFilter
+  6: required bool isAuto
+  7: required map<string, string> modelConfigs
 }
 
 struct TDropModelReq {
@@ -685,14 +701,9 @@ struct TShowModelReq {
   1: optional string modelId
 }
 
-struct TModelInfo {
-  1: required string modelId
-  2: required map<string, string> modelInfo
-}
-
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<TModelInfo> modelInfoList
+  2: required list<binary> modelInfoList
 }
 
 struct TShowTrailReq {
@@ -700,20 +711,21 @@ struct TShowTrailReq {
   2: optional string trailId
 }
 
-struct TTrailInfo {
-  1: required string modelId
-  2: required string trailId
-  3: required map<string, string> trailInfo
-}
-
 struct TShowTrailResp {
   1: required common.TSStatus status
-  2: required list<TTrailInfo> trailInfoList
+  2: required list<binary> trailInfoList
 }
 
 struct TUpdateModelInfoReq {
   1: required string modelId
-  2: required map<string, string> modelInfo
+  2: required string trailId
+  3: required map<string, string> modelInfo
+}
+
+struct TUpdateModelStateReq {
+  1: required string modelId
+  2: required common.TrainingState state
+  3: optional string bestTrailId
 }
 
 service IConfigNodeRPCService {
@@ -757,13 +769,12 @@ service IConfigNodeRPCService {
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
   /**
-   * Update the specified DataNode‘s location in the cluster when restart
+   * Report that the specified DataNode will be shutdown.
+   * The ConfigNode-leader will mark it as Unknown.
    *
-   * @return SUCCESS_STATUS if the DataNode updated successfully
-   *         DATANODE_NOT_EXIST if one of the DataNodes in the TDataNodeUpdateReq doesn't exist in the cluster
-   *         UPDATE_DATANODE_FAILED if failed to update the DataNode
+   * @return SUCCESS_STATUS if reporting successfully
    */
-  TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req)
+  common.TSStatus reportDataNodeShutdown(common.TDataNodeLocation dataNodeLocation)
 
   /**
    * Get one or more DataNodes' configuration
@@ -980,6 +991,14 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteConfigNodePeer(common.TConfigNodeLocation configNodeLocation)
 
+  /**
+   * Report that the specified ConfigNode will be shutdown.
+   * The ConfigNode-leader will mark it as Unknown.
+   *
+   * @return SUCCESS_STATUS if reporting successfully
+   */
+  common.TSStatus reportConfigNodeShutdown(common.TConfigNodeLocation configNodeLocation)
+
   /** Stop the specific ConfigNode */
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
@@ -1054,6 +1073,31 @@ service IConfigNodeRPCService {
      * Return the trigger jar list of the trigger name list
      */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
+
+  // ======================================================
+  // Pipe Plugin
+  // ======================================================
+
+  /**
+   * Create a pipe plugin on the specified DataNode
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus createPipePlugin(TCreatePipePluginReq req)
+
+  /**
+   * Remove a pipe plugin on the DataNodes
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus dropPipePlugin(TDropPipePluginReq req)
+
+  /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTable();
 
   // ======================================================
   // Maintenance Tools
@@ -1275,5 +1319,12 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  /**
+   * Update the model state
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelState(TUpdateModelStateReq req)
 }
 

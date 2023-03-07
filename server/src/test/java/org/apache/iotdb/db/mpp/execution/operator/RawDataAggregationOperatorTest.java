@@ -36,13 +36,13 @@ import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.VariationWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
@@ -136,7 +136,8 @@ public class RawDataAggregationOperatorTest {
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -191,7 +192,8 @@ public class RawDataAggregationOperatorTest {
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -245,7 +247,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -302,7 +305,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -363,7 +367,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -425,7 +430,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -490,7 +496,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -555,12 +562,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, true, 10000);
+        new VariationWindowParameter(TSDataType.INT32, 0, false, true, 10000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -618,12 +626,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, true, true, 5000);
+        new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -676,12 +685,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, true, 5000);
+        new VariationWindowParameter(TSDataType.INT32, 0, false, true, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -724,12 +734,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, true, true, 5000);
+        new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -747,14 +758,15 @@ public class RawDataAggregationOperatorTest {
 
   @Test
   public void onePointInOneEqualEventWindowTest() throws IllegalPathException {
-    WindowParameter windowParameter = new EventWindowParameter(TSDataType.INT32, 0, false, true, 0);
+    WindowParameter windowParameter =
+        new VariationWindowParameter(TSDataType.INT32, 0, false, true, 0);
     onePointInOneWindowTest(windowParameter);
   }
 
   @Test
   public void onePointInOneVariationEventWindowTest() throws IllegalPathException {
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, true, 0.5);
+        new VariationWindowParameter(TSDataType.INT32, 0, false, true, 0.5);
     onePointInOneWindowTest(windowParameter);
   }
 
@@ -779,7 +791,8 @@ public class RawDataAggregationOperatorTest {
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
 
     int resultMinTime1 = -1, resultMinTime2 = -1;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -841,7 +854,8 @@ public class RawDataAggregationOperatorTest {
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
-    while (rawDataAggregationOperator.hasNext()) {
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
@@ -891,7 +905,7 @@ public class RawDataAggregationOperatorTest {
     PlanNodeId planNodeId2 = new PlanNodeId("2");
     driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
     driverContext.addOperatorContext(
-        3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
+        3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
     driverContext.addOperatorContext(
         4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
     driverContext
@@ -929,8 +943,8 @@ public class RawDataAggregationOperatorTest {
             scanOptionsBuilder.build());
     seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
-    TimeJoinOperator timeJoinOperator =
-        new TimeJoinOperator(
+    RowBasedTimeJoinOperator timeJoinOperator =
+        new RowBasedTimeJoinOperator(
             driverContext.getOperatorContexts().get(2),
             Arrays.asList(seriesScanOperator1, seriesScanOperator2),
             Ordering.ASC,

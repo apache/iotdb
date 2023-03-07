@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTrigge
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
 import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -64,6 +65,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class TriggerManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerManager.class);
 
   private final ConfigManager configManager;

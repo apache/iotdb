@@ -251,7 +251,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
   /** database info for mem control */
-  private DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+  private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
   /** whether it's ready from recovery */
   private boolean isReady = false;
   /** close file listeners */

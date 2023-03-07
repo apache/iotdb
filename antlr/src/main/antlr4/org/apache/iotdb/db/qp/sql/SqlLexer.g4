@@ -129,6 +129,10 @@ CONCAT
     : C O N C A T
     ;
 
+CONDITION
+    : C O N D I T I O N
+    ;
+
 CONFIGNODES
     : C O N F I G N O D E S
     ;
@@ -450,6 +454,14 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
+PIPEPLUGIN
+    : P I P E P L U G I N
+    ;
+
+PIPEPLUGINS
+    : P I P E P L U G I N S
+    ;
+
 POLICY
     : P O L I C Y
     ;
@@ -552,10 +564,6 @@ SCHEMA
 
 SELECT
     : S E L E C T
-    ;
-
-SERIES
-    : S E R I E S
     ;
 
 SERIESSLOTID

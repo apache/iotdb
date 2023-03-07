@@ -31,8 +31,8 @@ import java.util.List;
 import java.util.Objects;
 
 public abstract class SchemaQueryScanNode extends SourceNode {
-  protected int limit;
-  protected int offset;
+  protected long limit;
+  protected long offset;
   protected PartialPath path;
   private boolean hasLimit;
   protected boolean isPrefixPath;
@@ -44,7 +44,7 @@ public abstract class SchemaQueryScanNode extends SourceNode {
   }
 
   protected SchemaQueryScanNode(
-      PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
+      PlanNodeId id, PartialPath partialPath, long limit, long offset, boolean isPrefixPath) {
     super(id);
     this.path = partialPath;
     setLimit(limit);
@@ -89,11 +89,11 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     return isPrefixPath;
   }
 
-  public int getLimit() {
+  public long getLimit() {
     return limit;
   }
 
-  public void setLimit(int limit) {
+  public void setLimit(long limit) {
     this.limit = limit;
     if (limit == 0) {
       hasLimit = false;
@@ -112,7 +112,7 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
   }
 
-  public int getOffset() {
+  public long getOffset() {
     return offset;
   }
 

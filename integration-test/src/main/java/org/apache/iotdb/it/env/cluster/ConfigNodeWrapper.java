@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -50,25 +51,9 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     }
 
     // initialize mutable properties
-    mutableCommonProperties.setProperty(
-        propertyKeyConfigNodeConsensusProtocolClass,
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    mutableCommonProperties.setProperty(
-        propertyKeySchemaRegionConsensusProtocolClass,
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    mutableCommonProperties.setProperty(
-        propertyKeyDataRegionConsensusProtocolClass,
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    mutableCommonProperties.setProperty(propertyKeySchemaReplicationFactor, "1");
-    mutableCommonProperties.setProperty(propertyKeyDataReplicationFactor, "1");
-
-    mutableNodeProperties.put("cn_connection_timeout_ms", "30000");
+    reloadMutableFields();
 
     // initialize immutable properties
-    immutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
-    immutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
-    immutableNodeProperties.setProperty(
-        IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
     immutableNodeProperties.setProperty(
         IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, targetConfigNodes);
     immutableNodeProperties.setProperty("cn_system_dir", MppBaseConfig.NULL_VALUE);
@@ -135,6 +120,29 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
             "-DTSFILE_CONF=" + confDir,
             "org.apache.iotdb.confignode.service.ConfigNode",
             "-s"));
+  }
+
+  @Override
+  protected void reloadMutableFields() {
+    mutableCommonProperties.setProperty(
+        propertyKeyConfigNodeConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeySchemaRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeyDataRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+
+    mutableCommonProperties.setProperty(propertyKeySchemaReplicationFactor, "1");
+    mutableCommonProperties.setProperty(propertyKeyDataReplicationFactor, "1");
+
+    mutableNodeProperties.put("cn_connection_timeout_ms", "30000");
+
+    mutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
+    mutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
+    mutableNodeProperties.setProperty(
+        IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
   }
 
   @Override

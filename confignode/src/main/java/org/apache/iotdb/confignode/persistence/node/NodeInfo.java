@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -170,9 +171,8 @@ public class NodeInfo implements SnapshotProcessor {
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      registeredDataNodes
-          .get(updateDataNodePlan.getDataNodeLocation().getDataNodeId())
-          .setLocation(updateDataNodePlan.getDataNodeLocation());
+      TDataNodeConfiguration newConfiguration = updateDataNodePlan.getDataNodeConfiguration();
+      registeredDataNodes.replace(newConfiguration.getLocation().getDataNodeId(), newConfiguration);
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

@@ -45,13 +45,13 @@ public class GreedyRegionGroupAllocatorTest {
   public void testEvenDistribution() {
     /* Construct input data */
     Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
-    Map<Integer, Long> freeSpaceMap = new ConcurrentHashMap<>();
+    Map<Integer, Double> freeSpaceMap = new ConcurrentHashMap<>();
     Random random = new Random();
     // Set 6 DataNodes
     for (int i = 0; i < 6; i++) {
       availableDataNodeMap.put(
           i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
-      freeSpaceMap.put(i, random.nextLong());
+      freeSpaceMap.put(i, random.nextDouble());
     }
 
     /* Allocate 6 RegionGroups */
@@ -94,11 +94,11 @@ public class GreedyRegionGroupAllocatorTest {
       availableDataNodeMap.put(
           i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
     }
-    Map<Integer, Long> freeSpaceMap = new ConcurrentHashMap<>();
-    freeSpaceMap.put(0, 20000331L);
-    freeSpaceMap.put(1, 20000522L);
-    freeSpaceMap.put(2, 666L);
-    freeSpaceMap.put(3, 999L);
+    Map<Integer, Double> freeSpaceMap = new ConcurrentHashMap<>();
+    freeSpaceMap.put(0, 20000331d);
+    freeSpaceMap.put(1, 20000522d);
+    freeSpaceMap.put(2, 666d);
+    freeSpaceMap.put(3, 999d);
 
     /* Allocate the first RegionGroup */
     List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
@@ -119,6 +120,9 @@ public class CommonConfig {
 
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;
+
+  /** Ip and port of target ML node. */
+  private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
   CommonConfig() {}
 
@@ -315,11 +319,6 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatusToShutdown() {
-    logger.info("System will reject write operations when shutting down.");
-    this.status = NodeStatus.ReadOnly;
-  }
-
   public void setNodeStatus(NodeStatus newStatus) {
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
@@ -327,9 +326,7 @@ public class CommonConfig {
 
     switch (newStatus) {
       case ReadOnly:
-        logger.error(
-            "Change system status to ReadOnly! Only query statements are permitted!",
-            new RuntimeException("System mode is set to READ_ONLY"));
+        logger.warn("Change system status to ReadOnly! Only query statements are permitted!");
         break;
       case Removing:
         logger.info(
@@ -346,5 +343,21 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
+  }
+
+  public NodeStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(NodeStatus status) {
+    this.status = status;
+  }
+
+  public TEndPoint getTargetMLNodeEndPoint() {
+    return targetMLNodeEndPoint;
+  }
+
+  public void setTargetMLNodeEndPoint(TEndPoint targetMLNodeEndPoint) {
+    this.targetMLNodeEndPoint = targetMLNodeEndPoint;
   }
 }

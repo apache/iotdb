@@ -27,8 +27,8 @@ import java.util.Objects;
 public abstract class AbstractShowSchemaPlanImpl implements IShowSchemaPlan {
 
   protected final PartialPath path;
-  protected final int limit;
-  protected final int offset;
+  protected final long limit;
+  protected final long offset;
   protected final boolean isPrefixMatch;
 
   protected AbstractShowSchemaPlanImpl(PartialPath path) {
@@ -38,7 +38,7 @@ public abstract class AbstractShowSchemaPlanImpl implements IShowSchemaPlan {
     this.isPrefixMatch = false;
   }
 
-  AbstractShowSchemaPlanImpl(PartialPath path, int limit, int offset, boolean isPrefixMatch) {
+  AbstractShowSchemaPlanImpl(PartialPath path, long limit, long offset, boolean isPrefixMatch) {
     this.path = path;
     this.limit = limit;
     this.offset = offset;
@@ -51,12 +51,12 @@ public abstract class AbstractShowSchemaPlanImpl implements IShowSchemaPlan {
   }
 
   @Override
-  public int getLimit() {
+  public long getLimit() {
     return limit;
   }
 
   @Override
-  public int getOffset() {
+  public long getOffset() {
     return offset;
   }
 
