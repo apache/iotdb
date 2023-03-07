@@ -349,17 +349,10 @@ public interface ICompressor extends Serializable {
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
       return (int)
           Zstd.compressByteArray(
-              compressed,
-              0,
-              compressed.length,
-              data,
-              offset,
-              length,
-              compressionLevel);
+              compressed, 0, compressed.length, data, offset, length, compressionLevel);
     }
 
     /**
-     *
      * @param data MUST be DirectByteBuffer for Zstd.
      * @param compressed MUST be DirectByteBuffer for Zstd.
      * @return byte length of compressed data.

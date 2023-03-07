@@ -19,8 +19,8 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -127,7 +127,8 @@ public class CompressTest {
     ByteBuffer data = ByteBuffer.allocateDirect(input.length);
     data.put(input);
     data.position(0);
-    ByteBuffer compressed = ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.length));
+    ByteBuffer compressed =
+        ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.length));
     int compressedSize = compressor.compress(data, compressed);
     byte[] compressedData = new byte[compressedSize];
     compressed.position(0);
