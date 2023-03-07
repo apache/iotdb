@@ -109,7 +109,7 @@ public class WrappedSegmentTest {
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode mNode =
           MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsEntityMNode(), measurementId, schema, measurementId + "als");
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode);
     }
     return internalNode;
@@ -242,7 +242,7 @@ public class WrappedSegmentTest {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
     IMeasurementMNode mNode =
         MeasurementMNode.getMeasurementMNode(
-            par != null ? par.getAsEntityMNode() : null, name, schema, alias);
+            par != null ? par.getAsDeviceMNode() : null, name, schema, alias);
     return mNode;
   }
 }

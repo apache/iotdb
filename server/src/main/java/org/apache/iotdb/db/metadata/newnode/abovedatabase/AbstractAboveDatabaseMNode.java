@@ -107,7 +107,7 @@ public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends I
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
-    // TODO
+    basicMNode.moveDataToNewMNode(newMNode);
   }
 
   @Override
@@ -131,7 +131,7 @@ public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends I
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return true;
   }
 
@@ -151,7 +151,7 @@ public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends I
   }
 
   @Override
-  public IDeviceMNode<N> getAsEntityMNode() {
+  public IDeviceMNode<N> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

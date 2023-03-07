@@ -112,16 +112,22 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
-    // TODO
+    basicMNode.moveDataToNewMNode(newMNode);
+    if (newMNode.isDevice()) {
+      databaseDeviceInfo.moveDataToNewMNode(newMNode.getAsDeviceMNode());
+    }
+    if (newMNode.isDatabase()) {
+      databaseDeviceInfo.moveDataToNewMNode(newMNode.getAsDatabaseMNode());
+    }
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<N> children) {
     basicMNode.setChildren(children);
   }
 
@@ -136,7 +142,7 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return true;
   }
 
@@ -151,17 +157,17 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
   }
 
   @Override
-  public IDatabaseMNode getAsDatabaseMNode() {
+  public IDatabaseMNode<N> getAsDatabaseMNode() {
     return this;
   }
 
   @Override
-  public IDeviceMNode getAsEntityMNode() {
+  public IDeviceMNode<N> getAsDeviceMNode() {
     return this;
   }
 
   @Override
-  public IMeasurementMNode getAsMeasurementMNode() {
+  public IMeasurementMNode<N> getAsMeasurementMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
@@ -208,12 +214,12 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<?>, BasicNode
   }
 
   @Override
-  public Map<String, IMeasurementMNode> getAliasChildren() {
+  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
     return databaseDeviceInfo.getAliasChildren();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
     databaseDeviceInfo.setAliasChildren(aliasChildren);
   }
 

@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -76,12 +78,12 @@ public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
   }
 
   @Override
-  public Map<String, IMeasurementMNode> getAliasChildren() {
+  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
     throw new UnsupportedOperationException();
   }
 
@@ -123,12 +125,22 @@ public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return true;
   }
 
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return MNodeType.DEVICE;
+  }
+
+  @Override
+  public Object accept(MNodeVisitor visitor, Object context) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IMNode<?> getAsMNode() {
+    throw new UnsupportedOperationException();
   }
 }

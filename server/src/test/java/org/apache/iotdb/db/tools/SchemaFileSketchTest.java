@@ -154,7 +154,7 @@ public class SchemaFileSketchTest {
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode mNode =
           MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsEntityMNode(), measurementId, schema, measurementId + "als");
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode);
     }
 

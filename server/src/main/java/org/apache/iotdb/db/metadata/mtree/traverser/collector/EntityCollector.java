@@ -37,7 +37,7 @@ public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTrav
 
   @Override
   protected R generateResult(N nextMatchedNode) {
-    return collectEntity(nextMatchedNode.getAsEntityMNode());
+    return collectEntity(nextMatchedNode.getAsDeviceMNode());
   }
 
   protected abstract R collectEntity(IDeviceMNode<N> node);

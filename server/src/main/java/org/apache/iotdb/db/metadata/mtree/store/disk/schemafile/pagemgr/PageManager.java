@@ -204,7 +204,7 @@ public abstract class PageManager implements IPageManager {
           multiPageInsertOverflowOperation(curPage, entry.getKey(), childBuffer);
 
           subIndex = subIndexRootPage(curSegAddr);
-          if (node.isEntity() && subIndex < 0) {
+          if (node.isDevice() && subIndex < 0) {
             // the record occurred overflow had been inserted already
             buildSubIndex(node);
           } else if (alias != null) {
@@ -266,7 +266,7 @@ public abstract class PageManager implements IPageManager {
       } else {
         alias = null;
       }
-      if (node.isEntity()) {
+      if (node.isDevice()) {
         oldChild = curPage.getAsSegmentedPage().read(getSegIndex(actualAddress), entry.getKey());
         oldAlias = oldChild.isMeasurement() ? oldChild.getAsMeasurementMNode().getAlias() : null;
       } else {
@@ -312,7 +312,7 @@ public abstract class PageManager implements IPageManager {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer);
 
           subIndex = subIndexRootPage(curSegAddr);
-          if (node.isEntity() && subIndex < 0) {
+          if (node.isDevice() && subIndex < 0) {
             buildSubIndex(node);
           } else if (insertNewSubEntry || removeOldSubEntry) {
             if (removeOldSubEntry) {

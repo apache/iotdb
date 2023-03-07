@@ -44,7 +44,7 @@ public abstract class EntityUpdater<N extends IMNode<N>> extends EntityTraverser
   @Override
   protected Void generateResult(N nextMatchedNode) {
     try {
-      updateEntity(nextMatchedNode.getAsEntityMNode());
+      updateEntity(nextMatchedNode.getAsDeviceMNode());
     } catch (MetadataException e) {
       setFailure(e);
     }

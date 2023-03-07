@@ -232,15 +232,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
         }
       }
 
-      if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
+      if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
             device.getFullPath());
       }
 
       IDeviceMNode<IMemMNode> entityMNode;
-      if (device.isEntity()) {
-        entityMNode = device.getAsEntityMNode();
+      if (device.isDevice()) {
+        entityMNode = device.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(device);
         if (entityMNode.isDatabase()) {
@@ -313,15 +313,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
         }
       }
 
-      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
+      if (device.isDevice() && !device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
             devicePath.getFullPath());
       }
 
       IDeviceMNode<IMemMNode> entityMNode;
-      if (device.isEntity()) {
-        entityMNode = device.getAsEntityMNode();
+      if (device.isDevice()) {
+        entityMNode = device.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(device);
         entityMNode.setAligned(true);
@@ -402,7 +402,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
       return Collections.emptyMap();
     }
 
-    if (!device.isEntity()) {
+    if (!device.isDevice()) {
       return Collections.emptyMap();
     }
     Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
@@ -454,9 +454,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      parent.getAsEntityMNode().deleteAliasChild(deletedNode.getAlias());
+      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
     }
-    deleteEmptyInternalMNode(parent.getAsEntityMNode());
+    deleteEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
   }
 
@@ -499,7 +499,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
   private boolean isEmptyInternalMNode(IMemMNode node) {
     return !IoTDBConstant.PATH_ROOT.equals(node.getName())
         && !node.isMeasurement()
-        && !(node.isEntity() && node.getAsEntityMNode().isUseTemplate())
+        && !(node.isDevice() && node.getAsDeviceMNode().isUseTemplate())
         && node.getChildren().isEmpty();
   }
 
@@ -709,8 +709,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
         }
       }
 
-      if (cur.isEntity()) {
-        entityMNode = cur.getAsEntityMNode();
+      if (cur.isDevice()) {
+        entityMNode = cur.getAsDeviceMNode();
       } else {
         entityMNode = store.setToEntity(cur);
         if (entityMNode.isDatabase()) {
@@ -812,8 +812,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
     }
 
     IDeviceMNode<IMemMNode> entityMNode;
-    if (cur.isEntity()) {
-      entityMNode = cur.getAsEntityMNode();
+    if (cur.isDevice()) {
+      entityMNode = cur.getAsDeviceMNode();
     } else {
       entityMNode = store.setToEntity(cur);
       if (entityMNode.isDatabase()) {
@@ -928,7 +928,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
 
               @Override
               public boolean isUnderAlignedDevice() {
-                return getParentOfNextMatchedNode().getAsEntityMNode().isAligned();
+                return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
               }
 
               @Override

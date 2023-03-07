@@ -83,7 +83,7 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
     if (super.getParent() == null) {
       return null;
     }
-    return parent.getAsEntityMNode();
+    return parent.getAsDeviceMNode();
   }
 
   @Override

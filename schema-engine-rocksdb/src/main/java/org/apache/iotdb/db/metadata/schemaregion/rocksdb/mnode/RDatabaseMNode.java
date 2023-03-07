@@ -73,7 +73,7 @@ public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 

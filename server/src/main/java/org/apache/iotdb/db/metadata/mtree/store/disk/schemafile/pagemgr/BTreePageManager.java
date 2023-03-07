@@ -365,7 +365,7 @@ public class BTreePageManager extends PageManager {
             .getAsSegmentedPage()
             .read(getSegIndex(actualSegAddr), childName);
 
-    if (child == null && parent.isEntity()) {
+    if (child == null && parent.isDevice()) {
       // try read alias directly first
       child =
           getPageInstance(getPageIndex(actualSegAddr))

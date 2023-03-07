@@ -250,7 +250,7 @@ public class ConfigBasicMNode implements IConfigMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -270,7 +270,7 @@ public class ConfigBasicMNode implements IConfigMNode {
   }
 
   @Override
-  public IDeviceMNode<IConfigMNode> getAsEntityMNode() {
+  public IDeviceMNode<IConfigMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

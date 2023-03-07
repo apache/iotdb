@@ -110,16 +110,19 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
-    // TODO
+    basicMNode.moveDataToNewMNode(newMNode);
+    if (newMNode.isDatabase()) {
+      databaseInfo.moveDataToNewMNode(newMNode.getAsDatabaseMNode());
+    }
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<N> getChildren() {
     return basicMNode.getChildren();
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<N> children) {
     basicMNode.setChildren(children);
   }
 
@@ -134,7 +137,7 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -154,7 +157,7 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
   }
 
   @Override
-  public IDeviceMNode<N> getAsEntityMNode() {
+  public IDeviceMNode<N> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

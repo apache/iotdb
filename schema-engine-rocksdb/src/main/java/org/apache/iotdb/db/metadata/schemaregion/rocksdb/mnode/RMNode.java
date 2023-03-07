@@ -194,7 +194,7 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -213,8 +213,8 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public IDeviceMNode getAsEntityMNode() {
-    if (isEntity()) {
+  public IDeviceMNode getAsDeviceMNode() {
+    if (isDevice()) {
       return (IDeviceMNode) this;
     } else {
       throw new UnsupportedOperationException("Wrong MNode Type");

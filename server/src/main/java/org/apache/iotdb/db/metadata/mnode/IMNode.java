@@ -68,7 +68,7 @@ public interface IMNode<N extends IMNode<?>> extends ITreeNode {
 
   boolean isDatabase();
 
-  boolean isEntity();
+  boolean isDevice();
 
   boolean isMeasurement();
 
@@ -76,7 +76,7 @@ public interface IMNode<N extends IMNode<?>> extends ITreeNode {
 
   IDatabaseMNode<N> getAsDatabaseMNode();
 
-  IDeviceMNode<N> getAsEntityMNode();
+  IDeviceMNode<N> getAsDeviceMNode();
 
   IMeasurementMNode<N> getAsMeasurementMNode();
 

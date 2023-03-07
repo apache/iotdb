@@ -31,7 +31,7 @@ import java.util.Map;
 public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
     implements IDeviceMNode<N> {
 
-  private final IDeviceInfo deviceInfo;
+  private final DeviceInfo deviceInfo;
   protected BasicNode basicMNode;
 
   /** Constructor of MNode. */
@@ -110,7 +110,10 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
-    // TODO
+    basicMNode.moveDataToNewMNode(newMNode);
+    if (newMNode.isDevice()) {
+      deviceInfo.moveDataToNewMNode(newMNode.getAsDeviceMNode());
+    }
   }
 
   @Override
@@ -134,7 +137,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return true;
   }
 
@@ -154,7 +157,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   }
 
   @Override
-  public IDeviceMNode<N> getAsEntityMNode() {
+  public IDeviceMNode<N> getAsDeviceMNode() {
     return this;
   }
 
@@ -169,7 +172,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   }
 
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode child) {
+  public boolean addAlias(String alias, IMeasurementMNode<?> child) {
     return deviceInfo.addAlias(alias, child);
   }
 
@@ -179,12 +182,12 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
   }
 
   @Override
-  public Map<String, IMeasurementMNode> getAliasChildren() {
+  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
     return deviceInfo.getAliasChildren();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
     deviceInfo.setAliasChildren(aliasChildren);
   }
 

@@ -44,13 +44,20 @@ public class DeviceInfo implements IDeviceInfo {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
+  private transient volatile Map<String, IMeasurementMNode<?>> aliasChildren = null;
 
   private volatile boolean isAligned = false;
 
+  public void moveDataToNewMNode(IDeviceMNode<?> newMNode) {
+    newMNode.setSchemaTemplateId(schemaTemplateId);
+    newMNode.setUseTemplate(useTemplate);
+    newMNode.setAliasChildren(aliasChildren);
+    newMNode.setAligned(isAligned);
+  }
+
   /** add an alias */
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode child) {
+  public boolean addAlias(String alias, IMeasurementMNode<?> child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
       synchronized (this) {
@@ -72,7 +79,7 @@ public class DeviceInfo implements IDeviceInfo {
   }
 
   @Override
-  public Map<String, IMeasurementMNode> getAliasChildren() {
+  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
     }
@@ -80,7 +87,7 @@ public class DeviceInfo implements IDeviceInfo {
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
     this.aliasChildren = aliasChildren;
   }
 

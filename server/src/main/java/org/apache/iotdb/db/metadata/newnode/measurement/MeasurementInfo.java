@@ -28,7 +28,7 @@ public class MeasurementInfo implements IMeasurementInfo {
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
   /** measurement's Schema for one timeseries represented by current leaf node */
-  private final IMeasurementSchema schema;
+  private IMeasurementSchema schema;
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
@@ -37,9 +37,21 @@ public class MeasurementInfo implements IMeasurementInfo {
     this.alias = alias;
   }
 
+  public void moveDataToNewMNode(IMeasurementMNode<?> newMNode) {
+    newMNode.setSchema(schema);
+    newMNode.setAlias(alias);
+    newMNode.setOffset(offset);
+    newMNode.setPreDeleted(preDeleted);
+  }
+
   @Override
   public IMeasurementSchema getSchema() {
     return schema;
+  }
+
+  @Override
+  public void setSchema(IMeasurementSchema schema) {
+    this.schema = schema;
   }
 
   @Override

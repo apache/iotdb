@@ -80,13 +80,18 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
   @Override
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(getPartialPath(), getSchema());
-    result.setUnderAlignedEntity(getParent().getAsEntityMNode().isAligned());
+    result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAligned());
     return result;
   }
 
   @Override
   public IMeasurementSchema getSchema() {
     return measurementInfo.getSchema();
+  }
+
+  @Override
+  public void setSchema(IMeasurementSchema schema) {
+    measurementInfo.setSchema(schema);
   }
 
   @Override
@@ -179,6 +184,9 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
   @Override
   public void moveDataToNewMNode(N newMNode) {
     basicMNode.moveDataToNewMNode(newMNode);
+    if (newMNode.isMeasurement()) {
+      measurementInfo.moveDataToNewMNode(newMNode.getAsMeasurementMNode());
+    }
   }
 
   @Override
@@ -197,7 +205,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -217,7 +225,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
   }
 
   @Override
-  public IDeviceMNode<N> getAsEntityMNode() {
+  public IDeviceMNode<N> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

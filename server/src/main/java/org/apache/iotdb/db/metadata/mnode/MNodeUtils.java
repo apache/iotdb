@@ -39,23 +39,23 @@ public class MNodeUtils {
   public static <N extends IMNode<N>> IDeviceMNode<N> setToEntity(
       IMNode<N> node, IMNodeFactory<N> nodeFactory) {
     IDeviceMNode<N> entityMNode;
-    if (node.isEntity()) {
-      entityMNode = node.getAsEntityMNode();
+    if (node.isDevice()) {
+      entityMNode = node.getAsDeviceMNode();
     } else {
       if (node.isDatabase()) {
         entityMNode =
             nodeFactory
                 .createDatabaseDeviceMNode(
                     node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL())
-                .getAsEntityMNode();
-        node.moveDataToNewMNode(entityMNode);
+                .getAsDeviceMNode();
+        node.moveDataToNewMNode(entityMNode.getAsMNode());
       } else {
         // basic node
         entityMNode = nodeFactory.createDeviceMNode(node.getParent(), node.getName());
         if (node.getParent() != null) {
-          node.getParent().replaceChild(node.getName(), entityMNode);
+          node.getParent().replaceChild(node.getName(), entityMNode.getAsMNode());
         } else {
-          node.moveDataToNewMNode(entityMNode);
+          node.moveDataToNewMNode(entityMNode.getAsMNode());
         }
       }
     }

@@ -45,8 +45,8 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
 
   @Override
   protected boolean acceptFullMatchedNode(N node) {
-    if (node.isEntity()) {
-      return !usingTemplate || schemaTemplateId == node.getAsEntityMNode().getSchemaTemplateId();
+    if (node.isDevice()) {
+      return !usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId();
     }
     return false;
   }

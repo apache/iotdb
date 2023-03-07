@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.newnode.basic;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
@@ -212,7 +211,7 @@ public class CacheBasicMNode implements ICacheMNode {
     if (!oldChildName.equals(newChildNode.getName())) {
       throw new RuntimeException("New child's name must be the same as old child's name!");
     }
-    IMNode oldChildNode = this.getChild(oldChildName);
+    ICacheMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
     }
@@ -256,7 +255,7 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -276,7 +275,7 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public IDeviceMNode<ICacheMNode> getAsEntityMNode() {
+  public IDeviceMNode<ICacheMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

@@ -216,7 +216,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -236,7 +236,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IDeviceMNode getAsEntityMNode() {
+  public IDeviceMNode getAsDeviceMNode() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 

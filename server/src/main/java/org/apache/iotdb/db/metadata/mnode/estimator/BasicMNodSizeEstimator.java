@@ -104,7 +104,7 @@ public class BasicMNodSizeEstimator implements IMNodeSizeEstimator {
         size += node.getAsDatabaseMNode().getFullPath().length();
       }
 
-      if (node.isEntity()) {
+      if (node.isDevice()) {
         size += ENTITY_NODE_BASE_SIZE;
       }
     }

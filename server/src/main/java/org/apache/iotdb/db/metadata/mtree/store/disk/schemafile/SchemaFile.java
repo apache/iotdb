@@ -177,8 +177,8 @@ public class SchemaFile implements ISchemaFile {
       resNode =
           setNodeAddress(
               new CacheDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
-      resNode.getAsEntityMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
-      resNode.getAsEntityMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
+      resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
+      resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
@@ -191,9 +191,9 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public boolean updateStorageGroupNode(IDatabaseMNode<ICacheMNode> sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
-    this.isEntity = sgNode.isEntity();
-    if (sgNode.isEntity()) {
-      this.sgNodeTemplateIdWithState = sgNode.getAsEntityMNode().getSchemaTemplateIdWithState();
+    this.isEntity = sgNode.isDevice();
+    if (sgNode.isDevice()) {
+      this.sgNodeTemplateIdWithState = sgNode.getAsDeviceMNode().getSchemaTemplateIdWithState();
     }
     updateHeaderBuffer();
     return true;
@@ -214,7 +214,7 @@ public class SchemaFile implements ISchemaFile {
     long curSegAddr = getNodeAddress(node);
 
     if (node.isDatabase()) {
-      isEntity = node.isEntity();
+      isEntity = node.isDevice();
       setNodeAddress(node, lastSGAddr);
     } else {
       if (curSegAddr < 0L) {

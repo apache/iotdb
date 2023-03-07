@@ -358,7 +358,7 @@ public abstract class CacheManager implements ICacheManager {
           if (node.isMeasurement()) {
             String alias = node.getAsMeasurementMNode().getAlias();
             if (alias != null) {
-              node.getParent().getAsEntityMNode().deleteAliasChild(alias);
+              node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
             }
           }
           removeFromNodeCache(getCacheEntry(node));

@@ -173,7 +173,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
         }
       }
       if (node != null && node.isMeasurement()) {
-        processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
+        processAlias(parent.getAsDeviceMNode(), node.getAsMeasurementMNode());
       }
 
       return node;
@@ -253,9 +253,9 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       Map<Integer, Template> templateMap,
       boolean skipPreDeletedSchema)
       throws MetadataException {
-    if (parent.isEntity()) {
+    if (parent.isDevice()) {
       AbstractTraverserIterator<ICacheMNode> iterator =
-          new CachedTraverserIterator(store, parent.getAsEntityMNode(), templateMap, nodeFactory);
+          new CachedTraverserIterator(store, parent.getAsDeviceMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {

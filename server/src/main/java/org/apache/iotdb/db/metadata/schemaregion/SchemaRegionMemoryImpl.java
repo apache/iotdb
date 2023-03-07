@@ -871,7 +871,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(path);
-    IDeviceMNode<IMemMNode> device = leafMNode.getParent().getAsEntityMNode();
+    IDeviceMNode<IMemMNode> device = leafMNode.getParent().getAsDeviceMNode();
     if (leafMNode.getAlias() != null) {
       device.deleteAliasChild(leafMNode.getAlias());
     }
@@ -931,7 +931,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     // upsert alias
     if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      IDeviceMNode<IMemMNode> deviceMNode = leafMNode.getParent().getAsEntityMNode();
+      IDeviceMNode<IMemMNode> deviceMNode = leafMNode.getParent().getAsDeviceMNode();
       if (!deviceMNode.addAlias(alias, leafMNode)) {
         throw new MetadataException("The alias already exists.");
       }

@@ -253,7 +253,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public boolean isEntity() {
+  public boolean isDevice() {
     return false;
   }
 
@@ -273,7 +273,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public IDeviceMNode<IMemMNode> getAsEntityMNode() {
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 

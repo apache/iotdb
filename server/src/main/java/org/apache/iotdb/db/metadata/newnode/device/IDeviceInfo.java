@@ -24,13 +24,13 @@ import java.util.Map;
 
 public interface IDeviceInfo {
 
-  boolean addAlias(String alias, IMeasurementMNode child);
+  boolean addAlias(String alias, IMeasurementMNode<?> child);
 
   void deleteAliasChild(String alias);
 
-  Map<String, IMeasurementMNode> getAliasChildren();
+  Map<String, IMeasurementMNode<?>> getAliasChildren();
 
-  void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren);
+  void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren);
 
   boolean isUseTemplate();
 

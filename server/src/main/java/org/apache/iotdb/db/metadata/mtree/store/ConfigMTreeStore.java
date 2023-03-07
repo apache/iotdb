@@ -73,9 +73,9 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
   public IMNodeIterator<IConfigMNode> getTraverserIterator(
       IConfigMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
-    if (parent.isEntity()) {
+    if (parent.isDevice()) {
       AbstractTraverserIterator iterator =
-          new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+          new MemoryTraverserIterator(this, parent.getAsDeviceMNode(), templateMap);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {

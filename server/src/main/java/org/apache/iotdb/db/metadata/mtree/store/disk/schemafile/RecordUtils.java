@@ -100,11 +100,11 @@ public class RecordUtils {
     int schemaTemplateIdWithState = MetadataConstant.NON_TEMPLATE;
     boolean isUseTemplate = false;
 
-    if (node.isEntity()) {
+    if (node.isDevice()) {
       nodeType = ENTITY_TYPE;
-      isAligned = node.getAsEntityMNode().isAligned();
-      schemaTemplateIdWithState = node.getAsEntityMNode().getSchemaTemplateIdWithState();
-      isUseTemplate = node.getAsEntityMNode().isUseTemplate();
+      isAligned = node.getAsDeviceMNode().isAligned();
+      schemaTemplateIdWithState = node.getAsDeviceMNode().getSchemaTemplateIdWithState();
+      isUseTemplate = node.getAsDeviceMNode().isUseTemplate();
     }
 
     ByteBuffer buffer = ByteBuffer.allocate(INTERNAL_NODE_LENGTH);
@@ -197,9 +197,9 @@ public class RecordUtils {
         resNode = new CacheBasicMNode(null, nodeName);
       } else {
         resNode = new CacheDeviceMNode(null, nodeName);
-        resNode.getAsEntityMNode().setAligned(isAligned);
-        resNode.getAsEntityMNode().setUseTemplate(usingTemplate);
-        resNode.getAsEntityMNode().setSchemaTemplateId(templateId);
+        resNode.getAsDeviceMNode().setAligned(isAligned);
+        resNode.getAsDeviceMNode().setUseTemplate(usingTemplate);
+        resNode.getAsDeviceMNode().setSchemaTemplateId(templateId);
       }
 
       ICachedMNodeContainer.getCachedMNodeContainer(resNode).setSegmentAddress(segAddr);
@@ -309,16 +309,16 @@ public class RecordUtils {
               "compressor: %s]",
               node.getAsMeasurementMNode().getSchema().getCompressor().toString()));
       return builder.toString();
-    } else if (node.isEntity()) {
+    } else if (node.isDevice()) {
       builder.append("entityNode, ");
 
-      if (node.getAsEntityMNode().isAligned()) {
+      if (node.getAsDeviceMNode().isAligned()) {
         builder.append("aligned, ");
       } else {
         builder.append("not aligned, ");
       }
 
-      if (node.getAsEntityMNode().isUseTemplate()) {
+      if (node.getAsDeviceMNode().isUseTemplate()) {
         builder.append("using template.]");
       } else {
         builder.append("not using template.]");

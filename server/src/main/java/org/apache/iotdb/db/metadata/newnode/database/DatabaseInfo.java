@@ -28,6 +28,10 @@ public class DatabaseInfo implements IDatabaseInfo {
     this.schema = new TDatabaseSchema(name);
   }
 
+  public void moveDataToNewMNode(IDatabaseMNode<?> newMNode) {
+    newMNode.setStorageGroupSchema(schema);
+  }
+
   @Override
   public long getDataTTL() {
     return schema.getTTL();

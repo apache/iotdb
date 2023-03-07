@@ -117,14 +117,14 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     } else {
       if (templateMap != null
           && !templateMap.isEmpty() // this task will cover some timeseries represented by template
-          && (parent.isEntity()
-              && parent.getAsEntityMNode().getSchemaTemplateId()
+          && (parent.isDevice()
+              && parent.getAsDeviceMNode().getSchemaTemplateId()
                   != NON_TEMPLATE) // the device is using template
           && !(skipPreDeletedSchema
               && parent
-                  .getAsEntityMNode()
+                  .getAsDeviceMNode()
                   .isPreDeactivateTemplate())) { // the template should not skip
-        int templateId = parent.getAsEntityMNode().getSchemaTemplateId();
+        int templateId = parent.getAsDeviceMNode().getSchemaTemplateId();
         Template template = templateMap.get(templateId);
         // if null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage

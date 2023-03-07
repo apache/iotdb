@@ -76,7 +76,7 @@ public class MockSchemaFile implements ISchemaFile {
     ICacheMNode result = null;
     if (segment != null) {
       result = cloneMNode(segment.get(childName));
-      if (result == null && parent.isEntity()) {
+      if (result == null && parent.isDevice()) {
         for (ICacheMNode node : segment.values()) {
           if (node.isMeasurement() && childName.equals(node.getAsMeasurementMNode().getAlias())) {
             result = cloneMNode(node);
@@ -185,16 +185,16 @@ public class MockSchemaFile implements ISchemaFile {
               measurementMNode.getAlias());
       result.setOffset(measurementMNode.getOffset());
       return result;
-    } else if (node.isDatabase() && node.isEntity()) {
+    } else if (node.isDatabase() && node.isDevice()) {
       CacheDatabaseDeviceMNode result =
           new CacheDatabaseDeviceMNode(
               null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
-      result.setAligned(node.getAsEntityMNode().isAligned());
+      result.setAligned(node.getAsDeviceMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
-    } else if (node.isEntity()) {
+    } else if (node.isDevice()) {
       CacheDeviceMNode result = new CacheDeviceMNode(null, node.getName());
-      result.setAligned(node.getAsEntityMNode().isAligned());
+      result.setAligned(node.getAsDeviceMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDatabase()) {

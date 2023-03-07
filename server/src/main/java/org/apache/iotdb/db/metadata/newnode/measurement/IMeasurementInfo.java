@@ -25,6 +25,8 @@ public interface IMeasurementInfo {
 
   IMeasurementSchema getSchema();
 
+  void setSchema(IMeasurementSchema schema);
+
   TSDataType getDataType();
 
   String getAlias();
