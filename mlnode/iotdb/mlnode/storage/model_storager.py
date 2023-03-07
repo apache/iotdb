@@ -29,26 +29,27 @@ from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
 # TODO: Concurrency
 class ModelStorager(object):
     def __init__(self, root_path='ml_models', cache_size=30):
-        self.root_path = root_path
-        if not os.path.exists(root_path):
-            os.mkdir(root_path)
+        current_path = os.getcwd()
+        self.root_path = os.path.join(current_path, 'iotdb', 'mlnode', root_path)
+        if not os.path.exists(self.root_path):
+            os.mkdir(self.root_path)
         self._loaded_model_cache = lrucache(cache_size)
 
     def save_model(self, model, model_config, model_id, trial_id):
         """
         Return: True if successfully saved
         """
-        fold_path = f'{self.root_path}/mid_{model_id}/'
+        fold_path = os.path.join(self.root_path, f'mid_{model_id}')
         if not os.path.exists(fold_path):
             os.mkdir(fold_path)
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
         torch.jit.save(torch.jit.trace(model, sample_input),
-                       f'{fold_path}/tid_{trial_id}.pt',
+                       os.path.join(fold_path, f'tid_{trial_id}.pt'),
                        _extra_files={'model_config': json.dumps(model_config)})
-        return os.path.exists(f'{fold_path}/tid_{trial_id}.pt')
+        return os.path.exists(os.path.join(fold_path, f'tid_{trial_id}.pt'))
 
     def load_model(self, model_id, trial_id):
-        file_path = f'{self.root_path}/mid_{model_id}/tid_{trial_id}.pt'
+        file_path = os.path.join(self.root_path, f'mid_{model_id}', f'tid_{trial_id}.pt')
         if model_id in self._loaded_model_cache:
             return self._loaded_model_cache[file_path]
         else:
@@ -69,7 +70,7 @@ class ModelStorager(object):
         """
         Return: True if successfully deleted
         """
-        file_path = f'{self.root_path}/mid_{model_id}/tid_{trial_id}.pt'
+        file_path = os.path.join(self.root_path, f'mid_{model_id}', f'tid_{trial_id}.pt')
         self._remove_from_cache(file_path)
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -79,10 +80,10 @@ class ModelStorager(object):
         """
         Return: True if successfully deleted
         """
-        folder_path = f'{self.root_path}/mid_{model_id}/'
+        folder_path = os.path.join(self.root_path, f'mid_{model_id}')
         if os.path.exists(folder_path):
             for file_name in os.listdir(folder_path):
-                self._remove_from_cache(f'{folder_path}/{file_name}')
+                self._remove_from_cache(os.path.join(folder_path, file_name))
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
@@ -102,6 +103,3 @@ modelStorager = ModelStorager(root_path=MLNODE_MODEL_STORAGE_DIR,
 # model, model_cfg = modelStorager.load_model(model_id: int, trial_id: int)
 # modelStorager.delete_trial(model_id: int, trial_id: int) #
 # modelStorager.delete_model(model_id: int) # delete all model with responding trials
-
-
-
