@@ -130,6 +130,7 @@ public class TypeInferenceUtils {
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_IF:
+      case SqlConstant.TIME_DURATION:
         return TSDataType.INT64;
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
@@ -166,6 +167,7 @@ public class TypeInferenceUtils {
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
+      case SqlConstant.TIME_DURATION:
         return;
       case SqlConstant.COUNT_IF:
         if (dataType != TSDataType.BOOLEAN) {
@@ -201,6 +203,7 @@ public class TypeInferenceUtils {
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
+      case SqlConstant.TIME_DURATION:
         return;
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);

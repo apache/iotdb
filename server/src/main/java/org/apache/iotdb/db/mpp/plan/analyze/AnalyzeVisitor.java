@@ -2615,13 +2615,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
 
     context.setQueryType(QueryType.WRITE);
-    List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
-    for (List<String> measurements : measurementsList) {
-      Set<String> measurementsSet = new HashSet<>(measurements);
-      if (measurementsSet.size() < measurements.size()) {
-        throw new SemanticException(
-            "Measurement under an aligned device is not allowed to have the same measurement name");
-      }
+    List<String> measurements = createTemplateStatement.getMeasurements();
+    Set<String> measurementsSet = new HashSet<>(measurements);
+    if (measurementsSet.size() < measurements.size()) {
+      throw new SemanticException(
+          "Measurement under template is not allowed to have the same measurement name");
     }
     Analysis analysis = new Analysis();
     analysis.setStatement(createTemplateStatement);

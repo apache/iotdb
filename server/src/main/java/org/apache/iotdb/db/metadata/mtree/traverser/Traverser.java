@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
         // if null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage
         if (template != null) {
-          child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
+          child =
+              TemplateMNodeGenerator.getChild(
+                  templateMap.get(parent.getSchemaTemplateId()), childName);
         }
       }
     }
