@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.metric;
+package org.apache.iotdb.commons.service.metric.enums;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -63,15 +61,71 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricType.TIMER, PERFORMANCE_OVERVIEW_DETAIL, Tag.STAGE.toString(), SCHEDULER));
   }
 
-  private static final String PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL =
-      Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString();
-
+  private static final String PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW =
+      Metric.PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW.toString();
   public static final String LOCAL_SCHEDULE = "local_scheduler";
   public static final String REMOTE_SCHEDULE = "remote_scheduler";
+
+  static {
+    metricInfoMap.put(
+        LOCAL_SCHEDULE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW,
+            Tag.STAGE.toString(),
+            LOCAL_SCHEDULE));
+    metricInfoMap.put(
+        REMOTE_SCHEDULE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW,
+            Tag.STAGE.toString(),
+            REMOTE_SCHEDULE));
+  }
+
+  private static final String PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW =
+      Metric.PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW.toString();
   public static final String SCHEMA_VALIDATE = "schema_validate";
   public static final String TRIGGER = "trigger";
   public static final String CONSENSUS = "consensus";
+
+  static {
+    metricInfoMap.put(
+        SCHEMA_VALIDATE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW,
+            Tag.STAGE.toString(),
+            SCHEMA_VALIDATE));
+    metricInfoMap.put(
+        TRIGGER,
+        new MetricInfo(
+            MetricType.TIMER, PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW, Tag.STAGE.toString(), TRIGGER));
+    metricInfoMap.put(
+        CONSENSUS,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW,
+            Tag.STAGE.toString(),
+            CONSENSUS));
+  }
+
+  private static final String PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW =
+      Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW.toString();
   public static final String STATEMACHINE = "stateMachine";
+
+  static {
+    metricInfoMap.put(
+        STATEMACHINE,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW,
+            Tag.STAGE.toString(),
+            STATEMACHINE));
+  }
+
+  private static final String PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL.toString();
   public static final String LOCK = "lock";
   public static final String MEMORY_BLOCK = "memory_block";
   public static final String WAL = "wal";
@@ -80,71 +134,35 @@ public class PerformanceOverviewMetrics implements IMetricSet {
 
   static {
     metricInfoMap.put(
-        LOCAL_SCHEDULE,
-        new MetricInfo(
-            MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
-            Tag.STAGE.toString(),
-            LOCAL_SCHEDULE));
-    metricInfoMap.put(
-        REMOTE_SCHEDULE,
-        new MetricInfo(
-            MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
-            Tag.STAGE.toString(),
-            REMOTE_SCHEDULE));
-    metricInfoMap.put(
-        SCHEMA_VALIDATE,
-        new MetricInfo(
-            MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
-            Tag.STAGE.toString(),
-            SCHEMA_VALIDATE));
-    metricInfoMap.put(
-        TRIGGER,
-        new MetricInfo(
-            MetricType.TIMER, PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL, Tag.STAGE.toString(), TRIGGER));
-    metricInfoMap.put(
-        CONSENSUS,
-        new MetricInfo(
-            MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
-            Tag.STAGE.toString(),
-            CONSENSUS));
-    metricInfoMap.put(
-        STATEMACHINE,
-        new MetricInfo(
-            MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
-            Tag.STAGE.toString(),
-            STATEMACHINE));
-    metricInfoMap.put(
         LOCK,
         new MetricInfo(
-            MetricType.TIMER, PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL, Tag.STAGE.toString(), LOCK));
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+            Tag.STAGE.toString(),
+            LOCK));
     metricInfoMap.put(
         MEMORY_BLOCK,
         new MetricInfo(
             MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
             Tag.STAGE.toString(),
             MEMORY_BLOCK));
     metricInfoMap.put(
         WAL,
         new MetricInfo(
-            MetricType.TIMER, PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL, Tag.STAGE.toString(), WAL));
+            MetricType.TIMER, PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL, Tag.STAGE.toString(), WAL));
     metricInfoMap.put(
         MEMTABLE,
         new MetricInfo(
             MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
             Tag.STAGE.toString(),
             MEMTABLE));
     metricInfoMap.put(
         LAST_CACHE,
         new MetricInfo(
             MetricType.TIMER,
-            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
             Tag.STAGE.toString(),
             LAST_CACHE));
   }

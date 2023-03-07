@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
+import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -31,20 +32,25 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
   private final int instanceId;
   private final CountDownLatch countDownLatch;
   private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+  private final long sendTime;
 
   public AsyncSendPlanNodeHandler(
       int instanceId,
       CountDownLatch countDownLatch,
-      Map<Integer, TSendPlanNodeResp> instanceId2RespMap) {
+      Map<Integer, TSendPlanNodeResp> instanceId2RespMap,
+      long sendTime) {
     this.instanceId = instanceId;
     this.countDownLatch = countDownLatch;
     this.instanceId2RespMap = instanceId2RespMap;
+    this.sendTime = sendTime;
   }
 
   @Override
   public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
     instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
     countDownLatch.countDown();
+    PerformanceOverviewMetricsManager.getInstance()
+        .recordScheduleRemoteCost(System.nanoTime() - sendTime);
   }
 
   @Override

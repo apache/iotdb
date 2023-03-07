@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -227,10 +228,10 @@ public class IoTConsensusServerImpl {
           .timer(
               System.nanoTime() - startWriteTime,
               TimeUnit.NANOSECONDS,
-              Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
+              Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW.toString(),
               MetricLevel.IMPORTANT,
               Tag.STAGE.toString(),
-              "stateMachine");
+              PerformanceOverviewMetrics.STATEMACHINE);
 
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine

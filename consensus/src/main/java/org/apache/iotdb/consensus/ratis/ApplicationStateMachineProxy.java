@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -107,6 +108,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
   @Override
   public CompletableFuture<Message> applyTransaction(TransactionContext trx) {
+    boolean isLeader = false;
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
@@ -118,6 +120,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         && trx.getClientRequest().getMessage() instanceof RequestMessage) {
       RequestMessage requestMessage = (RequestMessage) trx.getClientRequest().getMessage();
       applicationRequest = requestMessage.getActualRequest();
+      isLeader = true;
     } else {
       applicationRequest =
           new ByteBufferConsensusRequest(
@@ -139,14 +142,16 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
         long startWriteTime = System.nanoTime();
         TSStatus result = applicationStateMachine.write(deserializedRequest);
-        MetricService.getInstance()
-            .timer(
-                System.nanoTime() - startWriteTime,
-                TimeUnit.NANOSECONDS,
-                Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.STAGE.toString(),
-                "stateMachine");
+        if (isLeader) {
+          MetricService.getInstance()
+              .timer(
+                  System.nanoTime() - startWriteTime,
+                  TimeUnit.NANOSECONDS,
+                  Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW.toString(),
+                  MetricLevel.IMPORTANT,
+                  Tag.STAGE.toString(),
+                  PerformanceOverviewMetrics.STATEMACHINE);
+        }
 
         if (firstTry) {
           finalStatus = result;
