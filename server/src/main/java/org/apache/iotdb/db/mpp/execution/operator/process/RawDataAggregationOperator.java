@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.List;
 
@@ -102,7 +104,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       } else {
         // If there are no points belong to last time window, the last time window will not
         // initialize window and aggregators. Specially for time window.
-        if (windowManager.notInitedLastTimeWindow()) {
+        if (windowManager.notInitializedLastTimeWindow()) {
           initWindowAndAggregators();
         }
         // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()
@@ -148,25 +150,48 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
     if (windowManager.satisfiedCurWindow(inputTsBlock)) {
 
-      int lastReadRowIndex = 0;
+      // Get the indexes in tsBlock which needs to be processed by aggregator, and the last row
+      // needed to be processed.
+      int tsBlockSize = inputTsBlock.getPositionCount();
+      IWindow curWindow = windowManager.getCurWindow();
+
+      Column[] controlAndTimeColumn = new Column[2];
+      controlAndTimeColumn[0] = curWindow.getControlColumn(inputTsBlock);
+      controlAndTimeColumn[1] = inputTsBlock.getTimeColumn();
+
+      BitMap needProcess = new BitMap(tsBlockSize);
+      int lastIndexToProcess = -1;
+      boolean hasSkip = false;
+
+      for (int i = 0; i < tsBlockSize; i++) {
+        if (windowManager.isIgnoringNull() && controlAndTimeColumn[0].isNull(i)) {
+          lastIndexToProcess = i;
+          hasSkip = true;
+          continue;
+        }
+        if (!curWindow.satisfy(controlAndTimeColumn[0], i)) {
+          break;
+        }
+        needProcess.mark(i);
+        curWindow.mergeOnePoint(controlAndTimeColumn, i);
+        lastIndexToProcess = i;
+      }
+
+      // if no row needs to skip, just send a null parameter.
+      if (!hasSkip) needProcess = null;
+
       for (Aggregator aggregator : aggregators) {
         // Current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        lastReadRowIndex =
-            Math.max(
-                lastReadRowIndex,
-                aggregator.processTsBlock(inputTsBlock, windowManager.isIgnoringNull()));
+        aggregator.processTsBlock(inputTsBlock, needProcess, lastIndexToProcess);
       }
-
+      int lastReadRowIndex = lastIndexToProcess + 1;
       // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in
       // aggregators.
       if (lastReadRowIndex != 0) {
-        // todo update the keep value in group by series, it will be removed in the future
-        windowManager.setKeep(lastReadRowIndex);
-        windowManager.setLastTsBlockTime();
         hasCachedDataInAggregator = true;
       }
       if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
@@ -207,9 +232,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private void initWindowAndAggregators() {
     windowManager.initCurWindow();
-    IWindow curWindow = windowManager.getCurWindow();
     for (Aggregator aggregator : aggregators) {
-      aggregator.updateWindow(curWindow);
+      aggregator.reset();
     }
   }
 }

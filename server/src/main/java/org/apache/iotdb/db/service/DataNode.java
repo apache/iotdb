@@ -174,6 +174,9 @@ public class DataNode implements DataNodeMBean {
       // Setup metric service
       setUpMetricService();
 
+      // Serialize mutable system properties
+      IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
+
       logger.info("IoTDB configuration: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
@@ -234,7 +237,7 @@ public class DataNode implements DataNodeMBean {
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
@@ -346,7 +349,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -368,7 +371,8 @@ public class DataNode implements DataNodeMBean {
     if (dataNodeRegisterResp == null) {
       // All tries failed
       logger.error(
-          "Cannot register into cluster after {} retries. Please check dn_target_config_node_list in iotdb-datanode.properties.",
+          "Cannot register into cluster after {} retries. "
+              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot register into the cluster.");
     }
@@ -404,7 +408,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -427,7 +431,8 @@ public class DataNode implements DataNodeMBean {
     if (dataNodeRestartResp == null) {
       // All tries failed
       logger.error(
-          "Cannot send restart DataNode request to ConfigNode-leader after {} retries. Please check dn_target_config_node_list in iotdb-datanode.properties.",
+          "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
+              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
     }
@@ -650,7 +655,7 @@ public class DataNode implements DataNodeMBean {
 
   private void getJarOfUDFs(List<UDFInformation> udfInformationList) throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
@@ -760,7 +765,7 @@ public class DataNode implements DataNodeMBean {
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
       throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       List<String> jarNameList =
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)

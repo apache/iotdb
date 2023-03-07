@@ -117,11 +117,13 @@ public class CacheMemoryManager {
                   tryExecuteMemoryRelease();
                 }
               } catch (Throwable throwable) {
+                hasReleaseTask = false;
                 logger.error("Something wrong happened during MTree release.", throwable);
               }
             }
           } catch (InterruptedException e) {
             logger.info("ReleaseTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
           }
         });
     flushTaskMonitor.submit(
@@ -135,11 +137,13 @@ public class CacheMemoryManager {
                   tryFlushVolatileNodes();
                 }
               } catch (Throwable throwable) {
+                hasFlushTask = false;
                 logger.error("Something wrong happened during MTree flush.", throwable);
               }
             }
           } catch (InterruptedException e) {
             logger.info("FlushTaskMonitor thread is interrupted.");
+            Thread.currentThread().interrupt();
           }
         });
   }
@@ -180,6 +184,7 @@ public class CacheMemoryManager {
           logger.warn(
               "Interrupt because the release task and flush task did not finish within {} milliseconds.",
               MAX_WAITING_TIME_WHEN_RELEASING);
+          Thread.currentThread().interrupt();
         }
       }
     }
@@ -279,10 +284,16 @@ public class CacheMemoryManager {
   public void clear() {
     if (releaseTaskMonitor != null) {
       releaseTaskMonitor.shutdownNow();
+      while (true) {
+        if (releaseTaskMonitor.isTerminated()) break;
+      }
       releaseTaskMonitor = null;
     }
     if (flushTaskMonitor != null) {
       flushTaskMonitor.shutdownNow();
+      while (true) {
+        if (flushTaskMonitor.isTerminated()) break;
+      }
       releaseTaskMonitor = null;
     }
     if (releaseTaskProcessor != null) {
