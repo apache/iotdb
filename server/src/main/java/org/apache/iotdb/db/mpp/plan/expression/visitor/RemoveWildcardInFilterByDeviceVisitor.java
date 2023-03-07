@@ -19,63 +19,66 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProd
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 
-public class RemoveWildcardInFilterByDeviceVisitor extends CartesianProductVisitor<RemoveWildcardInFilterByDeviceVisitor.Context>{
-    @Override
-    public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
-        if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
-            throw new SemanticException("aggregate functions are not supported in WHERE clause");
-        }
-        List<List<Expression>> extendedExpressions = new ArrayList<>();
-        for (Expression suffixExpression : predicate.getExpressions()) {
-            extendedExpressions.add(process(suffixExpression, context));
-        }
-        List<List<Expression>> childExpressionsList = new ArrayList<>();
-        cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-        return reconstructFunctionExpressions(predicate, childExpressionsList);
+public class RemoveWildcardInFilterByDeviceVisitor
+    extends CartesianProductVisitor<RemoveWildcardInFilterByDeviceVisitor.Context> {
+  @Override
+  public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
+    if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
+      throw new SemanticException("aggregate functions are not supported in WHERE clause");
+    }
+    List<List<Expression>> extendedExpressions = new ArrayList<>();
+    for (Expression suffixExpression : predicate.getExpressions()) {
+      extendedExpressions.add(process(suffixExpression, context));
+    }
+    List<List<Expression>> childExpressionsList = new ArrayList<>();
+    cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+    return reconstructFunctionExpressions(predicate, childExpressionsList);
+  }
+
+  @Override
+  public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand predicate, Context context) {
+    PartialPath measurement = predicate.getPath();
+    PartialPath concatPath = context.getDevicePath().concatPath(measurement);
+    List<MeasurementPath> noStarPaths =
+        context.getSchemaTree().searchMeasurementPaths(concatPath).left;
+    if (noStarPaths.isEmpty()) {
+      return Collections.singletonList(new NullOperand());
+    }
+    return reconstructTimeSeriesOperands(noStarPaths);
+  }
+
+  @Override
+  public List<Expression> visitTimeStampOperand(
+      TimestampOperand timestampOperand, Context context) {
+    return Collections.singletonList(timestampOperand);
+  }
+
+  @Override
+  public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
+    return Collections.singletonList(constantOperand);
+  }
+
+  public static class Context {
+    private final PartialPath devicePath;
+    private final ISchemaTree schemaTree;
+    private final boolean isWhere;
+
+    public Context(PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
+      this.devicePath = devicePath;
+      this.schemaTree = schemaTree;
+      this.isWhere = isWhere;
     }
 
-    @Override
-    public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand predicate, Context context) {
-        PartialPath measurement = predicate.getPath();
-        PartialPath concatPath = context.getDevicePath().concatPath(measurement);
-        List<MeasurementPath> noStarPaths = context.getSchemaTree().searchMeasurementPaths(concatPath).left;
-        if (noStarPaths.isEmpty()) {
-            return Collections.singletonList(new NullOperand());
-        }
-        return reconstructTimeSeriesOperands(noStarPaths);
+    public PartialPath getDevicePath() {
+      return devicePath;
     }
 
-    @Override
-    public List<Expression> visitTimeStampOperand(TimestampOperand timestampOperand, Context context) {
-        return Collections.singletonList(timestampOperand);
+    public ISchemaTree getSchemaTree() {
+      return schemaTree;
     }
 
-    @Override
-    public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
-        return Collections.singletonList(constantOperand);
+    public boolean isWhere() {
+      return isWhere;
     }
-
-    public static class Context {
-        private final PartialPath devicePath;
-        private final ISchemaTree schemaTree;
-        private final boolean isWhere;
-
-        public Context(PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
-            this.devicePath = devicePath;
-            this.schemaTree = schemaTree;
-            this.isWhere = isWhere;
-        }
-
-        public PartialPath getDevicePath() {
-            return devicePath;
-        }
-
-        public ISchemaTree getSchemaTree() {
-            return schemaTree;
-        }
-
-        public boolean isWhere() {
-            return isWhere;
-        }
-    }
+  }
 }

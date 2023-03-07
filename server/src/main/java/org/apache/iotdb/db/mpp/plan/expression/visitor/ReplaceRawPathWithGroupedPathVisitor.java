@@ -14,42 +14,48 @@ import java.util.List;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
-public class ReplaceRawPathWithGroupedPathVisitor extends ReconstructVisitor<GroupByLevelController.RawPathToGroupedPathMap> {
-    @Override
-    public Expression visitFunctionExpression(FunctionExpression functionExpression, GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
-        List<Expression> childrenExpressions = new ArrayList<>();
-        for (Expression childExpression : functionExpression.getExpressions()) {
-            childrenExpressions.add(
-                    process(childExpression, rawPathToGroupedPathMap));
+public class ReplaceRawPathWithGroupedPathVisitor
+    extends ReconstructVisitor<GroupByLevelController.RawPathToGroupedPathMap> {
+  @Override
+  public Expression visitFunctionExpression(
+      FunctionExpression functionExpression,
+      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
+    List<Expression> childrenExpressions = new ArrayList<>();
+    for (Expression childExpression : functionExpression.getExpressions()) {
+      childrenExpressions.add(process(childExpression, rawPathToGroupedPathMap));
 
-            // We just process first input Expression of AggregationFunction.
-            // If AggregationFunction need more than one input series,
-            // we need to reconsider the process of it
-            if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-                List<Expression> children = functionExpression.getExpressions();
-                for (int i = 1; i < children.size(); i++) {
-                    childrenExpressions.add(children.get(i));
-                }
-                break;
-            }
+      // We just process first input Expression of AggregationFunction.
+      // If AggregationFunction need more than one input series,
+      // we need to reconsider the process of it
+      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        List<Expression> children = functionExpression.getExpressions();
+        for (int i = 1; i < children.size(); i++) {
+          childrenExpressions.add(children.get(i));
         }
-        return reconstructFunctionExpression(functionExpression, childrenExpressions);
+        break;
+      }
     }
+    return reconstructFunctionExpression(functionExpression, childrenExpressions);
+  }
 
-    @Override
-    public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
-        PartialPath rawPath = timeSeriesOperand.getPath();
-        PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
-        return reconstructTimeSeriesOperand(groupedPath);
-    }
+  @Override
+  public Expression visitTimeSeriesOperand(
+      TimeSeriesOperand timeSeriesOperand,
+      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
+    PartialPath rawPath = timeSeriesOperand.getPath();
+    PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
+    return reconstructTimeSeriesOperand(groupedPath);
+  }
 
-    @Override
-    public Expression visitTimeStampOperand(TimestampOperand timestampOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
-        return timestampOperand;
-    }
+  @Override
+  public Expression visitTimeStampOperand(
+      TimestampOperand timestampOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
+    return timestampOperand;
+  }
 
-    @Override
-    public Expression visitConstantOperand(ConstantOperand constantOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
-        return constantOperand;
-    }
+  @Override
+  public Expression visitConstantOperand(
+      ConstantOperand constantOperand, GroupByLevelController.RawPathToGroupedPathMap context) {
+    return constantOperand;
+  }
 }

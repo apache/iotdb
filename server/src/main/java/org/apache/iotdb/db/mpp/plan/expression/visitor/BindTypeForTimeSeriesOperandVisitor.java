@@ -16,36 +16,37 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFu
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
 public class BindTypeForTimeSeriesOperandVisitor extends ReconstructVisitor<List<ColumnHeader>> {
-    @Override
-    public Expression visitFunctionExpression(FunctionExpression predicate, List<ColumnHeader> columnHeaders) {
-        List<Expression> expressions = predicate.getExpressions();
-        List<Expression> childrenExpressions = new ArrayList<>();
-        for (Expression expression : expressions) {
-            childrenExpressions.add(process(expression, columnHeaders));
-        }
-        return reconstructFunctionExpression(predicate, childrenExpressions);
+  @Override
+  public Expression visitFunctionExpression(
+      FunctionExpression predicate, List<ColumnHeader> columnHeaders) {
+    List<Expression> expressions = predicate.getExpressions();
+    List<Expression> childrenExpressions = new ArrayList<>();
+    for (Expression expression : expressions) {
+      childrenExpressions.add(process(expression, columnHeaders));
     }
+    return reconstructFunctionExpression(predicate, childrenExpressions);
+  }
 
-    @Override
-    public Expression visitTimeSeriesOperand(TimeSeriesOperand predicate, List<ColumnHeader> columnHeaders) {
-        String oldPathString = predicate.getPath().getFullPath();
-        // There are not too many TimeSeriesOperand and columnHeaders in our case,
-        // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
-        for (ColumnHeader columnHeader : columnHeaders) {
-            if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
-                try {
-                    return reconstructTimeSeriesOperand(
-                            new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
-                } catch (IllegalPathException ignored) {
-                }
-            }
+  @Override
+  public Expression visitTimeSeriesOperand(
+      TimeSeriesOperand predicate, List<ColumnHeader> columnHeaders) {
+    String oldPathString = predicate.getPath().getFullPath();
+    // There are not too many TimeSeriesOperand and columnHeaders in our case,
+    // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
+    for (ColumnHeader columnHeader : columnHeaders) {
+      if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
+        try {
+          return reconstructTimeSeriesOperand(
+              new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
+        } catch (IllegalPathException ignored) {
         }
-        throw new SemanticException(
-                String.format("please ensure input[%s] is correct", oldPathString));
+      }
     }
+    throw new SemanticException(String.format("please ensure input[%s] is correct", oldPathString));
+  }
 
-    @Override
-    public Expression visitLeafOperand(LeafOperand leafOperand, List<ColumnHeader> context) {
-        return leafOperand;
-    }
+  @Override
+  public Expression visitLeafOperand(LeafOperand leafOperand, List<ColumnHeader> context) {
+    return leafOperand;
+  }
 }

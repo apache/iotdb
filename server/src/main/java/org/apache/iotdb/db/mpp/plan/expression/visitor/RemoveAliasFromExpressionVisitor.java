@@ -10,27 +10,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor<Void> {
-    @Override
-    public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
-        List<Expression> childResult = new ArrayList<>();
-        functionExpression.getExpressions().forEach(child -> childResult.add(process(child, null)));
-        return new FunctionExpression(
-                functionExpression.getFunctionName().toLowerCase(),
-                functionExpression.getFunctionAttributes(),
-                childResult
-        );
-    }
+  @Override
+  public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
+    List<Expression> childResult = new ArrayList<>();
+    functionExpression.getExpressions().forEach(child -> childResult.add(process(child, null)));
+    return new FunctionExpression(
+        functionExpression.getFunctionName().toLowerCase(),
+        functionExpression.getFunctionAttributes(),
+        childResult);
+  }
 
-    @Override
-    public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
-        PartialPath rawPath = timeSeriesOperand.getPath();
-        if (rawPath.isMeasurementAliasExists()) {
-            MeasurementPath measurementPath = (MeasurementPath) rawPath;
-            MeasurementPath newPath =
-                    new MeasurementPath(measurementPath, measurementPath.getMeasurementSchema());
-            newPath.setUnderAlignedEntity(measurementPath.isUnderAlignedEntity());
-            return new TimeSeriesOperand(newPath);
-        }
-        return timeSeriesOperand;
+  @Override
+  public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
+    PartialPath rawPath = timeSeriesOperand.getPath();
+    if (rawPath.isMeasurementAliasExists()) {
+      MeasurementPath measurementPath = (MeasurementPath) rawPath;
+      MeasurementPath newPath =
+          new MeasurementPath(measurementPath, measurementPath.getMeasurementSchema());
+      newPath.setUnderAlignedEntity(measurementPath.isUnderAlignedEntity());
+      return new TimeSeriesOperand(newPath);
     }
+    return timeSeriesOperand;
+  }
 }

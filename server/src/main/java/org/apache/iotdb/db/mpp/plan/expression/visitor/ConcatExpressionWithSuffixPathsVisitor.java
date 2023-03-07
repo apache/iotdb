@@ -18,72 +18,77 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProd
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 
-public class ConcatExpressionWithSuffixPathsVisitor extends CartesianProductVisitor<ConcatExpressionWithSuffixPathsVisitor.Context> {
-    @Override
-    public List<Expression> visitFunctionExpression(FunctionExpression functionExpression, Context context) {
-        List<List<Expression>> extendedExpressions = new ArrayList<>();
-        for (Expression suffixExpression : functionExpression.getExpressions()) {
-            extendedExpressions.add(process(suffixExpression, context));
+public class ConcatExpressionWithSuffixPathsVisitor
+    extends CartesianProductVisitor<ConcatExpressionWithSuffixPathsVisitor.Context> {
+  @Override
+  public List<Expression> visitFunctionExpression(
+      FunctionExpression functionExpression, Context context) {
+    List<List<Expression>> extendedExpressions = new ArrayList<>();
+    for (Expression suffixExpression : functionExpression.getExpressions()) {
+      extendedExpressions.add(process(suffixExpression, context));
 
-            // We just process first input Expression of AggregationFunction,
-            // keep other input Expressions as origin
-            // If AggregationFunction need more than one input series,
-            // we need to reconsider the process of it
-            if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-                List<Expression> children = functionExpression.getExpressions();
-                for (int i = 1; i < children.size(); i++) {
-                    extendedExpressions.add(Collections.singletonList(children.get(i)));
-                }
-                break;
-            }
+      // We just process first input Expression of AggregationFunction,
+      // keep other input Expressions as origin
+      // If AggregationFunction need more than one input series,
+      // we need to reconsider the process of it
+      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        List<Expression> children = functionExpression.getExpressions();
+        for (int i = 1; i < children.size(); i++) {
+          extendedExpressions.add(Collections.singletonList(children.get(i)));
         }
-        List<List<Expression>> childExpressionsList = new ArrayList<>();
-        cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-        return reconstructFunctionExpressions((FunctionExpression) functionExpression, childExpressionsList);
+        break;
+      }
+    }
+    List<List<Expression>> childExpressionsList = new ArrayList<>();
+    cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+    return reconstructFunctionExpressions(
+        (FunctionExpression) functionExpression, childExpressionsList);
+  }
+
+  @Override
+  public List<Expression> visitTimeSeriesOperand(
+      TimeSeriesOperand timeSeriesOperand, Context context) {
+    PartialPath rawPath = timeSeriesOperand.getPath();
+    List<PartialPath> actualPaths = new ArrayList<>();
+    if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      actualPaths.add(rawPath);
+      context.getPatternTree().appendPathPattern(rawPath);
+    } else {
+      for (PartialPath prefixPath : context.getPrefixPaths()) {
+        PartialPath concatPath = prefixPath.concatPath(rawPath);
+        context.getPatternTree().appendPathPattern(concatPath);
+        actualPaths.add(concatPath);
+      }
+    }
+    return reconstructTimeSeriesOperands(actualPaths);
+  }
+
+  @Override
+  public List<Expression> visitTimeStampOperand(
+      TimestampOperand timestampOperand, Context context) {
+    return Collections.singletonList(timestampOperand);
+  }
+
+  @Override
+  public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
+    return Collections.singletonList(constantOperand);
+  }
+
+  public static class Context {
+    private final List<PartialPath> prefixPaths;
+    private final PathPatternTree patternTree;
+
+    public Context(List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+      this.prefixPaths = prefixPaths;
+      this.patternTree = patternTree;
     }
 
-    @Override
-    public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Context context) {
-        PartialPath rawPath = timeSeriesOperand.getPath();
-        List<PartialPath> actualPaths = new ArrayList<>();
-        if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-            actualPaths.add(rawPath);
-            context.getPatternTree().appendPathPattern(rawPath);
-        } else {
-            for (PartialPath prefixPath : context.getPrefixPaths()) {
-                PartialPath concatPath = prefixPath.concatPath(rawPath);
-                context.getPatternTree().appendPathPattern(concatPath);
-                actualPaths.add(concatPath);
-            }
-        }
-        return reconstructTimeSeriesOperands(actualPaths);
+    public List<PartialPath> getPrefixPaths() {
+      return prefixPaths;
     }
 
-    @Override
-    public List<Expression> visitTimeStampOperand(TimestampOperand timestampOperand, Context context) {
-        return Collections.singletonList(timestampOperand);
+    public PathPatternTree getPatternTree() {
+      return patternTree;
     }
-
-    @Override
-    public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
-        return Collections.singletonList(constantOperand);
-    }
-
-    public static class Context {
-        private final List<PartialPath> prefixPaths;
-        private final PathPatternTree patternTree;
-
-        public Context(List<PartialPath> prefixPaths, PathPatternTree patternTree) {
-            this.prefixPaths = prefixPaths;
-            this.patternTree = patternTree;
-        }
-
-        public List<PartialPath> getPrefixPaths() {
-            return prefixPaths;
-        }
-
-        public PathPatternTree getPatternTree() {
-            return patternTree;
-        }
-    }
+  }
 }
