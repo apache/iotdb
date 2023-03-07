@@ -324,8 +324,9 @@ public class ExpressionAnalyzer {
    */
   public static List<PartialPath> concatExpressionWithSuffixPaths(
       Expression expression, List<PartialPath> prefixPaths) {
-//    return new ConcatExpressionWithSuffixPathsVisitor().process(
-//            expression, new ConcatExpressionWithSuffixPathsVisitor.Context(prefixPaths, null));
+    //    return new ConcatExpressionWithSuffixPathsVisitor().process(
+    //            expression, new ConcatExpressionWithSuffixPathsVisitor.Context(prefixPaths,
+    // null));
     Set<PartialPath> resultPaths = new HashSet<>();
     if (expression instanceof TernaryExpression) {
       List<PartialPath> firstExpressions =

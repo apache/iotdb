@@ -17,25 +17,25 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAl
  */
 public class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
   // process every child, then reconstruct a new expression
-  public Expression reconstructFromChild(Expression expression) {
+  public Expression reconstructFromChild(Expression expression, C context) {
     List<Expression> childResult = new ArrayList<>();
-    expression.getExpressions().forEach(child -> childResult.add(process(child, null)));
+    expression.getExpressions().forEach(child -> childResult.add(process(child, context)));
     return reconstructAllKindsOfExpression(expression, childResult);
   }
 
   @Override
   public Expression visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
-    return reconstructFromChild(ternaryExpression);
+    return reconstructFromChild(ternaryExpression, context);
   }
 
   @Override
   public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    return reconstructFromChild(binaryExpression);
+    return reconstructFromChild(binaryExpression, context);
   }
 
   @Override
   public Expression visitUnaryExpression(UnaryExpression unaryExpression, C context) {
-    return reconstructFromChild(unaryExpression);
+    return reconstructFromChild(unaryExpression, context);
   }
 
   @Override
