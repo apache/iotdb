@@ -120,7 +120,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       throws MetadataException {
     if (parent.isDevice()) {
       AbstractTraverserIterator<IMemMNode> iterator =
-          new MemoryTraverserIterator(this, parent.getAsDeviceMNode(), templateMap, nodeFactory);
+          new MemoryTraverserIterator<>(this, parent.getAsDeviceMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {

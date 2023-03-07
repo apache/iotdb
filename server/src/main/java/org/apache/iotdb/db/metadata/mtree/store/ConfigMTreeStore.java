@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -38,10 +39,12 @@ import java.util.Map;
 public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
 
   private IConfigMNode root;
+  private final IMNodeFactory<IConfigMNode> nodeFactory;
 
   // Only used for ConfigMTree
-  public ConfigMTreeStore() {
-    this.root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
+  public ConfigMTreeStore(IMNodeFactory<IConfigMNode> nodeFactory) {
+    this.root = nodeFactory.createBasicMNode(null, IoTDBConstant.PATH_ROOT);
+    this.nodeFactory = nodeFactory;
   }
 
   @Override
@@ -74,8 +77,8 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
       IConfigMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
     if (parent.isDevice()) {
-      AbstractTraverserIterator iterator =
-          new MemoryTraverserIterator(this, parent.getAsDeviceMNode(), templateMap);
+      AbstractTraverserIterator<IConfigMNode> iterator =
+          new MemoryTraverserIterator<>(this, parent.getAsDeviceMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {

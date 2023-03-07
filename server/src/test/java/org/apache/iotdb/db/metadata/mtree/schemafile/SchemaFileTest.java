@@ -35,6 +35,7 @@ import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
@@ -835,7 +836,7 @@ public class SchemaFileTest {
     }
 
     ICacheMNode d010 = sgNode.getChildren().get("d_010");
-    d010 = MNodeUtils.setToEntity(d010);
+    d010 = MNodeUtils.setToEntity(d010, new CacheMNodeFactory()).getAsMNode();
     ICacheMNode ano = getMeasurementNode(d010, "splitover", "aliaslasialsai");
 
     d010.addChild(ano);

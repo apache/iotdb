@@ -19,20 +19,21 @@
 package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Map;
 
-public class MemoryTraverserIterator extends AbstractTraverserIterator<IMemMNode> {
+// only use for IConfigMNode and IMemMNode
+public class MemoryTraverserIterator<N extends IMNode<N>> extends AbstractTraverserIterator<N> {
   public MemoryTraverserIterator(
-      IMTreeStore<IMemMNode> store,
-      IDeviceMNode<IMemMNode> parent,
+      IMTreeStore<N> store,
+      IDeviceMNode<N> parent,
       Map<Integer, Template> templateMap,
-      IMNodeFactory<IMemMNode> nodeFactory)
+      IMNodeFactory<N> nodeFactory)
       throws MetadataException {
     super(store, parent, templateMap, nodeFactory);
   }

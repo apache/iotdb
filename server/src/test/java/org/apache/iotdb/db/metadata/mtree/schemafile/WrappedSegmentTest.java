@@ -20,15 +20,14 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
-import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,8 +62,8 @@ public class WrappedSegmentTest {
   @Test
   public void flatTreeInsert() throws MetadataException {
     WrappedSegment sf = new WrappedSegment(500);
-    IMNode rNode = virtualFlatMTree(10);
-    for (IMNode node : rNode.getChildren().values()) {
+    ICacheMNode rNode = virtualFlatMTree(10);
+    for (ICacheMNode node : rNode.getChildren().values()) {
       sf.insertRecord(node.getName(), RecordUtils.node2Buffer(node));
     }
     sf.syncBuffer();
@@ -101,16 +100,14 @@ public class WrappedSegmentTest {
     Assert.assertEquals(sf.getRecord("aaa"), nsf.getRecord("aaa"));
   }
 
-  private IMNode virtualFlatMTree(int childSize) {
-    IMNode internalNode = new AbstractDeviceMNode(null, "vRoot1");
+  private ICacheMNode virtualFlatMTree(int childSize) {
+    ICacheMNode internalNode = new CacheDeviceMNode(null, "vRoot1");
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
-      IMeasurementMNode mNode =
-          MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
-      internalNode.addChild(mNode);
+      internalNode.addChild(
+          new CacheMeasurementMNode(internalNode, measurementId, schema, measurementId + "als"));
     }
     return internalNode;
   }
@@ -118,9 +115,9 @@ public class WrappedSegmentTest {
   @Test
   public void evenSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
+    ISegment<ByteBuffer, ICacheMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"};
-    IMNode mNode = getMeasurementNode(null, "m", null);
+    ICacheMNode mNode = getMeasurementNode(null, "m", null);
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = 0; i < test.length; i++) {
@@ -155,9 +152,9 @@ public class WrappedSegmentTest {
   public void increasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
+    ISegment<ByteBuffer, ICacheMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    IMNode mNode = new BasicMNode(null, "m");
+    ICacheMNode mNode = new CacheBasicMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = 0; i < test.length; i++) {
@@ -189,9 +186,9 @@ public class WrappedSegmentTest {
   public void decreasingSplitTest() throws MetadataException {
     ByteBuffer buffer = ByteBuffer.allocate(500);
     ByteBuffer buf2 = ByteBuffer.allocate(500);
-    ISegment<ByteBuffer, IMNode> seg = WrappedSegment.initAsSegment(buffer);
+    ISegment<ByteBuffer, ICacheMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    IMNode mNode = new BasicMNode(null, "m");
+    ICacheMNode mNode = new CacheBasicMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = test.length - 1; i >= 0; i--) {
@@ -238,11 +235,8 @@ public class WrappedSegmentTest {
     System.out.println(s);
   }
 
-  private IMNode getMeasurementNode(IMNode par, String name, String alias) {
+  private ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    IMeasurementMNode mNode =
-        MeasurementMNode.getMeasurementMNode(
-            par != null ? par.getAsDeviceMNode() : null, name, schema, alias);
-    return mNode;
+    return new CacheMeasurementMNode(par, name, schema, alias);
   }
 }

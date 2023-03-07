@@ -38,6 +38,8 @@ import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.ConfigDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.ConfigMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -78,8 +80,10 @@ public class ConfigMTree {
   // this store is only used for traverser invoking
   private final ConfigMTreeStore store;
 
+  private final IMNodeFactory<IConfigMNode> nodeFactory = new ConfigMNodeFactory();
+
   public ConfigMTree() throws MetadataException {
-    store = new ConfigMTreeStore();
+    store = new ConfigMTreeStore(nodeFactory);
     root = store.getRoot();
   }
 
