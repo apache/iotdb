@@ -49,7 +49,7 @@ public class DeactivateTemplateProcedureTest {
     Template t1 = new Template();
     t1.setId(0);
     t1.setName("t1");
-    t1.addUnalignedMeasurements(
+    t1.addMeasurements(
         new String[] {"s1", "s2"},
         new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
         new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
@@ -58,7 +58,7 @@ public class DeactivateTemplateProcedureTest {
     Template t2 = new Template();
     t2.setId(0);
     t2.setName("t2");
-    t2.addUnalignedMeasurements(
+    t2.addMeasurements(
         new String[] {"s3", "s4"},
         new TSDataType[] {TSDataType.FLOAT, TSDataType.INT32},
         new TSEncoding[] {TSEncoding.BITMAP, TSEncoding.PLAIN},
