@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -34,12 +36,35 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
 public class RemoveWildcardInFilterVisitor
     extends CartesianProductVisitor<RemoveWildcardInFilterVisitor.Context> {
+  @Override
+  public List<Expression> visitBinaryExpression(
+      BinaryExpression binaryExpression, Context context) {
+    List<Expression> leftExpressions =
+        process(binaryExpression.getLeftExpression(), context.notRootClone());
+    //            removeWildcardInFilter(
+    //                    ((BinaryExpression) predicate).getLeftExpression(), prefixPaths,
+    // schemaTree, false);
+    List<Expression> rightExpressions =
+        process(binaryExpression.getRightExpression(), context.notRootClone());
+    //            removeWildcardInFilter(
+    //                    ((BinaryExpression) predicate).getRightExpression(), prefixPaths,
+    // schemaTree, false);
+    if (context.isRoot() && binaryExpression.getExpressionType() == ExpressionType.LOGIC_AND) {
+      List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
+      resultExpressions.addAll(rightExpressions);
+      return resultExpressions;
+    }
+    return reconstructBinaryExpressions(
+        binaryExpression.getExpressionType(), leftExpressions, rightExpressions);
+  }
+
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
@@ -102,6 +127,10 @@ public class RemoveWildcardInFilterVisitor
       this.prefixPaths = prefixPaths;
       this.schemaTree = schemaTree;
       this.isRoot = isRoot;
+    }
+
+    public Context notRootClone() {
+      return new Context(this.prefixPaths, this.schemaTree, false);
     }
 
     public List<PartialPath> getPrefixPaths() {
