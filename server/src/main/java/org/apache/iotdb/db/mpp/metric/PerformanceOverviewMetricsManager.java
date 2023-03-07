@@ -31,12 +31,12 @@ public class PerformanceOverviewMetricsManager {
   private final MetricService metricService = MetricService.getInstance();
   private static final String PERFORMANCE_OVERVIEW_DETAIL =
       Metric.PERFORMANCE_OVERVIEW_DETAIL.toString();
-  private static final String PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW =
-      Metric.PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW.toString();
-  private static final String PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW =
-      Metric.PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW.toString();
-  private static final String PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL =
-      Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL.toString();
+  private static final String PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString();
+  private static final String PERFORMANCE_OVERVIEW_LOCAL_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_LOCAL_DETAIL.toString();
+  private static final String PERFORMANCE_OVERVIEW_ENGINE_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_ENGINE_DETAIL.toString();
 
   /** Record the time cost in authority stage. */
   public void recordAuthCost(long costTimeInNanos) {
@@ -94,7 +94,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW,
+        PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.LOCAL_SCHEDULE);
@@ -104,7 +104,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_SCHEDULE_OVERVIEW,
+        PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.REMOTE_SCHEDULE);
@@ -114,7 +114,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW,
+        PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.SCHEMA_VALIDATE);
@@ -124,27 +124,27 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW,
+        PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.TRIGGER);
   }
 
-  public void recordScheduleConsensusCost(long costTimeInNanos) {
+  public void recordScheduleStorageCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_LOCAL_OVERVIEW,
+        PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.CONSENSUS);
+        PerformanceOverviewMetrics.STORAGE);
   }
 
   public void recordScheduleLockCost(long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+        PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.LOCK);
@@ -154,7 +154,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+        PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.MEMORY_BLOCK);
@@ -164,7 +164,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+        PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.WAL);
@@ -174,7 +174,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+        PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.MEMTABLE);
@@ -184,7 +184,7 @@ public class PerformanceOverviewMetricsManager {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
-        PERFORMANCE_OVERVIEW_STATEMACHINE_DETAIL,
+        PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
         MetricLevel.IMPORTANT,
         Tag.STAGE.toString(),
         PerformanceOverviewMetrics.LAST_CACHE);

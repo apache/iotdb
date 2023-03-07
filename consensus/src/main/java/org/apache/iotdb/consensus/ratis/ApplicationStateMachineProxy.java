@@ -147,10 +147,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
               .timer(
                   System.nanoTime() - startWriteTime,
                   TimeUnit.NANOSECONDS,
-                  Metric.PERFORMANCE_OVERVIEW_STATEMACHINE_OVERVIEW.toString(),
+                  Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
                   MetricLevel.IMPORTANT,
                   Tag.STAGE.toString(),
-                  PerformanceOverviewMetrics.STATEMACHINE);
+                  PerformanceOverviewMetrics.ENGINE);
         }
 
         if (firstTry) {

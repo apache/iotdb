@@ -119,7 +119,7 @@ public class RegionWriteExecutor {
       long startWriteTime = System.nanoTime();
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
       PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleConsensusCost(System.nanoTime() - startWriteTime);
+          .recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {

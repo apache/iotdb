@@ -26,21 +26,21 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNodeResp> {
   private final int instanceId;
-  private final CountDownLatch countDownLatch;
+  private final AtomicLong pendingNumber;
   private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
   private final long sendTime;
 
   public AsyncSendPlanNodeHandler(
       int instanceId,
-      CountDownLatch countDownLatch,
+      AtomicLong pendingNumber,
       Map<Integer, TSendPlanNodeResp> instanceId2RespMap,
       long sendTime) {
     this.instanceId = instanceId;
-    this.countDownLatch = countDownLatch;
+    this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
     this.sendTime = sendTime;
   }
@@ -48,9 +48,11 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
   @Override
   public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
     instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
-    countDownLatch.countDown();
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+    if (pendingNumber.decrementAndGet() == 0) {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+    }
+    pendingNumber.notifyAll();
   }
 
   @Override
@@ -62,6 +64,10 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
     resp.setStatus(
         RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg));
     instanceId2RespMap.put(instanceId, resp);
-    countDownLatch.countDown();
+    if (pendingNumber.decrementAndGet() == 0) {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+    }
+    pendingNumber.notifyAll();
   }
 }

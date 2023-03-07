@@ -144,24 +144,25 @@ carefully evaluated. The current Core-level metrics are as follows:
 | points   | database="{database}", type="flush" | Gauge     | The point number of last flushed memtable |
 
 #### 4.1.3. Cluster Tracing
-| Metric                                 | Tags                                             | Type  | Description                                      |
-|----------------------------------------| ------------------------------------------------ | ----- | ------------------------------------------------ |
-| performance_overview                   | interface="{interface}", type="{statement_type}" | Timer | The time consumed of operations in client        |
-| performance_overview_detail            | stage="authority"                                | Timer | The time consumed on authority authentication    |
-| performance_overview_detail            | stage="parser"                                   | Timer | The time consumed on parsing statement           |
-| performance_overview_detail            | stage="analyzer"                                 | Timer | The time consumed on analyzing statement         |
-| performance_overview_detail            | stage="planner"                                  | Timer | The time consumed on planning                    |
-| performance_overview_detail            | stage="scheduler"                                | Timer | The time consumed on scheduling                  |
-| performance_overview_schedule_overview | stage="local_scheduler"                          | Timer | The time consumed on local scheduler             |
-| performance_overview_schedule_overview | stage="remote_scheduler"                         | Timer | The time consumed on remote scheduler            |
-| performance_overview_schedule_detail   | stage="schema_validate"                          | Timer | The time consumed on schema validation           |
-| performance_overview_schedule_detail   | stage="trigger"                                  | Timer | The time consumed on trigger                     |
-| performance_overview_schedule_detail   | stage="consensus"                                | Timer | The time consumed on consensus                   |
-| performance_overview_schedule_detail   | stage="lock"                                     | Timer | The time consumed on grabbing lock in DataRegion |
-| performance_overview_schedule_detail   | stage="memory_block"                             | Timer | The time consumed on insert memory control       |
-| performance_overview_schedule_detail   | stage="wal"                                      | Timer | The time consumed on writing wal                 |
-| performance_overview_schedule_detail   | stage="memtable"                                 | Timer | The time consumed on writing memtable            |
-| performance_overview_schedule_detail   | stage="last_cache"                               | Timer | The time consumed on updating last cache         |
+| Metric                                     | Tags                                             | Type  | Description                                      |
+| ------------------------------------------ |--------------------------------------------------| ----- | ------------------------------------------------ |
+| performance_overview                       | interface="{interface}", type="{statement_type}" | Timer | The time consumed of operations in client        |
+| performance_overview_detail                | stage="authority"                                | Timer | The time consumed on authority authentication    |
+| performance_overview_detail                | stage="parser"                                   | Timer | The time consumed on parsing statement           |
+| performance_overview_detail                | stage="analyzer"                                 | Timer | The time consumed on analyzing statement         |
+| performance_overview_detail                | stage="planner"                                  | Timer | The time consumed on planning                    |
+| performance_overview_detail                | stage="scheduler"                                | Timer | The time consumed on scheduling                  |
+| performance_overview_schedule_overview     | stage="local_scheduler"                          | Timer | The time consumed on local scheduler             |
+| performance_overview_schedule_overview     | stage="remote_scheduler"                         | Timer | The time consumed on remote scheduler            |
+| performance_overview_local_overview        | stage="schema_validate"                          | Timer | The time consumed on schema validation           |
+| performance_overview_local_overview        | stage="trigger"                                  | Timer | The time consumed on trigger                     |
+| performance_overview_local_overview        | stage="storage"                                  | Timer | The time consumed on consensus                   |
+| performance_overview_statemachine_overview | stage="stateMachine"                             | Timer | The time consumed on write stateMachine          |
+| performance_overview_statemachine_detail   | stage="lock"                                     | Timer | The time consumed on grabbing lock in DataRegion |
+| performance_overview_statemachine_detail   | stage="memory_block"                             | Timer | The time consumed on insert memory control       |
+| performance_overview_statemachine_detail   | stage="wal"                                      | Timer | The time consumed on writing wal                 |
+| performance_overview_statemachine_detail   | stage="memtable"                                 | Timer | The time consumed on writing memtable            |
+| performance_overview_statemachine_detail   | stage="last_cache"                               | Timer | The time consumed on updating last cache         |
 
 #### 4.1.5. Task Statistics
 
