@@ -293,7 +293,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
 
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
       OperatorContext operatorContext =
           context
               .getDriverContext()
@@ -338,7 +338,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     seriesScanOptionsBuilder.withOffset(node.getOffset());
     seriesScanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
 
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
       OperatorContext operatorContext =
           context
               .getDriverContext()
@@ -402,7 +402,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
       OperatorContext operatorContext =
           context
               .getDriverContext()
@@ -487,7 +487,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
 
-    if (context.getDegreeOfParallelism() == 1) {
+    if (context.getDegreeOfParallelism() == 1 || !context.isAllowParallelScanOperator()) {
       OperatorContext operatorContext =
           context
               .getDriverContext()
@@ -2770,7 +2770,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     // 1. divide every child to pipeline using the max dop
     if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
-      // If dop = 1, we don't create extra pipeline
+      // If dop = 1 or the size of children = 1, we don't create extra pipeline for current operator
       for (PlanNode childSource : node.getChildren()) {
         Operator childOperation = childSource.accept(this, context);
         finalExchangeNum = Math.max(finalExchangeNum, context.getExchangeSumNum());
@@ -2778,6 +2778,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         parentPipelineChildren.add(childOperation);
       }
     } else {
+      // For oneByOneNode with more than one child, we offer running priority and dop to the
+      // following children, and don't allow parallel scan operator
+      context.setAllowParallelScanOperator(false);
       List<Integer> childPipelineNums = new ArrayList<>();
       List<Integer> childExchangeNums = new ArrayList<>();
       int sumOfChildPipelines = 0, sumOfChildExchangeNums = 0;
@@ -2792,11 +2795,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LocalExecutionPlanContext subContext = context.createSubContext();
           // Only context.getDegreeOfParallelism() - 1 can be allocated to child
           int dopForChild = context.getDegreeOfParallelism() - 1;
-          if (childNode instanceof SeriesSourceNode && node.getChildren().size() > 1) {
-            subContext.setDegreeOfParallelism(1);
-          } else {
-            subContext.setDegreeOfParallelism(dopForChild);
-          }
+          subContext.setDegreeOfParallelism(dopForChild);
           int originPipeNum = context.getPipelineNumber();
           Operator childOperation = childNode.accept(this, subContext);
           ISinkChannel localSinkChannel =
