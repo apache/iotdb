@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -56,8 +57,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final IStateMachine.RetryPolicy retryPolicy;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
+  private final TConsensusGroupType consensusGroupType;
 
-  public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
+  public ApplicationStateMachineProxy(
+      IStateMachine stateMachine, RaftGroupId id, TConsensusGroupType consensusGroupType) {
     applicationStateMachine = stateMachine;
     groupId = id;
     retryPolicy =
@@ -65,6 +68,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             ? (IStateMachine.RetryPolicy) applicationStateMachine
             : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
+    this.consensusGroupType = consensusGroupType;
     applicationStateMachine.start();
   }
 
@@ -164,7 +168,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     } while (shouldRetry);
     // statistic the time of write stateMachine
     RatisMetricsManager.getInstance()
-        .recordWriteStateMachineCost(System.nanoTime() - writeToStateMachineStartTime);
+        .recordWriteStateMachineCost(
+            System.nanoTime() - writeToStateMachineStartTime, consensusGroupType);
     return CompletableFuture.completedFuture(ret);
   }
 

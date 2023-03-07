@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.server.storage.RaftStorageDirectory;
@@ -95,7 +97,8 @@ public class SnapshotTest {
   @Test
   public void testSnapshot() throws Exception {
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), null);
+        new ApplicationStateMachineProxy(
+            new TestUtils.IntegerCounter(), null, TConsensusGroupType.DataRegion);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
 
@@ -167,7 +170,8 @@ public class SnapshotTest {
   @Test
   public void testCrossDiskLinkSnapshot() throws Exception {
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), null);
+        new ApplicationStateMachineProxy(
+            new CrossDiskLinkStatemachine(), null, TConsensusGroupType.DataRegion);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
     proxy.notifyTermIndexUpdated(20, 1005);
