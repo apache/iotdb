@@ -16,15 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.template;
+package org.apache.iotdb.db.metadata.newnode.factory;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.util.Iterator;
+public interface IMNodeFactory<N extends IMNode<N>> {
+  IMeasurementMNode<N> createMeasurementMNode(
+      N parent, String name, IMeasurementSchema schema, String alias);
 
-public interface TemplateMNodeGenerator<N extends IMNode<N>> {
+  IDeviceMNode<N> createDeviceMNode(N parent, String name);
 
-  N getChild(Template template, String name);
+  IDatabaseMNode<N> createDatabaseMNode(N parent, String name);
 
-  Iterator<N> getChildren(Template template);
+  N createDatabaseDeviceMNode(N parent, String name, long dataTTL);
+
+  N createAboveDatabaseMNode(N parent, String name);
+
+  N createBasicMNode(N parent, String name);
 }

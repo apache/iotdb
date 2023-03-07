@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -39,9 +39,9 @@ public interface ISegmentedPage extends ISchemaPage {
    */
   long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
-  IMNode read(short segIdx, String key) throws MetadataException;
+  ICacheMNode read(short segIdx, String key) throws MetadataException;
 
-  IMNode readByAlias(short segIdx, String alias) throws MetadataException;
+  ICacheMNode readByAlias(short segIdx, String alias) throws MetadataException;
 
   /**
    * The record is definitely inside specified segment. {@link WrappedSegment} will compare existed
@@ -52,7 +52,7 @@ public interface ISegmentedPage extends ISchemaPage {
    */
   void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
-  Queue<IMNode> getChildren(short segId) throws MetadataException;
+  Queue<ICacheMNode> getChildren(short segId) throws MetadataException;
 
   void removeRecord(short segId, String key) throws SegmentNotFoundException;
 

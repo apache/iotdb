@@ -16,41 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.newnode.measurement;
+package org.apache.iotdb.db.metadata.newnode.factory;
 
-import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode, CacheBasicMNode>
-    implements ICacheMNode {
-
-  public CacheMeasurementMNode(
+public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
+  @Override
+  public IMeasurementMNode<ICacheMNode> createMeasurementMNode(
       ICacheMNode parent, String name, IMeasurementSchema schema, String alias) {
-    super(schema, alias);
-    this.basicMNode = new CacheBasicMNode(parent, name);
+    return null;
   }
 
   @Override
-  public CacheEntry getCacheEntry() {
-    return basicMNode.getCacheEntry();
+  public IDeviceMNode<ICacheMNode> createDeviceMNode(ICacheMNode parent, String name) {
+    return null;
   }
 
   @Override
-  public void setCacheEntry(CacheEntry cacheEntry) {
-    basicMNode.setCacheEntry(cacheEntry);
+  public IDatabaseMNode<ICacheMNode> createDatabaseMNode(ICacheMNode parent, String name) {
+    return null;
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
-    return this;
+  public ICacheMNode createDatabaseDeviceMNode(ICacheMNode parent, String name, long dataTTL) {
+    return null;
   }
 
   @Override
-  public IMNodeContainer<ICacheMNode> getChildren() {
-    return CachedMNodeContainer.emptyMNodeContainer();
+  public ICacheMNode createAboveDatabaseMNode(ICacheMNode parent, String name) {
+    return null;
+  }
+
+  @Override
+  public ICacheMNode createBasicMNode(ICacheMNode parent, String name) {
+    return null;
   }
 }

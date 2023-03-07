@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,6 +37,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.util.Collections.emptySet;
+
 public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private long segmentAddress = -1;
@@ -40,6 +46,13 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   private Map<String, ICacheMNode> childCache = null;
   private Map<String, ICacheMNode> newChildBuffer = null;
   private Map<String, ICacheMNode> updatedChildBuffer = null;
+
+  private static final IMNodeContainer<ICacheMNode> EMPTY_CONTAINER =
+      new CachedMNodeContainer.EmptyContainer();
+
+  public static IMNodeContainer<ICacheMNode> emptyMNodeContainer() {
+    return EMPTY_CONTAINER;
+  }
 
   @Override
   public int size() {
@@ -438,6 +451,57 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         return true;
       }
       return false;
+    }
+  }
+
+  private static class EmptyContainer extends AbstractMap<String, ICacheMNode>
+      implements IMNodeContainer<ICacheMNode> {
+
+    @Override
+    public int size() {
+      return 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return true;
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+      return false;
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+      return false;
+    }
+
+    @Override
+    public ICacheMNode get(Object key) {
+      return null;
+    }
+
+    @Override
+    @NotNull
+    public Set<String> keySet() {
+      return emptySet();
+    }
+
+    @Override
+    @NotNull
+    public Collection<ICacheMNode> values() {
+      return emptySet();
+    }
+
+    @NotNull
+    public Set<Map.Entry<String, ICacheMNode>> entrySet() {
+      return emptySet();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return o == this;
     }
   }
 }

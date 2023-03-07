@@ -49,6 +49,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -62,7 +63,6 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -109,7 +109,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
   private volatile IMemMNode storageGroupMNode;
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
-  private final TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator;
+  private final IMNodeFactory<IMemMNode> nodeFactory;
   private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
@@ -117,26 +117,26 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
       PartialPath storageGroupPath,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       MemSchemaRegionStatistics regionStatistics,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
-    store = new MemMTreeStore(storageGroupPath, regionStatistics, templateMNodeGenerator);
+      IMNodeFactory<IMemMNode> nodeFactory) {
+    store = new MemMTreeStore(storageGroupPath, regionStatistics, nodeFactory);
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
   }
 
   private MTreeBelowSGMemoryImpl(
       PartialPath storageGroupPath,
       MemMTreeStore store,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
+      IMNodeFactory<IMemMNode> nodeFactory) {
     this.store = store;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
   }
 
   @Override
@@ -163,14 +163,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
       MemSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator)
+      IMNodeFactory<IMemMNode> nodeFactory)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
         new PartialPath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, regionStatistics, templateMNodeGenerator),
+            snapshotDir, measurementProcess, regionStatistics, nodeFactory),
         tagGetter,
-        templateMNodeGenerator);
+        nodeFactory);
   }
 
   // endregion
@@ -630,7 +630,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
             return null;
           }
         }) {
-      collector.setTemplateMap(templateMap, templateMNodeGenerator);
+      collector.setTemplateMap(templateMap, nodeFactory);
       collector.setSkipPreDeletedSchema(true);
       collector.traverse();
     }
@@ -943,7 +943,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
             };
           }
         };
-    collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), templateMNodeGenerator);
+    collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       traverser =

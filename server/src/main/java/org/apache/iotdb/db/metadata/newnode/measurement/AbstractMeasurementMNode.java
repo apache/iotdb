@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
@@ -183,12 +182,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
   }
 
   @Override
-  public IMNodeContainer getChildren() {
-    return MNodeContainers.emptyMNodeContainer();
-  }
-
-  @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<N> children) {
     // Do nothing
   }
 

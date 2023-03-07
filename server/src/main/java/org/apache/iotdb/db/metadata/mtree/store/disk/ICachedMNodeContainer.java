@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.util.Iterator;
@@ -67,7 +66,7 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICacheMNode> {
 
   static ICachedMNodeContainer getCachedMNodeContainer(ICacheMNode node) {
     IMNodeContainer<ICacheMNode> container = node.getChildren();
-    if (container.equals(MNodeContainers.emptyMNodeContainer())) {
+    if (container.equals(CachedMNodeContainer.emptyMNodeContainer())) {
       container = new CachedMNodeContainer();
       node.setChildren(container);
     }

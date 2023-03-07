@@ -35,10 +35,10 @@ import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.abovedatabase.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,30 +50,30 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
   private final MemSchemaRegionStatistics regionStatistics;
-  private final TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator;
+  private final IMNodeFactory<IMemMNode> nodeFactory;
 
   private IMemMNode root;
 
   public MemMTreeStore(
       PartialPath rootPath,
       MemSchemaRegionStatistics regionStatistics,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
+      IMNodeFactory<IMemMNode> nodeFactory) {
     this.root =
         new DatabaseMNode(
             null,
             rootPath.getTailNode(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     this.regionStatistics = regionStatistics;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
   }
 
   private MemMTreeStore(
       IMemMNode root,
       MemSchemaRegionStatistics regionStatistics,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator) {
+      IMNodeFactory<IMemMNode> nodeFactory) {
     this.root = root;
     this.regionStatistics = regionStatistics;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
   }
 
   @Override
@@ -120,8 +120,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       throws MetadataException {
     if (parent.isEntity()) {
       AbstractTraverserIterator<IMemMNode> iterator =
-          new MemoryTraverserIterator(
-              this, parent.getAsEntityMNode(), templateMap, templateMNodeGenerator);
+          new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {
@@ -148,7 +147,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
-    IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node);
+    IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
       requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
@@ -161,7 +160,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
-    IMemMNode result = MNodeUtils.setToInternal(entityMNode);
+    IMemMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
       releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
@@ -223,12 +222,12 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
       File snapshotDir,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
       MemSchemaRegionStatistics regionStatistics,
-      TemplateMNodeGenerator<IMemMNode> templateMNodeGenerator)
+      IMNodeFactory<IMemMNode> nodeFactory)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
         regionStatistics,
-        templateMNodeGenerator);
+        nodeFactory);
   }
 
   private void requestMemory(int size) {

@@ -36,10 +36,10 @@ import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.abovedatabase.CacheAboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +67,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 
   private final Runnable flushCallback;
 
-  private final TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator;
+  private final IMNodeFactory<ICacheMNode> nodeFactory;
 
   private final CachedSchemaRegionStatistics regionStatistics;
 
@@ -78,14 +78,14 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       Runnable flushCallback,
-      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
+      IMNodeFactory<ICacheMNode> nodeFactory)
       throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
@@ -255,8 +255,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       throws MetadataException {
     if (parent.isEntity()) {
       AbstractTraverserIterator<ICacheMNode> iterator =
-          new CachedTraverserIterator(
-              store, parent.getAsEntityMNode(), templateMap, templateMNodeGenerator);
+          new CachedTraverserIterator(store, parent.getAsEntityMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {
@@ -338,7 +337,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 
   @Override
   public IDeviceMNode<ICacheMNode> setToEntity(ICacheMNode node) {
-    IDeviceMNode<ICacheMNode> result = MNodeUtils.setToEntity(node);
+    IDeviceMNode<ICacheMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
       memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
@@ -348,7 +347,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 
   @Override
   public ICacheMNode setToInternal(IDeviceMNode<ICacheMNode> entityMNode) {
-    ICacheMNode result = MNodeUtils.setToInternal(entityMNode);
+    ICacheMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
       memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
     }
@@ -496,15 +495,10 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       Runnable flushCallback,
-      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
+      IMNodeFactory<ICacheMNode> nodeFactory)
       throws IOException, MetadataException {
     return new CachedMTreeStore(
-        snapshotDir,
-        storageGroup,
-        schemaRegionId,
-        regionStatistics,
-        flushCallback,
-        templateMNodeGenerator);
+        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback, nodeFactory);
   }
 
   private CachedMTreeStore(
@@ -513,14 +507,14 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
       Runnable flushCallback,
-      TemplateMNodeGenerator<ICacheMNode> templateMNodeGenerator)
+      IMNodeFactory<ICacheMNode> nodeFactory)
       throws IOException, MetadataException {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);

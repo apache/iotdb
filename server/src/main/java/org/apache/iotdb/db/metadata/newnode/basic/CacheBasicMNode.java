@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainerMapImpl;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.newnode.CacheMNodeInfo;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
@@ -153,7 +152,7 @@ public class CacheBasicMNode implements ICacheMNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new MNodeContainerMapImpl<ICacheMNode>();
+          children = new CachedMNodeContainer();
         }
       }
     }
@@ -183,7 +182,7 @@ public class CacheBasicMNode implements ICacheMNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new MNodeContainerMapImpl();
+          children = new CachedMNodeContainer();
         }
       }
     }
@@ -234,15 +233,15 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<ICacheMNode> getChildren() {
     if (children == null) {
-      return MNodeContainers.emptyMNodeContainer();
+      return CachedMNodeContainer.emptyMNodeContainer();
     }
     return children;
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<ICacheMNode> children) {
     this.children = children;
   }
 

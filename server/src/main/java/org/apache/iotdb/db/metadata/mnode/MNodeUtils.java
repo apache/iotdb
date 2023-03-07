@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.Iterator;
 
 public class MNodeUtils {
 
@@ -33,19 +36,22 @@ public class MNodeUtils {
    * @param node node to be transformed
    * @return generated entityMNode
    */
-  public static <N extends IMNode<N>> IDeviceMNode<N> setToEntity(IMNode<N> node) {
+  public static <N extends IMNode<N>> IDeviceMNode<N> setToEntity(
+      IMNode<N> node, IMNodeFactory<N> nodeFactory) {
     IDeviceMNode<N> entityMNode;
     if (node.isEntity()) {
       entityMNode = node.getAsEntityMNode();
     } else {
       if (node.isDatabase()) {
         entityMNode =
-            new AbstractDatabaseDeviceMNode(
-                node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL());
+            nodeFactory
+                .createDatabaseDeviceMNode(
+                    node.getParent(), node.getName(), node.getAsDatabaseMNode().getDataTTL())
+                .getAsEntityMNode();
         node.moveDataToNewMNode(entityMNode);
       } else {
         // basic node
-        entityMNode = new AbstractDeviceMNode(node.getParent(), node.getName());
+        entityMNode = nodeFactory.createDeviceMNode(node.getParent(), node.getName());
         if (node.getParent() != null) {
           node.getParent().replaceChild(node.getName(), entityMNode);
         } else {
@@ -64,20 +70,53 @@ public class MNodeUtils {
    * @param entityMNode node to be transformed
    * @return generated NoEntity node
    */
-  public static <N extends IMNode<N>> IMNode<N> setToInternal(IDeviceMNode<N> entityMNode) {
-    IMNode<N> node;
-    IMNode<N> parent = entityMNode.getParent();
+  public static <N extends IMNode<N>> N setToInternal(
+      IDeviceMNode<N> entityMNode, IMNodeFactory<N> nodeFactor) {
+    N node;
+    N parent = entityMNode.getParent();
     if (entityMNode.isDatabase()) {
-      node =
-          new AbstractDatabaseMNode(
-              parent, entityMNode.getName(), entityMNode.getAsDatabaseMNode().getDataTTL());
+      IDatabaseMNode<N> databaseMNode =
+          nodeFactor.createDatabaseMNode(parent, entityMNode.getName());
+      databaseMNode.setDataTTL(entityMNode.getAsDatabaseMNode().getDataTTL());
+      node = databaseMNode.getAsMNode();
     } else {
-      node = new BasicMNode(parent, entityMNode.getName());
+      node = nodeFactor.createBasicMNode(parent, entityMNode.getName());
     }
 
     if (parent != null) {
       parent.replaceChild(entityMNode.getName(), node);
     }
     return node;
+  }
+
+  public static <N extends IMNode<N>> N getChild(
+      Template template, String name, IMNodeFactory<N> nodeFactor) {
+    IMeasurementSchema schema = template.getSchema(name);
+    return schema == null
+        ? null
+        : nodeFactor
+            .createMeasurementMNode(null, name, template.getSchema(name), null)
+            .getAsMNode();
+  }
+
+  public static <N extends IMNode<N>> Iterator<N> getChildren(
+      Template template, IMNodeFactory<N> nodeFactor) {
+    return new Iterator<N>() {
+      private final Iterator<IMeasurementSchema> schemas =
+          template.getSchemaMap().values().iterator();
+
+      @Override
+      public boolean hasNext() {
+        return schemas.hasNext();
+      }
+
+      @Override
+      public N next() {
+        IMeasurementSchema schema = schemas.next();
+        return nodeFactor
+            .createMeasurementMNode(null, schema.getMeasurementId(), schema, null)
+            .getAsMNode();
+      }
+    };
   }
 }

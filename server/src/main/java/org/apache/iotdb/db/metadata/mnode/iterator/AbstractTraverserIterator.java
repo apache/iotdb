@@ -20,10 +20,11 @@ package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -47,13 +48,13 @@ public abstract class AbstractTraverserIterator<N extends IMNode<N>> implements 
       IMTreeStore<N> store,
       IDeviceMNode<N> parent,
       Map<Integer, Template> templateMap,
-      TemplateMNodeGenerator<N> templateMNodeGenerator)
+      IMNodeFactory<N> nodeFactory)
       throws MetadataException {
     this.directChildrenIterator = store.getChildrenIterator(parent.getAsMNode());
     if (templateMap != null && parent.isUseTemplate()) {
       Template template = getActivatedSchemaTemplate(parent, templateMap);
       if (template != null) {
-        templateChildrenIterator = templateMNodeGenerator.getChildren(template);
+        templateChildrenIterator = MNodeUtils.getChildren(template, nodeFactory);
       }
     }
   }

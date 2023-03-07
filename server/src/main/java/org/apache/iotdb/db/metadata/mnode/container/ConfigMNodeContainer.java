@@ -18,47 +18,29 @@
  */
 package org.apache.iotdb.db.metadata.mnode.container;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
+import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.util.AbstractMap;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Collections.emptySet;
 
-public class MNodeContainers {
+public class ConfigMNodeContainer extends ConcurrentHashMap<String, IConfigMNode>
+    implements IMNodeContainer<IConfigMNode> {
 
-  @SuppressWarnings("rawtypes")
-  private static final IMNodeContainer EMPTY_CONTAINER = new EmptyContainer();
+  private static final IMNodeContainer<IConfigMNode> EMPTY_CONTAINER =
+      new ConfigMNodeContainer.EmptyContainer();
 
-  @SuppressWarnings("unchecked")
-  public static IMNodeContainer emptyMNodeContainer() {
+  public static IMNodeContainer<IConfigMNode> emptyMNodeContainer() {
     return EMPTY_CONTAINER;
   }
 
-  public static boolean isEmptyContainer(IMNodeContainer container) {
-    return EMPTY_CONTAINER.equals(container);
-  }
-
-  public static IMNodeContainer getNewMNodeContainer() {
-    if (IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getSchemaEngineMode()
-        .equals(SchemaEngineMode.Schema_File.toString())) {
-      return new CachedMNodeContainer();
-    } else {
-      return new MNodeContainerMapImpl();
-    }
-  }
-
-  private static class EmptyContainer extends AbstractMap<String, IMNode>
-      implements IMNodeContainer {
+  private static class EmptyContainer extends AbstractMap<String, IConfigMNode>
+      implements IMNodeContainer<IConfigMNode> {
 
     @Override
     public int size() {
@@ -81,7 +63,7 @@ public class MNodeContainers {
     }
 
     @Override
-    public IMNode get(Object key) {
+    public IConfigMNode get(Object key) {
       return null;
     }
 
@@ -93,12 +75,12 @@ public class MNodeContainers {
 
     @Override
     @NotNull
-    public Collection<IMNode> values() {
+    public Collection<IConfigMNode> values() {
       return emptySet();
     }
 
     @NotNull
-    public Set<Map.Entry<String, IMNode>> entrySet() {
+    public Set<Entry<String, IConfigMNode>> entrySet() {
       return emptySet();
     }
 

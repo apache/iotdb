@@ -23,12 +23,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
-  protected TemplateMNodeGenerator<N> templateMNodeGenerator;
+  protected IMNodeFactory<N> nodeFactory;
 
   // if true, the pre deleted measurement or pre deactivated template won't be processed
   protected boolean skipPreDeletedSchema = false;
@@ -127,8 +128,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
         Template template = templateMap.get(templateId);
         // if null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage
-        if (template != null && templateMNodeGenerator != null) {
-          child = templateMNodeGenerator.getChild(templateMap.get(templateId), childName);
+        if (template != null && nodeFactory != null) {
+          child = MNodeUtils.getChild(templateMap.get(templateId), childName, nodeFactory);
         }
       }
     }
@@ -170,10 +171,9 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
   }
 
-  public void setTemplateMap(
-      Map<Integer, Template> templateMap, TemplateMNodeGenerator<N> templateMNodeGenerator) {
+  public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {
     this.templateMap = templateMap;
-    this.templateMNodeGenerator = templateMNodeGenerator;
+    this.nodeFactory = nodeFactory;
   }
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {

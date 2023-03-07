@@ -25,14 +25,14 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
-import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -167,8 +167,8 @@ public class SchemaFile implements ISchemaFile {
   // region Interface Implementation
 
   @Override
-  public IMNode init() throws MetadataException {
-    IMNode resNode;
+  public ICacheMNode init() throws MetadataException {
+    ICacheMNode resNode;
     String[] sgPathNodes =
         storageGroupName == null
             ? new String[] {"noName"}
@@ -176,30 +176,31 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              new AbstractDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL),
-              0L);
+              new CacheDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+      resNode.getAsEntityMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
+      resNode.getAsEntityMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
-              new AbstractDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              new CacheDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
     }
     resNode.setFullPath(storageGroupName);
-    resNode.setSchemaTemplateId(sgNodeTemplateIdWithState);
-    resNode.setUseTemplate(sgNodeTemplateIdWithState > -1);
     return resNode;
   }
 
   @Override
-  public boolean updateStorageGroupNode(IDatabaseMNode sgNode) throws IOException {
+  public boolean updateStorageGroupNode(IDatabaseMNode<ICacheMNode> sgNode) throws IOException {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
-    this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
+    if (sgNode.isEntity()) {
+      this.sgNodeTemplateIdWithState = sgNode.getAsEntityMNode().getSchemaTemplateIdWithState();
+    }
     updateHeaderBuffer();
     return true;
   }
 
   @Override
-  public void delete(IMNode node) throws IOException, MetadataException {
+  public void delete(ICacheMNode node) throws IOException, MetadataException {
     if (node.isDatabase()) {
       // should clear this file
       clear();
@@ -209,7 +210,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public void writeMNode(IMNode node) throws MetadataException, IOException {
+  public void writeMNode(ICacheMNode node) throws MetadataException, IOException {
     long curSegAddr = getNodeAddress(node);
 
     if (node.isDatabase()) {
@@ -232,13 +233,14 @@ public class SchemaFile implements ISchemaFile {
   }
 
   @Override
-  public IMNode getChildNode(IMNode parent, String childName)
+  public ICacheMNode getChildNode(ICacheMNode parent, String childName)
       throws MetadataException, IOException {
     return pageManager.getChildNode(parent, childName);
   }
 
   @Override
-  public Iterator<IMNode> getChildren(IMNode parent) throws MetadataException, IOException {
+  public Iterator<ICacheMNode> getChildren(ICacheMNode parent)
+      throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
@@ -409,11 +411,11 @@ public class SchemaFile implements ISchemaFile {
         + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
-  public static long getNodeAddress(IMNode node) {
+  public static long getNodeAddress(ICacheMNode node) {
     return ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress();
   }
 
-  public static IMNode setNodeAddress(IMNode node, long addr) {
+  public static ICacheMNode setNodeAddress(ICacheMNode node, long addr) {
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(addr);
     return node;
   }

@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata.newnode.measurement;
 
 import org.apache.iotdb.db.metadata.mnode.BasicMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -33,5 +35,10 @@ public class MeasurementMNode extends AbstractMeasurementMNode<IMemMNode, BasicM
   @Override
   public IMemMNode getAsMNode() {
     return this;
+  }
+
+  @Override
+  public IMNodeContainer<IMemMNode> getChildren() {
+    return MemMNodeContainer.emptyMNodeContainer();
   }
 }

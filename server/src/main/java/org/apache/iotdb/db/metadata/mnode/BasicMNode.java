@@ -21,8 +21,7 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainerMapImpl;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
+import org.apache.iotdb.db.metadata.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.newnode.BasicMNodeInfo;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
@@ -150,7 +149,7 @@ public class BasicMNode implements IMemMNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new MNodeContainerMapImpl<>();
+          children = new MemMNodeContainer();
         }
       }
     }
@@ -180,7 +179,7 @@ public class BasicMNode implements IMemMNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new MNodeContainerMapImpl<>();
+          children = new MemMNodeContainer();
         }
       }
     }
@@ -231,15 +230,15 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<IMemMNode> getChildren() {
     if (children == null) {
-      return MNodeContainers.emptyMNodeContainer();
+      return MemMNodeContainer.emptyMNodeContainer();
     }
     return children;
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(IMNodeContainer<IMemMNode> children) {
     this.children = children;
   }
 

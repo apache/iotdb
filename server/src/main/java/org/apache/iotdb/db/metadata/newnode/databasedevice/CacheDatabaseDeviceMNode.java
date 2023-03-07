@@ -40,4 +40,9 @@ public class CacheDatabaseDeviceMNode
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
   }
+
+  @Override
+  public ICacheMNode getAsMNode() {
+    return this;
+  }
 }

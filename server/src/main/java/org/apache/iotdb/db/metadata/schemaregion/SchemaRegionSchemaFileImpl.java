@@ -45,9 +45,9 @@ import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.metadata.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGCachedImpl;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
-import org.apache.iotdb.db.metadata.newnode.CacheTemplateMNodeGenerator;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -204,7 +204,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               },
               schemaRegionId.getId(),
               regionStatistics,
-              new CacheTemplateMNodeGenerator());
+              new CacheMNodeFactory());
 
       if (!(config.isClusterMode()
           && config
@@ -521,7 +521,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               },
               tagManager::readTags,
               this::flushCallback,
-              new CacheTemplateMNodeGenerator());
+              new CacheMNodeFactory());
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,

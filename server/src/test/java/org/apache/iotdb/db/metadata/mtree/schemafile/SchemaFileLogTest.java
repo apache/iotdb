@@ -20,12 +20,12 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -71,15 +71,15 @@ public class SchemaFileLogTest {
   public void essentialLogTest() throws IOException, MetadataException {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode newSGNode = new AbstractDatabaseDeviceMNode(null, "newSG", 10000L);
+    IDatabaseMNode<ICacheMNode> newSGNode = new CacheDatabaseDeviceMNode(null, "newSG", 10000L);
     sf.updateStorageGroupNode(newSGNode);
 
-    IMNode root = virtualTriangleMTree(5, "root.test");
+    ICacheMNode root = virtualTriangleMTree(5, "root.test");
 
-    Iterator<IMNode> ite = getTreeBFT(root);
-    IMNode lastNode = null;
+    Iterator<ICacheMNode> ite = getTreeBFT(root);
+    ICacheMNode lastNode = null;
     while (ite.hasNext()) {
-      IMNode curNode = ite.next();
+      ICacheMNode curNode = ite.next();
       if (!curNode.isMeasurement()) {
         sf.writeMNode(curNode);
         lastNode = curNode;
@@ -94,7 +94,7 @@ public class SchemaFileLogTest {
             ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), corruptPageIndex);
 
     // record number of children now
-    Iterator<IMNode> res = sf.getChildren(lastNode);
+    Iterator<ICacheMNode> res = sf.getChildren(lastNode);
     int cnt = 0;
     while (res.hasNext()) {
       cnt++;
