@@ -220,8 +220,9 @@ public interface ICompressor extends Serializable {
 
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) {
+      int startPosition = compressed.position();
       compressor.compress(data, compressed);
-      return compressed.limit();
+      return compressed.position() - startPosition;
     }
 
     @Override
