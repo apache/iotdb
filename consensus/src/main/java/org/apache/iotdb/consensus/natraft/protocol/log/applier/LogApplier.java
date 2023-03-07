@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.applier;
 
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 
 /** LogApplier applies the log to the local node to make it take effect. */
@@ -34,4 +35,6 @@ public interface LogApplier {
   void apply(Entry e);
 
   default void close() {}
+
+  IStateMachine getStateMachine();
 }

@@ -21,28 +21,26 @@ package org.apache.iotdb.consensus.natraft.protocol.log.applier;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 public class AsyncLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncLogApplier.class);
-  private static final int CONCURRENT_CONSUMER_NUM = Runtime.getRuntime().availableProcessors();
-  private RaftConfig config;
+  private static final int CONCURRENT_CONSUMER_NUM = 4;
   private LogApplier embeddedApplier;
-  private Map<PartialPath, DataLogConsumer> consumerMap;
+  private DataLogConsumer[] consumers;
   private ExecutorService consumerPool;
   private String name;
 
@@ -54,11 +52,14 @@ public class AsyncLogApplier implements LogApplier {
 
   public AsyncLogApplier(LogApplier embeddedApplier, String name, RaftConfig config) {
     this.embeddedApplier = embeddedApplier;
-    consumerMap = new HashMap<>();
+    consumers = new DataLogConsumer[CONCURRENT_CONSUMER_NUM];
     consumerPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(CONCURRENT_CONSUMER_NUM, "ApplierThread");
+    for (int i = 0; i < consumers.length; i++) {
+      consumers[i] = new DataLogConsumer(name + "-" + i, config.getMaxNumOfLogsInMem());
+      consumerPool.submit(consumers[i]);
+    }
     this.name = name;
-    this.config = config;
   }
 
   @Override
@@ -71,12 +72,18 @@ public class AsyncLogApplier implements LogApplier {
   // the consumers will never be drained
   public synchronized void apply(Entry e) {
 
-    PartialPath logKey = getLogKey(e);
+    if (e instanceof RequestEntry) {
+      RequestEntry requestEntry = (RequestEntry) e;
+      IConsensusRequest request = requestEntry.getRequest();
+      request = getStateMachine().deserializeRequest(request);
+      requestEntry.setRequest(request);
 
-    if (logKey != null) {
-      // this plan only affects one sg, so we can run it with other plans in parallel
-      provideLogToConsumers(logKey, e);
-      return;
+      PartialPath logKey = getLogKey(request);
+      if (logKey != null) {
+        // this plan only affects one sg, so we can run it with other plans in parallel
+        provideLogToConsumers(logKey, e);
+        return;
+      }
     }
 
     logger.debug("{}: {} is waiting for consumers to drain", name, e);
@@ -84,13 +91,12 @@ public class AsyncLogApplier implements LogApplier {
     applyInternal(e);
   }
 
-  private PartialPath getLogKey(Entry e) {
-    // TODO-raft: implement
-    return null;
+  private PartialPath getLogKey(IConsensusRequest e) {
+    return e.conflictKey();
   }
 
   private void provideLogToConsumers(PartialPath planKey, Entry e) {
-    consumerMap.computeIfAbsent(planKey, d -> new DataLogConsumer(name + "-" + d)).accept(e);
+    consumers[Math.abs(planKey.hashCode()) % CONCURRENT_CONSUMER_NUM].accept(e);
   }
 
   private void drainConsumers() {
@@ -108,7 +114,7 @@ public class AsyncLogApplier implements LogApplier {
   }
 
   private boolean allConsumersEmpty() {
-    for (DataLogConsumer consumer : consumerMap.values()) {
+    for (DataLogConsumer consumer : consumers) {
       if (!consumer.isEmpty()) {
         if (logger.isDebugEnabled()) {
           logger.debug("Consumer not empty: {}", consumer);
@@ -125,14 +131,14 @@ public class AsyncLogApplier implements LogApplier {
 
   private class DataLogConsumer implements Runnable, Consumer<Entry> {
 
-    private BlockingQueue<Entry> logQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
+    private BlockingQueue<Entry> logQueue;
     private volatile long lastLogIndex;
     private volatile long lastAppliedLogIndex;
     private String name;
-    private Future<?> future;
 
-    public DataLogConsumer(String name) {
+    public DataLogConsumer(String name, int queueCapacity) {
       this.name = name;
+      this.logQueue = new ArrayBlockingQueue<>(queueCapacity);
     }
 
     public boolean isEmpty() {
@@ -174,20 +180,6 @@ public class AsyncLogApplier implements LogApplier {
 
     @Override
     public void accept(Entry e) {
-      if (future == null || future.isCancelled() || future.isDone()) {
-        if (future != null) {
-          try {
-            future.get();
-          } catch (InterruptedException ex) {
-            logger.error("Last applier thread exits unexpectedly", ex);
-            Thread.currentThread().interrupt();
-          } catch (ExecutionException ex) {
-            logger.error("Last applier thread exits unexpectedly", ex);
-          }
-        }
-        future = consumerPool.submit(this);
-      }
-
       try {
         lastLogIndex = e.getCurrLogIndex();
         logQueue.put(e);
@@ -213,5 +205,10 @@ public class AsyncLogApplier implements LogApplier {
           + '\''
           + '}';
     }
+  }
+
+  @Override
+  public IStateMachine getStateMachine() {
+    return embeddedApplier.getStateMachine();
   }
 }

@@ -71,4 +71,9 @@ public class BaseApplier implements LogApplier {
     request = stateMachine.deserializeRequest(request);
     return stateMachine.write(request);
   }
+
+  @Override
+  public IStateMachine getStateMachine() {
+    return stateMachine;
+  }
 }

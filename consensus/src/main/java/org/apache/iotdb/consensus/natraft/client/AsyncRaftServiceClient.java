@@ -92,7 +92,8 @@ public class AsyncRaftServiceClient extends RaftService.AsyncClient {
   @Override
   public void onError(Exception e) {
     if (e.getCause() instanceof NoMemberException
-        || e instanceof TApplicationException && e.getMessage().contains("No such member")) {
+        || e instanceof TApplicationException
+            && (e.getMessage() != null && e.getMessage().contains("No such member"))) {
       logger.debug(e.getMessage());
       ___currentMethod = null;
       returnSelf();

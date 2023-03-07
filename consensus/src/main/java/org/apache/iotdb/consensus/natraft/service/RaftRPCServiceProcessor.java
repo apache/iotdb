@@ -61,8 +61,7 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
     this.consensus = consensus;
   }
 
-  public void handleClientExit() {
-  }
+  public void handleClientExit() {}
 
   private RaftMember getMember(TConsensusGroupId groupId) throws TException {
     RaftMember member = consensus.getMember(Factory.createFromTConsensusGroupId(groupId));
@@ -98,16 +97,19 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
         ConfigChangeEntry lastConfigChangeEntry = findFirstConfigChangeEntry(request);
         if (lastConfigChangeEntry != null) {
           Peer thisPeer = new Peer(groupId, consensus.getThisNodeId(), consensus.getThisNode());
-          consensus.createNewMemberIfAbsent(groupId, thisPeer, lastConfigChangeEntry.getOldPeers(),
+          consensus.createNewMemberIfAbsent(
+              groupId,
+              thisPeer,
+              lastConfigChangeEntry.getOldPeers(),
               lastConfigChangeEntry.getNewPeers());
           return consensus.getMember(groupId);
         }
       } catch (UnknownLogTypeException e) {
         throw new TException(e.getMessage());
       }
-
+      throw new NoMemberException("No such member of: " + tgroupId);
     }
-    throw new NoMemberException("No such member of: " + tgroupId);
+    return member;
   }
 
   @Override

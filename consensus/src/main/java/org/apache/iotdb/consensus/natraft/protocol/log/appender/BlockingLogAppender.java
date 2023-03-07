@@ -61,7 +61,7 @@ public class BlockingLogAppender implements LogAppender {
    * and append "log" to it. Otherwise report a log mismatch.
    *
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   public AppendEntryResult appendEntry(AppendEntryRequest request, Entry log) {
     long resp = checkPrevLogIndex(request.prevLogIndex);
@@ -79,10 +79,9 @@ public class BlockingLogAppender implements LogAppender {
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
         success =
             logManager.maybeAppend(
-                request.prevLogIndex,
-                request.prevLogTerm,
-                request.leaderCommit,
-                Collections.singletonList(log));
+                request.prevLogIndex, request.prevLogTerm, Collections.singletonList(log));
+        member.tryUpdateCommitIndex(
+            request.getTerm(), request.leaderCommit, logManager.getTerm(request.leaderCommit));
         break;
       }
       try {
@@ -107,9 +106,7 @@ public class BlockingLogAppender implements LogAppender {
     return result;
   }
 
-  /**
-   * Wait until all logs before "prevLogIndex" arrive or a timeout is reached.
-   */
+  /** Wait until all logs before "prevLogIndex" arrive or a timeout is reached. */
   private boolean waitForPrevLog(long prevLogIndex) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
@@ -154,7 +151,7 @@ public class BlockingLogAppender implements LogAppender {
    *
    * @param logs append logs
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   public AppendEntryResult appendEntries(AppendEntriesRequest request, List<Entry> logs) {
     logger.debug(
@@ -186,8 +183,10 @@ public class BlockingLogAppender implements LogAppender {
     while (true) {
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        resp = lastConfigEntry == null ? appendWithoutConfigChange(request, logs, result)
-            : appendWithConfigChange(request, logs, result, lastConfigEntry);
+        resp =
+            lastConfigEntry == null
+                ? appendWithoutConfigChange(request, logs, result)
+                : appendWithConfigChange(request, logs, result, lastConfigEntry);
         break;
       }
 
@@ -206,14 +205,15 @@ public class BlockingLogAppender implements LogAppender {
     return result;
   }
 
-  protected long appendWithConfigChange(AppendEntriesRequest request, List<Entry> logs,
-      AppendEntryResult result, ConfigChangeEntry configChangeEntry) {
+  protected long appendWithConfigChange(
+      AppendEntriesRequest request,
+      List<Entry> logs,
+      AppendEntryResult result,
+      ConfigChangeEntry configChangeEntry) {
     long resp;
     try {
       logManager.getLock().writeLock().lock();
-      resp =
-          logManager.maybeAppend(
-              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+      resp = logManager.maybeAppend(request.prevLogIndex, request.prevLogTerm, logs);
 
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
@@ -228,6 +228,8 @@ public class BlockingLogAppender implements LogAppender {
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());
         member.setNewNodes(configChangeEntry.getNewPeers());
+        member.tryUpdateCommitIndex(
+            request.getTerm(), request.leaderCommit, logManager.getTerm(request.leaderCommit));
       } else {
         // the incoming log points to an illegal position, reject it
         result.status = Response.RESPONSE_LOG_MISMATCH;
@@ -238,11 +240,9 @@ public class BlockingLogAppender implements LogAppender {
     return resp;
   }
 
-  protected long appendWithoutConfigChange(AppendEntriesRequest request, List<Entry> logs,
-      AppendEntryResult result) {
-    long resp =
-        logManager.maybeAppend(
-            request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+  protected long appendWithoutConfigChange(
+      AppendEntriesRequest request, List<Entry> logs, AppendEntryResult result) {
+    long resp = logManager.maybeAppend(request.prevLogIndex, request.prevLogTerm, logs);
     if (resp != -1) {
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -254,6 +254,8 @@ public class BlockingLogAppender implements LogAppender {
       result.status = Response.RESPONSE_STRONG_ACCEPT;
       result.setLastLogIndex(logManager.getLastLogIndex());
       result.setLastLogTerm(logManager.getLastLogTerm());
+      member.tryUpdateCommitIndex(
+          request.getTerm(), request.leaderCommit, logManager.getTerm(request.leaderCommit));
 
     } else {
       // the incoming log points to an illegal position, reject it

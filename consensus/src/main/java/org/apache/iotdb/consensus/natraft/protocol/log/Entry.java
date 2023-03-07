@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Objects;
@@ -45,6 +47,14 @@ public abstract class Entry implements Comparable<Entry> {
   private volatile Exception exception;
 
   private long byteSize = 0;
+  private boolean fromThisNode = false;
+
+  public long receiveTime;
+  public long createTime;
+  public long acceptedTime;
+  public long committedTime;
+  public long applyTime;
+  public long waitEndTime;
 
   public int getDefaultSerializationBufferSize() {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
@@ -87,9 +97,16 @@ public abstract class Entry implements Comparable<Entry> {
   }
 
   public void setApplied(boolean applied) {
-    synchronized (this) {
-      this.applied = applied;
-      this.notifyAll();
+    this.applied = applied;
+
+    if (createTime != 0) {
+      applyTime = System.nanoTime();
+      Statistic.LOG_DISPATCHER_FROM_CREATE_TO_APPLIED.add(applyTime - createTime);
+    }
+    if (fromThisNode) {
+      synchronized (this) {
+        this.notifyAll();
+      }
     }
   }
 
@@ -141,5 +158,13 @@ public abstract class Entry implements Comparable<Entry> {
 
   public void setPrevTerm(long prevTerm) {
     this.prevTerm = prevTerm;
+  }
+
+  public boolean isFromThisNode() {
+    return fromThisNode;
+  }
+
+  public void setFromThisNode(boolean fromThisNode) {
+    this.fromThisNode = fromThisNode;
   }
 }

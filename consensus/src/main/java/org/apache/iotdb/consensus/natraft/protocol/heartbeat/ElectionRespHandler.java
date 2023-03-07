@@ -28,8 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.consensus.natraft.utils.Response.RESPONSE_LEADER_STILL_ONLINE;
@@ -50,10 +48,7 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
   private ElectionState electionState;
 
   public ElectionRespHandler(
-      RaftMember raftMember,
-      Peer voter,
-      long currTerm,
-      ElectionState electionState) {
+      RaftMember raftMember, Peer voter, long currTerm, ElectionState electionState) {
     this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
@@ -71,10 +66,7 @@ public class ElectionRespHandler implements AsyncMethodCallback<Long> {
 
     if (voterResp == RESPONSE_AGREE) {
       electionState.onAccept(voter);
-      logger.info(
-          "{}: Received a grant vote from {}",
-          memberName,
-          voter);
+      logger.info("{}: Received a grant vote from {}", memberName, voter);
       if (electionState.isAccepted()) {
         // the election is valid
         logger.info("{}: Election {} is won", memberName, currTerm);

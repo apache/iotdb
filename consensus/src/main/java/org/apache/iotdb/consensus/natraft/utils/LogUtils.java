@@ -17,16 +17,17 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.consensus.natraft.utils;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 public class LogUtils {
 
@@ -41,8 +42,8 @@ public class LogUtils {
     return votingEntry;
   }
 
-  public static AppendEntryRequest buildAppendEntryRequest(Entry entry, boolean serializeNow,
-      RaftMember member) {
+  public static AppendEntryRequest buildAppendEntryRequest(
+      Entry entry, boolean serializeNow, RaftMember member) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(member.getStatus().getTerm().get());
     if (serializeNow) {
@@ -76,6 +77,4 @@ public class LogUtils {
     }
     return sendLogRequest;
   }
-
-
 }

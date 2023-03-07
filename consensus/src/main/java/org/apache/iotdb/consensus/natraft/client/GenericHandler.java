@@ -71,7 +71,7 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
     while (elapsedTime < timeout) {
       if (result.get() == null && getException() == null) {
         synchronized (result) {
-          result.wait(1000);
+          result.wait(1);
         }
       } else {
         break;

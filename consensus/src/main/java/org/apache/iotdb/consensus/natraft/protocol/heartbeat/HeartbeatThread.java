@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
-import java.util.Collections;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
@@ -37,8 +36,6 @@ import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * HeartbeatThread takes the responsibility to send heartbeats (when this node is a leader), check
@@ -168,9 +165,7 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: End elections", memberName);
   }
 
-  /**
-   * Send each node (except the local node) in the group of the member a heartbeat.
-   */
+  /** Send each node (except the local node) in the group of the member a heartbeat. */
   protected void sendHeartbeats() {
     try {
       localMember.getLogManager().getLock().readLock().lock();
@@ -186,9 +181,7 @@ public class HeartbeatThread implements Runnable {
     sendHeartbeats(localMember.getAllNodes());
   }
 
-  /**
-   * Send each node (except the local node) in list a heartbeat.
-   */
+  /** Send each node (except the local node) in list a heartbeat. */
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Peer> nodes) {
     logger.debug(
@@ -298,13 +291,10 @@ public class HeartbeatThread implements Runnable {
     electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
     electionRequest.setGroupId(localMember.getRaftGroupId().convertToTConsensusGroupId());
 
-    ElectionState electionState = new ElectionState(localMember.getAllNodes(),
-        localMember.getNewNodes());
+    ElectionState electionState =
+        new ElectionState(localMember.getAllNodes(), localMember.getNewNodes());
 
-    requestVote(
-        electionState,
-        electionRequest,
-        nextTerm);
+    requestVote(electionState, electionRequest, nextTerm);
 
     try {
       logger.info(
@@ -333,13 +323,10 @@ public class HeartbeatThread implements Runnable {
    * Any against vote will set the flag "electionTerminated" to true and ends the election.
    */
   @SuppressWarnings("java:S2445")
-  private void requestVote(
-      ElectionState electionState,
-      ElectionRequest request,
-      long nextTerm) {
+  private void requestVote(ElectionState electionState, ElectionRequest request, long nextTerm) {
 
-    Collection<Peer> peers = NodeUtils.unionNodes(electionState.getCurrNodes(),
-        electionState.getNewNodes());
+    Collection<Peer> peers =
+        NodeUtils.unionNodes(electionState.getCurrNodes(), electionState.getNewNodes());
     // avoid concurrent modification
     for (Peer node : peers) {
       if (node.equals(localMember.getThisNode())) {
@@ -347,11 +334,7 @@ public class HeartbeatThread implements Runnable {
       }
 
       ElectionRespHandler handler =
-          new ElectionRespHandler(
-              localMember,
-              node,
-              nextTerm,
-              electionState);
+          new ElectionRespHandler(localMember, node, nextTerm, electionState);
       requestVoteAsync(node, handler, request);
     }
   }

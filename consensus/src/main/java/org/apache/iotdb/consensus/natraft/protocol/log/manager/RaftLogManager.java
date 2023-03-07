@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
-import java.util.function.Consumer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -33,6 +32,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.LogManagerMeta;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.StableEntryManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.snapshot.Snapshot;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +48,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 
 public abstract class RaftLogManager {
 
@@ -330,12 +331,11 @@ public abstract class RaftLogManager {
    *
    * @param lastIndex leader's matchIndex for this follower node
    * @param lastTerm the entry's term which index is leader's matchIndex for this follower node
-   * @param leaderCommit leader's commitIndex
    * @param entries entries sent from the leader node Note that the leader must ensure
    *     entries[0].index = lastIndex + 1
    * @return -1 if the entries cannot be appended, otherwise the last index of new entries
    */
-  public long maybeAppend(long lastIndex, long lastTerm, long leaderCommit, List<Entry> entries) {
+  public long maybeAppend(long lastIndex, long lastTerm, List<Entry> entries) {
     try {
       lock.writeLock().lock();
       if (matchTerm(lastTerm, lastIndex)) {
@@ -361,11 +361,6 @@ public abstract class RaftLogManager {
         } else {
           long offset = lastIndex + 1;
           append(entries.subList((int) (ci - offset), entries.size()));
-        }
-        try {
-          commitTo(Math.min(leaderCommit, newLastIndex));
-        } catch (LogExecutionException e) {
-          // exceptions are ignored on follower side
         }
         return newLastIndex;
       }
@@ -589,6 +584,13 @@ public abstract class RaftLogManager {
       if (config.isEnableRaftLogPersistence()) {
         // Cluster could continue provide service when exception is thrown here
         getStableEntryManager().append(entries, appliedIndex);
+      }
+      for (Entry entry : entries) {
+        if (entry.createTime != 0) {
+          entry.committedTime = System.nanoTime();
+          Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_COMMIT.add(
+              entry.committedTime - entry.createTime);
+        }
       }
     } catch (IOException e) {
       // The exception will block the raft service continue accept log.

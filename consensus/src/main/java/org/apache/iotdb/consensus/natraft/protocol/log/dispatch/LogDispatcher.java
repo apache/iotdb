@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -38,13 +33,13 @@ import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 
 import com.google.common.util.concurrent.RateLimiter;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +49,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -101,9 +98,6 @@ public class LogDispatcher {
     }
   }
 
-
-
-
   void createQueue(Peer node) {
     BlockingQueue<VotingEntry> logBlockingQueue;
     logBlockingQueue = new ArrayBlockingQueue<>(config.getMaxNumOfLogsInMem());
@@ -112,9 +106,7 @@ public class LogDispatcher {
 
     for (int i = 0; i < bindingThreadNum; i++) {
       executorServices
-          .computeIfAbsent(
-              node,
-              n -> createPool(node))
+          .computeIfAbsent(node, n -> createPool(node))
           .submit(newDispatcherThread(node, logBlockingQueue));
     }
   }
@@ -134,7 +126,7 @@ public class LogDispatcher {
   void createQueueAndBindingThreads(Collection<Peer> peers) {
     for (Peer node : peers) {
       if (!node.equals(member.getThisNode())) {
-       createQueue(node);
+        createQueue(node);
       }
     }
     updateRateLimiter();
@@ -154,7 +146,13 @@ public class LogDispatcher {
   }
 
   protected boolean addToQueue(BlockingQueue<VotingEntry> nodeLogQueue, VotingEntry request) {
-    return nodeLogQueue.add(request);
+    synchronized (nodeLogQueue) {
+      boolean added = nodeLogQueue.add(request);
+      if (added) {
+        nodeLogQueue.notifyAll();
+      }
+      return added;
+    }
   }
 
   public void offer(VotingEntry request) {
@@ -228,12 +226,13 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           synchronized (logBlockingDeque) {
-            VotingEntry poll = logBlockingDeque.take();
-            currBatch.add(poll);
-            if (maxBatchSize > 1) {
-              while (!logBlockingDeque.isEmpty() && currBatch.size() < maxBatchSize) {
-                currBatch.add(logBlockingDeque.take());
-              }
+            VotingEntry poll = logBlockingDeque.poll();
+            if (poll != null) {
+              currBatch.add(poll);
+              logBlockingDeque.drainTo(currBatch, maxBatchSize);
+            } else {
+              logBlockingDeque.wait(10);
+              continue;
             }
           }
           if (logger.isDebugEnabled()) {
@@ -300,7 +299,11 @@ public class LogDispatcher {
       return request;
     }
 
-    private void sendLogs(List<VotingEntry> currBatch) throws TException {
+    private void sendLogs(List<VotingEntry> currBatch) {
+      if (currBatch.isEmpty()) {
+        return;
+      }
+
       int logIndex = 0;
       logger.debug(
           "send logs from index {} to {}",
@@ -331,8 +334,7 @@ public class LogDispatcher {
       }
     }
 
-    public AppendNodeEntryHandler getAppendNodeEntryHandler(
-        VotingEntry log, Peer node) {
+    public AppendNodeEntryHandler getAppendNodeEntryHandler(VotingEntry log, Peer node) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setDirectReceiver(node);
       handler.setLog(log);
@@ -347,8 +349,7 @@ public class LogDispatcher {
       private AppendEntriesHandler(List<VotingEntry> batch) {
         singleEntryHandlers = new ArrayList<>(batch.size());
         for (VotingEntry sendLogRequest : batch) {
-          AppendNodeEntryHandler handler =
-              getAppendNodeEntryHandler(sendLogRequest, receiver);
+          AppendNodeEntryHandler handler = getAppendNodeEntryHandler(sendLogRequest, receiver);
           singleEntryHandlers.add(handler);
         }
       }

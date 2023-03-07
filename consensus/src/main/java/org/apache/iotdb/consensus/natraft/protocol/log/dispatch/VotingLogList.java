@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class VotingLogList {
 
@@ -80,7 +83,8 @@ public class VotingLogList {
    * @return the lastly removed entry if any.
    */
   public void onStronglyAccept(VotingEntry entry, Peer acceptingNode) {
-    logger.debug("{} is strongly accepted by {}", entry, acceptingNode);
+    logger.debug(
+        "{} is strongly accepted by {}; {}", entry, acceptingNode, stronglyAcceptedIndices);
     long currLogIndex = entry.getEntry().getCurrLogIndex();
 
     Long newIndex =
@@ -96,6 +100,9 @@ public class VotingLogList {
                 return oldIndex;
               }
             });
+    entry.getEntry().acceptedTime = System.nanoTime();
+    Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.add(
+        entry.getEntry().acceptedTime - entry.getEntry().createTime);
     if (newIndex == currLogIndex) {
       tryCommit(entry);
     }
@@ -119,16 +126,16 @@ public class VotingLogList {
     if (enableWeakAcceptance) {
       int currNodeQuorumNum = votingEntry.currNodesQuorumNum();
       int newNodeQuorumNum = votingEntry.newNodesQuorumNum();
-      int stronglyAcceptedNumByCurrNodes = votingEntry.stronglyAcceptedNumByCurrNodes(
-          stronglyAcceptedIndices);
-      int stronglyAcceptedNumByNewNodes = votingEntry.stronglyAcceptedNumByNewNodes(
-          stronglyAcceptedIndices);
-      int weaklyAcceptedNumByCurrNodes = votingEntry.weaklyAcceptedNumByCurrNodes(
-          stronglyAcceptedIndices);
-      int weaklyAcceptedNumByNewNodes = votingEntry.weaklyAcceptedNumByNewNodes(
-          stronglyAcceptedIndices);
-      if ((weaklyAcceptedNumByCurrNodes + stronglyAcceptedNumByCurrNodes) >= currNodeQuorumNum &&
-          (weaklyAcceptedNumByNewNodes + stronglyAcceptedNumByNewNodes) >= newNodeQuorumNum) {
+      int stronglyAcceptedNumByCurrNodes =
+          votingEntry.stronglyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
+      int stronglyAcceptedNumByNewNodes =
+          votingEntry.stronglyAcceptedNumByNewNodes(stronglyAcceptedIndices);
+      int weaklyAcceptedNumByCurrNodes =
+          votingEntry.weaklyAcceptedNumByCurrNodes(stronglyAcceptedIndices);
+      int weaklyAcceptedNumByNewNodes =
+          votingEntry.weaklyAcceptedNumByNewNodes(stronglyAcceptedIndices);
+      if ((weaklyAcceptedNumByCurrNodes + stronglyAcceptedNumByCurrNodes) >= currNodeQuorumNum
+          && (weaklyAcceptedNumByNewNodes + stronglyAcceptedNumByNewNodes) >= newNodeQuorumNum) {
         return AcceptedType.WEAKLY_ACCEPTED;
       }
     }

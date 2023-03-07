@@ -31,14 +31,14 @@ import java.util.concurrent.TimeUnit;
 
 public class RaftConfig {
 
-  private boolean enableWeakAcceptance = true;
+  private boolean enableWeakAcceptance = false;
   private int maxNumOfLogsInMem = 10000;
   private int minNumOfLogsInMem = 1000;
   private long maxMemorySizeForRaftLog = 512 * 1024 * 1024L;
   private int logDeleteCheckIntervalSecond = 1;
   private boolean enableRaftLogPersistence = true;
   private int catchUpTimeoutMS = 60_000;
-  private boolean useFollowerSlidingWindow = true;
+  private boolean useFollowerSlidingWindow = false;
   private int uncommittedRaftLogNumForRejectThreshold = 10000;
   private int heartbeatIntervalMs = 1000;
   private int electionTimeoutMs = 20_000;

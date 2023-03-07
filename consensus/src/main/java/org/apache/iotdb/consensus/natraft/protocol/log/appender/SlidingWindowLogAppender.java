@@ -138,11 +138,10 @@ public class SlidingWindowLogAppender implements LogAppender {
       // TODO: Consider memory footprint to execute a precise rejection
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        synchronized (logManager) {
-          success =
-              logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
-          break;
-        }
+        success = logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, logs);
+        member.tryUpdateCommitIndex(
+            member.getStatus().getTerm().get(), leaderCommit, logManager.getTerm(leaderCommit));
+        break;
       }
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
@@ -211,13 +210,14 @@ public class SlidingWindowLogAppender implements LogAppender {
     long appendedPos = 0;
 
     AppendEntryResult result = new AppendEntryResult();
-    synchronized (logManager) {
+    synchronized (this) {
       int windowPos = (int) (entry.getCurrLogIndex() - logManager.getLastLogIndex() - 1);
       if (windowPos < 0) {
         // the new entry may replace an appended entry
         appendedPos =
-            logManager.maybeAppend(
-                prevLogIndex, prevLogTerm, leaderCommit, Collections.singletonList(entry));
+            logManager.maybeAppend(prevLogIndex, prevLogTerm, Collections.singletonList(entry));
+        member.tryUpdateCommitIndex(
+            member.getStatus().getTerm().get(), leaderCommit, logManager.getTerm(leaderCommit));
         result.status = Response.RESPONSE_STRONG_ACCEPT;
         result.setLastLogIndex(logManager.getLastLogIndex());
         result.setLastLogTerm(logManager.getLastLogTerm());

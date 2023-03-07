@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.logtype;
 
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 
 public class ConfigChangeEntry extends Entry {
 

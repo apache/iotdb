@@ -69,10 +69,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     long resp = response.status;
 
     if (resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_AGREE) {
-      member
-          .getVotingLogList()
-          .onStronglyAccept(
-              log, trueReceiver);
+      member.getVotingLogList().onStronglyAccept(log, trueReceiver);
 
       member.getStatus().getPeerMap().get(trueReceiver).setMatchIndex(response.lastLogIndex);
     } else if (resp > 0) {
@@ -136,7 +133,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     }
   }
 
-
   public void setLog(VotingEntry log) {
     this.log = log;
   }
@@ -148,5 +144,4 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   public void setDirectReceiver(Peer follower) {
     this.directReceiver = follower;
   }
-
 }

@@ -24,9 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse.Builder;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient.Factory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.checkerframework.checker.units.qual.C;
 
 public class StatusUtils {
 

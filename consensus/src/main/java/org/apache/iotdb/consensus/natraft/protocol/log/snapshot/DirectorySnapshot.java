@@ -4,7 +4,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.snapshot;
 
-import java.io.DataOutputStream;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -12,13 +11,14 @@ import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,9 +37,7 @@ public class DirectorySnapshot extends Snapshot {
   private TEndPoint source;
   private String memberName;
 
-  public DirectorySnapshot() {
-
-  }
+  public DirectorySnapshot() {}
 
   public DirectorySnapshot(File directory, List<Path> filePaths, List<Peer> peers) {
     this.directory = directory;

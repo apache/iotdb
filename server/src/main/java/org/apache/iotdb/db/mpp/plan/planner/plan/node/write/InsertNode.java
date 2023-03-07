@@ -394,4 +394,9 @@ public abstract class InsertNode extends WritePlanNode {
     result = 31 * result + Arrays.hashCode(dataTypes);
     return result;
   }
+
+  @Override
+  public PartialPath conflictKey() {
+    return devicePath;
+  }
 }

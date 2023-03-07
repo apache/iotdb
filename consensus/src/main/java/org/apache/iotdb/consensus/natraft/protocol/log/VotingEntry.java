@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
@@ -28,6 +26,8 @@ import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 
@@ -51,8 +51,8 @@ public class VotingEntry {
       RaftConfig config) {
     this.entry = entry;
     if (config.isUseFollowerSlidingWindow()) {
-      weaklyAcceptedNodes = new HashSet<>(
-          currNodes.size() + (newNodes != null ? newNodes.size() : 0));
+      weaklyAcceptedNodes =
+          new HashSet<>(currNodes.size() + (newNodes != null ? newNodes.size() : 0));
     }
     this.setAppendEntryRequest(appendEntryRequest);
     this.currNodes = currNodes;

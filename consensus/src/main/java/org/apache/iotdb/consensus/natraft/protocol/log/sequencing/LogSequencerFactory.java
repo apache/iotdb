@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.natraft.protocol.log.sequencing;
 
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 
 public interface LogSequencerFactory {
 

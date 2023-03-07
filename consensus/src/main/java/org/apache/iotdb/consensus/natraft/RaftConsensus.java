@@ -49,6 +49,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.Flow
 import org.apache.iotdb.consensus.natraft.service.RaftRPCService;
 import org.apache.iotdb.consensus.natraft.service.RaftRPCServiceProcessor;
 import org.apache.iotdb.consensus.natraft.utils.StatusUtils;
+import org.apache.iotdb.consensus.natraft.utils.Timer;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -102,6 +103,12 @@ public class RaftConsensus implements IConsensus {
     } catch (StartupException e) {
       throw new IOException(e);
     }
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  logger.info(Timer.Statistic.getReport());
+                }));
   }
 
   private void initAndRecover() throws IOException {
@@ -185,8 +192,8 @@ public class RaftConsensus implements IConsensus {
     stateMachineMap.remove(groupId);
   }
 
-  public boolean createNewMemberIfAbsent(ConsensusGroupId groupId, Peer thisPeer,
-      List<Peer> peers, List<Peer> newPeers) {
+  public boolean createNewMemberIfAbsent(
+      ConsensusGroupId groupId, Peer thisPeer, List<Peer> peers, List<Peer> newPeers) {
     AtomicBoolean exist = new AtomicBoolean(true);
     stateMachineMap.computeIfAbsent(
         groupId,
@@ -199,8 +206,15 @@ public class RaftConsensus implements IConsensus {
           }
           RaftMember impl =
               new RaftMember(
-                  path, config, thisPeer, peers, newPeers, groupId, registry.apply(groupId),
-                  clientManager, this::onMemberRemoved);
+                  path,
+                  config,
+                  thisPeer,
+                  peers,
+                  newPeers,
+                  groupId,
+                  registry.apply(groupId),
+                  clientManager,
+                  this::onMemberRemoved);
           impl.start();
           return impl;
         });
@@ -347,7 +361,6 @@ public class RaftConsensus implements IConsensus {
   public RaftMember getMember(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
   }
-
 
   public int getThisNodeId() {
     return thisNodeId;

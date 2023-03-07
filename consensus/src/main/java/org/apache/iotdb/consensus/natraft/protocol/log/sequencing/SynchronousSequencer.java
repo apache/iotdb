@@ -47,8 +47,6 @@ public class SynchronousSequencer implements LogSequencer {
     this.config = config;
   }
 
-
-
   @Override
   public VotingEntry sequence(Entry e) {
     VotingEntry votingEntry = null;
@@ -68,6 +66,7 @@ public class SynchronousSequencer implements LogSequencer {
           e.setCurrLogTerm(member.getStatus().getTerm().get());
           e.setCurrLogIndex(lastIndex + 1);
           e.setPrevTerm(lastTerm);
+          e.setFromThisNode(true);
 
           // logDispatcher will serialize log, and set log size, and we will use the size after it
           logManager.append(Collections.singletonList(e));
@@ -100,7 +99,6 @@ public class SynchronousSequencer implements LogSequencer {
 
     return votingEntry;
   }
-
 
   public static class Factory implements LogSequencerFactory {
 
