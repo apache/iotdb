@@ -50,7 +50,7 @@ public class TsFileSettleByCompactionTool {
   private static final String FILE_PATH_NAME = "file paths";
 
   private static final String DEFAULT_HOST_VALUE = "127.0.0.1";
-  private static final String DEFAULT_PORT_VALUE = "9003";
+  private static final String DEFAULT_PORT_VALUE = "10730";
 
   public static void main(String[] args) throws TException {
     String[] filePaths;
@@ -100,7 +100,7 @@ public class TsFileSettleByCompactionTool {
         Option.builder(PORT_ARGS)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (optional, default 9003)")
+            .desc("Port (optional, default 10730)")
             .build();
     options.addOption(port);
 

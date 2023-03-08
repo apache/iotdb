@@ -45,11 +45,13 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBTagAggregationIT {
+  private final double E = 0.00001D;
   protected static final String[] DATASET =
       new String[] {
         "CREATE DATABASE root.sg.a;",
         "CREATE DATABASE root.sg.b;",
         "CREATE DATABASE root.sg2.c;",
+        "CREATE DATABASE root.case2;",
         "create timeseries root.sg.a.d1.t with datatype=FLOAT tags(k1=k1v1, k2=k2v1, k3=k3v1);",
         "create timeseries root.sg.b.d2.t with datatype=FLOAT tags(k1=k1v1, k2=k2v2);",
         "create timeseries root.sg.a.d3.t with datatype=FLOAT tags(k1=k1v2, k2=k2v1);",
@@ -72,7 +74,17 @@ public class IoTDBTagAggregationIT {
         "insert into root.sg.b.d4(time, t) values(10, 5.4);",
         "insert into root.sg.a.d5(time, t) values(10, 6.5);",
         "insert into root.sg.b.d6(time, t) values(10, 7.6);",
-        "insert into root.sg.a.d7(time, t) values(10, 8.7);"
+        "insert into root.sg.a.d7(time, t) values(10, 8.7);",
+
+        // test multi value with multi aggregation column
+        "create timeseries root.case2.d1.s1 with datatype=FLOAT tags(k1=v1);",
+        "create timeseries root.case2.d2.s1 with datatype=FLOAT tags(k1=v1);",
+        "create timeseries root.case2.d1.s2 with datatype=FLOAT tags(k1=v2);",
+        "create timeseries root.case2.d3.s1 with datatype=FLOAT tags(k1=v2);",
+        "insert into root.case2.d1(time, s1) values(10, 8.8);",
+        "insert into root.case2.d2(time, s1) values(10, 7.7);",
+        "insert into root.case2.d1(time, s2) values(10, 6.6);",
+        "insert into root.case2.d3(time, s1) values(10, 9.9);",
       };
 
   protected static final double DELTA = 0.001D;
@@ -525,6 +537,47 @@ public class IoTDBTagAggregationIT {
     } catch (SQLException e) {
       Assert.assertTrue(
           e.getMessage().contains("Having clause is not supported yet in GROUP BY TAGS query"));
+    }
+  }
+
+  @Test
+  public void testWithEmptyGroupedTimeSeries() {
+    String query = "SELECT avg(s1), avg(s2) FROM root.case2.** GROUP BY TAGS(k1)";
+    // Expected result set:
+    // +--+-----------------+-----------------+
+    // |k1|          avg(s1)|          avg(s2)|
+    // +--+-----------------+-----------------+
+    // |v1|             8.25|             null|
+    // |v2|9.899999618530273|6.599999904632568|
+    // +--+-----------------+-----------------+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(query)) {
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        Set<String> groups = new HashSet<>();
+        for (int i = 0; i < 2; i++) {
+          Assert.assertTrue(resultSet.next());
+          String tagValue = resultSet.getString("k1");
+          switch (tagValue) {
+            case "v1":
+              Assert.assertEquals(8.25D, resultSet.getDouble("avg(s1)"), E);
+              Assert.assertEquals(0.0D, resultSet.getDouble("avg(s2)"), E);
+              break;
+            case "v2":
+              Assert.assertEquals(9.899999618530273D, resultSet.getDouble("avg(s1)"), E);
+              Assert.assertEquals(6.599999904632568D, resultSet.getDouble("avg(s2)"), E);
+              break;
+            default:
+              fail("Unexpected tag value: " + tagValue);
+          }
+          groups.add(tagValue);
+        }
+        Assert.assertEquals(2, groups.size());
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
