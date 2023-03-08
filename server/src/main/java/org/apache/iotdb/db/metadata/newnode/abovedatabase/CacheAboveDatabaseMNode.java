@@ -31,12 +31,12 @@ public class CacheAboveDatabaseMNode
 
   @Override
   public CacheEntry getCacheEntry() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    return basicMNode.getCacheEntry();
   }
 
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    basicMNode.setCacheEntry(cacheEntry);
   }
 
   @Override
