@@ -48,6 +48,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
+
 public class FunctionExpression extends Expression {
 
   private FunctionType functionType;
@@ -211,7 +213,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression() || (isBuiltInScalarFunction())) {
+    if (isBuiltInAggregationFunctionExpression() || isBuiltInScalarFunction()) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)
@@ -262,26 +264,35 @@ public class FunctionExpression extends Expression {
         }
       }
       if (!functionAttributes.isEmpty()) {
-        if (!expressions.isEmpty()) {
-          builder.append(", ");
-        }
-        Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
-        Entry<String, String> entry = iterator.next();
-        builder
-            .append("\"")
-            .append(entry.getKey())
-            .append("\"=\"")
-            .append(entry.getValue())
-            .append("\"");
-        while (iterator.hasNext()) {
-          entry = iterator.next();
+        // currently only the header of cast function is different
+        // this if-else branch can be extracted into a method if more new functions have different
+        // header
+        if (functionName.equalsIgnoreCase(CAST_FUNCTION)) {
+          // Cast has only one attribute
+          builder.append(" AS ");
+          builder.append(functionAttributes.entrySet().iterator().next().getValue());
+        } else {
+          if (!expressions.isEmpty()) {
+            builder.append(", ");
+          }
+          Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
+          Entry<String, String> entry = iterator.next();
           builder
-              .append(", ")
               .append("\"")
               .append(entry.getKey())
               .append("\"=\"")
               .append(entry.getValue())
               .append("\"");
+          while (iterator.hasNext()) {
+            entry = iterator.next();
+            builder
+                .append(", ")
+                .append("\"")
+                .append(entry.getKey())
+                .append("\"=\"")
+                .append(entry.getValue())
+                .append("\"");
+          }
         }
       }
       parametersString = builder.toString();

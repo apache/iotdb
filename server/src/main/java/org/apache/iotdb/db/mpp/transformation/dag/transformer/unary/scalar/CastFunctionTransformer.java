@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastHelper;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,7 +97,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(long value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = (int) value;
+        cachedInt = CastHelper.castLongToInt(value);
         return;
       case INT64:
         cachedLong = value;
@@ -122,10 +123,10 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(float value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = (int) value;
+        cachedInt = CastHelper.castFloatToInt(value);
         return;
       case INT64:
-        cachedLong = (long) value;
+        cachedLong = CastHelper.castFloatToLong(value);
         return;
       case FLOAT:
         cachedFloat = value;
@@ -148,13 +149,13 @@ public class CastFunctionTransformer extends UnaryTransformer {
   private void cast(double value) {
     switch (targetDataType) {
       case INT32:
-        cachedInt = (int) value;
+        cachedInt = CastHelper.castDoubleToInt(value);
         return;
       case INT64:
-        cachedLong = (long) value;
+        cachedLong = CastHelper.castDoubleToLong(value);
         return;
       case FLOAT:
-        cachedFloat = (float) value;
+        cachedFloat = CastHelper.castDoubleToFloat(value);
         return;
       case DOUBLE:
         cachedDouble = value;
@@ -202,19 +203,19 @@ public class CastFunctionTransformer extends UnaryTransformer {
     // could throw exception when parsing string value
     switch (targetDataType) {
       case INT32:
-        cachedInt = (int) Double.parseDouble(stringValue);
+        cachedInt = Integer.parseInt(stringValue);
         return;
       case INT64:
-        cachedLong = (long) Double.parseDouble(stringValue);
+        cachedLong = Long.parseLong(stringValue);
         return;
       case FLOAT:
-        cachedFloat = (float) Double.parseDouble(stringValue);
+        cachedFloat = CastHelper.castTextToFloat(stringValue);
         return;
       case DOUBLE:
-        cachedDouble = Double.parseDouble(stringValue);
+        cachedDouble = CastHelper.castTextToDouble(stringValue);
         return;
       case BOOLEAN:
-        cachedBoolean = !("false".equals(stringValue) || "".equals(stringValue));
+        cachedBoolean = CastHelper.castTextToBoolean(stringValue);
         return;
       case TEXT:
         cachedBinary = Binary.valueOf(String.valueOf(value));

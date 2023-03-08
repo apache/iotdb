@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar.CastF
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
 
 public class CastHelper implements BuiltInScalarFunctionHelper {
@@ -46,10 +47,11 @@ public class CastHelper implements BuiltInScalarFunctionHelper {
 
   @Override
   public TSDataType getBuiltInScalarFunctionReturnType(FunctionExpression functionExpression) {
-    if (!functionExpression.getFunctionAttributes().containsKey("type")) {
+    if (!functionExpression.getFunctionAttributes().containsKey(CAST_TYPE)) {
       throw new SemanticException("Function Cast must specify a target data type.");
     }
-    return TSDataType.valueOf(functionExpression.getFunctionAttributes().get("type").toUpperCase());
+    return TSDataType.valueOf(
+        functionExpression.getFunctionAttributes().get(CAST_TYPE).toUpperCase());
   }
 
   @Override
@@ -65,5 +67,82 @@ public class CastHelper implements BuiltInScalarFunctionHelper {
       FunctionExpression expression, LayerPointReader layerPointReader) {
     return new CastFunctionTransformer(
         layerPointReader, this.getBuiltInScalarFunctionReturnType(expression));
+  }
+
+  public static int castLongToInt(long value) {
+    if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
+      throw new RuntimeException(
+          String.format("long value %d is out of range of integer value.", value));
+    }
+    return (int) value;
+  }
+
+  public static int castFloatToInt(float value) {
+    if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
+      throw new RuntimeException(
+          String.format("Float value %f is out of range of integer value.", value));
+    }
+    return Math.round(value);
+  }
+
+  public static long castFloatToLong(float value) {
+    if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
+      throw new RuntimeException(
+          String.format("Float value %f is out of range of long value.", value));
+    }
+    return Math.round((double) value);
+  }
+
+  public static int castDoubleToInt(double value) {
+    if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
+      throw new RuntimeException(
+          String.format("Double value %f is out of range of integer value.", value));
+    }
+    return Math.round((float) value);
+  }
+
+  public static long castDoubleToLong(double value) {
+    if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
+      throw new RuntimeException(
+          String.format("Double value %f is out of range of long value.", value));
+    }
+    return Math.round(value);
+  }
+
+  public static float castDoubleToFloat(double value) {
+    if (value > Float.MAX_VALUE || value < -Float.MAX_VALUE) {
+      throw new RuntimeException(
+          String.format("Double value %f is out of range of float value.", value));
+    }
+    return (float) value;
+  }
+
+  public static float castTextToFloat(String value) {
+    float f = Float.parseFloat(value);
+    if (f == Float.POSITIVE_INFINITY || f == Float.NEGATIVE_INFINITY) {
+      throw new RuntimeException(
+          String.format("Text value %s is out of range of float value.", value));
+    }
+    return f;
+  }
+
+  public static Double castTextToDouble(String value) {
+    double d = Double.parseDouble(value);
+    if (d == Double.POSITIVE_INFINITY || d == Double.NEGATIVE_INFINITY) {
+      throw new RuntimeException(
+          String.format("Text value %s is out of range of double value.", value));
+    }
+    return d;
+  }
+
+  public static boolean castTextToBoolean(String value) {
+    String lowerCase = value.toLowerCase();
+    if (lowerCase.equals("true")) {
+      return true;
+    } else if (lowerCase.equals("false")) {
+      return false;
+    } else {
+      throw new RuntimeException(String.format("Invalid text input for boolean type: %s", value));
+    }
   }
 }

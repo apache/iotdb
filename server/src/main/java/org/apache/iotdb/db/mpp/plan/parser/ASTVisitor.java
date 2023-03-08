@@ -204,6 +204,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -222,7 +224,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
   private static final String IGNORENULL = "IgnoreNull";
-
   private ZoneId zoneId;
 
   public void setZoneId(ZoneId zoneId) {
@@ -2291,6 +2292,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseInExpression(context, canUseFullPath);
     }
 
+    if (context.castInput != null) {
+      return parseCastFunction(context, canUseFullPath);
+    }
+
     if (context.functionName() != null) {
       return parseFunctionExpression(context, canUseFullPath);
     }
@@ -2309,6 +2314,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     throw new UnsupportedOperationException();
+  }
+
+  private Expression parseCastFunction(
+      IoTDBSqlParser.ExpressionContext castClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(CAST_FUNCTION);
+    functionExpression.addExpression(parseExpression(castClause.castInput, canUseFullPath));
+    functionExpression.addAttribute(CAST_TYPE, parseAttributeValue(castClause.attributeValue()));
+    return functionExpression;
   }
 
   private Expression parseFunctionExpression(

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastHelper;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
@@ -34,26 +36,28 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
+    Type childType = childColumnTransformer.getType();
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        switch (childColumnTransformer.getType().getTypeEnum()) {
+        switch (sourceType) {
           case INT32:
-            cast(columnBuilder, childColumnTransformer.getType().getInt(column, i));
+            cast(columnBuilder, childType.getInt(column, i));
             break;
           case INT64:
-            cast(columnBuilder, childColumnTransformer.getType().getLong(column, i));
+            cast(columnBuilder, childType.getLong(column, i));
             break;
           case FLOAT:
-            cast(columnBuilder, childColumnTransformer.getType().getFloat(column, i));
+            cast(columnBuilder, childType.getFloat(column, i));
             break;
           case DOUBLE:
-            cast(columnBuilder, childColumnTransformer.getType().getDouble(column, i));
+            cast(columnBuilder, childType.getDouble(column, i));
             break;
           case BOOLEAN:
-            cast(columnBuilder, childColumnTransformer.getType().getBoolean(column, i));
+            cast(columnBuilder, childType.getBoolean(column, i));
             break;
           case BINARY:
-            cast(columnBuilder, childColumnTransformer.getType().getBinary(column, i));
+            cast(columnBuilder, childType.getBinary(column, i));
             break;
           default:
             throw new UnsupportedOperationException(
@@ -96,7 +100,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, long value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
-        returnType.writeInt(columnBuilder, (int) value);
+        returnType.writeInt(columnBuilder, (CastHelper.castLongToInt(value)));
         break;
       case INT64:
         returnType.writeLong(columnBuilder, value);
@@ -122,10 +126,10 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, float value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
-        returnType.writeInt(columnBuilder, (int) value);
+        returnType.writeInt(columnBuilder, CastHelper.castFloatToInt(value));
         break;
       case INT64:
-        returnType.writeLong(columnBuilder, (long) value);
+        returnType.writeLong(columnBuilder, CastHelper.castFloatToLong(value));
         break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value);
@@ -148,13 +152,13 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, double value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
-        returnType.writeInt(columnBuilder, (int) value);
+        returnType.writeInt(columnBuilder, CastHelper.castDoubleToInt(value));
         break;
       case INT64:
-        returnType.writeLong(columnBuilder, (long) value);
+        returnType.writeLong(columnBuilder, CastHelper.castDoubleToLong(value));
         break;
       case FLOAT:
-        returnType.writeFloat(columnBuilder, (float) value);
+        returnType.writeFloat(columnBuilder, CastHelper.castDoubleToFloat(value));
         break;
       case DOUBLE:
         returnType.writeDouble(columnBuilder, value);
@@ -201,20 +205,19 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     String stringValue = value.getStringValue();
     switch (returnType.getTypeEnum()) {
       case INT32:
-        returnType.writeInt(columnBuilder, (int) Double.parseDouble(stringValue));
+        returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));
         break;
       case INT64:
-        returnType.writeLong(columnBuilder, (long) Double.parseDouble(stringValue));
+        returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
         break;
       case FLOAT:
-        returnType.writeFloat(columnBuilder, (float) Double.parseDouble(stringValue));
+        returnType.writeFloat(columnBuilder, CastHelper.castTextToFloat(stringValue));
         break;
       case DOUBLE:
-        returnType.writeDouble(columnBuilder, Double.parseDouble(stringValue));
+        returnType.writeDouble(columnBuilder, CastHelper.castTextToDouble(stringValue));
         break;
       case BOOLEAN:
-        returnType.writeBoolean(
-            columnBuilder, !("false".equals(stringValue) || "".equals(stringValue)));
+        returnType.writeBoolean(columnBuilder, CastHelper.castTextToBoolean(stringValue));
         break;
       case BINARY:
         returnType.writeBinary(columnBuilder, value);
