@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.newnode.device;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.util.Collections;
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
-public class DeviceInfo implements IDeviceInfo {
+public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   /**
    * In EntityMNode of MTree in SchemaRegion, this field represents the template activated on this
@@ -44,11 +45,11 @@ public class DeviceInfo implements IDeviceInfo {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, IMeasurementMNode<?>> aliasChildren = null;
+  private transient volatile Map<String, IMeasurementMNode<N>> aliasChildren = null;
 
   private volatile boolean isAligned = false;
 
-  public void moveDataToNewMNode(IDeviceMNode<?> newMNode) {
+  public void moveDataToNewMNode(IDeviceMNode<N> newMNode) {
     newMNode.setSchemaTemplateId(schemaTemplateId);
     newMNode.setUseTemplate(useTemplate);
     newMNode.setAliasChildren(aliasChildren);
@@ -57,7 +58,7 @@ public class DeviceInfo implements IDeviceInfo {
 
   /** add an alias */
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode<?> child) {
+  public boolean addAlias(String alias, IMeasurementMNode<N> child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
       synchronized (this) {
@@ -79,7 +80,7 @@ public class DeviceInfo implements IDeviceInfo {
   }
 
   @Override
-  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
+  public Map<String, IMeasurementMNode<N>> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
     }
@@ -87,8 +88,19 @@ public class DeviceInfo implements IDeviceInfo {
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {
     this.aliasChildren = aliasChildren;
+  }
+
+  public boolean hasAliasChild(String name) {
+    return aliasChildren != null && aliasChildren.containsKey(name);
+  }
+
+  public IMeasurementMNode<N> getAliasChild(String name) {
+    if (aliasChildren != null) {
+      return aliasChildren.get(name);
+    }
+    return null;
   }
 
   /**

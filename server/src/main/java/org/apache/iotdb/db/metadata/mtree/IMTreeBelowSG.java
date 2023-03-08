@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public interface IMTreeBelowSG<N extends IMNode<?>> {
+public interface IMTreeBelowSG<N extends IMNode<N>> {
   void clear();
 
   /**

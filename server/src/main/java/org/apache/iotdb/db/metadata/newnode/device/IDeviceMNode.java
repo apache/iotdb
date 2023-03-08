@@ -20,6 +20,6 @@ package org.apache.iotdb.db.metadata.newnode.device;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public interface IDeviceMNode<N extends IMNode<?>> extends IMNode<N>, IDeviceInfo {
+public interface IDeviceMNode<N extends IMNode<N>> extends IMNode<N>, IDeviceInfo<N> {
   N getAsMNode();
 }

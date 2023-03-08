@@ -31,12 +31,12 @@ import java.util.Map;
 public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDeviceMNode<N> {
 
-  private final DeviceInfo deviceInfo;
+  private final DeviceInfo<N> deviceInfo;
   protected BasicNode basicMNode;
 
   /** Constructor of MNode. */
   public AbstractDeviceMNode() {
-    this.deviceInfo = new DeviceInfo();
+    this.deviceInfo = new DeviceInfo<>();
   }
 
   public BasicNode getBasicMNode() {
@@ -80,12 +80,16 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public boolean hasChild(String name) {
-    return basicMNode.hasChild(name);
+    return basicMNode.hasChild(name) || deviceInfo.hasAliasChild(name);
   }
 
   @Override
   public N getChild(String name) {
-    return basicMNode.getChild(name);
+    N res = basicMNode.getChild(name);
+    if (res == null) {
+      res = deviceInfo.getAliasChild(name).getAsMNode();
+    }
+    return res;
   }
 
   @Override
@@ -180,7 +184,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   }
 
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode<?> child) {
+  public boolean addAlias(String alias, IMeasurementMNode<N> child) {
     return deviceInfo.addAlias(alias, child);
   }
 
@@ -190,12 +194,12 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   }
 
   @Override
-  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
+  public Map<String, IMeasurementMNode<N>> getAliasChildren() {
     return deviceInfo.getAliasChildren();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {
     deviceInfo.setAliasChildren(aliasChildren);
   }
 

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 /** This interface defines a MNode's operation interfaces. */
-public interface IMNode<N extends IMNode<?>> extends ITreeNode {
+public interface IMNode<N extends IMNode<N>> extends ITreeNode {
 
   String getName();
 

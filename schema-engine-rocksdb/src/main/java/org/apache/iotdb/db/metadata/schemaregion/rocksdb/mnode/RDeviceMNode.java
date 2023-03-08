@@ -78,12 +78,12 @@ public class RDeviceMNode extends RInternalMNode implements IDeviceMNode<IMemMNo
   }
 
   @Override
-  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
+  public Map<String, IMeasurementMNode<IMemMNode>> getAliasChildren() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<IMemMNode>> aliasChildren) {
     throw new UnsupportedOperationException();
   }
 

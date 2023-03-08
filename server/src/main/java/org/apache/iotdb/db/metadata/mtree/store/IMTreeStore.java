@@ -34,7 +34,7 @@ import java.util.Map;
  *
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
-public interface IMTreeStore<N extends IMNode<?>> {
+public interface IMTreeStore<N extends IMNode<N>> {
 
   /**
    * Generate the ancestor nodes of storageGroupNode

@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.newnode.device;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.util.Map;
 
-public interface IDeviceInfo {
+public interface IDeviceInfo<N extends IMNode<N>> {
 
-  boolean addAlias(String alias, IMeasurementMNode<?> child);
+  boolean addAlias(String alias, IMeasurementMNode<N> child);
 
   void deleteAliasChild(String alias);
 
-  Map<String, IMeasurementMNode<?>> getAliasChildren();
+  Map<String, IMeasurementMNode<N>> getAliasChildren();
 
-  void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren);
+  void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren);
 
   boolean isUseTemplate();
 

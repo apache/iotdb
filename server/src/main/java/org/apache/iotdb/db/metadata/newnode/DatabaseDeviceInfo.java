@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.metadata.newnode;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseInfo;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.DeviceInfo;
 
-public class DatabaseDeviceInfo extends DeviceInfo implements IDatabaseInfo {
+public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
+    implements IDatabaseInfo {
   /**
    * when the data file in a database is older than dataTTL, it is considered invalid and will be
    * eventually deleted.

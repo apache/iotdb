@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
+public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IMeasurementMNode<N> {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractMeasurementMNode.class);

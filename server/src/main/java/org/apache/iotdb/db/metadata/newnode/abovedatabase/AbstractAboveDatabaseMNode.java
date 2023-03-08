@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
-    implements IAboveDatabaseMNode<N> {
+    implements IMNode<N> {
 
   protected BasicNode basicMNode;
 
@@ -87,8 +87,8 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   @Override
   public N addChild(String name, N child) {
-    N res =  basicMNode.addChild(name, child);
-    if(res==child){
+    N res = basicMNode.addChild(name, child);
+    if (res == child) {
       child.setParent(this.getAsMNode());
     }
     return res;
@@ -96,8 +96,8 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   @Override
   public N addChild(N child) {
-    N res =  basicMNode.addChild(child);
-    if(res==child){
+    N res = basicMNode.addChild(child);
+    if (res == child) {
       child.setParent(this.getAsMNode());
     }
     return res;
@@ -167,4 +167,6 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
   public IMeasurementMNode<N> getAsMeasurementMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
+
+  abstract N getAsMNode();
 }

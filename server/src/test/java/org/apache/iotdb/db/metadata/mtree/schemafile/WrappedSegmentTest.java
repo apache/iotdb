@@ -238,6 +238,7 @@ public class WrappedSegmentTest {
 
   private ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    return new CacheMeasurementMNode(par.getAsDeviceMNode(), name, schema, alias);
+    return new CacheMeasurementMNode(
+        par == null ? null : par.getAsDeviceMNode(), name, schema, alias);
   }
 }

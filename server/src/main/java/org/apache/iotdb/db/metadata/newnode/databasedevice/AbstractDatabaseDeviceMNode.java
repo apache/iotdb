@@ -34,11 +34,11 @@ import java.util.Map;
 public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDatabaseMNode<N>, IDeviceMNode<N> {
 
-  private DatabaseDeviceInfo databaseDeviceInfo;
+  private DatabaseDeviceInfo<N> databaseDeviceInfo;
   protected BasicNode basicMNode;
 
   public AbstractDatabaseDeviceMNode() {
-    this.databaseDeviceInfo = new DatabaseDeviceInfo();
+    this.databaseDeviceInfo = new DatabaseDeviceInfo<>();
   }
 
   public BasicNode getBasicMNode() {
@@ -212,7 +212,7 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<N>, BasicNode
   }
 
   @Override
-  public boolean addAlias(String alias, IMeasurementMNode child) {
+  public boolean addAlias(String alias, IMeasurementMNode<N> child) {
     return databaseDeviceInfo.addAlias(alias, child);
   }
 
@@ -222,12 +222,12 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<N>, BasicNode
   }
 
   @Override
-  public Map<String, IMeasurementMNode<?>> getAliasChildren() {
+  public Map<String, IMeasurementMNode<N>> getAliasChildren() {
     return databaseDeviceInfo.getAliasChildren();
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
+  public void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren) {
     databaseDeviceInfo.setAliasChildren(aliasChildren);
   }
 
