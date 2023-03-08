@@ -26,29 +26,44 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProductAllKindsOfExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
 public abstract class CartesianProductVisitor<C>
     extends ExpressionAnalyzeVisitor<List<Expression>, C> {
-  private List<Expression> cartesianProductFromChild(Expression expression, C context) {
-    List<List<Expression>> childResultsList = new ArrayList<>();
-    expression.getExpressions().forEach(child -> childResultsList.add(process(child, context)));
-    return cartesianProductAllKindsOfExpression(expression, childResultsList);
+  private List<List<Expression>> processChild(Expression expression, C context) {
+    return expression.getExpressions().stream()
+            .map(child -> process(child, context))
+            .collect(Collectors.toList());
   }
 
   @Override
   public List<Expression> visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
-    return cartesianProductFromChild(ternaryExpression, context);
+    List<List<Expression>> childResultsList = processChild(ternaryExpression, context);
+    return reconstructTernaryExpressions(
+            ternaryExpression,
+            childResultsList.get(0),
+            childResultsList.get(1),
+            childResultsList.get(2)
+    );
   }
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    return cartesianProductFromChild(binaryExpression, context);
+    List<List<Expression>> childResultsList = processChild(binaryExpression, context);
+    return reconstructBinaryExpressions(
+            binaryExpression.getExpressionType(),
+            childResultsList.get(0),
+            childResultsList.get(1)
+    );
   }
 
   @Override
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, C context) {
-    return cartesianProductFromChild(unaryExpression, context);
+    List<List<Expression>> childResultsList = processChild(unaryExpression, context);
+    return reconstructUnaryExpressions(unaryExpression, childResultsList.get(0));
   }
 }
