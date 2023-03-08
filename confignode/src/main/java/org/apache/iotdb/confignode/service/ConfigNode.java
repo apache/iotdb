@@ -82,8 +82,9 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public static void main(String[] args) {
     LOGGER.info(
-            "{} environment variables: {}",
-            ConfigNodeConstant.GLOBAL_NAME, ConfigNodeConfig.getEnvironmentVariables());
+        "{} environment variables: {}",
+        ConfigNodeConstant.GLOBAL_NAME,
+        ConfigNodeConfig.getEnvironmentVariables());
     new ConfigNodeCommandLine().doMain(args);
   }
 
@@ -163,8 +164,8 @@ public class ConfigNode implements ConfigNodeMBean {
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
-          "{} {} has registered successfully. " +
-                  "Waiting for the leader's scheduling to join the cluster: {}.",
+          "{} {} has registered successfully. "
+              + "Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
           CONF.getConfigNodeId(),
           CONF.getClusterName());
@@ -190,8 +191,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
       if (!isJoinedCluster) {
         LOGGER.error(
-            "The current ConfigNode can't joined the cluster because leader's scheduling " +
-                    "failed. The possible cause is that the ip:port configuration is incorrect.");
+            "The current ConfigNode can't joined the cluster because leader's scheduling "
+                + "failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
     } catch (StartupException | IOException e) {
@@ -248,8 +249,8 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in " +
-                  "iotdb-confignode.properties file.");
+          "Please set the cn_target_config_node_list parameter in "
+              + "iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 
@@ -293,8 +294,8 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     LOGGER.error(
-        "The current ConfigNode can't send register request to " +
-                "the ConfigNode-leader after all retries!");
+        "The current ConfigNode can't send register request to "
+            + "the ConfigNode-leader after all retries!");
     stop();
   }
 
@@ -310,8 +311,8 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in " +
-                  "iotdb-confignode.properties file.");
+          "Please set the cn_target_config_node_list parameter in "
+              + "iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 

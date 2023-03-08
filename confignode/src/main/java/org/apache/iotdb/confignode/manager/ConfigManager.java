@@ -197,38 +197,38 @@ public class ConfigManager implements IManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
-  /** Manage PartitionTable read/write requests through the ConsensusLayer */
+  /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private volatile ConsensusManager consensusManager;
 
-  /** Manage cluster node */
+  /** Manage cluster node. */
   private final NodeManager nodeManager;
 
-  /** Manage cluster schema */
+  /** Manage cluster schema. */
   private final ClusterSchemaManager clusterSchemaManager;
 
-  /** Manage cluster regions and partitions */
+  /** Manage cluster regions and partitions. */
   private final PartitionManager partitionManager;
 
-  /** Manage cluster authorization */
+  /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
   private final LoadManager loadManager;
 
-  /** Manage procedure */
+  /** Manage procedure. */
   private final ProcedureManager procedureManager;
 
-  /** UDF */
+  /** UDF. */
   private final UDFManager udfManager;
 
-  /** Manage Trigger */
+  /** Manage Trigger. */
   private final TriggerManager triggerManager;
-  /** Sync */
+  /** Sync. */
   private final SyncManager syncManager;
 
-  /** CQ */
+  /** CQ. */
   private final CQManager cqManager;
 
-  /** ML Model */
+  /** ML Model. */
   private final ModelManager modelManager;
 
   private final ConfigRegionStateMachine stateMachine;
@@ -1717,7 +1717,9 @@ public class ConfigManager implements IManager {
         : new TShowCQResp(status, Collections.emptyList());
   }
 
-  /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */
+  /**
+   * Get all related schemaRegion which may contains the timeSeries matched by given patternTree.
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
