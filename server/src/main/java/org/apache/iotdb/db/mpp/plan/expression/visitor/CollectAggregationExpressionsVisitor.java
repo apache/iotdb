@@ -30,8 +30,9 @@ public class CollectAggregationExpressionsVisitor extends CollectVisitor {
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Void context) {
-    if (functionExpression.isBuiltInAggregationFunctionExpression())
+    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       return Collections.singletonList(functionExpression);
+    }
     return collectFromChild(functionExpression);
   }
 
