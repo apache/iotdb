@@ -82,9 +82,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public static void main(String[] args) {
     LOGGER.info(
-        ConfigNodeConstant.GLOBAL_NAME
-            + " environment variables: "
-            + ConfigNodeConfig.getEnvironmentVariables());
+            "{} environment variables: {}",
+            ConfigNodeConstant.GLOBAL_NAME, ConfigNodeConfig.getEnvironmentVariables());
     new ConfigNodeCommandLine().doMain(args);
   }
 
@@ -164,7 +163,8 @@ public class ConfigNode implements ConfigNodeMBean {
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
-          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
+          "{} {} has registered successfully. " +
+                  "Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
           CONF.getConfigNodeId(),
           CONF.getClusterName());
@@ -184,12 +184,14 @@ public class ConfigNode implements ConfigNodeMBean {
           TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
         } catch (InterruptedException e) {
           LOGGER.warn("Waiting leader's scheduling is interrupted.");
+          Thread.currentThread().interrupt();
         }
       }
 
       if (!isJoinedCluster) {
         LOGGER.error(
-            "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
+            "The current ConfigNode can't joined the cluster because leader's scheduling " +
+                    "failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
     } catch (StartupException | IOException e) {
@@ -205,7 +207,7 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
-  private void setUpInternalServices() throws StartupException, IOException {
+  private void setUpInternalServices() throws StartupException {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
@@ -233,7 +235,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  /** Register Non-seed ConfigNode when first startup */
+  /** Register Non-seed ConfigNode when first startup. */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
@@ -246,7 +248,8 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
+          "Please set the cn_target_config_node_list parameter in " +
+                  "iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 
@@ -284,16 +287,18 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new StartupException("Register ConfigNode failed!");
       }
     }
 
     LOGGER.error(
-        "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
+        "The current ConfigNode can't send register request to " +
+                "the ConfigNode-leader after all retries!");
     stop();
   }
 
-  private void sendRestartConfigNodeRequest() throws IOException, StartupException {
+  private void sendRestartConfigNodeRequest() throws StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
             CONF.getClusterName(),
@@ -305,7 +310,8 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
+          "Please set the cn_target_config_node_list parameter in " +
+                  "iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 
@@ -329,7 +335,8 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
-        throw new StartupException("Register ConfigNode failed!");
+        Thread.currentThread().interrupt();
+        throw new StartupException("Register ConfigNode failed! ");
       }
     }
   }
@@ -343,7 +350,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  /** Deactivating ConfigNode internal services */
+  /** Deactivating ConfigNode internal services. */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
