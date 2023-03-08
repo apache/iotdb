@@ -261,6 +261,8 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
         serializeBasicMNode(node, outputStream);
+        ReadWriteIOUtils.write(0, outputStream); // for compatibly
+        ReadWriteIOUtils.write(false, outputStream); // for compatibly
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -274,6 +276,8 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
         serializeBasicMNode(node.getBasicMNode(), outputStream);
+        ReadWriteIOUtils.write(0, outputStream); // for compatibly
+        ReadWriteIOUtils.write(false, outputStream); // for compatibly
         // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
@@ -288,6 +292,8 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
         serializeBasicMNode(node.getBasicMNode(), outputStream);
+        ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
+        ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
         // database node in schemaRegion doesn't store any database schema
         return true;
@@ -303,6 +309,8 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
         serializeBasicMNode(node.getBasicMNode(), outputStream);
+        ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
+        ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
         return true;
       } catch (IOException e) {
@@ -331,8 +339,6 @@ public class MemMTreeSnapshotUtil {
     private void serializeBasicMNode(IMNode<?> node, OutputStream outputStream) throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(0, outputStream); // for compatibly
-      ReadWriteIOUtils.write(false, outputStream); // for compatibly
     }
   }
 
@@ -341,14 +347,16 @@ public class MemMTreeSnapshotUtil {
     public BasicMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       BasicMNode node = new BasicMNode(null, name);
-      deserializeInternalBasicInfo(node, inputStream);
+      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      boolean useTemplate = ReadWriteIOUtils.readBool(inputStream);
       return node;
     }
 
     public DatabaseMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DatabaseMNode node = new DatabaseMNode(null, name);
-      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
+      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      boolean useTemplate = ReadWriteIOUtils.readBool(inputStream);
       return node;
     }
 
@@ -356,7 +364,8 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DatabaseDeviceMNode node = new DatabaseDeviceMNode(null, name, 0);
-      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+      node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
@@ -364,7 +373,8 @@ public class MemMTreeSnapshotUtil {
     public DeviceMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       DeviceMNode node = new DeviceMNode(null, name);
-      deserializeInternalBasicInfo(node.getBasicMNode(), inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+      node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
@@ -379,12 +389,6 @@ public class MemMTreeSnapshotUtil {
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node;
-    }
-
-    private void deserializeInternalBasicInfo(BasicMNode node, InputStream inputStream)
-        throws IOException {
-      ReadWriteIOUtils.readInt(inputStream); // for compatibly
-      ReadWriteIOUtils.readBool(inputStream); // for compatibly
     }
   }
 }
