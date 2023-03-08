@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   @Override
   public IMeasurementMNode<IConfigMNode> createMeasurementMNode(
-      IConfigMNode parent, String name, IMeasurementSchema schema, String alias) {
+      IDeviceMNode<IConfigMNode> parent, String name, IMeasurementSchema schema, String alias) {
     throw new UnsupportedOperationException();
   }
 

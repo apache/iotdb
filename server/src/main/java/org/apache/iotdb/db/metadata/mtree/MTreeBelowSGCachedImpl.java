@@ -301,7 +301,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
 
           IMeasurementMNode<ICacheMNode> measurementMNode =
               new CacheMeasurementMNode(
-                  entityMNode.getAsMNode(),
+                  entityMNode,
                   leafName,
                   new MeasurementSchema(leafName, dataType, encoding, compressor, props),
                   alias);
@@ -386,7 +386,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
           for (int i = 0; i < measurements.size(); i++) {
             IMeasurementMNode<ICacheMNode> measurementMNode =
                 new CacheMeasurementMNode(
-                    entityMNode.getAsMNode(),
+                    entityMNode,
                     measurements.get(i),
                     new MeasurementSchema(
                         measurements.get(i),

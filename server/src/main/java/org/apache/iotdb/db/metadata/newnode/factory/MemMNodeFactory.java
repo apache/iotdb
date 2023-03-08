@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   @Override
   public IMeasurementMNode<IMemMNode> createMeasurementMNode(
-      IMemMNode parent, String name, IMeasurementSchema schema, String alias) {
+      IDeviceMNode<IMemMNode> parent, String name, IMeasurementSchema schema, String alias) {
     return new MeasurementMNode(parent, name, schema, alias);
   }
 

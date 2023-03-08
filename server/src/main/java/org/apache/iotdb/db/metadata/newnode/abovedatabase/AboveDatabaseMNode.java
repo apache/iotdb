@@ -26,4 +26,9 @@ public class AboveDatabaseMNode extends AbstractAboveDatabaseMNode<IMemMNode, Ba
   public AboveDatabaseMNode(IMemMNode parent, String name) {
     this.basicMNode = new BasicMNode(parent, name);
   }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    return this;
+  }
 }

@@ -19,14 +19,13 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
-import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -56,11 +55,11 @@ public class SchemaPageTest {
   public void flatTreeInsert() throws IOException, MetadataException {
     ISchemaPage page =
         ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
-    IMNode root = virtualFlatMTree(15);
+    ICacheMNode root = virtualFlatMTree(15);
     for (int i = 0; i < 7; i++) {
       page.getAsSegmentedPage().allocNewSegment(SchemaFileConfig.SEG_SIZE_LST[0]);
       int cnt = 0;
-      for (IMNode child : root.getChildren().values()) {
+      for (ICacheMNode child : root.getChildren().values()) {
         cnt++;
         try {
           page.getAsSegmentedPage()
@@ -104,16 +103,15 @@ public class SchemaPageTest {
     Assert.assertEquals(256, (int) nPage.getAsInternalPage().getRecordByKey("aab"));
   }
 
-  private IMNode virtualFlatMTree(int childSize) {
-    IMNode internalNode = new AbstractDeviceMNode(null, "vRoot1");
+  private ICacheMNode virtualFlatMTree(int childSize) {
+    ICacheMNode internalNode = new CacheDeviceMNode(null, "vRoot1");
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
-      IMeasurementMNode mNode =
-          MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
-      internalNode.addChild(mNode);
+      internalNode.addChild(
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
     }
     return internalNode;
   }

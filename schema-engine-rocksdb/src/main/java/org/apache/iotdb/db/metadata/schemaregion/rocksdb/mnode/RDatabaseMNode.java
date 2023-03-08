@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
 
-public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode {
+public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode<IMemMNode> {
 
   private long dataTTL;
 
@@ -66,6 +67,19 @@ public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode {
       throw new MetadataException(e);
     }
   }
+
+  @Override
+  public IMemMNode addChild(String name, IMemMNode child) {
+    return null;
+  }
+
+  @Override
+  public IMemMNode addChild(IMemMNode child) {
+    return null;
+  }
+
+  @Override
+  public void replaceChild(String oldChildName, IMemMNode newChildNode) {}
 
   @Override
   public boolean isDatabase() {
@@ -111,6 +125,11 @@ public class RDatabaseMNode extends RInternalMNode implements IDatabaseMNode {
 
   @Override
   public TDatabaseSchema getStorageGroupSchema() {
+    return null;
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
     return null;
   }
 }

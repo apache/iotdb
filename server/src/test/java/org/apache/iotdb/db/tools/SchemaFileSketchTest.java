@@ -22,13 +22,12 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.tools.schema.SchemaFileSketchTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -75,9 +74,9 @@ public class SchemaFileSketchTest {
     int TEST_SCHEMA_REGION_ID = 0;
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
 
-    Iterator<IMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
+    Iterator<ICacheMNode> ite = getTreeBFT(getFlatTree(500, "aa"));
     while (ite.hasNext()) {
-      IMNode cur = ite.next();
+      ICacheMNode cur = ite.next();
       if (!cur.isMeasurement()) {
         sf.writeMNode(cur);
       }
@@ -118,9 +117,9 @@ public class SchemaFileSketchTest {
     }
   }
 
-  private Iterator<IMNode> getTreeBFT(IMNode root) {
-    return new Iterator<IMNode>() {
-      Queue<IMNode> queue = new LinkedList<IMNode>();
+  private Iterator<ICacheMNode> getTreeBFT(ICacheMNode root) {
+    return new Iterator<ICacheMNode>() {
+      Queue<ICacheMNode> queue = new LinkedList<>();
 
       {
         this.queue.add(root);
@@ -132,10 +131,10 @@ public class SchemaFileSketchTest {
       }
 
       @Override
-      public IMNode next() {
-        IMNode curNode = queue.poll();
+      public ICacheMNode next() {
+        ICacheMNode curNode = queue.poll();
         if (!curNode.isMeasurement() && curNode.getChildren().size() > 0) {
-          for (IMNode child : curNode.getChildren().values()) {
+          for (ICacheMNode child : curNode.getChildren().values()) {
             queue.add(child);
           }
         }
@@ -144,18 +143,17 @@ public class SchemaFileSketchTest {
     };
   }
 
-  private IMNode getFlatTree(int flatSize, String id) {
-    IMNode root = new BasicMNode(null, "root");
-    IMNode test = new BasicMNode(root, "test");
-    IMNode internalNode = new AbstractDatabaseDeviceMNode(null, "vRoot1", 0L);
+  private ICacheMNode getFlatTree(int flatSize, String id) {
+    ICacheMNode root = new CacheBasicMNode(null, "root");
+    ICacheMNode test = new CacheBasicMNode(root, "test");
+    ICacheMNode internalNode = new CacheDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
-      IMeasurementMNode mNode =
-          MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
-      internalNode.addChild(mNode);
+      internalNode.addChild(
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
     }
 
     test.addChild(internalNode);

@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
   @Override
   public IMeasurementMNode<ICacheMNode> createMeasurementMNode(
-      ICacheMNode parent, String name, IMeasurementSchema schema, String alias) {
+      IDeviceMNode<ICacheMNode> parent, String name, IMeasurementSchema schema, String alias) {
     return new CacheMeasurementMNode(parent, name, schema, alias);
   }
 

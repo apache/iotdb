@@ -18,48 +18,37 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
 public class MNodeTest {
-  private static ExecutorService service;
-
-  @Before
-  public void setUp() throws Exception {
-    service =
-        Executors.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(),
-            new ThreadFactoryBuilder().setDaemon(false).setNameFormat("replaceChild-%d").build());
-  }
 
   @Test
   public void testReplaceChild() {
     BasicMNode rootNode = new BasicMNode(null, "root");
 
-    IDeviceMNode aNode = new AbstractDeviceMNode(rootNode, "a");
-    rootNode.addChild(aNode.getName(), aNode);
+    IDeviceMNode<IMemMNode> aNode = new DeviceMNode(rootNode, "a");
+    rootNode.addChild(aNode.getName(), aNode.getAsMNode());
 
-    IMeasurementMNode bNode = MeasurementMNode.getMeasurementMNode(aNode, "b", null, null);
+    IMeasurementMNode<IMemMNode> bNode = new MeasurementMNode(aNode, "b", null, null);
 
-    aNode.addChild(bNode.getName(), bNode);
+    aNode.addChild(bNode.getName(), bNode.getAsMNode());
     aNode.addAlias("aliasOfb", bNode);
 
-    IDeviceMNode newANode = new AbstractDeviceMNode(null, "a");
-    rootNode.replaceChild(aNode.getName(), newANode);
+    IDeviceMNode<IMemMNode> newANode = new DeviceMNode(null, "a");
+    rootNode.replaceChild(aNode.getName(), newANode.getAsMNode());
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
     assertEquals("root.a.b", multiFullPaths.get(0));
@@ -72,7 +61,7 @@ public class MNodeTest {
   public void testAddChild() {
     BasicMNode rootNode = new BasicMNode(null, "root");
 
-    IMNode speedNode =
+    IMNode<IMemMNode> speedNode =
         rootNode
             .addChild(new BasicMNode(null, "sg1"))
             .addChild(new BasicMNode(null, "a"))
@@ -83,7 +72,7 @@ public class MNodeTest {
             .addChild(new BasicMNode(null, "speed"));
     assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
 
-    IMNode temperatureNode =
+    IMNode<IMemMNode> temperatureNode =
         rootNode
             .getChild("sg1")
             .addChild(new BasicMNode(null, "aa"))

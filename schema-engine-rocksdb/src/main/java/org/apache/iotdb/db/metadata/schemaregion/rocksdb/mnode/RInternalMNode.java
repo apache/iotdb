@@ -20,16 +20,16 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
 
 import org.rocksdb.RocksDBException;
 
-public class RInternalMNode extends RMNode {
+public class RInternalMNode extends RMNode implements IMemMNode {
 
   private volatile boolean useTemplate = false;
 
@@ -58,13 +58,13 @@ public class RInternalMNode extends RMNode {
   @Override
   public boolean hasChild(String name) {
     String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
-    IMNode node = getNodeBySpecifiedPath(childPathName);
+    IMemMNode node = getNodeBySpecifiedPath(childPathName);
     return node != null;
   }
 
   /** get the child with the name */
   @Override
-  public IMNode getChild(String name) {
+  public IMemMNode getChild(String name) {
     String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     return getNodeBySpecifiedPath(childPathName);
   }
@@ -77,7 +77,7 @@ public class RInternalMNode extends RMNode {
    * @return
    */
   @Override
-  public IMNode addChild(String name, IMNode child) {
+  public IMemMNode addChild(String name, IMemMNode child) {
     child.setParent(this);
     String childName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     int childNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childName);
@@ -105,14 +105,14 @@ public class RInternalMNode extends RMNode {
    * @return return the MNode already added
    */
   @Override
-  public IMNode addChild(IMNode child) {
+  public IMemMNode addChild(IMemMNode child) {
     addChild(child.getName(), child);
     return child;
   }
 
   /** delete a child */
   @Override
-  public IMNode deleteChild(String name) {
+  public IMemMNode deleteChild(String name) {
     String childPathName = fullPath.concat(RSchemaConstants.PATH_SEPARATOR).concat(name);
     int nodeNameMaxLevel = RSchemaUtils.getLevelByPartialPath(childPathName);
     for (RMNodeType type : RMNodeType.values()) {
@@ -141,7 +141,7 @@ public class RInternalMNode extends RMNode {
    * @param newChildNode new child node
    */
   @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {
+  public void replaceChild(String oldChildName, IMemMNode newChildNode) {
     if (!oldChildName.equals(newChildNode.getName())) {
       throw new RuntimeException("New child's name must be the same as old child's name!");
     }
@@ -150,22 +150,12 @@ public class RInternalMNode extends RMNode {
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public IMNodeContainer<IMemMNode> getChildren() {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
   }
 }

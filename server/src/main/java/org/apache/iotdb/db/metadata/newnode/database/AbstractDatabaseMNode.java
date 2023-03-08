@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
-public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
+public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDatabaseMNode<N> {
 
   private static final long serialVersionUID = 7999036474525817732L;
@@ -90,12 +90,20 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<?>, BasicNode exten
 
   @Override
   public N addChild(String name, N child) {
-    return basicMNode.addChild(name, child);
+    N res = basicMNode.addChild(name, child);
+    if (res == child) {
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override
   public N addChild(N child) {
-    return basicMNode.addChild(child);
+    N res = basicMNode.addChild(child);
+    if (res == child) {
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override

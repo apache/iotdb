@@ -38,4 +38,9 @@ public class CacheAboveDatabaseMNode
   public void setCacheEntry(CacheEntry cacheEntry) {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
+
+  @Override
+  public ICacheMNode getAsMNode() {
+    return this;
+  }
 }

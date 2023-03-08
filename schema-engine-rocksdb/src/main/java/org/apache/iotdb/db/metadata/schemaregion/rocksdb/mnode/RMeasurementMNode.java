@@ -21,10 +21,9 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -40,7 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
+public class RMeasurementMNode extends RMNode implements IMeasurementMNode<IMemMNode>, IMemMNode {
 
   protected String alias;
 
@@ -79,17 +78,22 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IDeviceMNode getParent() {
+  public IMemMNode getParent() {
     if (super.getParent() == null) {
       return null;
     }
-    return parent.getAsDeviceMNode();
+    return parent;
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    return null;
   }
 
   @Override
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(super.getPartialPath(), schema);
-    result.setUnderAlignedEntity(getParent().isAligned());
+    result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAligned());
     if (alias != null && !alias.isEmpty()) {
       result.setMeasurementAlias(alias);
     }
@@ -102,7 +106,12 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public TSDataType getDataType(String measurementId) {
+  public void setSchema(IMeasurementSchema schema) {
+    this.schema = schema;
+  }
+
+  @Override
+  public TSDataType getDataType() {
     return schema.getType();
   }
 
@@ -167,39 +176,36 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IMNode getChild(String name) {
+  public IMemMNode getChild(String name) {
     throw new RuntimeException(
         String.format(
             "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
   }
 
   @Override
-  public IMNode addChild(String name, IMNode child) {
+  public IMemMNode addChild(String name, IMemMNode child) {
     // Do nothing
     return child;
   }
 
   @Override
-  public IMNode addChild(IMNode child) {
+  public IMemMNode addChild(IMemMNode child) {
     return null;
   }
 
   @Override
-  public IMNode deleteChild(String name) {
+  public IMemMNode deleteChild(String name) {
     // Do nothing
     return null;
   }
 
   @Override
-  public void replaceChild(String oldChildName, IMNode newChildNode) {}
+  public void replaceChild(String oldChildName, IMemMNode newChildNode) {}
 
   @Override
   public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException();
   }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public boolean isMeasurement() {

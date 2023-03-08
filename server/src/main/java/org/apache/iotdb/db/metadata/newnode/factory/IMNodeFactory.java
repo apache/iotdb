@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public interface IMNodeFactory<N extends IMNode<N>> {
   IMeasurementMNode<N> createMeasurementMNode(
-      N parent, String name, IMeasurementSchema schema, String alias);
+      IDeviceMNode<N> parent, String name, IMeasurementSchema schema, String alias);
 
   IDeviceMNode<N> createDeviceMNode(N parent, String name);
 

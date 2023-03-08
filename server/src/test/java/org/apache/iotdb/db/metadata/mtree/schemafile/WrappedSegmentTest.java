@@ -107,7 +107,8 @@ public class WrappedSegmentTest {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       internalNode.addChild(
-          new CacheMeasurementMNode(internalNode, measurementId, schema, measurementId + "als"));
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
     }
     return internalNode;
   }
@@ -237,6 +238,6 @@ public class WrappedSegmentTest {
 
   private ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    return new CacheMeasurementMNode(par, name, schema, alias);
+    return new CacheMeasurementMNode(par.getAsDeviceMNode(), name, schema, alias);
   }
 }

@@ -250,7 +250,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
 
       IMeasurementMNode<IMemMNode> measurementMNode =
           new MeasurementMNode(
-              entityMNode.getAsMNode(),
+              entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
@@ -333,7 +333,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG<IMemMNode> {
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode<IMemMNode> measurementMNode =
             new MeasurementMNode(
-                entityMNode.getAsMNode(),
+                entityMNode,
                 measurements.get(i),
                 new MeasurementSchema(
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),

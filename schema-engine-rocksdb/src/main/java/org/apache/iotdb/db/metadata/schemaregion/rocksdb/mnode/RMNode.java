@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
@@ -39,13 +39,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-public abstract class RMNode implements IMNode {
+public abstract class RMNode implements IMNode<IMemMNode> {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
   protected RSchemaReadWriteHandler readWriteHandler;
 
-  protected IMNode parent;
+  protected IMemMNode parent;
 
   protected String name;
 
@@ -71,7 +71,7 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public IMNode getParent() {
+  public IMemMNode getParent() {
     if (parent != null) {
       return parent;
     }
@@ -81,9 +81,9 @@ public abstract class RMNode implements IMNode {
     return parent;
   }
 
-  protected IMNode getNodeBySpecifiedPath(String keyName) {
+  protected IMemMNode getNodeBySpecifiedPath(String keyName) {
     byte[] value = null;
-    IMNode node;
+    IMemMNode node;
     int nodeNameMaxLevel = RSchemaUtils.getLevelByPartialPath(keyName);
     for (RMNodeType type : RMNodeType.values()) {
       String parentInnerName =
@@ -114,7 +114,7 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public void setParent(IMNode parent) {
+  public void setParent(IMemMNode parent) {
     this.parent = parent;
   }
 
@@ -141,46 +141,6 @@ public abstract class RMNode implements IMNode {
   @Override
   public void setFullPath(String fullPath) {
     this.fullPath = fullPath;
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return false;
-  }
-
-  @Override
-  public int getSchemaTemplateId() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public int getSchemaTemplateIdWithState() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void preUnsetSchemaTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void rollbackUnsetSchemaTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isSchemaTemplatePreUnset() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void unsetSchemaTemplate() {
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -253,17 +213,7 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
-  public void moveDataToNewMNode(IMNode newMNode) {
-    throw new UnsupportedOperationException("Temporarily unsupported");
-  }
-
-  @Override
-  public CacheEntry getCacheEntry() {
-    throw new UnsupportedOperationException("Temporarily unsupported");
-  }
-
-  @Override
-  public void setCacheEntry(CacheEntry cacheEntry) {
+  public void moveDataToNewMNode(IMemMNode newMNode) {
     throw new UnsupportedOperationException("Temporarily unsupported");
   }
 
@@ -274,8 +224,7 @@ public abstract class RMNode implements IMNode {
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    throw new UnsupportedOperationException("RMNode doesn't support this method");
+    throw new UnsupportedOperationException("Wrong MNode Type");
   }
-
   // end
 }

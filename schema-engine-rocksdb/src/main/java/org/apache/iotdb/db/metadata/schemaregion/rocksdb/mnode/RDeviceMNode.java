@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
@@ -35,7 +35,7 @@ import org.rocksdb.RocksDBException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
+public class RDeviceMNode extends RInternalMNode implements IDeviceMNode<IMemMNode> {
 
   private volatile boolean isAligned = false;
 
@@ -84,6 +84,31 @@ public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
 
   @Override
   public void setAliasChildren(Map<String, IMeasurementMNode<?>> aliasChildren) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getSchemaTemplateId() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getSchemaTemplateIdWithState() {
     throw new UnsupportedOperationException();
   }
 
@@ -140,7 +165,7 @@ public class RDeviceMNode extends RInternalMNode implements IDeviceMNode {
   }
 
   @Override
-  public IMNode<?> getAsMNode() {
-    throw new UnsupportedOperationException();
+  public IMemMNode getAsMNode() {
+    return this;
   }
 }

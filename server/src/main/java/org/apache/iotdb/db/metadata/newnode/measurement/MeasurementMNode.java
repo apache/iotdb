@@ -22,14 +22,16 @@ import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class MeasurementMNode extends AbstractMeasurementMNode<IMemMNode, BasicMNode>
     implements IMemMNode {
 
-  public MeasurementMNode(IMemMNode parent, String name, IMeasurementSchema schema, String alias) {
+  public MeasurementMNode(
+      IDeviceMNode<IMemMNode> parent, String name, IMeasurementSchema schema, String alias) {
     super(schema, alias);
-    this.basicMNode = new BasicMNode(parent, name);
+    this.basicMNode = new BasicMNode(parent.getAsMNode(), name);
   }
 
   @Override

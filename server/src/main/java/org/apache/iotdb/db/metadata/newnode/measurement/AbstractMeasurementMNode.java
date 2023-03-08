@@ -231,6 +231,6 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<?>, BasicNode ex
 
   @Override
   public IMeasurementMNode<N> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    return this;
   }
 }

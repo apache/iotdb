@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.util.Map;
 
-public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
+public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDeviceMNode<N> {
 
   private final DeviceInfo deviceInfo;
@@ -90,12 +90,20 @@ public abstract class AbstractDeviceMNode<N extends IMNode<?>, BasicNode extends
 
   @Override
   public N addChild(String name, N child) {
-    return basicMNode.addChild(name, child);
+    N res = basicMNode.addChild(name, child);
+    if (res == child) {
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override
   public N addChild(N child) {
-    return basicMNode.addChild(child);
+    N res = basicMNode.addChild(child);
+    if (res == child) {
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override

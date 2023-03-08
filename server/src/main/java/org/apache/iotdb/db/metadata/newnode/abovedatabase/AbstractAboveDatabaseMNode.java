@@ -27,8 +27,8 @@ import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
-public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends IMNode<N>>
-    implements IMNode<N> {
+public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
+    implements IAboveDatabaseMNode<N> {
 
   protected BasicNode basicMNode;
 
@@ -87,12 +87,20 @@ public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends I
 
   @Override
   public N addChild(String name, N child) {
-    return basicMNode.addChild(name, child);
+    N res =  basicMNode.addChild(name, child);
+    if(res==child){
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override
   public N addChild(N child) {
-    return basicMNode.addChild(child);
+    N res =  basicMNode.addChild(child);
+    if(res==child){
+      child.setParent(this.getAsMNode());
+    }
+    return res;
   }
 
   @Override
@@ -132,7 +140,7 @@ public class AbstractAboveDatabaseMNode<N extends IMNode<?>, BasicNode extends I
 
   @Override
   public boolean isDevice() {
-    return true;
+    return false;
   }
 
   @Override

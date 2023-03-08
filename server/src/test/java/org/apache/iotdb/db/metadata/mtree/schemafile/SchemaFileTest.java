@@ -975,7 +975,7 @@ public class SchemaFileTest {
 
   static ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    return new CacheMeasurementMNode(par, name, schema, alias);
+    return new CacheMeasurementMNode(par.getAsDeviceMNode(), name, schema, alias);
   }
 
   static void addNodeToUpdateBuffer(ICacheMNode par, ICacheMNode child) {
@@ -1028,7 +1028,8 @@ public class SchemaFileTest {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(internalNode, measurementId, schema, measurementId + "als");
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode.getAsMNode());
     }
 
@@ -1043,12 +1044,13 @@ public class SchemaFileTest {
     for (int idx = 0; idx < 1000; idx++) {
       IMeasurementSchema schema = new MeasurementSchema("finalM" + idx, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(internalNode, "finalM" + idx, schema, "finalals" + idx);
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), "finalM" + idx, schema, "finalals" + idx);
       curNode.addChild(mNode.getAsMNode());
     }
     IMeasurementSchema schema = new MeasurementSchema("finalM", TSDataType.FLOAT);
     IMeasurementMNode<ICacheMNode> mNode =
-        new CacheMeasurementMNode(internalNode, "finalM", schema, "finalals");
+        new CacheMeasurementMNode(internalNode.getAsDeviceMNode(), "finalM", schema, "finalals");
     curNode.addChild(mNode.getAsMNode());
     upperNode.addChild(internalNode);
     return internalNode;
@@ -1063,7 +1065,8 @@ public class SchemaFileTest {
       String measurementId = id + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(internalNode, measurementId, schema, measurementId + "als");
+          new CacheMeasurementMNode(
+              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode.getAsMNode());
     }
 
