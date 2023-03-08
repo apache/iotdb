@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder.MAX_LINE_NUMBER;
 
 public class SeriesScanOperator extends AbstractDataSourceOperator {
 
@@ -173,9 +174,11 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
         }
         break;
 
-      } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
+      } while (System.nanoTime() - start < maxRuntime
+          && retainedTsBlock == null
+          && !builder.isFull());
 
-      finished = builder.isEmpty();
+      finished = (retainedTsBlock == null && builder.isEmpty());
 
       return !finished;
     } catch (IOException e) {
@@ -234,6 +237,10 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   private void appendToBuilder(TsBlock tsBlock) {
+    if (builder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
+      retainedTsBlock = tsBlock;
+      return;
+    }
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
