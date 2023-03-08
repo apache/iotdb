@@ -121,8 +121,8 @@ CLUSTER
     : C L U S T E R
     ;
 
-VARIABLES
-    : V A R I A B L E S
+COLLECTOR
+    : C O L L E C T O R
     ;
 
 CONCAT
@@ -141,16 +141,20 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONNECTOR
+    : C O N N E C T O R
+    ;
+
 CONTINUOUS
     : C O N T I N U O U S
     ;
 
-COUNT
-    : C O U N T
-    ;
-
 CONTAIN
     : C O N T A I N
+    ;
+
+COUNT
+    : C O U N T
     ;
 
 CQ
@@ -438,6 +442,10 @@ PIPE
     : P I P E
     ;
 
+PIPECONNECTOR
+    : P I P E C O N N E C T O R
+    ;
+
 PIPES
     : P I P E S
     ;
@@ -480,6 +488,10 @@ PRIVILEGES
 
 PROCESSLIST
     : P R O C E S S L I S T
+    ;
+
+PROCESSOR
+    : P R O C E S S O R
     ;
 
 PROPERTY
@@ -718,6 +730,10 @@ URI
     : U R I
     ;
 
+USED
+    : U S E D
+    ;
+
 USER
     : U S E R
     ;
@@ -728,6 +744,10 @@ USING
 
 VALUES
     : V A L U E S
+    ;
+
+VARIABLES
+    : V A R I A B L E S
     ;
 
 VARIATION

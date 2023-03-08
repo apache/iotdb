@@ -63,15 +63,15 @@ public class ShowPipeTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(tPipeInfo.getId()));
       builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreateTime())));
-      builder.getColumnBuilder(1).writeBinary(new Binary(tPipeInfo.getPipeName()));
-      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getRole()));
-      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getRemote()));
-      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getStatus()));
-      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getAttributes()));
-      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getMessage()));
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime())));
+      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getState()));
+      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeCollector()));
+      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getPipeProcessor()));
+      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getPipeConnector()));
+      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getExceptionMessage()));
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

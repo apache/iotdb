@@ -844,11 +844,11 @@ dropPipeSink
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=identifier TO pipeSinkName=identifier (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    : CREATE PIPE pipeName=identifier collectorAttributesClause? processorAttributesClause? connectorAttributesClause
     ;
 
 showPipe
-    : SHOW ((PIPE (pipeName=identifier)?) | PIPES)
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE PIPECONNECTOR USED BY pipeName=identifier)?)
     ;
 
 stopPipe
@@ -1025,4 +1025,28 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    ;
+
+collectorAttributesClause
+    : WITH COLLECTOR LR_BRACKET (collectorAttributeClause COMMA)* collectorAttributeClause? RR_BRACKET
+    ;
+
+collectorAttributeClause
+    : collector_key=STRING_LITERAL OPERATOR_SEQ collector_value=STRING_LITERAL
+    ;
+
+processorAttributesClause
+    : WITH PROCESSOR LR_BRACKET (processorAttributeClause COMMA)* processorAttributeClause? RR_BRACKET
+    ;
+
+processorAttributeClause
+    : processor_key=STRING_LITERAL OPERATOR_SEQ processor_value=STRING_LITERAL
+    ;
+
+connectorAttributesClause
+    : WITH CONNECTOR LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+    ;
+
+connectorAttributeClause
+    : connector_key=STRING_LITERAL OPERATOR_SEQ connector_value=STRING_LITERAL
     ;

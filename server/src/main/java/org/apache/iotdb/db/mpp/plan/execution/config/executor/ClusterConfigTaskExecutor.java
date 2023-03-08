@@ -146,7 +146,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -1478,9 +1477,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
-              .setPipeSinkName(createPipeStatement.getPipeSinkName())
-              .setStartTime(createPipeStatement.getStartTime())
-              .setAttributes(createPipeStatement.getPipeAttributes());
+              .setCollectorAttributes(createPipeStatement.getCollectorAttributes())
+              .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -1564,9 +1563,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
       }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList =
-          SyncService.getInstance().showPipeForReceiver(showPipeStatement.getPipeName());
-      tShowPipeInfoList.addAll(resp.getPipeInfoList());
+      List<TShowPipeInfo> tShowPipeInfoList = resp.getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);

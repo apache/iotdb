@@ -36,9 +36,9 @@ import java.util.Map;
 public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
-  private String pipeSinkName;
-  private long startTime;
-  private Map<String, String> pipeAttributes;
+  private Map<String, String> collectorAttributes;
+  private Map<String, String> processorAttributes;
+  private Map<String, String> connectorAttributes;
 
   public CreatePipeStatement(StatementType createPipeStatement) {
     this.statementType = createPipeStatement;
@@ -48,32 +48,32 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     return pipeName;
   }
 
-  public String getPipeSinkName() {
-    return pipeSinkName;
+  public Map<String, String> getCollectorAttributes() {
+    return collectorAttributes;
   }
 
-  public long getStartTime() {
-    return startTime;
+  public Map<String, String> getProcessorAttributes() {
+    return processorAttributes;
   }
 
-  public Map<String, String> getPipeAttributes() {
-    return pipeAttributes;
+  public Map<String, String> getConnectorAttributes() {
+    return connectorAttributes;
   }
 
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setPipeSinkName(String pipeSinkName) {
-    this.pipeSinkName = pipeSinkName;
+  public void setCollectorAttributes(Map<String, String> collectorAttributes) {
+    this.collectorAttributes = collectorAttributes;
   }
 
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
+  public void setProcessorAttributes(Map<String, String> processorAttributes) {
+    this.processorAttributes = processorAttributes;
   }
 
-  public void setPipeAttributes(Map<String, String> pipeAttributes) {
-    this.pipeAttributes = pipeAttributes;
+  public void setConnectorAttributes(Map<String, String> connectorAttributes) {
+    this.connectorAttributes = connectorAttributes;
   }
 
   @Override
@@ -98,17 +98,29 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     }
     CreatePipeStatement statement = new CreatePipeStatement(StatementType.CREATE_PIPE);
     statement.setPipeName(split[0]);
-    statement.setPipeSinkName(split[1]);
-    statement.setStartTime(Long.parseLong(split[2]));
-    int size = (Integer.parseInt(split[3]) << 1);
-    if (split.length != (size + 4)) {
+    int collectorSize = (Integer.parseInt(split[1]) << 1);
+    int processorSize = (Integer.parseInt(split[2]) << 1);
+    int connectorSize = (Integer.parseInt(split[3]) << 1);
+    if (split.length != (collectorSize + processorSize + connectorSize + 4)) {
       throw new IOException("Parsing CreatePipePlan error. Attributes number is wrong.");
     }
-    Map<String, String> attributes = new HashMap<>();
-    for (int i = 0; i < size; i += 2) {
-      attributes.put(split[i + 4], split[i + 5]);
+    Map<String, String> collectorAttributes = new HashMap<>();
+    for (int i = 4; i < collectorSize + 4; i += 2) {
+      collectorAttributes.put(split[i], split[i + 1]);
     }
-    statement.setPipeAttributes(attributes);
+    statement.setCollectorAttributes(collectorAttributes);
+    Map<String, String> processorAttributes = new HashMap<>();
+    for (int i = collectorSize + 4; i < collectorSize + processorSize + 4; i += 2) {
+      processorAttributes.put(split[i], split[i + 1]);
+    }
+    statement.setCollectorAttributes(processorAttributes);
+    Map<String, String> connectorAttributes = new HashMap<>();
+    for (int i = collectorSize + processorSize + 4;
+        i < collectorSize + processorSize + connectorSize + 4;
+        i += 2) {
+      connectorAttributes.put(split[i], split[i + 1]);
+    }
+    statement.setCollectorAttributes(connectorAttributes);
     return statement;
   }
 
@@ -116,10 +128,18 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(pipeName).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-    builder.append(pipeSinkName).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-    builder.append(startTime).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-    builder.append(pipeAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
-    for (Map.Entry<String, String> entry : pipeAttributes.entrySet()) {
+    builder.append(collectorAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    builder.append(processorAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    builder.append(connectorAttributes.size()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    for (Map.Entry<String, String> entry : collectorAttributes.entrySet()) {
+      builder.append(entry.getKey()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder.append(entry.getValue()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    }
+    for (Map.Entry<String, String> entry : processorAttributes.entrySet()) {
+      builder.append(entry.getKey()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+      builder.append(entry.getValue()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
+    }
+    for (Map.Entry<String, String> entry : connectorAttributes.entrySet()) {
       builder.append(entry.getKey()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
       builder.append(entry.getValue()).append(SyncConstant.PLAN_SERIALIZE_SPLIT_CHARACTER);
     }

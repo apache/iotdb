@@ -28,12 +28,22 @@ public class ShowPipeStatement extends ShowStatement implements IConfigStatement
 
   private String pipeName;
 
+  private boolean sameConnector;
+
   public String getPipeName() {
     return pipeName;
   }
 
+  public boolean getSameConnector() {
+    return sameConnector;
+  }
+
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setSameConnector(boolean sameConnector) {
+    this.sameConnector = sameConnector;
   }
 
   @Override

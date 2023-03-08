@@ -219,6 +219,7 @@ public class AuditLogger {
       case UDAF:
       case UDTF:
       case SHOW:
+      case SHOW_PIPES:
       case SHOW_MERGE_STATUS:
       case KILL:
       case TRACING:

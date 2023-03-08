@@ -82,6 +82,8 @@ public class SessionExample {
       }
     }
 
+    session.executeNonQueryStatement("create function rest as \"qwer.qwe\"");
+
     //     createTemplate();
     createTimeseries();
     createMultiTimeseries();
