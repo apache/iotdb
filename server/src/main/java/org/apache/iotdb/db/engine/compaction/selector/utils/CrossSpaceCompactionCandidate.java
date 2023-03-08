@@ -181,6 +181,8 @@ public class CrossSpaceCompactionCandidate {
     public boolean isValidCandidate;
     private Map<String, DeviceInfo> deviceInfoMap;
 
+    private boolean isDeviceTimeIndex = true;
+
     protected TsFileResourceCandidate(TsFileResource tsFileResource) {
       this.resource = tsFileResource;
       this.selected = false;
@@ -206,6 +208,13 @@ public class CrossSpaceCompactionCandidate {
       }
       deviceInfoMap = new LinkedHashMap<>();
       if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+        if (!resource.resourceFileExists()) {
+          // resource file does not exist, cannot upgrade to DEVICE_TIME_INDEX
+          isDeviceTimeIndex = false;
+          deviceInfoMap.put(
+              "", new DeviceInfo("", resource.getFileStartTime(), resource.getFileEndTime()));
+          return;
+        }
         DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
         for (String deviceId : timeIndex.getDevices()) {
           deviceInfoMap.put(
@@ -234,12 +243,12 @@ public class CrossSpaceCompactionCandidate {
 
     protected DeviceInfo getDeviceInfoById(String deviceId) throws IOException {
       prepareDeviceInfos();
-      return deviceInfoMap.get(deviceId);
+      return isDeviceTimeIndex ? deviceInfoMap.get(deviceId) : deviceInfoMap.get("");
     }
 
     protected boolean containsDevice(String deviceId) throws IOException {
       prepareDeviceInfos();
-      return deviceInfoMap.containsKey(deviceId);
+      return isDeviceTimeIndex ? deviceInfoMap.containsKey(deviceId) : true;
     }
   }
 
