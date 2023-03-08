@@ -30,20 +30,6 @@ from subprocess import call
 from iotdb.mlnode.process.task import ForecastingTrainingTask
 from debug import *
 
-# def _create_training_task(configs, task_map, task_id):
-#     trial = ForecastingTrainingTrial(configs)
-#     trial.start()
-#     pid = os.getpid()
-#     task_map[task_id][pid] = 'finished'
-#
-#
-# def _create_tuning_task(configs, task_map, task_id):
-#     study = optuna.create_study(direction='minimize')
-#     study.optimize(TrainingTrialObjective(configs), n_trials=20)
-#     pid = os.getpid()
-#     task_map[task_id] = pid
-
-
 # def _create_inference_task(configs, task_map, task_id):
 #     trial = ForecastingInferenceTrial(configs, debug_inference_data())
 #     trial.start()
