@@ -48,10 +48,10 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
   @Override
   public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
     instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
-    synchronized (pendingNumber) {
-      if (pendingNumber.decrementAndGet() == 0) {
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+    if (pendingNumber.decrementAndGet() == 0) {
+      PerformanceOverviewMetricsManager.getInstance()
+          .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+      synchronized (pendingNumber) {
         pendingNumber.notifyAll();
       }
     }

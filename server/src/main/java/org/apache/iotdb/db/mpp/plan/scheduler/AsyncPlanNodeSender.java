@@ -81,7 +81,7 @@ public class AsyncPlanNodeSender {
 
   public void waitUntilCompleted() throws InterruptedException {
     synchronized (pendingNumber) {
-      if (pendingNumber.get() != 0) {
+      while(pendingNumber.get() != 0) {
         pendingNumber.wait();
       }
     }
