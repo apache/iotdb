@@ -27,8 +27,12 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAllKindsOfExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
 /**
  * Collect result from child, then reconstruct. For example, two child each give me 1 result, I
@@ -36,25 +40,37 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAl
  */
 public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
   // process every child, then reconstruct a new expression
-  public Expression reconstructFromChild(Expression expression, C context) {
-    List<Expression> childResult = new ArrayList<>();
-    expression.getExpressions().forEach(child -> childResult.add(process(child, context)));
-    return reconstructAllKindsOfExpression(expression, childResult);
+  public List<Expression> processChild(Expression expression, C context) {
+    return expression.getExpressions().stream()
+            .map(child -> process(child, context))
+            .collect(Collectors.toList());
   }
 
   @Override
   public Expression visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
-    return reconstructFromChild(ternaryExpression, context);
+    List<Expression> childResults = processChild(ternaryExpression, context);
+    return reconstructTernaryExpression(
+            ternaryExpression,
+            childResults.get(0),
+            childResults.get(1),
+            childResults.get(2)
+    );
   }
 
   @Override
   public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    return reconstructFromChild(binaryExpression, context);
+    List<Expression> childResults = processChild(binaryExpression, context);
+    return reconstructBinaryExpression(
+            binaryExpression.getExpressionType(),
+            childResults.get(0),
+            childResults.get(1)
+    );
   }
 
   @Override
   public Expression visitUnaryExpression(UnaryExpression unaryExpression, C context) {
-    return reconstructFromChild(unaryExpression, context);
+    List<Expression> childResults = processChild(unaryExpression, context);
+    return reconstructUnaryExpression(unaryExpression, childResults.get(0));
   }
 
   @Override

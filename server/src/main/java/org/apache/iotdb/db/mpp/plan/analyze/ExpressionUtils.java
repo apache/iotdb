@@ -58,26 +58,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ExpressionUtils {
-  public static Expression reconstructAllKindsOfExpression(
-      Expression expression, List<Expression> childResults) {
-    if (expression instanceof TernaryExpression) {
-      return reconstructTernaryExpression(
-          expression, childResults.get(0), childResults.get(1), childResults.get(2));
-    }
-    if (expression instanceof BinaryExpression) {
-      return reconstructBinaryExpression(
-          expression.getExpressionType(), childResults.get(0), childResults.get(1));
-    }
-    if (expression instanceof UnaryExpression) {
-      return reconstructUnaryExpression((UnaryExpression) expression, childResults.get(0));
-    }
-    if (expression instanceof FunctionExpression) {
-      return reconstructFunctionExpression((FunctionExpression) expression, childResults);
-    }
-    throw new IllegalArgumentException(
-        "unsupported expression type: " + expression.getExpressionType());
-  }
-
   public static List<Expression> reconstructTimeSeriesOperands(
       List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
