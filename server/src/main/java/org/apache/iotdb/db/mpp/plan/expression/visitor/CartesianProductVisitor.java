@@ -36,21 +36,17 @@ public abstract class CartesianProductVisitor<C>
   public List<Expression> visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(ternaryExpression, context);
     return reconstructTernaryExpressions(
-            ternaryExpression,
-            childResultsList.get(0),
-            childResultsList.get(1),
-            childResultsList.get(2)
-    );
+        ternaryExpression,
+        childResultsList.get(0),
+        childResultsList.get(1),
+        childResultsList.get(2));
   }
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
-            binaryExpression.getExpressionType(),
-            childResultsList.get(0),
-            childResultsList.get(1)
-    );
+        binaryExpression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));
   }
 
   @Override

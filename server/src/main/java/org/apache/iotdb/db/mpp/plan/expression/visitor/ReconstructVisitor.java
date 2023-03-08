@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
@@ -41,21 +40,14 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   public Expression visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
     List<Expression> childResults = getResultsFromChild(ternaryExpression, context);
     return reconstructTernaryExpression(
-            ternaryExpression,
-            childResults.get(0),
-            childResults.get(1),
-            childResults.get(2)
-    );
+        ternaryExpression, childResults.get(0), childResults.get(1), childResults.get(2));
   }
 
   @Override
   public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     List<Expression> childResults = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpression(
-            binaryExpression.getExpressionType(),
-            childResults.get(0),
-            childResults.get(1)
-    );
+        binaryExpression.getExpressionType(), childResults.get(0), childResults.get(1));
   }
 
   @Override
