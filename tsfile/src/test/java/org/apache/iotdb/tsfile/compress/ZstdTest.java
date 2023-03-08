@@ -61,8 +61,7 @@ public class ZstdTest {
       compressor.compress(source, compressed);
 
       IUnCompressor unCompressor = new IUnCompressor.ZstdUnCompressor();
-      ByteBuffer uncompressedByteBuffer =
-          ByteBuffer.allocateDirect(input.getBytes().length);
+      ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(input.getBytes().length);
       compressed.flip();
       unCompressor.uncompress(compressed, uncompressedByteBuffer);
 
@@ -86,5 +85,4 @@ public class ZstdTest {
     byte[] uncompressed = unCompressor.uncompress(compressed);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
-
 }
