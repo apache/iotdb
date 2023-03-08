@@ -96,9 +96,10 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
     return aliasChildren != null && aliasChildren.containsKey(name);
   }
 
-  public IMeasurementMNode<N> getAliasChild(String name) {
+  public N getAliasChild(String name) {
     if (aliasChildren != null) {
-      return aliasChildren.get(name);
+      IMeasurementMNode<N> child = aliasChildren.get(name);
+      return child == null ? null : child.getAsMNode();
     }
     return null;
   }

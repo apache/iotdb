@@ -224,6 +224,7 @@ public class CacheBasicMNode implements ICacheMNode {
   @Override
   public void moveDataToNewMNode(ICacheMNode newMNode) {
     newMNode.setParent(parent);
+    newMNode.setCacheEntry(getCacheEntry());
 
     if (children != null) {
       newMNode.setChildren(children);

@@ -87,7 +87,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   public N getChild(String name) {
     N res = basicMNode.getChild(name);
     if (res == null) {
-      res = deviceInfo.getAliasChild(name).getAsMNode();
+      res = deviceInfo.getAliasChild(name);
     }
     return res;
   }

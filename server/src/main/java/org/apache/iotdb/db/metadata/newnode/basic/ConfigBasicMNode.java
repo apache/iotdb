@@ -219,6 +219,7 @@ public class ConfigBasicMNode implements IConfigMNode {
   @Override
   public void moveDataToNewMNode(IConfigMNode newMNode) {
     newMNode.setParent(parent);
+    newMNode.setSchemaTemplateId(configMNodeInfo.getSchemaTemplateIdWithState());
 
     if (children != null) {
       newMNode.setChildren(children);
