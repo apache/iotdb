@@ -35,13 +35,11 @@
         <tsfile.test.skip>false</tsfile.test.skip>
         <tsfile.it.skip>${tsfile.test.skip}</tsfile.it.skip>
         <tsfile.ut.skip>${tsfile.test.skip}</tsfile.ut.skip>
-        <zstd-jni.version>1.5.4-2</zstd-jni.version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>com.github.luben</groupId>
             <artifactId>zstd-jni</artifactId>
-            <version>${zstd-jni.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
