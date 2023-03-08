@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 

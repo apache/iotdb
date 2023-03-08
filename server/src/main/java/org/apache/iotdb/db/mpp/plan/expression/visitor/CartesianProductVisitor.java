@@ -29,7 +29,8 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProductAllKindsOfExpression;
 
-public abstract class CartesianProductVisitor<C> extends ExpressionAnalyzeVisitor<List<Expression>, C> {
+public abstract class CartesianProductVisitor<C>
+    extends ExpressionAnalyzeVisitor<List<Expression>, C> {
   private List<Expression> cartesianProductFromChild(Expression expression, C context) {
     List<List<Expression>> childResultsList = new ArrayList<>();
     expression.getExpressions().forEach(child -> childResultsList.add(process(child, context)));

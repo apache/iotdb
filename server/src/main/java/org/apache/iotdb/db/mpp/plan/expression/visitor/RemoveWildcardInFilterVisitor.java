@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
@@ -111,7 +110,7 @@ public class RemoveWildcardInFilterVisitor
 
   @Override
   public List<Expression> visitTimeStampOperand(
-          TimestampOperand timestampOperand, Context context) {
+      TimestampOperand timestampOperand, Context context) {
     return Collections.singletonList(timestampOperand);
   }
 
