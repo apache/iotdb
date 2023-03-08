@@ -54,9 +54,4 @@ public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expre
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, Void context) {
     return collectFromChild(unaryExpression);
   }
-
-  @Override
-  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
-    return super.visitLeafOperand(leafOperand, context);
-  }
 }
