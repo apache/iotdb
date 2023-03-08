@@ -496,6 +496,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+    Set<PartialPath> noMeasurementDevices = new HashSet<>(deviceSet);
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       Expression selectExpression = resultColumn.getExpression();
@@ -508,6 +509,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (PartialPath device : deviceSet) {
         List<Expression> selectExpressionsOfOneDevice =
             ExpressionAnalyzer.concatDeviceAndRemoveWildcard(selectExpression, device, schemaTree);
+        if (selectExpressionsOfOneDevice.isEmpty()) {
+          continue;
+        }
+        noMeasurementDevices.remove(device);
         for (Expression expression : selectExpressionsOfOneDevice) {
           Expression measurementExpression =
               ExpressionAnalyzer.getMeasurementExpression(expression);
@@ -567,6 +572,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
     }
+
+    // remove devices without measurements to compute
+    deviceSet.removeAll(noMeasurementDevices);
 
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
     return outputExpressions;
