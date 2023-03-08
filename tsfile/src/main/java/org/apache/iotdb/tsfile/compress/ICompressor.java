@@ -33,6 +33,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -336,14 +337,11 @@ public interface ICompressor extends Serializable {
       if (data == null) {
         return new byte[0];
       }
-      byte[] toCompressData;
-      if (offset == 0 && length == data.length) {
-        toCompressData = data;
-      } else {
-        toCompressData = new byte[length];
-        System.arraycopy(data, offset, toCompressData, 0, length);
-      }
-      return Zstd.compress(toCompressData, compressionLevel);
+      byte[] compressedData = new byte[getMaxBytesForCompression(length)];
+      int compressedSize = compress(data, offset, length, compressedData);
+      byte[] result = new byte[compressedSize];
+      System.arraycopy(compressedData, 0, result, 0, compressedSize);
+      return result;
     }
 
     @Override
