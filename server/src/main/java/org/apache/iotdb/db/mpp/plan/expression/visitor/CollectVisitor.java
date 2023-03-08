@@ -25,32 +25,34 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Simply collects result from child-expression. For example, two child give me 3 and 4 results, I
  * will return 3+4 = 7 results to upper level.
  */
 public abstract class CollectVisitor extends ExpressionAnalyzeVisitor<List<Expression>, Void> {
-  protected List<Expression> collectFromChild(Expression expression) {
+  List<Expression> mergeList(List<List<Expression>> listOfList) {
     List<Expression> result = new ArrayList<>();
-    for (Expression child : expression.getExpressions()) result.addAll(process(child, null));
+    listOfList.forEach(result::addAll);
     return result;
   }
-
   @Override
   public List<Expression> visitTernaryExpression(
       TernaryExpression ternaryExpression, Void context) {
-    return collectFromChild(ternaryExpression);
+    return mergeList(getResultsFromChild(ternaryExpression, null));
   }
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
-    return collectFromChild(binaryExpression);
+    return mergeList(getResultsFromChild(binaryExpression, null));
   }
 
   @Override
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, Void context) {
-    return collectFromChild(unaryExpression);
+    return mergeList(getResultsFromChild(unaryExpression, null));
   }
 }

@@ -33,7 +33,7 @@ public class CollectAggregationExpressionsVisitor extends CollectVisitor {
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       return Collections.singletonList(functionExpression);
     }
-    return collectFromChild(functionExpression);
+    return mergeList(getResultsFromChild(functionExpression, null));
   }
 
   @Override

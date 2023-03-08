@@ -25,12 +25,10 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
@@ -39,16 +37,9 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUn
  * should use them to reconstruct 1 new result to upper level.
  */
 public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
-  // process every child, then reconstruct a new expression
-  public List<Expression> processChild(Expression expression, C context) {
-    return expression.getExpressions().stream()
-            .map(child -> process(child, context))
-            .collect(Collectors.toList());
-  }
-
   @Override
   public Expression visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
-    List<Expression> childResults = processChild(ternaryExpression, context);
+    List<Expression> childResults = getResultsFromChild(ternaryExpression, context);
     return reconstructTernaryExpression(
             ternaryExpression,
             childResults.get(0),
@@ -59,7 +50,7 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
 
   @Override
   public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    List<Expression> childResults = processChild(binaryExpression, context);
+    List<Expression> childResults = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpression(
             binaryExpression.getExpressionType(),
             childResults.get(0),
@@ -69,7 +60,7 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
 
   @Override
   public Expression visitUnaryExpression(UnaryExpression unaryExpression, C context) {
-    List<Expression> childResults = processChild(unaryExpression, context);
+    List<Expression> childResults = getResultsFromChild(unaryExpression, context);
     return reconstructUnaryExpression(unaryExpression, childResults.get(0));
   }
 

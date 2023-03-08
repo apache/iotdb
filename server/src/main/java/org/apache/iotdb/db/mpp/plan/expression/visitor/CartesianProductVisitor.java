@@ -24,9 +24,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
@@ -34,15 +32,9 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUn
 
 public abstract class CartesianProductVisitor<C>
     extends ExpressionAnalyzeVisitor<List<Expression>, C> {
-  private List<List<Expression>> processChild(Expression expression, C context) {
-    return expression.getExpressions().stream()
-            .map(child -> process(child, context))
-            .collect(Collectors.toList());
-  }
-
   @Override
   public List<Expression> visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
-    List<List<Expression>> childResultsList = processChild(ternaryExpression, context);
+    List<List<Expression>> childResultsList = getResultsFromChild(ternaryExpression, context);
     return reconstructTernaryExpressions(
             ternaryExpression,
             childResultsList.get(0),
@@ -53,7 +45,7 @@ public abstract class CartesianProductVisitor<C>
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
-    List<List<Expression>> childResultsList = processChild(binaryExpression, context);
+    List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
             binaryExpression.getExpressionType(),
             childResultsList.get(0),
@@ -63,7 +55,7 @@ public abstract class CartesianProductVisitor<C>
 
   @Override
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, C context) {
-    List<List<Expression>> childResultsList = processChild(unaryExpression, context);
+    List<List<Expression>> childResultsList = getResultsFromChild(unaryExpression, context);
     return reconstructUnaryExpressions(unaryExpression, childResultsList.get(0));
   }
 }

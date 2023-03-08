@@ -21,10 +21,19 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R, C> {
   @Override
   public R visitExpression(Expression expression, C context) {
     throw new IllegalArgumentException(
         "unsupported expression type: " + expression.getExpressionType());
+  }
+
+  List<R> getResultsFromChild(Expression expression, C context) {
+    return expression.getExpressions().stream()
+            .map(child -> process(child, context))
+            .collect(Collectors.toList());
   }
 }

@@ -31,7 +31,7 @@ public class CollectSourceExpressionsVisitor extends CollectVisitor {
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Void context) {
-    return collectFromChild(functionExpression);
+    return mergeList(getResultsFromChild(functionExpression, null));
   }
 
   @Override
