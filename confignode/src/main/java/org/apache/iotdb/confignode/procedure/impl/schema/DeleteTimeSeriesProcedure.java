@@ -40,8 +40,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -61,8 +59,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getLeaderDataNodeRegionGroupMap;
-
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
 
@@ -71,9 +67,9 @@ public class DeleteTimeSeriesProcedure
   private String queryId;
 
   private PathPatternTree patternTree;
-  private ByteBuffer patternTreeBytes;
+  private transient ByteBuffer patternTreeBytes;
 
-  private String requestMessage;
+  private transient String requestMessage;
 
   public DeleteTimeSeriesProcedure() {
     super();
@@ -215,55 +211,6 @@ public class DeleteTimeSeriesProcedure
     setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
   }
 
-  // todo this will be used in IDTable scenarios
-  private void deleteDataWithResolvedPath(ConfigNodeProcedureEnv env) {
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
-    Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeSchemaRegionGroupGroupIdMap =
-        getLeaderDataNodeRegionGroupMap(
-            env.getConfigManager().getLoadManager().getLatestRegionLeaderMap(),
-            relatedSchemaRegionGroup);
-
-    // fetch schema black list by dataNode
-    for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
-        dataNodeSchemaRegionGroupGroupIdMap.entrySet()) {
-      Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup = new HashMap<>();
-      entry
-          .getValue()
-          .forEach(
-              consensusGroupId ->
-                  targetSchemaRegionGroup.put(
-                      consensusGroupId, relatedSchemaRegionGroup.get(consensusGroupId)));
-      // resolve original path pattern into specific timeseries full path
-      PathPatternTree patternTree =
-          fetchSchemaBlackListOnTargetDataNode(env, targetSchemaRegionGroup);
-      if (isFailed()) {
-        return;
-      }
-      if (patternTree == null) {
-        LOGGER.error(
-            "Failed to fetch schema black list for delete data of timeseries {} on {}",
-            requestMessage,
-            entry.getKey());
-        setFailure(
-            new ProcedureException(
-                new MetadataException("Fetch schema black list forDelete data failed")));
-        return;
-      }
-
-      if (patternTree.isEmpty()) {
-        continue;
-      }
-
-      executeDeleteData(env, patternTree);
-
-      if (isFailed()) {
-        return;
-      }
-    }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
-  }
-
   private void executeDeleteData(ConfigNodeProcedureEnv env, PathPatternTree patternTree) {
     Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(patternTree);
@@ -301,58 +248,6 @@ public class DeleteTimeSeriesProcedure
           }
         };
     deleteDataTask.execute();
-  }
-
-  private PathPatternTree fetchSchemaBlackListOnTargetDataNode(
-      ConfigNodeProcedureEnv env,
-      Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup) {
-    DeleteTimeSeriesRegionTask<TFetchSchemaBlackListResp> fetchSchemaBlackListTask =
-        new DeleteTimeSeriesRegionTask<TFetchSchemaBlackListResp>(
-            "fetch schema black list", env, targetSchemaRegionGroup) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TFetchSchemaBlackListReq, TFetchSchemaBlackListResp> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.FETCH_SCHEMA_BLACK_LIST,
-                    new TFetchSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            Map<Integer, TSStatus> statusMap = new HashMap<>();
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                      statusMap.put(k, v.getStatus());
-                    });
-            return statusMap;
-          }
-        };
-    fetchSchemaBlackListTask.execute();
-    if (isFailed()) {
-      return null;
-    }
-
-    Map<Integer, List<TFetchSchemaBlackListResp>> respMap =
-        fetchSchemaBlackListTask.getResponseMap();
-    PathPatternTree patternTree = new PathPatternTree();
-    for (List<TFetchSchemaBlackListResp> respList : respMap.values()) {
-      for (TFetchSchemaBlackListResp resp : respList) {
-        for (PartialPath path :
-            PathPatternTree.deserialize(ByteBuffer.wrap(resp.getPathPatternTree()))
-                .getAllPathPatterns()) {
-          patternTree.appendFullPath(path);
-        }
-      }
-    }
-    patternTree.constructTree();
-    return patternTree;
   }
 
   private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
