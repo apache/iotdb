@@ -130,7 +130,7 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   @Override
   public boolean isAboveDatabase() {
-    return false;
+    return true;
   }
 
   @Override
