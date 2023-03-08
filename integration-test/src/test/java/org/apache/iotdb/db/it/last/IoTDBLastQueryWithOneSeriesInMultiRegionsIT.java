@@ -203,8 +203,8 @@ public class IoTDBLastQueryWithOneSeriesInMultiRegionsIT {
                   + ","
                   + resultSet.getString(ColumnHeaderConstant.DATATYPE);
           assertTrue(retArray2.contains(ans));
+          cnt++;
         }
-        cnt++;
         assertEquals(retArray2.size(), cnt);
       }
 
