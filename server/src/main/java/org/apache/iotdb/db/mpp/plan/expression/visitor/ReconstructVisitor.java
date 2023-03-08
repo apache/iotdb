@@ -34,7 +34,7 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructAl
  * Collect result from child, then reconstruct. For example, two child each give me 1 result, I
  * should use them to reconstruct 1 new result to upper level.
  */
-public class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
+public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Expression, C> {
   // process every child, then reconstruct a new expression
   public Expression reconstructFromChild(Expression expression, C context) {
     List<Expression> childResult = new ArrayList<>();
