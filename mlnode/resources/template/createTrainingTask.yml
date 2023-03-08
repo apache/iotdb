@@ -34,9 +34,10 @@ d_model: 128
 inner_layers: 4
 outer_layers: 4
 
-# trail config
+# task config
 ---
 model_id: 0
+tuning: False
 task_type: m
 input_len: 96
 pred_len: 96

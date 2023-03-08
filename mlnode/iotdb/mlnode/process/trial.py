@@ -60,20 +60,18 @@ def parse_data_config(**kwargs):
 
 
 class BasicTrial(object):
-    def __init__(self, configs, model_configs, data_configs):
-        self.trial_configs = parse_trial_config(**configs)
-        self.model = self._build_model(model_configs)
+    def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
+        self.trial_configs = parse_trial_config(**trial_configs)
+        self.model = model
+        self.model_configs = model_configs
         self.device = self._acquire_device()
         self.model = self.model.to(self.device)
-        self.dataset, self.dataloader = self._build_data(data_configs)
+        self.dataset = dataset
 
-        self.model_id = configs["model_id"]
-        self.trial_id = configs["trial_id"]
+        self.model_id = trial_configs["model_id"]
+        self.trial_id = trial_configs["trial_id"]
 
-    def _build_model(self, model_config):
-        raise NotImplementedError
-
-    def _build_data(self, data_config):
+    def _build_data(self):
         raise NotImplementedError
 
     def _acquire_device(self):
@@ -90,31 +88,18 @@ class BasicTrial(object):
 
 
 class ForecastingTrainingTrial(BasicTrial):
-    def __init__(self, trial_configs, model_configs, data_configs):
-        super(ForecastingTrainingTrial, self).__init__(trial_configs, model_configs, data_configs)
+    def __init__(self, trial_configs, model, model_configs, dataset, **kwargs):
+        super(ForecastingTrainingTrial, self).__init__(trial_configs, model, model_configs, dataset, **kwargs)
+        self.dataloader = self._build_data()
 
-    def _build_model(self, model_config):
-        model, _ = model_factory.create_forecast_model(
-            **model_config
-        )
-        return model
-
-    def _build_data(self, data_config):
-        train_data_source = DataSource(
-            data_config['source_type'],
-            filename=data_config['filename']
-        )
-        train_dataset, _ = data_factory.create_forecasting_dataset(
-            dataset_type=data_config['dataset_type'],
-            data_source=train_data_source
-        )
+    def _build_data(self):
         train_loader = DataLoader(
-            train_dataset,
+            self.dataset,
             batch_size=self.trial_configs["batch_size"],
             shuffle=True,
             drop_last=True
         )
-        return train_dataset, train_loader
+        return train_loader
 
     def train(self, model, optimizer, criterion, dataloader, epoch):
         model.train()
@@ -174,6 +159,7 @@ class ForecastingTrainingTrial(BasicTrial):
         return val_loss
 
     def start(self):
+        print('train start')
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.trial_configs["learning_rate"])
         criterion = torch.nn.MSELoss()
 
@@ -183,7 +169,7 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                # modelStorager.save_model(self.model, self.model_cfg, self.model_id, 1)
+                modelStorager.save_model(self.model, self.model_configs, self.model_id, 1)
         return best_loss
 
 

@@ -45,7 +45,7 @@ def debug_data_config():
     data_config = {
         # ---configs for DataSource---
         'source_type': 'file',  # or 'sql'
-        'filename': 'iotdb/mlnode/dataset/ETT-small/ETTh1.csv',
+        'filename': 'dataset/ETT-small/ETTh2.csv',
 
         # should obtain a session, when source_type='sql' (unused in current config)
         # this session is pre-built by mlnode, not from training request
@@ -76,7 +76,7 @@ def debug_data_config():
 def debug_model_config():
     model_cfg = {
         # ---configs for Model---
-        'model_name': 'dlinear',  # or 'dlinear_individual', 'nbeats'
+        'model_name': 'nbeats',  # or 'dlinear_individual', 'nbeats'
         'input_len': 96,
         'pred_len': 96,
         'input_vars': 7,  # can obtain from dataset_cfg
@@ -94,17 +94,21 @@ def debug_model_config():
 def debug_trial_config():
     #TODO
     # model_id
-    # task_type
-    # input_len
-    # pred_len
-    # input_vars
-    # output_vars
-    # learning_rate
-    # batch_size
-    # num_workers
-    # epochs
-    # metric_name
-    pass
+    trial_config = {
+        'task_type': 'forecast',
+        'input_len': 96,
+        'pred_len': 96,
+        'input_vars': 7,
+        'output_vars': 7,
+        'learning_rate': 1e-4,
+        'batch_size': 32,
+        'num_workers': 1,
+        'epochs': 10,
+        'metric_name': 'MSE',
+        'tuning': False,
+        'model_id': 'debug'
+    }
+    return trial_config
 
 
 # def debug_dataset():

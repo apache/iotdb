@@ -25,40 +25,23 @@ import optuna
 import psutil
 import multiprocessing as mp
 from subprocess import call
-from iotdb.mlnode.process.trial import ForecastingTrainingTrial, ForecastingInferenceTrial
 
 
-class TrainingTrialObjective:
-    """
-    A class which serve as a function, should accept trial as args
-    and return the optimization objective. 
-    Optuna will try to minimize the objective.
-    """
+from iotdb.mlnode.process.task import ForecastingTrainingTask
+from debug import *
 
-    def __init__(self, configs):
-        self.configs = configs
-
-    def __call__(self, trial: optuna.Trial):
-        configs = self.configs
-        configs.learning_rate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-        configs.d_model = trial.suggest_categorical("d_model", [32, 64, 128, 256, 512, 768])
-        task = ForecastingTrainingTrial(configs)
-        loss = task.start()
-        return loss
-
-
-def _create_training_task(configs, task_map, task_id):
-    trial = ForecastingTrainingTrial(configs)
-    trial.start()
-    pid = os.getpid()
-    task_map[task_id][pid] = 'finished'
-
-
-def _create_tuning_task(configs, task_map, task_id):
-    study = optuna.create_study(direction='minimize')
-    study.optimize(TrainingTrialObjective(configs), n_trials=20)
-    pid = os.getpid()
-    task_map[task_id] = pid
+# def _create_training_task(configs, task_map, task_id):
+#     trial = ForecastingTrainingTrial(configs)
+#     trial.start()
+#     pid = os.getpid()
+#     task_map[task_id][pid] = 'finished'
+#
+#
+# def _create_tuning_task(configs, task_map, task_id):
+#     study = optuna.create_study(direction='minimize')
+#     study.optimize(TrainingTrialObjective(configs), n_trials=20)
+#     pid = os.getpid()
+#     task_map[task_id] = pid
 
 
 # def _create_inference_task(configs, task_map, task_id):
@@ -74,28 +57,23 @@ class Manager(object):
         pool: a multiprocessing process pool
         """
         self.resource_manager = mp.Manager()
-        self.task_map = self.resource_manager.dict()
-        signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
-        self.pool = mp.Pool(pool_num)
+        self.task_trial_map = self.resource_manager.dict()
+        # signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
+        self.training_pool = mp.Pool(pool_num)
 
-    def submit_single_training_task(self, configs):
-        """
-        Create a single training task based on configs; will add a process to the pool
-        # TODO: extract code pieces
-        """
-        task_id = self.generate_taskid()
-        self.pool.apply_async(_create_training_task, args=(configs, self.task_map, task_id,))
-        self.task_map[task_id] = self.resource_manager.dict()
-        return task_id
-
-    def create_tune_training_task_pool(self, configs):
-        """
-        Create a tuning task based on configs; will add a optuna process to the pool
-        """
-        task_id = self.generate_taskid()
-        self.pool.apply_async(_create_tuning_task, args=(configs, self.task_map, task_id,))
-        self.task_map[task_id] = self.resource_manager.dict()
-        return task_id
+    def submit_training_task(self, task_configs, model_configs, data_configs):
+        model_id = task_configs['model_id']
+        self.task_trial_map[model_id] = self.resource_manager.dict()
+        self.training_pool.apply_async(
+            ForecastingTrainingTask(
+                task_configs,
+                model_configs,
+                data_configs,
+                self.task_trial_map
+            ), args=()
+        )
+        self.training_pool.close()
+        self.training_pool.join()
 
     # def create_inference_task_pool(self, configs):
     #     """
@@ -120,25 +98,19 @@ class Manager(object):
             cmds = ['kill', str(pid)]
             call(cmds)
 
-    def _generate_taskid(self):
-        """
-        Generate a unique task id
-        """
-        return str(int(time.time() * 1000000))
+    # def _generate_taskid(self, model_id):
+    #     """
+    #     Generate a unique task id
+    #     """
+    #     return model_id + '_' + str(int(time.time() * 1000000))
 
-    def _get_task_state(self, task_id):
-        return self.task_map[task_id]
+    # def _get_task_state(self, task_id):
+    #     return self.task_map[task_id]
 
 
 # TaskManager = Manager(10)
 
 if __name__ == '__main__':
-    # manager = Manager()
-    # configs = default_configs()
-    # task_id = manager.createTuneTrainingTask(configs)
+    manager = Manager(10)
+    manager.submit_training_task(debug_trial_config(), debug_model_config(), debug_data_config())
 
-    # while True:
-    #     time.sleep(5)
-    #     manager.update_process_state()
-    #     print(manager.task_map[task_id])
-    pass

@@ -62,7 +62,6 @@ def create_forecasting_dataset(
         dataset: torch.nn.Module
         dataset_config: dict of dataset configurations
     """
-
     if dataset_type not in support_dataset_cfgs.keys():
         raise RuntimeError(f'Unknown dataset type: ({dataset_type}),'
                            f' which should be one of {support_forecasting_dataset.keys()}')
