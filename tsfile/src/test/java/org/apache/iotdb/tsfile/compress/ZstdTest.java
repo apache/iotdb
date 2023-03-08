@@ -57,12 +57,12 @@ public class ZstdTest {
 
       ICompressor compressor = new ICompressor.ZstdCompressor();
       ByteBuffer compressed =
-          ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
+          ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(input.getBytes().length));
       compressor.compress(source, compressed);
 
       IUnCompressor unCompressor = new IUnCompressor.ZstdUnCompressor();
       ByteBuffer uncompressedByteBuffer =
-          ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
+          ByteBuffer.allocateDirect(input.getBytes().length);
       compressed.flip();
       unCompressor.uncompress(compressed, uncompressedByteBuffer);
 
@@ -87,28 +87,4 @@ public class ZstdTest {
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 
-  @Test
-  public void testByteBuffer() throws IOException {
-    for (int i = 1; i < 500000; i += 100000) {
-      String input = randomString(i);
-      ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
-      source.put(input.getBytes());
-      source.flip();
-
-      ICompressor compressor = new ICompressor.ZstdCompressor();
-      ByteBuffer compressed =
-          ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
-      compressor.compress(source, compressed);
-
-      IUnCompressor unCompressor = new IUnCompressor.ZstdUnCompressor();
-      ByteBuffer uncompressedByteBuffer =
-          ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
-      compressed.flip();
-      unCompressor.uncompress(compressed, uncompressedByteBuffer);
-
-      uncompressedByteBuffer.flip();
-      String afterDecode = ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer);
-      Assert.assertEquals(afterDecode, input);
-    }
-  }
 }
