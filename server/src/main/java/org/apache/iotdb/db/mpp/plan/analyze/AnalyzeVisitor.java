@@ -255,8 +255,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (queryStatement.isLastQuery()) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
         }
-        analysis.setFinishQueryAfterAnalyze(true);
-        return analysis;
+        return finishQuery(analysis);
       }
 
       // extract global time filter from query filter and determine if there is a value filter
@@ -285,7 +284,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
         Set<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
+
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
+        if (deviceSet.isEmpty()) {
+          return finishQuery(analysis);
+        }
+
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
         Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
         analyzeHaving(
@@ -303,6 +307,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
             analyzeSelect(analysis, queryStatement, schemaTree);
+        if (outputExpressionMap.values().stream().allMatch(List::isEmpty)) {
+          return finishQuery(analysis);
+        }
 
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
@@ -347,6 +354,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());
     }
+    return analysis;
+  }
+
+  private Analysis finishQuery(Analysis analysis) {
+    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 
