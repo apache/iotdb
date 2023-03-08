@@ -48,14 +48,8 @@ public class RemoveWildcardInFilterVisitor
       BinaryExpression binaryExpression, Context context) {
     List<Expression> leftExpressions =
         process(binaryExpression.getLeftExpression(), context.notRootClone());
-    //            removeWildcardInFilter(
-    //                    ((BinaryExpression) predicate).getLeftExpression(), prefixPaths,
-    // schemaTree, false);
     List<Expression> rightExpressions =
         process(binaryExpression.getRightExpression(), context.notRootClone());
-    //            removeWildcardInFilter(
-    //                    ((BinaryExpression) predicate).getRightExpression(), prefixPaths,
-    // schemaTree, false);
     if (context.isRoot() && binaryExpression.getExpressionType() == ExpressionType.LOGIC_AND) {
       List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
       resultExpressions.addAll(rightExpressions);
