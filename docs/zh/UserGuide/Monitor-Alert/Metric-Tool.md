@@ -123,25 +123,25 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | points   | database="{database}", type="flush" | Gauge     | 最新一个刷盘的memtale的点数 |
 
 #### 4.1.4. 集群全链路
-| Metric                                     | Tags                                             | Type  | Description                |
-| ------------------------------------------ |--------------------------------------------------| ----- | -------------------------- |
-| performance_overview                       | interface="{interface}", type="{statement_type}" | Timer | 客户端执行的操作的耗时情况 |
-| performance_overview_detail                | stage="authority"                                | Timer | 权限认证总耗时             |
-| performance_overview_detail                | stage="parser"                                   | Timer | 解析构造总耗时             |
-| performance_overview_detail                | stage="analyzer"                                 | Timer | 语句分析总耗时             |
-| performance_overview_detail                | stage="planner"                                  | Timer | 请求规划总耗时             |
-| performance_overview_detail                | stage="scheduler"                                | Timer | 请求执行总耗时             |
-| performance_overview_schedule_overview     | stage="local_scheduler"                          | Timer | 本地请求执行总耗时         |
-| performance_overview_schedule_overview     | stage="remote_scheduler"                         | Timer | 远程请求执行总耗时         |
-| performance_overview_local_overview        | stage="schema_validate"                          | Timer | 元数据验证总耗时           |
-| performance_overview_local_overview        | stage="trigger"                                  | Timer | Trigger 触发总耗时         |
-| performance_overview_local_overview        | stage="storage"                                  | Timer | 共识层总耗时               |
-| performance_overview_statemachine_overview | stage="stateMachine"                             | Timer | DataRegion 抢锁总耗时      |
-| performance_overview_statemachine_detail   | stage="lock"                                     | Timer | DataRegion 抢锁总耗时      |
-| performance_overview_statemachine_detail   | stage="memory_block"                             | Timer | 内存控制阻塞总耗时         |
-| performance_overview_statemachine_detail   | stage="wal"                                      | Timer | 写入 Wal 总耗时            |
-| performance_overview_statemachine_detail   | stage="memtable"                                 | Timer | 写入 Memtable 总耗时       |
-| performance_overview_statemachine_detail   | stage="last_cache"                               | Timer | 更新 LastCache 总耗时      |
+| Metric                               | Tags                                             | Type  | Description                |
+| ------------------------------------ | ------------------------------------------------ | ----- | -------------------------- |
+| performance_overview                 | interface="{interface}", type="{statement_type}" | Timer | 客户端执行的操作的耗时情况 |
+| performance_overview_detail          | stage="authority"                                | Timer | 权限认证总耗时             |
+| performance_overview_detail          | stage="parser"                                   | Timer | 解析构造总耗时             |
+| performance_overview_detail          | stage="analyzer"                                 | Timer | 语句分析总耗时             |
+| performance_overview_detail          | stage="planner"                                  | Timer | 请求规划总耗时             |
+| performance_overview_detail          | stage="scheduler"                                | Timer | 请求执行总耗时             |
+| performance_overview_schedule_detail | stage="local_scheduler"                          | Timer | 本地请求执行总耗时         |
+| performance_overview_schedule_detail | stage="remote_scheduler"                         | Timer | 远程请求执行总耗时         |
+| performance_overview_local_detail    | stage="schema_validate"                          | Timer | 元数据验证总耗时           |
+| performance_overview_local_detail    | stage="trigger"                                  | Timer | Trigger 触发总耗时         |
+| performance_overview_local_detail    | stage="storage"                                  | Timer | 共识层总耗时               |
+| performance_overview_storage_detail  | stage="engine"                                   | Timer | DataRegion 抢锁总耗时      |
+| performance_overview_engine_detail   | stage="lock"                                     | Timer | DataRegion 抢锁总耗时      |
+| performance_overview_engine_detail   | stage="memory_block"                             | Timer | 内存控制阻塞总耗时         |
+| performance_overview_engine_detail   | stage="wal"                                      | Timer | 写入 Wal 总耗时            |
+| performance_overview_engine_detail   | stage="memtable"                                 | Timer | 写入 Memtable 总耗时       |
+| performance_overview_engine_detail   | stage="last_cache"                               | Timer | 更新 LastCache 总耗时      |
 
 #### 4.1.5. 任务统计
 
