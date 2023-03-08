@@ -277,7 +277,7 @@ BSD 3-Clause
 org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
 org.jline:jline:3.21.0
-com.github.luben.zstd-jni:1.5.4-2
+com.github.luben:zstd-jni:1.5.4-2
 
 
 MIT License
