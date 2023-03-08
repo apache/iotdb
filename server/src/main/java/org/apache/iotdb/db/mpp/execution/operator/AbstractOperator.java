@@ -76,7 +76,7 @@ public abstract class AbstractOperator implements Operator {
   public TsBlock getResultFromRetainedTsBlock() {
     TsBlock res;
     if (retainedTsBlock.getPositionCount() - startOffset <= maxTupleSizeOfTsBlock) {
-      res = retainedTsBlock.subTsBlock(startOffset);
+      res = startOffset == 0 ? retainedTsBlock : retainedTsBlock.subTsBlock(startOffset);
       retainedTsBlock = null;
       startOffset = 0;
     } else {

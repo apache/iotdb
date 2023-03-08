@@ -239,6 +239,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   private void appendToBuilder(TsBlock tsBlock) {
     if (builder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
       retainedTsBlock = tsBlock;
+      initializeMaxTsBlockLength(retainedTsBlock);
       return;
     }
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
