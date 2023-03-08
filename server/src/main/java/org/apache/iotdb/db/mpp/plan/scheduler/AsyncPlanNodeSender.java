@@ -79,10 +79,8 @@ public class AsyncPlanNodeSender {
     }
   }
 
-  public void waitUntilCompleted() throws InterruptedException {
-    while (pendingNumber.get() > 0) {
-      pendingNumber.wait();
-    }
+  public synchronized void waitUntilCompleted() throws InterruptedException {
+    pendingNumber.wait();
   }
 
   public Future<FragInstanceDispatchResult> getResult() {
