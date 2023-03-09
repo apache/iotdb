@@ -120,7 +120,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
         dataNodeConsensusGroupIdMap.entrySet()) {
       R response = executionResult.get(entry.getKey().getDataNodeId());
       List<TConsensusGroupId> failedRegionList =
-          processResponseOfOneDataNode(entry.getKey(), response);
+          processResponseOfOneDataNode(entry.getKey(), entry.getValue(), response);
       if (failedRegionList.isEmpty()) {
         continue;
       }
@@ -194,9 +194,17 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     this.isInterrupted = true;
   }
 
+  /**
+   * The subclass could process response of given DataNode and should return the group id of region
+   * with execution failure.
+   */
   protected abstract List<TConsensusGroupId> processResponseOfOneDataNode(
-      TDataNodeLocation dataNodeLocation, R response);
+      TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList, R response);
 
+  /**
+   * When all replicas failed on executing given task, the process defined by subclass will be
+   * executed.
+   */
   protected abstract void onAllReplicasetFailure(
       TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet);
 }

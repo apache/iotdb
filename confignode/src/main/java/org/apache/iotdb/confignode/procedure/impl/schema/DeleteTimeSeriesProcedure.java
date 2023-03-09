@@ -53,10 +53,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class DeleteTimeSeriesProcedure
@@ -134,32 +135,36 @@ public class DeleteTimeSeriesProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    DeleteTimeSeriesRegionTask<TSStatus> constructBlackListTask =
-        new DeleteTimeSeriesRegionTask<TSStatus>(
-            "construct schema black list", env, targetSchemaRegionGroup) {
+    List<TSStatus> successResult = new ArrayList<>();
+    DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
+        new DeleteTimeSeriesRegionTaskExecutor<TConstructSchemaBlackListReq>(
+            "construct schema black list",
+            env,
+            targetSchemaRegionGroup,
+            DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            // construct request and send
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-
-            AsyncClientHandler<TConstructSchemaBlackListReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
-                    new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
+          protected List<TConsensusGroupId> processResponseOfOneDataNode(
+              TDataNodeLocation dataNodeLocation,
+              List<TConsensusGroupId> consensusGroupIdList,
+              TSStatus response) {
+            List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              successResult.add(response);
+            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              List<TSStatus> subStatusList = response.getSubStatus();
+              for (int i = 0; i < subStatusList.size(); i++) {
+                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  successResult.add(subStatusList.get(i));
+                } else {
+                  failedRegionList.add(consensusGroupIdList.get(i));
+                }
+              }
+            } else {
+              failedRegionList.addAll(consensusGroupIdList);
+            }
+            return failedRegionList;
           }
         };
     constructBlackListTask.execute();
@@ -169,10 +174,8 @@ public class DeleteTimeSeriesProcedure
     }
 
     long preDeletedNum = 0;
-    for (List<TSStatus> respList : constructBlackListTask.getResponseMap().values()) {
-      for (TSStatus resp : respList) {
-        preDeletedNum += Long.parseLong(resp.getMessage());
-      }
+    for (TSStatus resp : successResult) {
+      preDeletedNum += Long.parseLong(resp.getMessage());
     }
     return preDeletedNum;
   }
@@ -220,65 +223,29 @@ public class DeleteTimeSeriesProcedure
       return;
     }
 
-    DeleteTimeSeriesRegionTask<TSStatus> deleteDataTask =
-        new DeleteTimeSeriesRegionTask<TSStatus>("delete data", env, relatedDataRegionGroup, true) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TDeleteDataForDeleteSchemaReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
-                    new TDeleteDataForDeleteSchemaReq(
-                        new ArrayList<>(consensusGroupIdList),
-                        preparePatternTreeBytesData(patternTree)),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+    DeleteTimeSeriesRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
+        new DeleteTimeSeriesRegionTaskExecutor<>(
+            "delete data",
+            env,
+            relatedDataRegionGroup,
+            true,
+            DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TDeleteDataForDeleteSchemaReq(
+                    new ArrayList<>(consensusGroupIdList),
+                    preparePatternTreeBytesData(patternTree))));
     deleteDataTask.execute();
   }
 
   private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
-    DeleteTimeSeriesRegionTask<TSStatus> deleteTimeSeriesTask =
-        new DeleteTimeSeriesRegionTask<TSStatus>(
+    DeleteTimeSeriesRegionTaskExecutor<TDeleteTimeSeriesReq> deleteTimeSeriesTask =
+        new DeleteTimeSeriesRegionTaskExecutor<>(
             "delete timeseries schema",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TDeleteTimeSeriesReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.DELETE_TIMESERIES,
-                    new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+            DataNodeRequestType.DELETE_TIMESERIES,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -286,34 +253,14 @@ public class DeleteTimeSeriesProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeleteTimeSeriesState deleteTimeSeriesState)
       throws IOException, InterruptedException, ProcedureException {
-    DeleteTimeSeriesRegionTask<TSStatus> rollbackStateTask =
-        new DeleteTimeSeriesRegionTask<TSStatus>(
+    DeleteTimeSeriesRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
+        new DeleteTimeSeriesRegionTaskExecutor<>(
             "roll back schema black list",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree)) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TRollbackSchemaBlackListReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
-                    new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
+            DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+            (dataNodeLocation, consensusGroupIdList) ->
+                new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
     rollbackStateTask.execute();
   }
 
@@ -392,54 +339,70 @@ public class DeleteTimeSeriesProcedure
     return Objects.hash(getProcId(), getState(), patternTree);
   }
 
-  private abstract class DeleteTimeSeriesRegionTask<T> extends DataNodeRegionTask<T> {
+  private class DeleteTimeSeriesRegionTaskExecutor<Q>
+      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
 
     private final String taskName;
 
-    DeleteTimeSeriesRegionTask(
-        String taskName,
-        ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup) {
-      super(env, targetSchemaRegionGroup, false);
-      this.taskName = taskName;
-    }
-
-    DeleteTimeSeriesRegionTask(
+    DeleteTimeSeriesRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        boolean executeOnAllReplicaset) {
-      super(env, targetSchemaRegionGroup, executeOnAllReplicaset);
+        DataNodeRequestType dataNodeRequestType,
+        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      this.taskName = taskName;
+    }
+
+    DeleteTimeSeriesRegionTaskExecutor(
+        String taskName,
+        ConfigNodeProcedureEnv env,
+        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        boolean executeOnAllReplicaset,
+        DataNodeRequestType dataNodeRequestType,
+        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(
+          env,
+          targetSchemaRegionGroup,
+          executeOnAllReplicaset,
+          dataNodeRequestType,
+          dataNodeRequestGenerator);
       this.taskName = taskName;
     }
 
     @Override
-    protected boolean hasFailure() {
-      return isFailed();
+    protected List<TConsensusGroupId> processResponseOfOneDataNode(
+        TDataNodeLocation dataNodeLocation,
+        List<TConsensusGroupId> consensusGroupIdList,
+        TSStatus response) {
+      List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return failedRegionList;
+      }
+
+      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        List<TSStatus> subStatus = response.getSubStatus();
+        for (int i = 0; i < subStatus.size(); i++) {
+          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedRegionList.add(consensusGroupIdList.get(i));
+          }
+        }
+      } else {
+        failedRegionList.addAll(consensusGroupIdList);
+      }
+      return failedRegionList;
     }
 
     @Override
-    protected void onExecutionFailure(TDataNodeLocation dataNodeLocation) {
-      LOGGER.error(
-          "Failed to execute [{}] of delete timeseries {} on {}",
-          taskName,
-          requestMessage,
-          dataNodeLocation);
+    protected void onAllReplicasetFailure(
+        TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
       setFailure(
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete timeseries %s failed when [%s]", requestMessage, taskName))));
-    }
-
-    @Override
-    protected void onAllReplicasetFailure(TConsensusGroupId consensusGroupId) {
-      setFailure(
-          new ProcedureException(
-              new MetadataException(
-                  String.format(
-                      "Delete timeseries %s failed when [%s] because all replicaset of schemaRegion %s failed.",
-                      requestMessage, taskName, consensusGroupId.id))));
+                      "Delete timeseries %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
+                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+      interruptTask();
     }
   }
 }
