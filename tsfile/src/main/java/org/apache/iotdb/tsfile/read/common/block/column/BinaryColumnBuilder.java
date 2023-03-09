@@ -148,12 +148,11 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     int newSize;
     if (initialized) {
       newSize = ColumnUtil.calculateNewArraySize(values.length);
+      LOGGER.info("grow capacity from {} to {}", values.length, newSize);
     } else {
       newSize = initialEntryCount;
       initialized = true;
     }
-
-    LOGGER.info("grow capacity from {} to {}", values.length, newSize);
 
     valueIsNull = Arrays.copyOf(valueIsNull, newSize);
     values = Arrays.copyOf(values, newSize);

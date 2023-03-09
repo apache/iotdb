@@ -128,7 +128,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    tsBlockBuilder.reset(20000);
+    tsBlockBuilder.reset();
     if (!prepareInput()) {
       return null;
     }
@@ -282,7 +282,6 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       if (canCallNext[i]) {
         if (children.get(i).hasNextWithTimer()) {
           inputTsBlocks[i] = getNextTsBlock(i);
-          LOGGER.info("get inputTsBlock with size: " + inputTsBlocks[i].getPositionCount());
           canCallNext[i] = false;
           if (isEmpty(i)) {
             allReady = false;
