@@ -203,4 +203,8 @@ keyWords
     | WITHOUT
     | WRITABLE
     | PRIVILEGE_VALUE
+    | CASE
+    | WHEN
+    | THEN
+    | ELSE
     ;
