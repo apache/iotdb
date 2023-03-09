@@ -259,7 +259,7 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
+                    "dn_max_client_count_for_each_node_in_client_manager",
                     String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
