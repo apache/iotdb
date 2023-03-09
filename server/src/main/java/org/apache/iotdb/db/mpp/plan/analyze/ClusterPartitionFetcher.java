@@ -301,7 +301,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       devicePaths.add(dataPartitionQueryParam.getDevicePath());
     }
     Map<String, String> deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate);
+        partitionCache.getDeviceToDatabase(devicePaths, true, isAutoCreate);
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       String devicePath = dataPartitionQueryParam.getDevicePath();

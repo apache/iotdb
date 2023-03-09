@@ -169,7 +169,7 @@ public class PartitionCacheTest {
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(2, devices.size());
       }
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap = partitionCache.getDeviceToDatabase(searchDevices, false, false);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test devices in two database
@@ -183,7 +183,7 @@ public class PartitionCacheTest {
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(1, devices.size());
       }
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap = partitionCache.getDeviceToDatabase(searchDevices, false, false);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test missed devices in storageGroupCache
@@ -195,7 +195,7 @@ public class PartitionCacheTest {
     for (List<String> searchDevices : nonExistedDevices) {
       storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(searchDevices, false, false);
       assertEquals(0, storageGroupToDeviceMap.size());
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap = partitionCache.getDeviceToDatabase(searchDevices, false, false);
       assertEquals(0, deviceToStorageGroupMap.size());
     }
     // test invalid all cache
@@ -203,7 +203,7 @@ public class PartitionCacheTest {
     List<String> oneDeviceList = Collections.singletonList("root.sg1.d1");
     storageGroupToDeviceMap = partitionCache.getDatabaseToDevice(oneDeviceList, false, false);
     assertEquals(0, storageGroupToDeviceMap.size());
-    deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(oneDeviceList, false, false);
+    deviceToStorageGroupMap = partitionCache.getDeviceToDatabase(oneDeviceList, false, false);
     assertEquals(0, deviceToStorageGroupMap.size());
   }
 
@@ -296,7 +296,7 @@ public class PartitionCacheTest {
       }
     }
     // test invalid SchemaPartitionCache
-    partitionCache.invalidAllSchemaPartitionCache();
+    partitionCache.invalidSchemaPartitionCache();
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
@@ -387,7 +387,7 @@ public class PartitionCacheTest {
     }
 
     // test invalid dataPartitionCache
-    partitionCache.invalidAllDataPartitionCache();
+    partitionCache.invalidDataPartitionCache();
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {

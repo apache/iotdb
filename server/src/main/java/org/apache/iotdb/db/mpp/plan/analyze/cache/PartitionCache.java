@@ -96,7 +96,6 @@ public class PartitionCache {
 
   /** The lock of cache. */
   private final ReentrantReadWriteLock databaseCacheLock = new ReentrantReadWriteLock();
-
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
@@ -142,7 +141,7 @@ public class PartitionCache {
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
    */
-  public Map<String, String> getDeviceToStorageGroup(
+  public Map<String, String> getDeviceToDatabase(
       List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
     DatabaseCacheResult<String> result =
         new DatabaseCacheResult<String>() {
@@ -163,9 +162,9 @@ public class PartitionCache {
    */
   private String getDatabaseName(String devicePath) {
     synchronized (databaseCache) {
-      for (String storageGroupName : databaseCache) {
-        if (PathUtils.isStartWith(devicePath, storageGroupName)) {
-          return storageGroupName;
+      for (String databaseName : databaseCache) {
+        if (PathUtils.isStartWith(devicePath, databaseName)) {
+          return databaseName;
         }
       }
     }
@@ -314,7 +313,7 @@ public class PartitionCache {
         }
       } catch (TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
+            "An error occurred when executing getDeviceToDatabase():" + e.getMessage());
       }
     }
   }
@@ -334,7 +333,7 @@ public class PartitionCache {
   }
 
   /**
-   * invalidate database cache
+   * invalidate database cache.
    *
    * @param databaseNames the databases that need to invalid
    */
@@ -348,7 +347,7 @@ public class PartitionCache {
   }
 
   /** invalidate all database cache. */
-  public void removeFromStorageGroupCache() {
+  public void invalidDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
       databaseCache.clear();
@@ -361,11 +360,11 @@ public class PartitionCache {
 
   // region replicaSet cache
   /**
-   * get regionReplicaSet from local and confignode
+   * get regionReplicaSet from local and config node.
    *
    * @param consensusGroupId the id of consensus group
    * @return regionReplicaSet
-   * @throws RuntimeException if failed to get regionReplicaSet from confignode
+   * @throws RuntimeException if failed to get regionReplicaSet from config node
    * @throws StatementAnalyzeException if there are exception when try to get latestRegionRouteMap
    */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
@@ -378,7 +377,7 @@ public class PartitionCache {
       regionReplicaSetLock.readLock().unlock();
     }
     if (result == null) {
-      // if not hit then try to get regionReplicaSet from confignode
+      // if miss then try to get regionReplicaSet from config node
       try {
         regionReplicaSetLock.writeLock().lock();
         // verify that there are not hit in cache
@@ -389,9 +388,9 @@ public class PartitionCache {
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
             }
-            // if confignode don't have then will throw RuntimeException
+            // if config node don't have then will throw RuntimeException
             if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-              // failed to get RegionReplicaSet from confignode
+              // failed to get RegionReplicaSet from config node
               throw new RuntimeException(
                   "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
             }
@@ -405,12 +404,11 @@ public class PartitionCache {
         regionReplicaSetLock.writeLock().unlock();
       }
     }
-    // try to get regionReplicaSet by consensusGroupId
     return result;
   }
 
   /**
-   * update regionReplicaSetMap according to timestamp
+   * update regionReplicaSetMap according to timestamp.
    *
    * @param timestamp the timestamp of map that need to update
    * @param map consensusGroupId to regionReplicaSet map
@@ -432,7 +430,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalidate replicaSetCache */
+  /** invalidate replicaSetCache. */
   public void invalidReplicaSetCache() {
     try {
       regionReplicaSetLock.writeLock().lock();
@@ -447,15 +445,15 @@ public class PartitionCache {
   // region schema partition cache
 
   /**
-   * get schemaPartition
+   * get schemaPartition.
    *
-   * @param storageGroupToDeviceMap database to devices map
-   * @return SchemaPartition of storageGroupToDeviceMap
+   * @param databaseToDeviceMap database to devices map
+   * @return SchemaPartition of databaseToDeviceMap
    */
-  public SchemaPartition getSchemaPartition(Map<String, List<String>> storageGroupToDeviceMap) {
+  public SchemaPartition getSchemaPartition(Map<String, List<String>> databaseToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
-      if (storageGroupToDeviceMap.size() == 0) {
+      if (databaseToDeviceMap.size() == 0) {
         CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -463,18 +461,18 @@ public class PartitionCache {
           new HashMap<>();
 
       // check cache for each database
-      for (Map.Entry<String, List<String>> entry : storageGroupToDeviceMap.entrySet()) {
-        String storageGroupName = entry.getKey();
+      for (Map.Entry<String, List<String>> entry : databaseToDeviceMap.entrySet()) {
+        String databaseName = entry.getKey();
         Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
-            schemaPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
+            schemaPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
         SchemaPartitionTable schemaPartitionTable =
-            schemaPartitionCache.getIfPresent(storageGroupName);
+            schemaPartitionCache.getIfPresent(databaseName);
         if (null == schemaPartitionTable) {
-          // if database not find, then return cache miss.
+          // if database miss, then return cache miss.
           logger.debug(
               "[{} Cache] miss when search database {}",
               SCHEMA_PARTITION_CACHE_NAME,
-              storageGroupName);
+                  databaseName);
           CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -547,7 +545,7 @@ public class PartitionCache {
   }
 
   /** invalid all schemaPartitionCache */
-  public void invalidAllSchemaPartitionCache() {
+  public void invalidSchemaPartitionCache() {
     schemaPartitionCacheLock.writeLock().lock();
     try {
       schemaPartitionCache.invalidateAll();
@@ -774,7 +772,7 @@ public class PartitionCache {
   }
 
   /** invalid all dataPartitionCache */
-  public void invalidAllDataPartitionCache() {
+  public void invalidDataPartitionCache() {
     dataPartitionCacheLock.writeLock().lock();
     try {
       dataPartitionCache.invalidateAll();
@@ -787,9 +785,9 @@ public class PartitionCache {
 
   public void invalidAllCache() {
     logger.debug("[Partition Cache] invalid");
-    removeFromStorageGroupCache();
-    invalidAllDataPartitionCache();
-    invalidAllSchemaPartitionCache();
+    invalidDatabaseCache();
+    invalidDataPartitionCache();
+    invalidSchemaPartitionCache();
     invalidReplicaSetCache();
     logger.debug("[Partition Cache] is invalid:{}", this);
   }
