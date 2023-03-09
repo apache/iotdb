@@ -645,37 +645,46 @@ public class ConfigMTree {
 
   public void deserialize(InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
-    if (type != STORAGE_GROUP_MNODE_TYPE) {
-      logger.error("Wrong node type. Cannot deserialize MTreeAboveSG from given buffer");
-      return;
-    }
 
-    IConfigMNode databaseMNode = deserializeStorageGroupMNode(inputStream).getAsMNode();
-    IConfigMNode basicMNode;
-
-    Stack<IConfigMNode> stack = new Stack<>();
-    stack.push(databaseMNode);
-
-    String name = databaseMNode.getName();
+    String name = null;
     int childNum = 0;
+    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    IConfigMNode databaseMNode;
+    IConfigMNode internalMNode;
+
+    if (type == STORAGE_GROUP_MNODE_TYPE) {
+      databaseMNode = deserializeStorageGroupMNode(inputStream);
+      name = databaseMNode.getName();
+      stack.push(new Pair<>(databaseMNode, true));
+    } else {
+      internalMNode = deserializeInternalMNode(inputStream);
+      childNum = ReadWriteIOUtils.readInt(inputStream);
+      name = internalMNode.getName();
+      stack.push(new Pair<>(internalMNode, false));
+    }
 
     while (!PATH_ROOT.equals(name)) {
       type = ReadWriteIOUtils.readByte(inputStream);
       switch (type) {
         case INTERNAL_MNODE_TYPE:
-          basicMNode = deserializeConfigBasicMNode(inputStream);
+          internalMNode = deserializeInternalMNode(inputStream);
           childNum = ReadWriteIOUtils.readInt(inputStream);
+          boolean hasDB = false;
           while (childNum > 0) {
-            basicMNode.addChild(stack.pop());
+            hasDB = stack.peek().right;
+            internalMNode.addChild(stack.pop().left);
             childNum--;
           }
-          stack.push(basicMNode);
-          name = basicMNode.getName();
+          stack.push(new Pair<>(internalMNode, hasDB));
+          name = internalMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
           databaseMNode = deserializeStorageGroupMNode(inputStream).getAsMNode();
           childNum = 0;
-          stack.push(databaseMNode);
+          while (!stack.isEmpty() && !stack.peek().right) {
+            databaseMNode.addChild(stack.pop().left);
+          }
+          stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
         default:
@@ -683,10 +692,10 @@ public class ConfigMTree {
           return;
       }
     }
-    this.root = stack.peek();
+    this.root = stack.peek().left;
   }
 
-  private IConfigMNode deserializeConfigBasicMNode(InputStream inputStream) throws IOException {
+  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
     IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));

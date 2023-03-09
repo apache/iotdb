@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
-import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -58,7 +58,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransfor
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.unary.DiffFunctionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -220,9 +219,9 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
-        } else if (functionExpression.isBuiltInFunction()) {
+        } else if (functionExpression.isBuiltInScalarFunction()) {
           context.cache.put(
-              functionExpression, getBuiltInFunctionTransformer(functionExpression, context));
+              functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -259,22 +258,12 @@ public class ColumnTransformerVisitor
     return res;
   }
 
-  private ColumnTransformer getBuiltInFunctionTransformer(
+  private ColumnTransformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, ColumnTransformerVisitorContext context) {
     ColumnTransformer childColumnTransformer =
         this.process(expression.getExpressions().get(0), context);
-
-    switch (expression.getFunctionName()) {
-      case SqlConstant.DIFF:
-        return new DiffFunctionColumnTransformer(
-            TypeFactory.getType(TSDataType.DOUBLE),
-            childColumnTransformer,
-            Boolean.parseBoolean(
-                expression.getFunctionAttributes().getOrDefault("ignoreNull", "true")));
-      default:
-        throw new IllegalArgumentException(
-            "Invalid Scalar function: " + expression.getExpressionString());
-    }
+    return BuiltInScalarFunctionHelperFactory.createHelper(expression.getFunctionName())
+        .getBuiltInScalarFunctionColumnTransformer(expression, childColumnTransformer);
   }
 
   @Override
