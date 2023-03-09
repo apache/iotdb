@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.openjdk.jol.info.ClassLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -30,6 +32,8 @@ import static java.lang.Math.max;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calculateBlockResetSize;
 
 public class TimeColumnBuilder implements ColumnBuilder {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeColumnBuilder.class);
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(TimeColumnBuilder.class).instanceSize();
@@ -108,7 +112,9 @@ public class TimeColumnBuilder implements ColumnBuilder {
 
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
-    return new TimeColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
+    int count = calculateBlockResetSize(positionCount);
+    LOGGER.info("reset size: {}", count);
+    return new TimeColumnBuilder(columnBuilderStatus, count);
   }
 
   @Override

@@ -135,9 +135,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
     // TODO we should take retain size into account here
-    int count = calculateBlockResetSize(positionCount);
-    LOGGER.info("reset size: " + count);
-    return new BinaryColumnBuilder(columnBuilderStatus, count);
+    return new BinaryColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
   }
 
   @Override

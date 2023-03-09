@@ -128,7 +128,6 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    tsBlockBuilder.reset();
     if (!prepareInput()) {
       return null;
     }
@@ -157,6 +156,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       return tsBlockBuilder.build();
     }
 
+    tsBlockBuilder.reset();
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     long currentTime;
     do {
