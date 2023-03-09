@@ -29,6 +29,7 @@ public class ShowPipeStatement extends ShowStatement implements IConfigStatement
     super();
     statementType = StatementType.SHOW_PIPES;
   }
+
   private String pipeName;
 
   private boolean whereClause;
