@@ -211,7 +211,7 @@ public class PipePluginManagementService {
     if (information == null) {
       String errorMessage =
           String.format(
-              "Failed to reflect UDF instance, because UDF %s has not been registered.",
+              "Failed to reflect PipePlugin instance, because PipePlugin %s has not been registered.",
               pluginName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new RuntimeException(errorMessage);
