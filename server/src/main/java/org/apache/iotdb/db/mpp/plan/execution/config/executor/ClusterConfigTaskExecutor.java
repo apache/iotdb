@@ -1566,7 +1566,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setWhereClause(true);
       }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList = resp.getPipeInfoList();
+      List<TShowPipeInfo> tShowPipeInfoList = new TShowPipeInfo();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);
