@@ -69,7 +69,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1678285291345,
+  "iteration": 1678345679839,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -2010,7 +2010,7 @@
           "expr": "rate(performance_overview_storage_detail_seconds_count{instance=\"$instance\"}[1m])",
           "hide": false,
           "interval": "",
-          "legendFormat": "other",
+          "legendFormat": "consensus",
           "refId": "A"
         }
       ],
@@ -2537,7 +2537,7 @@
           "expr": "abs(sum(rate(performance_overview_local_detail_seconds_sum{instance=\"$instance\", stage=\"storage\"}[1m])) - sum(rate(performance_overview_storage_detail_seconds_sum{instance=\"$instance\", stage=\"engine\"}[1m]))) / sum(rate(performance_overview_storage_detail_seconds_count{instance=\"$instance\", stage=\"engine\"}[1m]))",
           "hide": false,
           "interval": "",
-          "legendFormat": "other",
+          "legendFormat": "consensus",
           "refId": "A"
         },
         {
@@ -2715,7 +2715,35 @@
           },
           "unit": "s"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "analyzer",
+                  "authority",
+                  "parser",
+                  "planner"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -3015,7 +3043,7 @@
           "hide": false,
           "instant": false,
           "interval": "",
-          "legendFormat": "other",
+          "legendFormat": "consensus",
           "range": true,
           "refId": "A"
         },
@@ -4244,7 +4272,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "30s",
   "schemaVersion": 35,
   "style": "dark",
   "tags": [],
