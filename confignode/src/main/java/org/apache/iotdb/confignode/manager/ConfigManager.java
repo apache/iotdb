@@ -235,7 +235,7 @@ public class ConfigManager implements IManager {
 
   private final RetryFailedTasksThread retryFailedTasksThread;
 
-  private static final String dataBase = "\tDatabase=";
+  private static final String DATABASE = "\tDatabase=";
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -714,7 +714,7 @@ public class ConfigManager implements IManager {
       String database = databaseEntry.getKey();
       schemaPartitionRespString
           .append(lineSeparator)
-          .append(dataBase)
+          .append(DATABASE)
           .append(database)
           .append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> slotEntry :
@@ -731,8 +731,7 @@ public class ConfigManager implements IManager {
     }
     schemaPartitionRespString.append(lineSeparator).append("}");
     LOGGER.info(
-        "[GetOrCreateSchemaPartition]:{} Receive PathPatternTree: {}, "
-            + "Return TSchemaPartitionTableResp: {}",
+        "[GetOrCreateSchemaPartition]:{} Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
         lineSeparator,
         devicePathString,
         schemaPartitionRespString);
@@ -816,7 +815,7 @@ public class ConfigManager implements IManager {
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> databaseEntry :
         getOrCreateDataPartitionPlan.getPartitionSlotsMap().entrySet()) {
       String database = databaseEntry.getKey();
-      partitionSlotsMapString.append(lineSeparator).append(dataBase).append(database).append(": {");
+      partitionSlotsMapString.append(lineSeparator).append(DATABASE).append(database).append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> slotEntry :
           databaseEntry.getValue().entrySet()) {
         partitionSlotsMapString
@@ -842,7 +841,7 @@ public class ConfigManager implements IManager {
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         databaseEntry : dataPartitionTable.entrySet()) {
       String database = databaseEntry.getKey();
-      dataPartitionRespString.append(lineSeparator).append(dataBase).append(database).append(": {");
+      dataPartitionRespString.append(lineSeparator).append(DATABASE).append(database).append(": {");
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
           seriesSlotEntry : databaseEntry.getValue().entrySet()) {
         dataPartitionRespString
@@ -867,8 +866,7 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:{} Receive PartitionSlotsMap: {},"
-            + " Return TDataPartitionTableResp: {}",
+        "[GetOrCreateDataPartition]:{} Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
         lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);
