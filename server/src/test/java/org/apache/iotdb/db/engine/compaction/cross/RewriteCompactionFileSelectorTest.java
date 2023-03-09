@@ -1039,6 +1039,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                 Thread.sleep(1000);
                 List<CrossCompactionTaskResource> selected =
                     selector.selectCrossSpaceTask(seqResources, unseqResources);
+                Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
+                Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
               } catch (Exception e) {
                 logger.error("Exception occurs", e);
                 fail.set(true);
@@ -1047,8 +1049,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     Thread thread2 =
         new Thread(
             () -> {
-              seqResources.get(0).degradeTimeIndex();
-              if (!seqResources.get(0).remove()) {
+              seqResources.get(1).degradeTimeIndex();
+              if (!seqResources.get(1).remove()) {
                 fail.set(true);
               }
             });
