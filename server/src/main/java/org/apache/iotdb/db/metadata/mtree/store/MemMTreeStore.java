@@ -23,19 +23,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.abovedatabase.AboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
-import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -48,49 +45,42 @@ import java.util.function.Consumer;
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
-  private final IMNodeSizeEstimator estimator = new BasicMNodSizeEstimator();
   private final MemSchemaRegionStatistics regionStatistics;
-  private final IMNodeFactory<IMemMNode> nodeFactory;
+  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
 
   private IMemMNode root;
 
-  public MemMTreeStore(
-      PartialPath rootPath,
-      MemSchemaRegionStatistics regionStatistics,
-      IMNodeFactory<IMemMNode> nodeFactory) {
+  public MemMTreeStore(PartialPath rootPath, MemSchemaRegionStatistics regionStatistics) {
     this.root =
-        new DatabaseMNode(
-            null,
-            rootPath.getTailNode(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+        nodeFactory
+            .createDatabaseMNode(
+                null,
+                rootPath.getTailNode(),
+                CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs())
+            .getAsMNode();
     this.regionStatistics = regionStatistics;
-    this.nodeFactory = nodeFactory;
   }
 
-  private MemMTreeStore(
-      IMemMNode root,
-      MemSchemaRegionStatistics regionStatistics,
-      IMNodeFactory<IMemMNode> nodeFactory) {
+  private MemMTreeStore(IMemMNode root, MemSchemaRegionStatistics regionStatistics) {
     this.root = root;
     this.regionStatistics = regionStatistics;
-    this.nodeFactory = nodeFactory;
   }
 
   @Override
   public IMemMNode generatePrefix(PartialPath storageGroupPath) {
     String[] nodes = storageGroupPath.getNodes();
     // nodes[0] must be root
-    IMemMNode res = new AboveDatabaseMNode(null, nodes[0]);
+    IMemMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
     IMemMNode cur = res;
     IMemMNode child;
     for (int i = 1; i < nodes.length - 1; i++) {
-      child = new AboveDatabaseMNode(cur, nodes[i]);
+      child = nodeFactory.createAboveDatabaseMNode(cur, nodes[i]);
       cur.addChild(nodes[i], child);
       cur = child;
     }
     root.setParent(cur);
     cur.addChild(root);
-    requestMemory(estimator.estimateSize(root));
+    requestMemory(root.estimateSize());
     return res;
   }
 
@@ -132,14 +122,14 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public IMemMNode addChild(IMemMNode parent, String childName, IMemMNode child) {
     IMemMNode result = parent.addChild(childName, child);
     if (result == child) {
-      requestMemory(estimator.estimateSize(child));
+      requestMemory(child.estimateSize());
     }
     return result;
   }
 
   @Override
   public void deleteChild(IMemMNode parent, String childName) {
-    releaseMemory(estimator.estimateSize(parent.deleteChild(childName)));
+    releaseMemory(parent.deleteChild(childName).estimateSize());
   }
 
   @Override
@@ -149,7 +139,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public IDeviceMNode<IMemMNode> setToEntity(IMemMNode node) {
     IDeviceMNode<IMemMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
-      requestMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      requestMemory(result.estimateSize() - node.estimateSize());
     }
 
     if (result.isDatabase()) {
@@ -162,7 +152,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public IMemMNode setToInternal(IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
-      releaseMemory(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      releaseMemory(entityMNode.estimateSize() - result.estimateSize());
     }
     if (result.isDatabase()) {
       root = result;
@@ -188,9 +178,9 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
         releaseMemory(-delta);
       }
     } else if (alias == null) {
-      releaseMemory(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length());
+      releaseMemory(MNodeSizeEstimator.getAliasBaseSize() + existingAlias.length());
     } else {
-      requestMemory(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      requestMemory(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -210,7 +200,7 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   @Override
   public void clear() {
-    root = new BasicMNode(null, IoTDBConstant.PATH_ROOT);
+    root = nodeFactory.createInternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   @Override
@@ -221,13 +211,11 @@ public class MemMTreeStore implements IMTreeStore<IMemMNode> {
   public static MemMTreeStore loadFromSnapshot(
       File snapshotDir,
       Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      MemSchemaRegionStatistics regionStatistics,
-      IMNodeFactory<IMemMNode> nodeFactory)
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     return new MemMTreeStore(
         MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess, regionStatistics),
-        regionStatistics,
-        nodeFactory);
+        regionStatistics);
   }
 
   private void requestMemory(int size) {

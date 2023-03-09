@@ -30,9 +30,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePag
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -77,12 +77,13 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   // todo refactor constructor for schema file in Jan.
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
-
     this.storageGroupName = sgName;
     this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
     this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
@@ -176,13 +177,18 @@ public class SchemaFile implements ISchemaFile {
     if (isEntity) {
       resNode =
           setNodeAddress(
-              new CacheDatabaseDeviceMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              nodeFactory.createDatabaseDeviceMNode(
+                  null, sgPathNodes[sgPathNodes.length - 1], dataTTL),
+              0L);
       resNode.getAsDeviceMNode().setSchemaTemplateId(sgNodeTemplateIdWithState);
       resNode.getAsDeviceMNode().setUseTemplate(sgNodeTemplateIdWithState > -1);
     } else {
       resNode =
           setNodeAddress(
-              new CacheDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL), 0L);
+              nodeFactory
+                  .createDatabaseMNode(null, sgPathNodes[sgPathNodes.length - 1], dataTTL)
+                  .getAsMNode(),
+              0L);
     }
     resNode.setFullPath(storageGroupName);
     return resNode;

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class SchemaPageTest {
+
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -104,14 +106,16 @@ public class SchemaPageTest {
   }
 
   private ICacheMNode virtualFlatMTree(int childSize) {
-    ICacheMNode internalNode = new CacheDeviceMNode(null, "vRoot1");
+    ICacheMNode internalNode = nodeFactory.createDeviceMNode(null, "vRoot1").getAsMNode();
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       internalNode.addChild(
-          new CacheMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
+          nodeFactory
+              .createMeasurementMNode(
+                  internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als")
+              .getAsMNode());
     }
     return internalNode;
   }

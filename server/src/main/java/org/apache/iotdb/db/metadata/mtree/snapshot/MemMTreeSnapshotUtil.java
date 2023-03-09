@@ -22,22 +22,18 @@ package org.apache.iotdb.db.metadata.mtree.snapshot;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.DatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.AbstractDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.AbstractMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -72,7 +68,7 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
-  private static final IMNodeSizeEstimator ESTIMATOR = new BasicMNodSizeEstimator();
+  private static final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
@@ -240,7 +236,7 @@ public class MemMTreeSnapshotUtil {
         throw new IOException("Unrecognized MNode type " + type);
     }
 
-    regionStatistics.requestMemory(ESTIMATOR.estimateSize(node));
+    regionStatistics.requestMemory(node.estimateSize());
 
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());
@@ -344,51 +340,51 @@ public class MemMTreeSnapshotUtil {
 
   private static class MNodeDeserializer {
 
-    public BasicMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
+    public IMemMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      BasicMNode node = new BasicMNode(null, name);
+      IMemMNode node = nodeFactory.createInternalMNode(null, name);
       int templateId = ReadWriteIOUtils.readInt(inputStream);
       boolean useTemplate = ReadWriteIOUtils.readBool(inputStream);
       return node;
     }
 
-    public DatabaseMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
+    public IMemMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      DatabaseMNode node = new DatabaseMNode(null, name);
+      IMemMNode node = nodeFactory.createDatabaseMNode(null, name).getAsMNode();
       int templateId = ReadWriteIOUtils.readInt(inputStream);
       boolean useTemplate = ReadWriteIOUtils.readBool(inputStream);
       return node;
     }
 
-    public DatabaseDeviceMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
+    public IMemMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
         throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      DatabaseDeviceMNode node = new DatabaseDeviceMNode(null, name, 0);
-      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-      node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
-      node.setAligned(ReadWriteIOUtils.readBool(inputStream));
+      IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name, 0);
+      node.getAsDeviceMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+      node.getAsDeviceMNode().setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
+      node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
 
-    public DeviceMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
+    public IMemMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      DeviceMNode node = new DeviceMNode(null, name);
+      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBool(inputStream));
-      return node;
+      return node.getAsMNode();
     }
 
-    public MeasurementMNode deserializeMeasurementMNode(InputStream inputStream)
-        throws IOException {
+    public IMemMNode deserializeMeasurementMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       MeasurementSchema schema = MeasurementSchema.deserializeFrom(inputStream);
       String alias = ReadWriteIOUtils.readString(inputStream);
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
-      MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
+      IMeasurementMNode<IMemMNode> node =
+          nodeFactory.createMeasurementMNode(null, name, schema, alias);
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
-      return node;
+      return node.getAsMNode();
     }
   }
 }

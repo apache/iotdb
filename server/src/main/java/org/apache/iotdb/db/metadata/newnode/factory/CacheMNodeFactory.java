@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.newnode.factory;
 
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.abovedatabase.CacheAboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicInternalMNode;
 import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
@@ -31,6 +31,19 @@ import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
+
+  private CacheMNodeFactory() {}
+
+  private static class CacheMNodeFactoryHolder {
+    private static final CacheMNodeFactory INSTANCE = new CacheMNodeFactory();
+
+    private CacheMNodeFactoryHolder() {}
+  }
+
+  public static CacheMNodeFactory getInstance() {
+    return CacheMNodeFactory.CacheMNodeFactoryHolder.INSTANCE;
+  }
+
   @Override
   public IMeasurementMNode<ICacheMNode> createMeasurementMNode(
       IDeviceMNode<ICacheMNode> parent, String name, IMeasurementSchema schema, String alias) {
@@ -48,6 +61,12 @@ public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
   }
 
   @Override
+  public IDatabaseMNode<ICacheMNode> createDatabaseMNode(
+      ICacheMNode parent, String name, long dataTTL) {
+    return new CacheDatabaseMNode(parent, name, dataTTL);
+  }
+
+  @Override
   public ICacheMNode createDatabaseDeviceMNode(ICacheMNode parent, String name, long dataTTL) {
     return new CacheDatabaseDeviceMNode(parent, name, dataTTL);
   }
@@ -59,6 +78,6 @@ public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
 
   @Override
   public ICacheMNode createInternalMNode(ICacheMNode parent, String name) {
-    return new CacheBasicMNode(parent, name);
+    return new CacheBasicInternalMNode(parent, name);
   }
 }

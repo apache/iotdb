@@ -26,7 +26,6 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
@@ -134,7 +133,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
 
   @Override
   public void clear() {
-    root = new ConfigBasicMNode(null, IoTDBConstant.PATH_ROOT);
+    root = nodeFactory.createInternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   @Override

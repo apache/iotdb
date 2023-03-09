@@ -25,9 +25,8 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.tools.schema.SchemaFileSketchTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -51,6 +50,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class SchemaFileSketchTest {
+
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -144,16 +145,18 @@ public class SchemaFileSketchTest {
   }
 
   private ICacheMNode getFlatTree(int flatSize, String id) {
-    ICacheMNode root = new CacheBasicMNode(null, "root");
-    ICacheMNode test = new CacheBasicMNode(root, "test");
-    ICacheMNode internalNode = new CacheDatabaseDeviceMNode(null, "vRoot1", 0L);
+    ICacheMNode root = nodeFactory.createInternalMNode(null, "root");
+    ICacheMNode test = nodeFactory.createInternalMNode(root, "test");
+    ICacheMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       internalNode.addChild(
-          new CacheMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
+          nodeFactory
+              .createMeasurementMNode(
+                  internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als")
+              .getAsMNode());
     }
 
     test.addChild(internalNode);

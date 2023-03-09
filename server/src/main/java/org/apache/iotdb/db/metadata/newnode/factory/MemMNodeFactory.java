@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.newnode.factory;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.abovedatabase.AboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.BasicInternalMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.DatabaseDeviceMNode;
@@ -32,6 +31,19 @@ import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
+
+  private MemMNodeFactory() {}
+
+  private static class MemMNodeFactoryHolder {
+    private static final MemMNodeFactory INSTANCE = new MemMNodeFactory();
+
+    private MemMNodeFactoryHolder() {}
+  }
+
+  public static MemMNodeFactory getInstance() {
+    return MemMNodeFactory.MemMNodeFactoryHolder.INSTANCE;
+  }
+
   @Override
   public IMeasurementMNode<IMemMNode> createMeasurementMNode(
       IDeviceMNode<IMemMNode> parent, String name, IMeasurementSchema schema, String alias) {
@@ -46,6 +58,12 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   @Override
   public IDatabaseMNode<IMemMNode> createDatabaseMNode(IMemMNode parent, String name) {
     return new DatabaseMNode(parent, name);
+  }
+
+  @Override
+  public IDatabaseMNode<IMemMNode> createDatabaseMNode(
+      IMemMNode parent, String name, long dataTTL) {
+    return new DatabaseMNode(parent, name, dataTTL);
   }
 
   @Override

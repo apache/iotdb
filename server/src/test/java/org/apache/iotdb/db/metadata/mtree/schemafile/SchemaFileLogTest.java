@@ -25,7 +25,8 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -50,6 +51,7 @@ import static org.junit.Assert.fail;
 public class SchemaFileLogTest {
 
   private static final int TEST_SCHEMA_REGION_ID = 0;
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -71,7 +73,8 @@ public class SchemaFileLogTest {
   public void essentialLogTest() throws IOException, MetadataException {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICacheMNode> newSGNode = new CacheDatabaseDeviceMNode(null, "newSG", 10000L);
+    IDatabaseMNode<ICacheMNode> newSGNode =
+        nodeFactory.createDatabaseDeviceMNode(null, "newSG", 10000L).getAsDatabaseMNode();
     sf.updateStorageGroupNode(newSGNode);
 
     ICacheMNode root = virtualTriangleMTree(5, "root.test");

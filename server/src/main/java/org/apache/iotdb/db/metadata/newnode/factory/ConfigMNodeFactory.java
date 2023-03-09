@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.newnode.factory;
 
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicInternalMNode;
 import org.apache.iotdb.db.metadata.newnode.database.ConfigDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
@@ -27,6 +27,18 @@ import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
+  private ConfigMNodeFactory() {}
+
+  private static class ConfigMNodeFactoryHolder {
+    private static final ConfigMNodeFactory INSTANCE = new ConfigMNodeFactory();
+
+    private ConfigMNodeFactoryHolder() {}
+  }
+
+  public static ConfigMNodeFactory getInstance() {
+    return ConfigMNodeFactory.ConfigMNodeFactoryHolder.INSTANCE;
+  }
+
   @Override
   public IMeasurementMNode<IConfigMNode> createMeasurementMNode(
       IDeviceMNode<IConfigMNode> parent, String name, IMeasurementSchema schema, String alias) {
@@ -44,6 +56,14 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   }
 
   @Override
+  public IDatabaseMNode<IConfigMNode> createDatabaseMNode(
+      IConfigMNode parent, String name, long dataTTL) {
+    IDatabaseMNode<IConfigMNode> res = new ConfigDatabaseMNode(parent, name);
+    res.setDataTTL(dataTTL);
+    return res;
+  }
+
+  @Override
   public IConfigMNode createDatabaseDeviceMNode(IConfigMNode parent, String name, long dataTTL) {
     throw new UnsupportedOperationException();
   }
@@ -55,6 +75,6 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
 
   @Override
   public IConfigMNode createInternalMNode(IConfigMNode parent, String name) {
-    return new ConfigBasicMNode(parent, name);
+    return new ConfigBasicInternalMNode(parent, name);
   }
 }

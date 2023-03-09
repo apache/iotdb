@@ -32,6 +32,8 @@ public interface IMNodeFactory<N extends IMNode<N>> {
 
   IDatabaseMNode<N> createDatabaseMNode(N parent, String name);
 
+  IDatabaseMNode<N> createDatabaseMNode(N parent, String name, long dataTTL);
+
   N createDatabaseDeviceMNode(N parent, String name, long dataTTL);
 
   N createAboveDatabaseMNode(N parent, String name);

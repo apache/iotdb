@@ -22,9 +22,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,6 +42,8 @@ import java.util.Map;
 
 public class RecordUtilTests {
 
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -55,8 +56,8 @@ public class RecordUtilTests {
 
   @Test
   public void internalNodeTest() throws MetadataException {
-    ICacheMNode oneNode = new CacheBasicMNode(null, "abcd");
-    ICacheMNode twoNode = new CacheDeviceMNode(null, "efgh");
+    ICacheMNode oneNode = nodeFactory.createInternalMNode(null, "abcd");
+    ICacheMNode twoNode = nodeFactory.createDeviceMNode(null, "efgh").getAsMNode();
     ICachedMNodeContainer.getCachedMNodeContainer(oneNode).setSegmentAddress(1234567L);
     ICachedMNodeContainer.getCachedMNodeContainer(twoNode).setSegmentAddress(66666L);
     twoNode.getAsDeviceMNode().setUseTemplate(true);
@@ -82,7 +83,8 @@ public class RecordUtilTests {
     IMeasurementSchema schema =
         new MeasurementSchema(
             "amn", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.GZIP, props);
-    ICacheMNode amn = new CacheMeasurementMNode(null, "amn", schema, "anothername");
+    ICacheMNode amn =
+        nodeFactory.createMeasurementMNode(null, "amn", schema, "anothername").getAsMNode();
 
     ByteBuffer tBuf = RecordUtils.node2Buffer(amn);
     tBuf.clear();

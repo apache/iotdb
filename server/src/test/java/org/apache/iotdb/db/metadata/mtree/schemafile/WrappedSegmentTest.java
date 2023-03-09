@@ -25,9 +25,8 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,6 +41,8 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 public class WrappedSegmentTest {
+
+  private static final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -101,14 +102,16 @@ public class WrappedSegmentTest {
   }
 
   private ICacheMNode virtualFlatMTree(int childSize) {
-    ICacheMNode internalNode = new CacheDeviceMNode(null, "vRoot1");
+    ICacheMNode internalNode = nodeFactory.createDeviceMNode(null, "vRoot1").getAsMNode();
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       internalNode.addChild(
-          new CacheMeasurementMNode(
-              internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als"));
+          nodeFactory
+              .createMeasurementMNode(
+                  internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als")
+              .getAsMNode());
     }
     return internalNode;
   }
@@ -155,7 +158,7 @@ public class WrappedSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(500);
     ISegment<ByteBuffer, ICacheMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    ICacheMNode mNode = new CacheBasicMNode(null, "m");
+    ICacheMNode mNode = nodeFactory.createInternalMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = 0; i < test.length; i++) {
@@ -189,7 +192,7 @@ public class WrappedSegmentTest {
     ByteBuffer buf2 = ByteBuffer.allocate(500);
     ISegment<ByteBuffer, ICacheMNode> seg = WrappedSegment.initAsSegment(buffer);
     String[] test = new String[] {"a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"};
-    ICacheMNode mNode = new CacheBasicMNode(null, "m");
+    ICacheMNode mNode = nodeFactory.createInternalMNode(null, "m");
     ByteBuffer buf = RecordUtils.node2Buffer(mNode);
 
     for (int i = test.length - 1; i >= 0; i--) {
@@ -238,7 +241,8 @@ public class WrappedSegmentTest {
 
   private ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    return new CacheMeasurementMNode(
-        par == null ? null : par.getAsDeviceMNode(), name, schema, alias);
+    return nodeFactory
+        .createMeasurementMNode(par == null ? null : par.getAsDeviceMNode(), name, schema, alias)
+        .getAsMNode();
   }
 }

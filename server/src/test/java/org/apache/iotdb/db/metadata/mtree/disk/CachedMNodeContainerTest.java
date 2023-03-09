@@ -20,7 +20,8 @@ package org.apache.iotdb.db.metadata.mtree.disk;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 
 import org.junit.Test;
 
@@ -30,17 +31,19 @@ import java.util.Map;
 
 public class CachedMNodeContainerTest {
 
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Test
   public void testIterator() {
     CachedMNodeContainer container = new CachedMNodeContainer();
     Map<String, ICacheMNode> childCache = new HashMap<>();
-    childCache.put("1", new CacheBasicMNode(null, "1"));
-    childCache.put("2", new CacheBasicMNode(null, "2"));
-    childCache.put("5", new CacheBasicMNode(null, "5"));
+    childCache.put("1", nodeFactory.createInternalMNode(null, "1"));
+    childCache.put("2", nodeFactory.createInternalMNode(null, "2"));
+    childCache.put("5", nodeFactory.createInternalMNode(null, "5"));
     container.loadChildrenFromDisk(childCache);
-    container.put("3", new CacheBasicMNode(null, "3"));
-    container.put("4", new CacheBasicMNode(null, "4"));
-    container.put("6", new CacheBasicMNode(null, "6"));
+    container.put("3", nodeFactory.createInternalMNode(null, "3"));
+    container.put("4", nodeFactory.createInternalMNode(null, "4"));
+    container.put("6", nodeFactory.createInternalMNode(null, "6"));
     container.updateMNode("5");
     container.updateMNode("6");
     Iterator<ICacheMNode> iterator = container.getChildrenIterator();

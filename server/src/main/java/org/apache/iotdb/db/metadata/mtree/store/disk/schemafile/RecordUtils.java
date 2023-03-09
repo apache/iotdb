@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,6 +62,8 @@ public class RecordUtils {
   private static final byte INTERNAL_TYPE = 0;
   private static final byte ENTITY_TYPE = 1;
   private static final byte MEASUREMENT_TYPE = 4;
+
+  private static final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   public static ByteBuffer node2Buffer(ICacheMNode node) {
     if (node.isMeasurement()) {
@@ -194,9 +195,9 @@ public class RecordUtils {
       boolean isAligned = isAligned(bitFlag);
 
       if (nodeType == 0) {
-        resNode = new CacheBasicMNode(null, nodeName);
+        resNode = nodeFactory.createInternalMNode(null, nodeName);
       } else {
-        resNode = new CacheDeviceMNode(null, nodeName);
+        resNode = nodeFactory.createDeviceMNode(null, nodeName).getAsMNode();
         resNode.getAsDeviceMNode().setAligned(isAligned);
         resNode.getAsDeviceMNode().setUseTemplate(usingTemplate);
         resNode.getAsDeviceMNode().setSchemaTemplateId(templateId);
@@ -362,7 +363,8 @@ public class RecordUtils {
             CompressionType.deserialize(compressor),
             props);
 
-    ICacheMNode res = new CacheMeasurementMNode(null, nodeName, schema, alias);
+    ICacheMNode res =
+        nodeFactory.createMeasurementMNode(null, nodeName, schema, alias).getAsMNode();
     res.getAsMeasurementMNode().setOffset(tagIndex);
 
     if (preDel > 0) {

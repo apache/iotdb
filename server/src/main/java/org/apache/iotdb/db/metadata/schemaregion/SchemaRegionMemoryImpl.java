@@ -44,7 +44,6 @@ import org.apache.iotdb.db.metadata.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -192,10 +191,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              new PartialPath(storageGroupFullPath),
-              tagManager::readTags,
-              regionStatistics,
-              new MemMNodeFactory());
+              new PartialPath(storageGroupFullPath), tagManager::readTags, regionStatistics);
 
       if (!(config.isClusterMode()
           && config
@@ -481,8 +477,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       schemaRegionId);
                 }
               },
-              tagManager::readTags,
-              new MemMNodeFactory());
+              tagManager::readTags);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,

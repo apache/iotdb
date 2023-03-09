@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
@@ -343,7 +342,7 @@ public abstract class CacheManager implements ICacheManager {
   public synchronized boolean evict() {
     ICacheMNode node = null;
     CacheEntry cacheEntry = null;
-    List<IMNode> evictedMNodes = new ArrayList<>();
+    List<ICacheMNode> evictedMNodes = new ArrayList<>();
     boolean isSuccess = false;
     while (!isSuccess) {
       node = getPotentialNodeTobeEvicted();
@@ -377,7 +376,7 @@ public abstract class CacheManager implements ICacheManager {
     return !evictedMNodes.isEmpty();
   }
 
-  private void collectEvictedMNodes(ICacheMNode node, List<IMNode> evictedMNodes) {
+  private void collectEvictedMNodes(ICacheMNode node, List<ICacheMNode> evictedMNodes) {
     for (ICacheMNode child : node.getChildren().values()) {
       removeFromNodeCache(getCacheEntry(child));
       child.setCacheEntry(null);

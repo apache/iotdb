@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
@@ -33,9 +33,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.abovedatabase.CacheAboveDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
@@ -67,7 +67,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 
   private final Runnable flushCallback;
 
-  private final IMNodeFactory<ICacheMNode> nodeFactory;
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   private final CachedSchemaRegionStatistics regionStatistics;
 
@@ -77,15 +77,13 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       PartialPath storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      Runnable flushCallback)
       throws MetadataException, IOException {
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.nodeFactory = nodeFactory;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
@@ -96,11 +94,11 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
   public ICacheMNode generatePrefix(PartialPath storageGroupPath) {
     String[] nodes = storageGroupPath.getNodes();
     // nodes[0] must be root
-    ICacheMNode res = new CacheAboveDatabaseMNode(null, nodes[0]);
+    ICacheMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
     ICacheMNode cur = res;
     ICacheMNode child;
     for (int i = 1; i < nodes.length - 1; i++) {
-      child = new CacheAboveDatabaseMNode(cur, nodes[i]);
+      child = nodeFactory.createAboveDatabaseMNode(cur, nodes[i]);
       cur.addChild(nodes[i], child);
       cur = child;
     }
@@ -339,7 +337,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
   public IDeviceMNode<ICacheMNode> setToEntity(ICacheMNode node) {
     IDeviceMNode<ICacheMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
     }
     updateMNode(result.getAsMNode());
     return result;
@@ -349,7 +347,7 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
   public ICacheMNode setToInternal(IDeviceMNode<ICacheMNode> entityMNode) {
     ICacheMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
-      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
+      memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
     }
     updateMNode(result);
     return result;
@@ -370,9 +368,9 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
       memManager.updatePinnedSize(
-          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
+          -(MNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memManager.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -494,11 +492,10 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       String storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      Runnable flushCallback)
       throws IOException, MetadataException {
     return new CachedMTreeStore(
-        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback, nodeFactory);
+        snapshotDir, storageGroup, schemaRegionId, regionStatistics, flushCallback);
   }
 
   private CachedMTreeStore(
@@ -506,15 +503,13 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
       String storageGroup,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics,
-      Runnable flushCallback,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      Runnable flushCallback)
       throws IOException, MetadataException {
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
     this.memManager = new MemManager(regionStatistics);
     this.flushCallback = flushCallback;
-    this.nodeFactory = nodeFactory;
     this.cacheManager = CacheMemoryManager.getInstance().createLRUCacheManager(this, memManager);
     cacheManager.initRootStatus(root);
     regionStatistics.setCacheManager(cacheManager);
@@ -549,7 +544,8 @@ public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   public void flushVolatileNodes() {
     try {
-      IDatabaseMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
+      IDatabaseMNode<ICacheMNode> updatedStorageGroupMNode =
+          cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
         try {
           file.updateStorageGroupNode(updatedStorageGroupMNode);

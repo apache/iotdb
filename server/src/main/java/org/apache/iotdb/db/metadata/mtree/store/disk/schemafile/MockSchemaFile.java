@@ -23,12 +23,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 import java.io.File;
@@ -45,6 +42,7 @@ public class MockSchemaFile implements ISchemaFile {
 
   private PartialPath storageGroupPath;
   private IDatabaseMNode<ICacheMNode> storageGroupMNode;
+  private static final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   private long fileTail = 0;
   private final Map<Long, Map<String, ICacheMNode>> mockFile = new HashMap<>();
@@ -56,7 +54,7 @@ public class MockSchemaFile implements ISchemaFile {
   @Override
   public ICacheMNode init() {
     storageGroupMNode =
-        new CacheDatabaseMNode(
+        nodeFactory.createDatabaseMNode(
             null,
             storageGroupPath.getTailNode(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
@@ -177,33 +175,37 @@ public class MockSchemaFile implements ISchemaFile {
     }
     if (node.isMeasurement()) {
       IMeasurementMNode<ICacheMNode> measurementMNode = node.getAsMeasurementMNode();
-      CacheMeasurementMNode result =
-          new CacheMeasurementMNode(
-              null,
-              measurementMNode.getName(),
-              measurementMNode.getSchema(),
-              measurementMNode.getAlias());
-      result.setOffset(measurementMNode.getOffset());
+      ICacheMNode result =
+          nodeFactory
+              .createMeasurementMNode(
+                  null,
+                  measurementMNode.getName(),
+                  measurementMNode.getSchema(),
+                  measurementMNode.getAlias())
+              .getAsMNode();
+      result.getAsMeasurementMNode().setOffset(measurementMNode.getOffset());
       return result;
     } else if (node.isDatabase() && node.isDevice()) {
-      CacheDatabaseDeviceMNode result =
-          new CacheDatabaseDeviceMNode(
+      ICacheMNode result =
+          nodeFactory.createDatabaseDeviceMNode(
               null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
-      result.setAligned(node.getAsDeviceMNode().isAligned());
+      result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDevice()) {
-      CacheDeviceMNode result = new CacheDeviceMNode(null, node.getName());
-      result.setAligned(node.getAsDeviceMNode().isAligned());
+      ICacheMNode result = nodeFactory.createDeviceMNode(null, node.getName()).getAsMNode();
+      result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDatabase()) {
-      CacheDatabaseMNode result =
-          new CacheDatabaseMNode(null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
+      ICacheMNode result =
+          nodeFactory
+              .createDatabaseMNode(null, node.getName(), node.getAsDatabaseMNode().getDataTTL())
+              .getAsMNode();
       cloneInternalMNodeData(node, result);
       return result;
     } else {
-      CacheBasicMNode result = new CacheBasicMNode(null, node.getName());
+      ICacheMNode result = nodeFactory.createInternalMNode(null, node.getName());
       cloneInternalMNodeData(node, result);
       return result;
     }

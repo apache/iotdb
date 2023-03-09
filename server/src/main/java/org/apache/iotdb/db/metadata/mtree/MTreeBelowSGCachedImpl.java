@@ -46,11 +46,10 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -108,7 +107,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
   private volatile ICacheMNode storageGroupMNode;
   private final ICacheMNode rootNode;
   private final Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<ICacheMNode> nodeFactory;
+  private final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
   private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
@@ -118,14 +117,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       Runnable flushCallback,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
       int schemaRegionId,
-      CachedSchemaRegionStatistics regionStatistics,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
     this.tagGetter = tagGetter;
-    this.nodeFactory = nodeFactory;
-    store =
-        new CachedMTreeStore(
-            storageGroupPath, schemaRegionId, regionStatistics, flushCallback, nodeFactory);
+    store = new CachedMTreeStore(storageGroupPath, schemaRegionId, regionStatistics, flushCallback);
     this.storageGroupMNode = store.getRoot();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
@@ -151,15 +146,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       PartialPath storageGroupPath,
       CachedMTreeStore store,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
-      Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter)
       throws MetadataException {
     this.store = store;
     this.storageGroupMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
-    this.nodeFactory = nodeFactory;
 
     // recover measurement
     try (MeasurementCollector<Void, ICacheMNode> collector =
@@ -200,21 +193,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       CachedSchemaRegionStatistics regionStatistics,
       Consumer<IMeasurementMNode<ICacheMNode>> measurementProcess,
       Function<IMeasurementMNode<ICacheMNode>, Map<String, String>> tagGetter,
-      Runnable flushCallback,
-      IMNodeFactory<ICacheMNode> nodeFactory)
+      Runnable flushCallback)
       throws IOException, MetadataException {
     return new MTreeBelowSGCachedImpl(
         new PartialPath(storageGroupFullPath),
         CachedMTreeStore.loadFromSnapshot(
-            snapshotDir,
-            storageGroupFullPath,
-            schemaRegionId,
-            regionStatistics,
-            flushCallback,
-            nodeFactory),
+            snapshotDir, storageGroupFullPath, schemaRegionId, regionStatistics, flushCallback),
         measurementProcess,
-        tagGetter,
-        nodeFactory);
+        tagGetter);
   }
 
   // endregion
@@ -300,7 +286,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
           }
 
           IMeasurementMNode<ICacheMNode> measurementMNode =
-              new CacheMeasurementMNode(
+              nodeFactory.createMeasurementMNode(
                   entityMNode,
                   leafName,
                   new MeasurementSchema(leafName, dataType, encoding, compressor, props),
@@ -385,7 +371,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
 
           for (int i = 0; i < measurements.size(); i++) {
             IMeasurementMNode<ICacheMNode> measurementMNode =
-                new CacheMeasurementMNode(
+                nodeFactory.createMeasurementMNode(
                     entityMNode,
                     measurements.get(i),
                     new MeasurementSchema(
@@ -490,7 +476,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
         if (child == null) {
-          child = store.addChild(cur, childName, new CacheBasicMNode(cur, childName));
+          child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
         }
         cur = child;
 
@@ -515,7 +501,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
     ICacheMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       device =
-          store.addChild(deviceParent, deviceName, new CacheBasicMNode(deviceParent, deviceName));
+          store.addChild(
+              deviceParent, deviceName, nodeFactory.createInternalMNode(deviceParent, deviceName));
     }
 
     if (device.isMeasurement()) {
@@ -710,7 +697,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG<ICacheMNode> {
       for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
         child = store.getChild(cur, nodeNames[i]);
         if (child == null) {
-          child = store.addChild(cur, nodeNames[i], new CacheBasicMNode(cur, nodeNames[i]));
+          child =
+              store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         }
         cur = child;
       }

@@ -48,7 +48,7 @@ public class BasicMNode implements IMemMNode {
   private String fullPath;
 
   /** Constructor of MNode. */
-  protected BasicMNode(IMemMNode parent, String name) {
+  public BasicMNode(IMemMNode parent, String name) {
     this.parent = parent;
     this.basicMNodeInfo = new BasicMNodeInfo(name);
   }

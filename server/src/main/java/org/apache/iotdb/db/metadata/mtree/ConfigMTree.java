@@ -35,8 +35,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollec
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.database.ConfigDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
@@ -80,7 +78,7 @@ public class ConfigMTree {
   // this store is only used for traverser invoking
   private final ConfigMTreeStore store;
 
-  private final IMNodeFactory<IConfigMNode> nodeFactory = new ConfigMNodeFactory();
+  private final IMNodeFactory<IConfigMNode> nodeFactory = ConfigMNodeFactory.getInstance();
 
   public ConfigMTree() throws MetadataException {
     store = new ConfigMTreeStore(nodeFactory);
@@ -113,7 +111,7 @@ public class ConfigMTree {
     while (i < nodeNames.length - 1) {
       IConfigMNode temp = store.getChild(cur, nodeNames[i]);
       if (temp == null) {
-        store.addChild(cur, nodeNames[i], new ConfigBasicMNode(cur, nodeNames[i]));
+        store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
       } else if (temp.isDatabase()) {
         // before create database, check whether the database already exists
         throw new DatabaseAlreadySetException(temp.getFullPath());
@@ -133,10 +131,11 @@ public class ConfigMTree {
           throw new DatabaseAlreadySetException(path.getFullPath(), true);
         }
       } else {
-        ConfigDatabaseMNode databaseMNode = new ConfigDatabaseMNode(cur, nodeNames[i]);
+        IDatabaseMNode<IConfigMNode> databaseMNode =
+            nodeFactory.createDatabaseMNode(cur, nodeNames[i]);
         databaseMNode.setDataTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
 
-        IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode);
+        IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode.getAsMNode());
 
         if (result != databaseMNode) {
           throw new DatabaseAlreadySetException(path.getFullPath(), true);
@@ -359,7 +358,8 @@ public class ConfigMTree {
       child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
         if (hasStorageGroup) {
-          child = store.addChild(cur, nodeNames[i], new ConfigBasicMNode(cur, nodeNames[i]));
+          child =
+              store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         } else {
           throw new DatabaseNotSetException(path.getFullPath());
         }
@@ -650,8 +650,8 @@ public class ConfigMTree {
       return;
     }
 
-    ConfigDatabaseMNode databaseMNode = deserializeStorageGroupMNode(inputStream);
-    ConfigBasicMNode basicMNode;
+    IConfigMNode databaseMNode = deserializeStorageGroupMNode(inputStream).getAsMNode();
+    IConfigMNode basicMNode;
 
     Stack<IConfigMNode> stack = new Stack<>();
     stack.push(databaseMNode);
@@ -673,7 +673,7 @@ public class ConfigMTree {
           name = basicMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
-          databaseMNode = deserializeStorageGroupMNode(inputStream);
+          databaseMNode = deserializeStorageGroupMNode(inputStream).getAsMNode();
           childNum = 0;
           stack.push(databaseMNode);
           name = databaseMNode.getName();
@@ -686,21 +686,20 @@ public class ConfigMTree {
     this.root = stack.peek();
   }
 
-  private ConfigBasicMNode deserializeConfigBasicMNode(InputStream inputStream) throws IOException {
-    ConfigBasicMNode basicMNode =
-        new ConfigBasicMNode(null, ReadWriteIOUtils.readString(inputStream));
+  private IConfigMNode deserializeConfigBasicMNode(InputStream inputStream) throws IOException {
+    IConfigMNode basicMNode =
+        nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     return basicMNode;
   }
 
-  private ConfigDatabaseMNode deserializeStorageGroupMNode(InputStream inputStream)
-      throws IOException {
-    ConfigDatabaseMNode databaseMNode =
-        new ConfigDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
-    databaseMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+  private IConfigMNode deserializeStorageGroupMNode(InputStream inputStream) throws IOException {
+    IDatabaseMNode<IConfigMNode> databaseMNode =
+        nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
+    databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode.setStorageGroupSchema(
         ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(inputStream));
-    return databaseMNode;
+    return databaseMNode.getAsMNode();
   }
 
   // endregion

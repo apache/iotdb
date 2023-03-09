@@ -22,7 +22,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -41,24 +43,26 @@ import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
 
+  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+
   @Test
   public void testGetMultiFullPaths() {
-    BasicMNode rootNode = new BasicMNode(null, "root");
+    IMemMNode rootNode = nodeFactory.createInternalMNode(null, "root");
 
     // builds the relationship of root.a and root.aa
-    BasicMNode aNode = new BasicMNode(rootNode, "a");
+    IMemMNode aNode = nodeFactory.createInternalMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
-    BasicMNode aaNode = new BasicMNode(rootNode, "aa");
+    IMemMNode aaNode = nodeFactory.createInternalMNode(rootNode, "aa");
     rootNode.addChild(aaNode.getName(), aaNode);
 
     // builds the relationship of root.a.b and root.aa.bb
-    BasicMNode bNode = new BasicMNode(aNode, "b");
+    IMemMNode bNode = nodeFactory.createInternalMNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
-    BasicMNode bbNode = new BasicMNode(aaNode, "bb");
+    IMemMNode bbNode = nodeFactory.createInternalMNode(aaNode, "bb");
     aaNode.addChild(bbNode.getName(), bbNode);
 
     // builds the relationship of root.aa.bb.cc
-    BasicMNode ccNode = new BasicMNode(bbNode, "cc");
+    IMemMNode ccNode = nodeFactory.createInternalMNode(bbNode, "cc");
     bbNode.addChild(ccNode.getName(), ccNode);
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);

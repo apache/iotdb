@@ -30,13 +30,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.WrappedSegment;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
-import org.apache.iotdb.db.metadata.newnode.database.CacheDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.databasedevice.CacheDatabaseDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.device.CacheDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.CacheMeasurementMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -66,6 +62,7 @@ import java.util.stream.Collectors;
 public class SchemaFileTest {
 
   private static final int TEST_SCHEMA_REGION_ID = 0;
+  private static final IMNodeFactory<ICacheMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
   @Before
   public void setUp() {
@@ -86,7 +83,8 @@ public class SchemaFileTest {
   @Test
   public void essentialTestSchemaFile() throws IOException, MetadataException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICacheMNode> newSGNode = new CacheDatabaseDeviceMNode(null, "newSG", 10000L);
+    IDatabaseMNode<ICacheMNode> newSGNode =
+        nodeFactory.createDatabaseDeviceMNode(null, "newSG", 10000L).getAsDatabaseMNode();
     sf.updateStorageGroupNode(newSGNode);
 
     ICacheMNode root = virtualTriangleMTree(5, "root.test");
@@ -160,7 +158,8 @@ public class SchemaFileTest {
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICacheMNode> sgNode = new CacheDatabaseDeviceMNode(null, "sg", 11_111L);
+    IDatabaseMNode<ICacheMNode> sgNode =
+        nodeFactory.createDatabaseDeviceMNode(null, "sg", 11_111L).getAsDatabaseMNode();
     sf.updateStorageGroupNode(sgNode);
 
     ICacheMNode root = getVerticalTree(100, "VT");
@@ -246,7 +245,7 @@ public class SchemaFileTest {
       }
     }
 
-    ICacheMNode node = new CacheBasicMNode(null, "a");
+    ICacheMNode node = nodeFactory.createInternalMNode(null, "a");
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(0L);
     List<Integer> tryReadList = Arrays.asList(199, 1999, 2999, 3999, 4999, 5999);
     for (Integer rid : tryReadList) {
@@ -260,7 +259,7 @@ public class SchemaFileTest {
   public void testGetChildren() throws MetadataException, IOException {
     essentialTestSchemaFile();
 
-    ICacheMNode node = new CacheBasicMNode(null, "test");
+    ICacheMNode node = nodeFactory.createInternalMNode(null, "test");
     ICachedMNodeContainer.getCachedMNodeContainer(node)
         .setSegmentAddress(SchemaFile.getGlobalIndex(2, (short) 0));
     ISchemaFile sf = SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
@@ -278,11 +277,11 @@ public class SchemaFileTest {
   @Test
   public void test200KMeasurement() throws MetadataException, IOException {
     int i = 200000, j = 20;
-    ICacheMNode sgNode = new CacheDatabaseMNode(null, "sgRoot", 11111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseMNode(null, "sgRoot", 11111111L).getAsMNode();
     ISchemaFile sf = SchemaFile.initSchemaFile(sgNode.getName(), TEST_SCHEMA_REGION_ID);
 
     while (j >= 0) {
-      ICacheMNode aDevice = new CacheDeviceMNode(sgNode, "dev_" + j);
+      ICacheMNode aDevice = nodeFactory.createDeviceMNode(sgNode, "dev_" + j).getAsMNode();
       sgNode.addChild(aDevice);
       j--;
     }
@@ -311,11 +310,11 @@ public class SchemaFileTest {
   @Test
   public void test10KDevices() throws MetadataException, IOException {
     int i = 1000;
-    ICacheMNode sgNode = new CacheDatabaseMNode(null, "sgRoot", 11111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseMNode(null, "sgRoot", 11111111L).getAsMNode();
 
     // write with empty entitiy
     while (i >= 0) {
-      ICacheMNode aDevice = new CacheBasicMNode(sgNode, "dev_" + i);
+      ICacheMNode aDevice = nodeFactory.createInternalMNode(sgNode, "dev_" + i);
       sgNode.addChild(aDevice);
       i--;
     }
@@ -336,7 +335,7 @@ public class SchemaFileTest {
       i = 1000;
       while (i >= 0) {
         long addr = getSegAddrInContainer(sgNode.getChild("dev_" + i));
-        ICacheMNode aDevice = new CacheDeviceMNode(sgNode, "dev_" + i);
+        ICacheMNode aDevice = nodeFactory.createDeviceMNode(sgNode, "dev_" + i).getAsMNode();
         sgNode.deleteChild(aDevice.getName());
         sgNode.addChild(aDevice);
         moveToUpdateBuffer(sgNode, "dev_" + i);
@@ -460,7 +459,7 @@ public class SchemaFileTest {
 
     root.getChildren().clear();
 
-    root.addChild(new CacheDeviceMNode(root, "ent1"));
+    root.addChild(nodeFactory.createDeviceMNode(root, "ent1").getAsMNode());
 
     ICacheMNode ent1 = root.getChild("ent1");
     ent1.addChild(getMeasurementNode(ent1, "m1", "m1a"));
@@ -513,7 +512,7 @@ public class SchemaFileTest {
      * related methods shall be merged further: {@linkplain SchemaFile#reEstimateSegSize}
      * ,{@linkplain PageManager#reEstimateSegSize}
      */
-    ICacheMNode sgNode = new CacheDatabaseMNode(null, "mma", 111111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma", 111111111L).getAsMNode();
     ICacheMNode d1 = fillChildren(sgNode, 300, "d", this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
     try {
@@ -548,7 +547,7 @@ public class SchemaFileTest {
   @Test
   public void test200KAlias() throws Exception {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
-    ICacheMNode sgNode = new CacheDatabaseMNode(null, "mma", 111111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma", 111111111L).getAsMNode();
     // 5 devices, each for 200k measurements
     int factor20K = 20000;
     List<ICacheMNode> devs = new ArrayList<>();
@@ -557,7 +556,7 @@ public class SchemaFileTest {
 
     try {
       for (int i = 0; i < 5; i++) {
-        devs.add(new CacheDeviceMNode(sgNode, "d_" + i));
+        devs.add(nodeFactory.createDeviceMNode(sgNode, "d_" + i).getAsMNode());
         sgNode.addChild(devs.get(i));
       }
 
@@ -625,12 +624,12 @@ public class SchemaFileTest {
   @Test
   public void testRearrangementWhenInsert() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
-    ICacheMNode root = new CacheDatabaseDeviceMNode(null, "sgRoot", 0L);
+    ICacheMNode root = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot", 0L);
 
     root.getChildren().clear();
-    ICacheMNode ent2 = new CacheDeviceMNode(root, "ent2");
-    ICacheMNode ent3 = new CacheDeviceMNode(root, "ent3");
-    ICacheMNode ent4 = new CacheDeviceMNode(root, "ent4");
+    ICacheMNode ent2 = nodeFactory.createDeviceMNode(root, "ent2").getAsMNode();
+    ICacheMNode ent3 = nodeFactory.createDeviceMNode(root, "ent3").getAsMNode();
+    ICacheMNode ent4 = nodeFactory.createDeviceMNode(root, "ent4").getAsMNode();
     root.addChild(ent2);
     root.addChild(ent3);
     root.addChild(ent4);
@@ -682,7 +681,7 @@ public class SchemaFileTest {
         getSegAddr(sf, getSegAddrInContainer(ent4), "e4m0"));
 
     root.getChildren().clear();
-    ICacheMNode ent5 = new CacheDeviceMNode(root, "ent5");
+    ICacheMNode ent5 = nodeFactory.createDeviceMNode(root, "ent5").getAsMNode();
     root.addChild(ent5);
     while (ent5.getChildren().size() < 19) {
       ent5.addChild(
@@ -750,7 +749,7 @@ public class SchemaFileTest {
   public void basicTest() throws IOException, MetadataException {
     SchemaFileConfig.INTERNAL_SPLIT_VALVE = 16000;
     int i = 10000;
-    ICacheMNode sgNode = new CacheDatabaseDeviceMNode(null, "sgRoot", 11111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot", 11111111L);
     Set<String> checkSet = new HashSet<>();
     // write with empty entitiy
     while (i >= 0) {
@@ -784,7 +783,7 @@ public class SchemaFileTest {
     SchemaFileConfig.INTERNAL_SPLIT_VALVE = 16230;
     SchemaFileConfig.DETAIL_SKETCH = true;
     int i = 999;
-    ICacheMNode sgNode = new CacheDatabaseDeviceMNode(null, "sgRoot", 11111111L);
+    ICacheMNode sgNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot", 11111111L);
     Set<String> checkSet = new HashSet<>();
     // write with empty entitiy
     while (i >= 0) {
@@ -819,7 +818,7 @@ public class SchemaFileTest {
       } else if (j < 100) {
         name = "0" + name;
       }
-      ICacheMNode aMeas = new CacheBasicMNode(sgNode, "d_" + name);
+      ICacheMNode aMeas = nodeFactory.createInternalMNode(sgNode, "d_" + name);
       sgNode.addChild(aMeas);
     }
 
@@ -830,13 +829,13 @@ public class SchemaFileTest {
       } else if (j < 100) {
         name = "0" + name;
       }
-      ICacheMNode aMeas = new CacheBasicMNode(sgNode, "dd2_" + name);
+      ICacheMNode aMeas = nodeFactory.createInternalMNode(sgNode, "dd2_" + name);
       checkSet.add(aMeas.getName());
       sgNode.getChildren().get("d_010").addChild(aMeas);
     }
 
     ICacheMNode d010 = sgNode.getChildren().get("d_010");
-    d010 = MNodeUtils.setToEntity(d010, new CacheMNodeFactory()).getAsMNode();
+    d010 = MNodeUtils.setToEntity(d010, nodeFactory).getAsMNode();
     ICacheMNode ano = getMeasurementNode(d010, "splitover", "aliaslasialsai");
 
     d010.addChild(ano);
@@ -925,11 +924,11 @@ public class SchemaFileTest {
   }
 
   private ICacheMNode supplyInternal(ICacheMNode par, String name) {
-    return new CacheBasicMNode(par, name);
+    return nodeFactory.createInternalMNode(par, name);
   }
 
   private ICacheMNode supplyEntity(ICacheMNode par, String name) {
-    return new CacheDeviceMNode(par, name);
+    return nodeFactory.createDeviceMNode(par, name).getAsMNode();
   }
 
   private ICacheMNode fillChildren(
@@ -968,14 +967,16 @@ public class SchemaFileTest {
   }
 
   static ICacheMNode getInternalWithSegAddr(ICacheMNode par, String name, long segAddr) {
-    ICacheMNode node = new CacheDeviceMNode(par, name);
+    ICacheMNode node = nodeFactory.createDeviceMNode(par, name).getAsMNode();
     ICachedMNodeContainer.getCachedMNodeContainer(node).setSegmentAddress(segAddr);
     return node;
   }
 
   static ICacheMNode getMeasurementNode(ICacheMNode par, String name, String alias) {
     IMeasurementSchema schema = new MeasurementSchema(name, TSDataType.FLOAT);
-    return new CacheMeasurementMNode(par.getAsDeviceMNode(), name, schema, alias);
+    return nodeFactory
+        .createMeasurementMNode(par.getAsDeviceMNode(), name, schema, alias)
+        .getAsMNode();
   }
 
   static void addNodeToUpdateBuffer(ICacheMNode par, ICacheMNode child) {
@@ -1020,15 +1021,15 @@ public class SchemaFileTest {
     String[] sgPathNodes = PathUtils.splitPathToDetachedNodes(sgPath);
     ICacheMNode upperNode = null;
     for (String name : sgPathNodes) {
-      upperNode = new CacheBasicMNode(upperNode, name);
+      upperNode = nodeFactory.createInternalMNode(upperNode, name);
     }
-    ICacheMNode internalNode = new CacheDatabaseDeviceMNode(upperNode, "vRoot1", 0L);
+    ICacheMNode internalNode = nodeFactory.createDatabaseDeviceMNode(upperNode, "vRoot1", 0L);
 
     for (int idx = 0; idx < size; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(
+          nodeFactory.createMeasurementMNode(
               internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode.getAsMNode());
     }
@@ -1036,7 +1037,7 @@ public class SchemaFileTest {
     ICacheMNode curNode = internalNode;
     for (int idx = 0; idx < size; idx++) {
       String nodeName = "int" + idx;
-      ICacheMNode newNode = new CacheDeviceMNode(curNode, nodeName);
+      ICacheMNode newNode = nodeFactory.createDeviceMNode(curNode, nodeName).getAsMNode();
       curNode.addChild(newNode);
       curNode = newNode;
     }
@@ -1044,28 +1045,29 @@ public class SchemaFileTest {
     for (int idx = 0; idx < 1000; idx++) {
       IMeasurementSchema schema = new MeasurementSchema("finalM" + idx, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(
+          nodeFactory.createMeasurementMNode(
               internalNode.getAsDeviceMNode(), "finalM" + idx, schema, "finalals" + idx);
       curNode.addChild(mNode.getAsMNode());
     }
     IMeasurementSchema schema = new MeasurementSchema("finalM", TSDataType.FLOAT);
     IMeasurementMNode<ICacheMNode> mNode =
-        new CacheMeasurementMNode(internalNode.getAsDeviceMNode(), "finalM", schema, "finalals");
+        nodeFactory.createMeasurementMNode(
+            internalNode.getAsDeviceMNode(), "finalM", schema, "finalals");
     curNode.addChild(mNode.getAsMNode());
     upperNode.addChild(internalNode);
     return internalNode;
   }
 
   static ICacheMNode getFlatTree(int flatSize, String id) {
-    ICacheMNode root = new CacheBasicMNode(null, "root");
-    ICacheMNode test = new CacheBasicMNode(root, "test");
-    ICacheMNode internalNode = new CacheDatabaseDeviceMNode(null, "vRoot1", 0L);
+    ICacheMNode root = nodeFactory.createInternalMNode(null, "root");
+    ICacheMNode test = nodeFactory.createInternalMNode(root, "test");
+    ICacheMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
       IMeasurementMNode<ICacheMNode> mNode =
-          new CacheMeasurementMNode(
+          nodeFactory.createMeasurementMNode(
               internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als");
       internalNode.addChild(mNode.getAsMNode());
     }
@@ -1075,13 +1077,13 @@ public class SchemaFileTest {
   }
 
   static ICacheMNode getVerticalTree(int height, String id) {
-    ICacheMNode trueRoot = new CacheBasicMNode(null, "root");
-    trueRoot.addChild(new CacheBasicMNode(trueRoot, "sgvt"));
-    ICacheMNode root = new CacheDatabaseDeviceMNode(null, "vt", 0L);
+    ICacheMNode trueRoot = nodeFactory.createInternalMNode(null, "root");
+    trueRoot.addChild(nodeFactory.createInternalMNode(trueRoot, "sgvt"));
+    ICacheMNode root = nodeFactory.createDatabaseDeviceMNode(null, "vt", 0L);
     int cnt = 0;
     ICacheMNode cur = root;
     while (cnt < height) {
-      cur.addChild(new CacheDeviceMNode(cur, id + "_" + cnt));
+      cur.addChild(nodeFactory.createDeviceMNode(cur, id + "_" + cnt).getAsMNode());
       cur = cur.getChild(id + "_" + cnt);
       cnt++;
     }

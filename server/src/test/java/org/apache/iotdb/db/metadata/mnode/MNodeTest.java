@@ -19,13 +19,10 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
-import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import org.junit.Test;
@@ -37,22 +34,22 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
 public class MNodeTest {
-  
-  private final IMNodeFactory<IMemMNode> nodeFactory = new MemMNodeFactory();
+
+  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
 
   @Test
   public void testReplaceChild() {
     IMemMNode rootNode = nodeFactory.createInternalMNode(null, "root");
 
-    IDeviceMNode<IMemMNode> aNode = new DeviceMNode(rootNode, "a");
+    IDeviceMNode<IMemMNode> aNode = nodeFactory.createDeviceMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode.getAsMNode());
 
-    IMeasurementMNode<IMemMNode> bNode = new MeasurementMNode(aNode, "b", null, null);
+    IMeasurementMNode<IMemMNode> bNode = nodeFactory.createMeasurementMNode(aNode, "b", null, null);
 
     aNode.addChild(bNode.getName(), bNode.getAsMNode());
     aNode.addAlias("aliasOfb", bNode);
 
-    IDeviceMNode<IMemMNode> newANode = new DeviceMNode(null, "a");
+    IDeviceMNode<IMemMNode> newANode = nodeFactory.createDeviceMNode(null, "a");
     rootNode.replaceChild(aNode.getName(), newANode.getAsMNode());
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);

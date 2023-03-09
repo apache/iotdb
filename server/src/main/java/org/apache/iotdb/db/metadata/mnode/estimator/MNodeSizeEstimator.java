@@ -19,20 +19,10 @@
 
 package org.apache.iotdb.db.metadata.mnode.estimator;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+public class MNodeSizeEstimator {
+  private static int ALIAS_BASE_SIZE = 52;
 
-import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ALIAS_BASE_SIZE;
-import static org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator.ENTITY_NODE_BASE_SIZE;
-
-public interface IMNodeSizeEstimator {
-
-  int estimateSize(IMNode node);
-
-  static int getEntityNodeBaseSize() {
-    return ENTITY_NODE_BASE_SIZE;
-  }
-
-  static int getAliasBaseSize() {
+  public static int getAliasBaseSize() {
     return ALIAS_BASE_SIZE;
   }
 }
