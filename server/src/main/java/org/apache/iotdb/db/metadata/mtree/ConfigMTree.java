@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.mnode.config.basic.IConfigMNode;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.metadata.mnode.config.factory.ConfigMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.ConfigMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;

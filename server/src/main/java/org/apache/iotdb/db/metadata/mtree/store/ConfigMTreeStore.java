@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mnode.config.basic.IConfigMNode;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.MemoryTraverserIterator;
