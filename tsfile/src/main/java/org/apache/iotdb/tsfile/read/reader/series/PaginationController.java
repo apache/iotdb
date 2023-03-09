@@ -54,6 +54,10 @@ public class PaginationController {
     curOffset -= rowCount;
   }
 
+  public long getCurOffset() {
+    return curOffset;
+  }
+
   public void consumeOffset() {
     curOffset--;
   }

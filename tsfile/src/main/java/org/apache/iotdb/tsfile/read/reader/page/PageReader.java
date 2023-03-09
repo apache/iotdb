@@ -46,7 +46,7 @@ import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UN
 
 public class PageReader implements IPageReader {
 
-  private PageHeader pageHeader;
+  private final PageHeader pageHeader;
 
   protected TSDataType dataType;
 
@@ -70,6 +70,8 @@ public class PageReader implements IPageReader {
 
   private int deleteCursor = 0;
 
+  private final TsBlock EMPTY;
+
   public PageReader(
       ByteBuffer pageData,
       TSDataType dataType,
@@ -91,6 +93,7 @@ public class PageReader implements IPageReader {
     this.timeDecoder = timeDecoder;
     this.filter = filter;
     this.pageHeader = pageHeader;
+    EMPTY = new TsBlockBuilder(0, Collections.singletonList(dataType)).build();
     splitDataToTimeStampAndValue(pageData);
   }
 
@@ -177,10 +180,13 @@ public class PageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     if (pageSatisfy()) {
+      TsBlockBuilder builder =
+          new TsBlockBuilder(
+              (int) (pageHeader.getStatistics().getCount() - paginationController.getCurOffset()),
+              Collections.singletonList(dataType));
+      TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+      ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
       switch (dataType) {
         case BOOLEAN:
           while (timeDecoder.hasNext(timeBuffer)) {
@@ -311,8 +317,10 @@ public class PageReader implements IPageReader {
         default:
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
+      return builder.build();
+    } else {
+      return EMPTY;
     }
-    return builder.build();
   }
 
   @Override
