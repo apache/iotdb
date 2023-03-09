@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.io.File;
 import java.io.IOException;

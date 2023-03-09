@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.tools.schema.SchemaFileSketchTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;

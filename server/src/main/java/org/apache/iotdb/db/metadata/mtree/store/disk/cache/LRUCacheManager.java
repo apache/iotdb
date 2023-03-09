@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;

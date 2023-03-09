@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
-import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.mnode.config.basic.IConfigMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 
 import java.util.NoSuchElementException;
 

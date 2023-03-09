@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 
 import java.util.Objects;

@@ -20,13 +20,13 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +36,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
+import static org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
 public class MockSchemaFile implements ISchemaFile {
 

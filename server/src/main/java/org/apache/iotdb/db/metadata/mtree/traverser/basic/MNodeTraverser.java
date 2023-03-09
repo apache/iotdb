@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 

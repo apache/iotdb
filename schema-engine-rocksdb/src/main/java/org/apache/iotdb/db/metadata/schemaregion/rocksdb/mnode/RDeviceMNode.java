@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;

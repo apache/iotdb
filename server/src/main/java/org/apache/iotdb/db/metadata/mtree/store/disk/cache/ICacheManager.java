@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 
 import java.util.List;
 

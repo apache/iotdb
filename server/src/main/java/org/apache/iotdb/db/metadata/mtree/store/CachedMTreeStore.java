@@ -20,24 +20,24 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.MNodeSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.mem.estimator.MNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.iterator.CachedTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -51,7 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
+import static org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
 public class CachedMTreeStore implements IMTreeStore<ICacheMNode> {
 

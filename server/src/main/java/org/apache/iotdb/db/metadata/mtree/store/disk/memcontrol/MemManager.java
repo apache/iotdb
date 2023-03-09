@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol;
 
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 
 import java.util.List;

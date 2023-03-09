@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedExcepti
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;

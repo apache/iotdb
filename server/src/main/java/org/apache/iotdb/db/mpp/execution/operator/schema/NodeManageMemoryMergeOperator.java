@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;

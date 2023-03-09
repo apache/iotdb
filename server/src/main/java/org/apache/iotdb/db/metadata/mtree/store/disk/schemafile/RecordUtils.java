@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;

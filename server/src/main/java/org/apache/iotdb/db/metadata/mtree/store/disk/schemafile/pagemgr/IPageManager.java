@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import java.io.IOException;
 import java.io.PrintWriter;

@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mtree.disk;
 
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.CacheMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 
 import org.junit.Test;
 

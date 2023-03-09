@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import org.junit.Test;

@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
 public abstract class MeasurementUpdater<N extends IMNode<N>> extends MeasurementTraverser<Void, N>
     implements Updater {

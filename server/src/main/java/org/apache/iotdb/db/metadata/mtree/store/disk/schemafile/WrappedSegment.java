@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;

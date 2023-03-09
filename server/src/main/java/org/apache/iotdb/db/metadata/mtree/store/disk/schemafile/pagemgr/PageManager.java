@@ -21,7 +21,8 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogReader;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.log.SchemaFileLogWriter;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

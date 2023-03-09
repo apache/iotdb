@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;

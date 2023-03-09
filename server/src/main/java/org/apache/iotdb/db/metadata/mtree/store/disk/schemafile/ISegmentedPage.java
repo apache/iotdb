@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICacheMNode;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
