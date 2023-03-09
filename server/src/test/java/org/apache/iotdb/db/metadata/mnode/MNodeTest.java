@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.device.DeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
+import org.apache.iotdb.db.metadata.newnode.factory.IMNodeFactory;
+import org.apache.iotdb.db.metadata.newnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -34,10 +37,12 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
 public class MNodeTest {
+  
+  private final IMNodeFactory<IMemMNode> nodeFactory = new MemMNodeFactory();
 
   @Test
   public void testReplaceChild() {
-    BasicMNode rootNode = new BasicMNode(null, "root");
+    IMemMNode rootNode = nodeFactory.createInternalMNode(null, "root");
 
     IDeviceMNode<IMemMNode> aNode = new DeviceMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode.getAsMNode());
@@ -59,28 +64,28 @@ public class MNodeTest {
 
   @Test
   public void testAddChild() {
-    BasicMNode rootNode = new BasicMNode(null, "root");
+    IMemMNode rootNode = nodeFactory.createInternalMNode(null, "root");
 
-    IMNode<IMemMNode> speedNode =
+    IMemMNode speedNode =
         rootNode
-            .addChild(new BasicMNode(null, "sg1"))
-            .addChild(new BasicMNode(null, "a"))
-            .addChild(new BasicMNode(null, "b"))
-            .addChild(new BasicMNode(null, "c"))
-            .addChild(new BasicMNode(null, "d"))
-            .addChild(new BasicMNode(null, "device"))
-            .addChild(new BasicMNode(null, "speed"));
+            .addChild(nodeFactory.createInternalMNode(null, "sg1"))
+            .addChild(nodeFactory.createInternalMNode(null, "a"))
+            .addChild(nodeFactory.createInternalMNode(null, "b"))
+            .addChild(nodeFactory.createInternalMNode(null, "c"))
+            .addChild(nodeFactory.createInternalMNode(null, "d"))
+            .addChild(nodeFactory.createInternalMNode(null, "device"))
+            .addChild(nodeFactory.createInternalMNode(null, "speed"));
     assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
 
-    IMNode<IMemMNode> temperatureNode =
+    IMemMNode temperatureNode =
         rootNode
             .getChild("sg1")
-            .addChild(new BasicMNode(null, "aa"))
-            .addChild(new BasicMNode(null, "bb"))
-            .addChild(new BasicMNode(null, "cc"))
-            .addChild(new BasicMNode(null, "dd"))
-            .addChild(new BasicMNode(null, "device11"))
-            .addChild(new BasicMNode(null, "temperature"));
+            .addChild(nodeFactory.createInternalMNode(null, "aa"))
+            .addChild(nodeFactory.createInternalMNode(null, "bb"))
+            .addChild(nodeFactory.createInternalMNode(null, "cc"))
+            .addChild(nodeFactory.createInternalMNode(null, "dd"))
+            .addChild(nodeFactory.createInternalMNode(null, "device11"))
+            .addChild(nodeFactory.createInternalMNode(null, "temperature"));
     assertEquals("root.sg1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
   }
 }

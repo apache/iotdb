@@ -28,6 +28,7 @@ public class DatabaseInfo implements IDatabaseInfo {
     this.schema = new TDatabaseSchema(name);
   }
 
+  @Override
   public void moveDataToNewMNode(IDatabaseMNode<?> newMNode) {
     newMNode.setStorageGroupSchema(schema);
   }
@@ -65,5 +66,19 @@ public class DatabaseInfo implements IDatabaseInfo {
   @Override
   public TDatabaseSchema getStorageGroupSchema() {
     return schema;
+  }
+
+  /**
+   * The memory occupied by an DatabaseDeviceInfo based occupation
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>reference schema, 8B
+   *   <li>object TDatabaseSchema, 112B (calculated by RamUsageEstimator)
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + 112;
   }
 }

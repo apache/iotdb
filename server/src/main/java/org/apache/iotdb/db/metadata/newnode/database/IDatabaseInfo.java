@@ -21,6 +21,9 @@ package org.apache.iotdb.db.metadata.newnode.database;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public interface IDatabaseInfo {
+
+  void moveDataToNewMNode(IDatabaseMNode<?> newMNode);
+
   long getDataTTL();
 
   void setDataTTL(long dataTTL);
@@ -34,4 +37,6 @@ public interface IDatabaseInfo {
   void setStorageGroupSchema(TDatabaseSchema schema);
 
   TDatabaseSchema getStorageGroupSchema();
+
+  int estimateSize();
 }

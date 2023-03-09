@@ -20,14 +20,14 @@ package org.apache.iotdb.db.metadata.newnode.database;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicInternalMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
 
 public class CacheDatabaseMNode extends AbstractDatabaseMNode<ICacheMNode, CacheBasicMNode>
     implements ICacheMNode {
 
   public CacheDatabaseMNode(ICacheMNode parent, String name) {
-    super(name);
-    this.basicMNode = new CacheBasicMNode(parent, name);
+    super(new CacheBasicInternalMNode(parent, name), new DatabaseInfo(name));
   }
 
   // TODO: @yukun, remove this constructor

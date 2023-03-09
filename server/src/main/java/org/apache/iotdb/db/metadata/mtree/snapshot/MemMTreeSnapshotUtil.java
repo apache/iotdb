@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.snapshot;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
@@ -29,6 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.AbstractDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.AbstractDatabaseDeviceMNode;

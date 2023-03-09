@@ -20,11 +20,29 @@ package org.apache.iotdb.db.metadata.newnode.measurement;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 /** This interface defines a MeasurementMNode's operation interfaces. */
-public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N>, IMeasurementInfo {
+public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N> {
 
-  N getAsMNode();
+  IMeasurementSchema getSchema();
+
+  void setSchema(IMeasurementSchema schema);
+
+  TSDataType getDataType();
+
+  String getAlias();
+
+  void setAlias(String alias);
+
+  long getOffset();
+
+  void setOffset(long offset);
+
+  boolean isPreDeleted();
+
+  void setPreDeleted(boolean preDeleted);
 
   MeasurementPath getMeasurementPath();
 }

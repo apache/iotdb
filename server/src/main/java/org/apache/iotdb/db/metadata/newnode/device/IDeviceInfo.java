@@ -25,6 +25,8 @@ import java.util.Map;
 
 public interface IDeviceInfo<N extends IMNode<N>> {
 
+  void moveDataToNewMNode(IDeviceMNode<N> newMNode);
+
   boolean addAlias(String alias, IMeasurementMNode<N> child);
 
   void deleteAliasChild(String alias);
@@ -32,6 +34,10 @@ public interface IDeviceInfo<N extends IMNode<N>> {
   Map<String, IMeasurementMNode<N>> getAliasChildren();
 
   void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren);
+
+  boolean hasAliasChild(String name);
+
+  N getAliasChild(String name);
 
   boolean isUseTemplate();
 
@@ -56,4 +62,6 @@ public interface IDeviceInfo<N extends IMNode<N>> {
   boolean isAligned();
 
   void setAligned(boolean isAligned);
+
+  int estimateSize();
 }

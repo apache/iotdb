@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.newnode.database;
 
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicInternalMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 
 public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicMNode>
     implements IMemMNode {
 
   public DatabaseMNode(IMemMNode parent, String name) {
-    super(name);
-    this.basicMNode = new BasicMNode(parent, name);
+    super(new BasicInternalMNode(parent, name), new DatabaseInfo(name));
   }
 
   // TODO: @yukun, remove this constructor

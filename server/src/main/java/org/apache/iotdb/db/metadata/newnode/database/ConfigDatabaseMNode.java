@@ -19,14 +19,14 @@
 package org.apache.iotdb.db.metadata.newnode.database;
 
 import org.apache.iotdb.db.metadata.newnode.IConfigMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicInternalMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.ConfigBasicMNode;
 
 public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, ConfigBasicMNode>
     implements IConfigMNode {
 
   public ConfigDatabaseMNode(IConfigMNode parent, String name) {
-    super(name);
-    this.basicMNode = new ConfigBasicMNode(parent, name);
+    super(new ConfigBasicInternalMNode(parent, name), new DatabaseInfo(name));
   }
 
   @Override

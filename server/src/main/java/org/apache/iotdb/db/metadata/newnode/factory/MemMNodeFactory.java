@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.newnode.factory;
 
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.abovedatabase.AboveDatabaseMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicInternalMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.database.DatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.databasedevice.DatabaseDeviceMNode;
@@ -58,7 +59,7 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   }
 
   @Override
-  public IMemMNode createBasicMNode(IMemMNode parent, String name) {
-    return new BasicMNode(parent, name);
+  public IMemMNode createInternalMNode(IMemMNode parent, String name) {
+    return new BasicInternalMNode(parent, name);
   }
 }

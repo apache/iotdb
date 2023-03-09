@@ -20,13 +20,14 @@ package org.apache.iotdb.db.metadata.newnode.device;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicInternalMNode;
 import org.apache.iotdb.db.metadata.newnode.basic.CacheBasicMNode;
 
 public class CacheDeviceMNode extends AbstractDeviceMNode<ICacheMNode, CacheBasicMNode>
     implements ICacheMNode {
 
   public CacheDeviceMNode(ICacheMNode parent, String name) {
-    this.basicMNode = new CacheBasicMNode(parent, name);
+    super(new CacheBasicInternalMNode(parent, name), new DeviceInfo<>());
   }
 
   @Override

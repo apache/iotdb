@@ -37,15 +37,6 @@ public class ConfigBasicMNode implements IConfigMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
-  /**
-   * use in Measurement Node so it's protected suppress warnings reason: volatile for double
-   * synchronized check
-   *
-   * <p>This will be a ConcurrentHashMap instance
-   */
-  @SuppressWarnings("squid:S3077")
-  protected transient volatile IMNodeContainer<IConfigMNode> children = null;
-
   private IConfigMNode parent;
   private ConfigMNodeInfo configMNodeInfo;
 
@@ -116,17 +107,13 @@ public class ConfigBasicMNode implements IConfigMNode {
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name));
+    return false;
   }
 
   /** get the child with the name */
   @Override
   public IConfigMNode getChild(String name) {
-    IConfigMNode child = null;
-    if (children != null) {
-      child = children.get(name);
-    }
-    return child;
+    return null;
   }
 
   /**
@@ -138,21 +125,7 @@ public class ConfigBasicMNode implements IConfigMNode {
    */
   @Override
   public IConfigMNode addChild(String name, IConfigMNode child) {
-    /* use cpu time to exchange memory
-     * measurementNode's children should be null to save memory
-     * add child method will only be called when writing MTree, which is not a frequent operation
-     */
-    if (children == null) {
-      // double check, children is volatile
-      synchronized (this) {
-        if (children == null) {
-          children = new ConfigMNodeContainer();
-        }
-      }
-    }
-    child.setParent(this);
-    IConfigMNode existingChild = children.putIfAbsent(name, child);
-    return existingChild == null ? child : existingChild;
+    return null;
   }
 
   /**
@@ -168,30 +141,12 @@ public class ConfigBasicMNode implements IConfigMNode {
    */
   @Override
   public IConfigMNode addChild(IConfigMNode child) {
-    /* use cpu time to exchange memory
-     * measurementNode's children should be null to save memory
-     * add child method will only be called when writing MTree, which is not a frequent operation
-     */
-    if (children == null) {
-      // double check, children is volatile
-      synchronized (this) {
-        if (children == null) {
-          children = new ConfigMNodeContainer();
-        }
-      }
-    }
-
-    child.setParent(this);
-    children.putIfAbsent(child.getName(), child);
-    return child;
+    return null;
   }
 
   /** delete a child */
   @Override
   public IConfigMNode deleteChild(String name) {
-    if (children != null) {
-      return children.remove(name);
-    }
     return null;
   }
 
@@ -202,43 +157,21 @@ public class ConfigBasicMNode implements IConfigMNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, IConfigMNode newChildNode) {
-    if (!oldChildName.equals(newChildNode.getName())) {
-      throw new RuntimeException("New child's name must be the same as old child's name!");
-    }
-    IConfigMNode oldChildNode = this.getChild(oldChildName);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    oldChildNode.moveDataToNewMNode(newChildNode);
-
-    children.replace(newChildNode.getName(), newChildNode);
-  }
+  public synchronized void replaceChild(String oldChildName, IConfigMNode newChildNode) {}
 
   @Override
   public void moveDataToNewMNode(IConfigMNode newMNode) {
     newMNode.setParent(parent);
     newMNode.setSchemaTemplateId(configMNodeInfo.getSchemaTemplateIdWithState());
-
-    if (children != null) {
-      newMNode.setChildren(children);
-      children.forEach((childName, childNode) -> childNode.setParent(newMNode));
-    }
   }
 
   @Override
   public IMNodeContainer<IConfigMNode> getChildren() {
-    if (children == null) {
-      return ConfigMNodeContainer.emptyMNodeContainer();
-    }
-    return children;
+    return ConfigMNodeContainer.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IConfigMNode> children) {
-    this.children = children;
-  }
+  public void setChildren(IMNodeContainer<IConfigMNode> children) {}
 
   @Override
   public boolean isAboveDatabase() {
@@ -313,5 +246,34 @@ public class ConfigBasicMNode implements IConfigMNode {
   @Override
   public void unsetSchemaTemplate() {
     configMNodeInfo.unsetSchemaTemplate();
+  }
+
+  /**
+   * The basic memory occupied by any ConfigBasicMNode object
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>node attributes
+   *       <ol>
+   *         <li>basicMNodeInfo reference, 8B
+   *         <li>parent reference, 8B
+   *         <li>fullPath reference, 8B
+   *       </ol>
+   *   <li>MapEntry in parent
+   *       <ol>
+   *         <li>key reference, 8B
+   *         <li>value reference, 8B
+   *         <li>entry size, see ConcurrentHashMap.Node, 28
+   *       </ol>
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + configMNodeInfo.estimateSize();
+  }
+
+  @Override
+  public IConfigMNode getAsMNode() {
+    return this;
   }
 }

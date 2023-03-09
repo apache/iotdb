@@ -32,11 +32,15 @@ public class MeasurementInfo implements IMeasurementInfo {
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
+  // alias length, hashCode and occupation in aliasMap, 4 + 4 + 44 = 52B
+  private static final int ALIAS_BASE_SIZE = 52;
+
   public MeasurementInfo(IMeasurementSchema schema, String alias) {
     this.schema = schema;
     this.alias = alias;
   }
 
+  @Override
   public void moveDataToNewMNode(IMeasurementMNode<?> newMNode) {
     newMNode.setSchema(schema);
     newMNode.setAlias(alias);
@@ -87,5 +91,21 @@ public class MeasurementInfo implements IMeasurementInfo {
   @Override
   public void setPreDeleted(boolean preDeleted) {
     this.preDeleted = preDeleted;
+  }
+
+  /**
+   * The memory occupied by an MeasurementInfo based occupation
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>alias reference, 8B
+   *   <li>long tagOffset, 8B
+   *   <li>boolean preDeleted, 1B
+   *   <li>estimated schema size, 32B
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + 8 + 1 + 32 + (alias == null ? 0 : ALIAS_BASE_SIZE + alias.length());
   }
 }

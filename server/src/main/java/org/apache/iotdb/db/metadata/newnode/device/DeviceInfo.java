@@ -49,6 +49,7 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   private volatile boolean isAligned = false;
 
+  @Override
   public void moveDataToNewMNode(IDeviceMNode<N> newMNode) {
     newMNode.setSchemaTemplateId(schemaTemplateId);
     newMNode.setUseTemplate(useTemplate);
@@ -92,10 +93,12 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
     this.aliasChildren = aliasChildren;
   }
 
+  @Override
   public boolean hasAliasChild(String name) {
     return aliasChildren != null && aliasChildren.containsKey(name);
   }
 
+  @Override
   public N getAliasChild(String name) {
     if (aliasChildren != null) {
       IMeasurementMNode<N> child = aliasChildren.get(name);
@@ -170,5 +173,21 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   @Override
   public void setAligned(boolean isAligned) {
     this.isAligned = isAligned;
+  }
+
+  /**
+   * The memory occupied by an DeviceInfo based occupation
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>int schemaTemplateId, 4B
+   *   <li>boolean useTemplate, 1B
+   *   <li>boolean isAligned, 1B
+   *   <li>aliasChildren reference, 8B
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 4 + 1 + 1 + 8;
   }
 }

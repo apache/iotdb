@@ -43,7 +43,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
 
   // Only used for ConfigMTree
   public ConfigMTreeStore(IMNodeFactory<IConfigMNode> nodeFactory) {
-    this.root = nodeFactory.createBasicMNode(null, IoTDBConstant.PATH_ROOT);
+    this.root = nodeFactory.createInternalMNode(null, IoTDBConstant.PATH_ROOT);
     this.nodeFactory = nodeFactory;
   }
 

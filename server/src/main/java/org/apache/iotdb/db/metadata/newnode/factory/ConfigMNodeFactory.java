@@ -54,7 +54,7 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   }
 
   @Override
-  public IConfigMNode createBasicMNode(IConfigMNode parent, String name) {
+  public IConfigMNode createInternalMNode(IConfigMNode parent, String name) {
     return new ConfigBasicMNode(parent, name);
   }
 }

@@ -80,7 +80,7 @@ public class MNodeUtils {
       databaseMNode.setDataTTL(entityMNode.getAsDatabaseMNode().getDataTTL());
       node = databaseMNode.getAsMNode();
     } else {
-      node = nodeFactor.createBasicMNode(parent, entityMNode.getName());
+      node = nodeFactor.createInternalMNode(parent, entityMNode.getName());
     }
 
     if (parent != null) {

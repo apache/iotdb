@@ -35,4 +35,10 @@ public class CacheMNodeInfo extends BasicMNodeInfo {
   public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
   }
+
+  @Override
+  public int estimateSize() {
+    // Estimated size of CacheEntry = 40
+    return super.estimateSize() + 40;
+  }
 }

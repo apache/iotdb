@@ -81,4 +81,8 @@ public interface IMNode<N extends IMNode<N>> extends ITreeNode {
   IMeasurementMNode<N> getAsMeasurementMNode();
 
   <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
+
+  int estimateSize();
+
+  N getAsMNode();
 }

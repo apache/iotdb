@@ -19,7 +19,40 @@
 package org.apache.iotdb.db.metadata.newnode.device;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 
-public interface IDeviceMNode<N extends IMNode<N>> extends IMNode<N>, IDeviceInfo<N> {
-  N getAsMNode();
+import java.util.Map;
+
+public interface IDeviceMNode<N extends IMNode<N>> extends IMNode<N> {
+  boolean addAlias(String alias, IMeasurementMNode<N> child);
+
+  void deleteAliasChild(String alias);
+
+  Map<String, IMeasurementMNode<N>> getAliasChildren();
+
+  void setAliasChildren(Map<String, IMeasurementMNode<N>> aliasChildren);
+
+  boolean isUseTemplate();
+
+  void setUseTemplate(boolean useTemplate);
+
+  void setSchemaTemplateId(int schemaTemplateId);
+
+  /** @return the logic id of template set or activated on this node, id>=-1 */
+  int getSchemaTemplateId();
+
+  /** @return the template id with current state, may be negative since unset or deactivation */
+  int getSchemaTemplateIdWithState();
+
+  boolean isPreDeactivateTemplate();
+
+  void preDeactivateTemplate();
+
+  void rollbackPreDeactivateTemplate();
+
+  void deactivateTemplate();
+
+  boolean isAligned();
+
+  void setAligned(boolean isAligned);
 }

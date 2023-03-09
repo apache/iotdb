@@ -30,7 +30,11 @@ import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
 public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IMNode<N> {
 
-  protected BasicNode basicMNode;
+  protected final BasicNode basicMNode;
+
+  public AbstractAboveDatabaseMNode(BasicNode basicMNode) {
+    this.basicMNode = basicMNode;
+  }
 
   @Override
   public String getName() {
@@ -168,5 +172,20 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
-  abstract N getAsMNode();
+  /**
+   * The basic memory occupied by any AbstractDatabaseDeviceMNode object
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>node attributes
+   *       <ol>
+   *         <li>basicMNode reference, 8B
+   *       </ol>
+   *   <li>MapEntry in parent
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + basicMNode.estimateSize();
+  }
 }

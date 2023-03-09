@@ -40,4 +40,8 @@ public interface IMeasurementInfo {
   boolean isPreDeleted();
 
   void setPreDeleted(boolean preDeleted);
+
+  int estimateSize();
+
+  void moveDataToNewMNode(IMeasurementMNode<?> newMNode);
 }

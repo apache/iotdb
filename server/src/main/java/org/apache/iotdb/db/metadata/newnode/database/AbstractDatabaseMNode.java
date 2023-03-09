@@ -32,11 +32,12 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
 
   private static final long serialVersionUID = 7999036474525817732L;
 
-  private final DatabaseInfo databaseInfo;
-  protected BasicNode basicMNode;
+  private final IDatabaseInfo databaseInfo;
+  protected final BasicNode basicMNode;
 
-  public AbstractDatabaseMNode(String name) {
-    this.databaseInfo = new DatabaseInfo(name);
+  public AbstractDatabaseMNode(BasicNode basicMNode, IDatabaseInfo databaseInfo) {
+    this.basicMNode = basicMNode;
+    this.databaseInfo = databaseInfo;
   }
 
   public BasicNode getBasicMNode() {
@@ -212,5 +213,23 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
   @Override
   public TDatabaseSchema getStorageGroupSchema() {
     return databaseInfo.getStorageGroupSchema();
+  }
+
+  /**
+   * The basic memory occupied by any AbstractDatabaseMNode object
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>node attributes
+   *       <ol>
+   *         <li>databaseInfo reference, 8B
+   *         <li>basicMNode reference, 8B
+   *       </ol>
+   *   <li>MapEntry in parent
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + databaseInfo.estimateSize() + basicMNode.estimateSize();
   }
 }

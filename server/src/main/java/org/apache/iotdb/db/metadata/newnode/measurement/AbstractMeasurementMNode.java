@@ -37,12 +37,12 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractMeasurementMNode.class);
 
-  private final MeasurementInfo measurementInfo;
-  protected BasicNode basicMNode;
+  private final IMeasurementInfo measurementInfo;
+  protected final BasicNode basicMNode;
 
-  /** @param alias alias of measurementName */
-  public AbstractMeasurementMNode(IMeasurementSchema schema, String alias) {
-    this.measurementInfo = new MeasurementInfo(schema, alias);
+  public AbstractMeasurementMNode(BasicNode basicMNode, IMeasurementInfo measurementInfo) {
+    this.basicMNode = basicMNode;
+    this.measurementInfo = measurementInfo;
   }
 
   public BasicNode getBasicMNode() {
@@ -232,5 +232,23 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   @Override
   public IMeasurementMNode<N> getAsMeasurementMNode() {
     return this;
+  }
+
+  /**
+   * The basic memory occupied by any AbstractMeasurementMNode object
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>node attributes
+   *       <ol>
+   *         <li>measurementInfo reference, 8B
+   *         <li>basicMNode reference, 8B
+   *       </ol>
+   *   <li>MapEntry in parent
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + measurementInfo.estimateSize() + basicMNode.estimateSize();
   }
 }

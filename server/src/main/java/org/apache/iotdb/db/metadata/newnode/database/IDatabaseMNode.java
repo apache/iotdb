@@ -18,9 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.newnode.database;
 
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 /** This interface defines a DatabaseMNode's operation interfaces. */
-public interface IDatabaseMNode<N extends IMNode<N>> extends IMNode<N>, IDatabaseInfo {
-  N getAsMNode();
+public interface IDatabaseMNode<N extends IMNode<N>> extends IMNode<N> {
+  long getDataTTL();
+
+  void setDataTTL(long dataTTL);
+
+  void setSchemaReplicationFactor(int schemaReplicationFactor);
+
+  void setDataReplicationFactor(int dataReplicationFactor);
+
+  void setTimePartitionInterval(long timePartitionInterval);
+
+  void setStorageGroupSchema(TDatabaseSchema schema);
+
+  TDatabaseSchema getStorageGroupSchema();
 }

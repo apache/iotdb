@@ -31,8 +31,9 @@ public class CacheMeasurementMNode extends AbstractMeasurementMNode<ICacheMNode,
 
   public CacheMeasurementMNode(
       IDeviceMNode<ICacheMNode> parent, String name, IMeasurementSchema schema, String alias) {
-    super(schema, alias);
-    this.basicMNode = new CacheBasicMNode(parent == null ? null : parent.getAsMNode(), name);
+    super(
+        new CacheBasicMNode(parent == null ? null : parent.getAsMNode(), name),
+        new MeasurementInfo(schema, alias));
   }
 
   @Override

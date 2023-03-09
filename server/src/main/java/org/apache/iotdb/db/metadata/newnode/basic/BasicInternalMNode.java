@@ -16,104 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.newnode.basic;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MemMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.newnode.BasicMNodeInfo;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
-import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
-import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
-import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class BasicMNode implements IMemMNode {
-
-  private static final long serialVersionUID = -770028375899514063L;
+public class BasicInternalMNode extends BasicMNode {
 
   /**
-   * use in Measurement Node so it's protected suppress warnings reason: volatile for double
-   * synchronized check
+   * suppress warnings reason: volatile for double synchronized check
    *
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile IMNodeContainer<IMemMNode> children = null;
-
-  private IMemMNode parent;
-  private BasicMNodeInfo basicMNodeInfo;
-
-  /** from root to this node, only be set when used once for InternalMNode */
-  private String fullPath;
+  private transient volatile IMNodeContainer<IMemMNode> children = null;
 
   /** Constructor of MNode. */
-  public BasicMNode(IMemMNode parent, String name) {
-    this.parent = parent;
-    this.basicMNodeInfo = new BasicMNodeInfo(name);
-  }
-
-  @Override
-  public String getName() {
-    return basicMNodeInfo.getName();
-  }
-
-  @Override
-  public void setName(String name) {
-    basicMNodeInfo.setName(name);
-  }
-
-  @Override
-  public IMemMNode getParent() {
-    return parent;
-  }
-
-  @Override
-  public void setParent(IMemMNode parent) {
-    this.parent = parent;
-  }
-
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath();
-    }
-    return fullPath;
-  }
-
-  String concatFullPath() {
-    StringBuilder builder = new StringBuilder(getName());
-    IMemMNode curr = this;
-    while (curr.getParent() != null) {
-      curr = curr.getParent();
-      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
-    }
-    return builder.toString();
-  }
-
-  @Override
-  public void setFullPath(String fullPath) {
-    this.fullPath = fullPath;
-  }
-
-  @Override
-  public PartialPath getPartialPath() {
-    List<String> detachedPath = new ArrayList<>();
-    IMemMNode temp = this;
-    detachedPath.add(temp.getName());
-    while (temp.getParent() != null) {
-      temp = temp.getParent();
-      detachedPath.add(0, temp.getName());
-    }
-    return new PartialPath(detachedPath.toArray(new String[0]));
+  public BasicInternalMNode(IMemMNode parent, String name) {
+    super(parent, name);
   }
 
   /** check whether the MNode has a child with the name */
@@ -221,7 +146,7 @@ public class BasicMNode implements IMemMNode {
 
   @Override
   public void moveDataToNewMNode(IMemMNode newMNode) {
-    newMNode.setParent(parent);
+    super.moveDataToNewMNode(newMNode);
 
     if (children != null) {
       newMNode.setChildren(children);
@@ -242,48 +167,14 @@ public class BasicMNode implements IMemMNode {
     this.children = children;
   }
 
+  /** MNodeContainer reference and basic occupation, 8 + 80B */
   @Override
-  public boolean isAboveDatabase() {
-    return false;
+  public int estimateSize() {
+    return 8 + 80 + super.estimateSize();
   }
 
   @Override
-  public boolean isDatabase() {
-    return false;
-  }
-
-  @Override
-  public boolean isDevice() {
-    return false;
-  }
-
-  @Override
-  public boolean isMeasurement() {
-    return false;
-  }
-
-  @Override
-  public MNodeType getMNodeType(Boolean isConfig) {
-    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
-  public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public IMeasurementMNode<IMemMNode> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
-  }
-
-  @Override
-  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    return visitor.visitBasicMNode(this, context);
+  public IMemMNode getAsMNode() {
+    return this;
   }
 }

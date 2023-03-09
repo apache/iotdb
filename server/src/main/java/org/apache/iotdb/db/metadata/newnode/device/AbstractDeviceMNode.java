@@ -31,12 +31,12 @@ import java.util.Map;
 public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends IMNode<N>>
     implements IDeviceMNode<N> {
 
-  private final DeviceInfo<N> deviceInfo;
-  protected BasicNode basicMNode;
+  private final IDeviceInfo<N> deviceInfo;
+  protected final BasicNode basicMNode;
 
-  /** Constructor of MNode. */
-  public AbstractDeviceMNode() {
-    this.deviceInfo = new DeviceInfo<>();
+  public AbstractDeviceMNode(BasicNode basicMNode, IDeviceInfo<N> deviceInfo) {
+    this.basicMNode = basicMNode;
+    this.deviceInfo = deviceInfo;
   }
 
   public BasicNode getBasicMNode() {
@@ -256,5 +256,23 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   @Override
   public void setAligned(boolean isAligned) {
     deviceInfo.setAligned(isAligned);
+  }
+
+  /**
+   * The basic memory occupied by any AbstractDeviceMNode object
+   *
+   * <ol>
+   *   <li>object header, 8B
+   *   <li>node attributes
+   *       <ol>
+   *         <li>deviceInfo reference, 8B
+   *         <li>basicMNode reference, 8B
+   *       </ol>
+   *   <li>MapEntry in parent
+   * </ol>
+   */
+  @Override
+  public int estimateSize() {
+    return 8 + 8 + deviceInfo.estimateSize() + basicMNode.estimateSize();
   }
 }

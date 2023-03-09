@@ -32,6 +32,7 @@ public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
    */
   private long dataTTL;
 
+  @Override
   public void moveDataToNewMNode(IDatabaseMNode<?> newMNode) {
     newMNode.setDataTTL(dataTTL);
   }
@@ -63,6 +64,15 @@ public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
     return null;
   }
 
+  /**
+   * The memory occupied by an DatabaseDeviceInfo based occupation
+   *
+   * <ol>
+   *   <li>long dataTTL, 8B
+   * </ol>
+   */
   @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {}
+  public int estimateSize() {
+    return super.estimateSize() + 8;
+  }
 }

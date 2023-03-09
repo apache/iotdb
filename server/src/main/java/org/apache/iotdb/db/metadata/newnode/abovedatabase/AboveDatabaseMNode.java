@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.newnode.abovedatabase;
 
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicInternalMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 
 public class AboveDatabaseMNode extends AbstractAboveDatabaseMNode<IMemMNode, BasicMNode>
     implements IMemMNode {
   public AboveDatabaseMNode(IMemMNode parent, String name) {
-    this.basicMNode = new BasicMNode(parent, name);
+    super(new BasicInternalMNode(parent, name));
   }
 
   @Override

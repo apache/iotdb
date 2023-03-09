@@ -58,7 +58,7 @@ public class CacheMNodeFactory implements IMNodeFactory<ICacheMNode> {
   }
 
   @Override
-  public ICacheMNode createBasicMNode(ICacheMNode parent, String name) {
+  public ICacheMNode createInternalMNode(ICacheMNode parent, String name) {
     return new CacheBasicMNode(parent, name);
   }
 }

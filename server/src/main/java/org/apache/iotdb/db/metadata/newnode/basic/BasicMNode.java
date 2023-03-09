@@ -22,11 +22,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.newnode.CacheMNodeInfo;
-import org.apache.iotdb.db.metadata.newnode.ICacheMNode;
+import org.apache.iotdb.db.metadata.newnode.BasicMNodeInfo;
+import org.apache.iotdb.db.metadata.newnode.IMemMNode;
 import org.apache.iotdb.db.metadata.newnode.database.IDatabaseMNode;
 import org.apache.iotdb.db.metadata.newnode.device.IDeviceMNode;
 import org.apache.iotdb.db.metadata.newnode.measurement.IMeasurementMNode;
@@ -38,39 +37,39 @@ import java.util.List;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class CacheBasicMNode implements ICacheMNode {
+public class BasicMNode implements IMemMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
-  private ICacheMNode parent;
-  private CacheMNodeInfo cacheMNodeInfo;
+  private IMemMNode parent;
+  private BasicMNodeInfo basicMNodeInfo;
 
   /** from root to this node, only be set when used once for InternalMNode */
   private String fullPath;
 
   /** Constructor of MNode. */
-  public CacheBasicMNode(ICacheMNode parent, String name) {
+  protected BasicMNode(IMemMNode parent, String name) {
     this.parent = parent;
-    this.cacheMNodeInfo = new CacheMNodeInfo(name);
+    this.basicMNodeInfo = new BasicMNodeInfo(name);
   }
 
   @Override
   public String getName() {
-    return cacheMNodeInfo.getName();
+    return basicMNodeInfo.getName();
   }
 
   @Override
   public void setName(String name) {
-    cacheMNodeInfo.setName(name);
+    basicMNodeInfo.setName(name);
   }
 
   @Override
-  public ICacheMNode getParent() {
+  public IMemMNode getParent() {
     return parent;
   }
 
   @Override
-  public void setParent(ICacheMNode parent) {
+  public void setParent(IMemMNode parent) {
     this.parent = parent;
   }
 
@@ -84,7 +83,7 @@ public class CacheBasicMNode implements ICacheMNode {
 
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(getName());
-    ICacheMNode curr = this;
+    IMemMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
@@ -100,7 +99,7 @@ public class CacheBasicMNode implements ICacheMNode {
   @Override
   public PartialPath getPartialPath() {
     List<String> detachedPath = new ArrayList<>();
-    ICacheMNode temp = this;
+    IMemMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
       temp = temp.getParent();
@@ -117,7 +116,7 @@ public class CacheBasicMNode implements ICacheMNode {
 
   /** get the child with the name */
   @Override
-  public ICacheMNode getChild(String name) {
+  public IMemMNode getChild(String name) {
     return null;
   }
 
@@ -129,7 +128,7 @@ public class CacheBasicMNode implements ICacheMNode {
    * @return the child of this node after addChild
    */
   @Override
-  public ICacheMNode addChild(String name, ICacheMNode child) {
+  public IMemMNode addChild(String name, IMemMNode child) {
     return null;
   }
 
@@ -145,13 +144,13 @@ public class CacheBasicMNode implements ICacheMNode {
    * @return return the MNode already added
    */
   @Override
-  public ICacheMNode addChild(ICacheMNode child) {
+  public IMemMNode addChild(IMemMNode child) {
     return null;
   }
 
   /** delete a child */
   @Override
-  public ICacheMNode deleteChild(String name) {
+  public IMemMNode deleteChild(String name) {
     return null;
   }
 
@@ -162,21 +161,20 @@ public class CacheBasicMNode implements ICacheMNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, ICacheMNode newChildNode) {}
+  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {}
 
   @Override
-  public void moveDataToNewMNode(ICacheMNode newMNode) {
+  public void moveDataToNewMNode(IMemMNode newMNode) {
     newMNode.setParent(parent);
-    newMNode.setCacheEntry(getCacheEntry());
   }
 
   @Override
-  public IMNodeContainer<ICacheMNode> getChildren() {
-    return CachedMNodeContainer.emptyMNodeContainer();
+  public IMNodeContainer<IMemMNode> getChildren() {
+    return MemMNodeContainer.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(IMNodeContainer<ICacheMNode> children) {}
+  public void setChildren(IMNodeContainer<IMemMNode> children) {}
 
   @Override
   public boolean isAboveDatabase() {
@@ -204,17 +202,17 @@ public class CacheBasicMNode implements ICacheMNode {
   }
 
   @Override
-  public IDatabaseMNode<ICacheMNode> getAsDatabaseMNode() {
+  public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
-  public IDeviceMNode<ICacheMNode> getAsDeviceMNode() {
+  public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
   @Override
-  public IMeasurementMNode<ICacheMNode> getAsMeasurementMNode() {
+  public IMeasurementMNode<IMemMNode> getAsMeasurementMNode() {
     throw new UnsupportedOperationException("Wrong MNode Type");
   }
 
@@ -223,18 +221,8 @@ public class CacheBasicMNode implements ICacheMNode {
     return visitor.visitBasicMNode(this, context);
   }
 
-  @Override
-  public CacheEntry getCacheEntry() {
-    return cacheMNodeInfo.getCacheEntry();
-  }
-
-  @Override
-  public void setCacheEntry(CacheEntry cacheEntry) {
-    cacheMNodeInfo.setCacheEntry(cacheEntry);
-  }
-
   /**
-   * The basic memory occupied by any CacheBasicMNode object
+   * The basic memory occupied by any BasicMNode object
    *
    * <ol>
    *   <li>object header, 8B
@@ -254,11 +242,11 @@ public class CacheBasicMNode implements ICacheMNode {
    */
   @Override
   public int estimateSize() {
-    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + cacheMNodeInfo.estimateSize();
+    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + basicMNodeInfo.estimateSize();
   }
 
   @Override
-  public ICacheMNode getAsMNode() {
+  public IMemMNode getAsMNode() {
     return this;
   }
 }

@@ -71,4 +71,10 @@ public class ConfigMNodeInfo extends BasicMNodeInfo {
   public void unsetSchemaTemplate() {
     this.schemaTemplateId = -1;
   }
+
+  @Override
+  public int estimateSize() {
+    // int schemaTemplateId, 4B
+    return super.estimateSize() + 4;
+  }
 }

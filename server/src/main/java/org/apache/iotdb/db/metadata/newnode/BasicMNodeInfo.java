@@ -32,4 +32,10 @@ public class BasicMNodeInfo {
   public void setName(String name) {
     this.name = name;
   }
+
+  public int estimateSize() {
+    // object header, 8B
+    // name reference, name length and name hash code, 8 + 4 + 4 = 16B
+    return 8 + 16;
+  }
 }

@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.newnode.databasedevice;
 
-import org.apache.iotdb.db.metadata.mnode.BasicMNode;
+import org.apache.iotdb.db.metadata.newnode.DatabaseDeviceInfo;
 import org.apache.iotdb.db.metadata.newnode.IMemMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicInternalMNode;
+import org.apache.iotdb.db.metadata.newnode.basic.BasicMNode;
 
 public class DatabaseDeviceMNode extends AbstractDatabaseDeviceMNode<IMemMNode, BasicMNode>
     implements IMemMNode {
   public DatabaseDeviceMNode(IMemMNode parent, String name, long dataTTL) {
-    super();
-    this.basicMNode = new BasicMNode(parent, name);
+    super(new BasicInternalMNode(parent, name), new DatabaseDeviceInfo<>());
     setDataTTL(dataTTL);
   }
 
