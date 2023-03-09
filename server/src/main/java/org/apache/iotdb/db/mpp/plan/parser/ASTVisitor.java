@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -206,6 +207,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -224,7 +227,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
   private static final String IGNORENULL = "IgnoreNull";
-
   private ZoneId zoneId;
 
   public void setZoneId(ZoneId zoneId) {
@@ -2314,6 +2316,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseInExpression(context, canUseFullPath);
     }
 
+    if (context.castInput != null) {
+      return parseCastFunction(context, canUseFullPath);
+    }
+
     if (context.functionName() != null) {
       return parseFunctionExpression(context, canUseFullPath);
     }
@@ -2332,6 +2338,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     throw new UnsupportedOperationException();
+  }
+
+  private Expression parseCastFunction(
+      IoTDBSqlParser.ExpressionContext castClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(CAST_FUNCTION);
+    functionExpression.addExpression(parseExpression(castClause.castInput, canUseFullPath));
+    functionExpression.addAttribute(CAST_TYPE, parseAttributeValue(castClause.attributeValue()));
+    return functionExpression;
   }
 
   private Expression parseFunctionExpression(
@@ -2379,8 +2393,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // type check of input expressions is put in ExpressionTypeAnalyzer
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       checkAggregationFunctionInput(functionExpression);
-    } else if (functionExpression.isBuiltInFunction()) {
-      checkBuiltInFunctionInput(functionExpression);
+    } else if (functionExpression.isBuiltInScalarFunction()) {
+      checkBuiltInScalarFunctionInput(functionExpression);
     }
     return functionExpression;
   }
@@ -2416,22 +2430,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void checkBuiltInFunctionInput(FunctionExpression functionExpression) {
-    final String functionName = functionExpression.getFunctionName().toLowerCase();
-    switch (functionName) {
-      case SqlConstant.DIFF:
-        checkFunctionExpressionInputSize(
-            functionExpression.getExpressionString(),
-            functionExpression.getExpressions().size(),
-            1);
-        return;
-      default:
-        throw new IllegalArgumentException(
-            "Invalid BuiltInFunction: " + functionExpression.getFunctionName());
-    }
+  private void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression) {
+    BuiltInScalarFunctionHelperFactory.createHelper(functionExpression.getFunctionName())
+        .checkBuiltInScalarFunctionInputSize(functionExpression);
   }
 
-  private void checkFunctionExpressionInputSize(
+  public static void checkFunctionExpressionInputSize(
       String expressionString, int actual, int... expected) {
     for (int expect : expected) {
       if (expect == actual) {

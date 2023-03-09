@@ -56,7 +56,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ExpressionUtils {
-
   public static List<Expression> reconstructTimeSeriesOperands(
       List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();

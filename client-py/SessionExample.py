@@ -166,7 +166,7 @@ measurements_list_ = [
 ]
 values_list_ = [
     [False, 22, 33, 4.4, 55.1, "test_records01"],
-    [True, 77, 88, 1.25, 8.125, "test_records02"],
+    [True, 77, 88, 1.25, 8.125, bytes("test_records02", "utf-8")],
 ]
 data_type_list_ = [data_types_, data_types_]
 device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_01"]
