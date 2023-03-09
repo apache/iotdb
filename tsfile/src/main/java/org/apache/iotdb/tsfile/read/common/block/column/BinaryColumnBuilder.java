@@ -67,7 +67,6 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeBinary(Binary value) {
     if (values.length <= positionCount) {
       growCapacity();
-      LOGGER.info("binary size: " + value.getValues().length);
     }
 
     values[positionCount] = value;
@@ -136,7 +135,9 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
     // TODO we should take retain size into account here
-    return new BinaryColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
+    int count = calculateBlockResetSize(positionCount);
+    LOGGER.info("reset size: " + count);
+    return new BinaryColumnBuilder(columnBuilderStatus, count);
   }
 
   @Override
