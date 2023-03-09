@@ -101,9 +101,14 @@ In addition to waiting for the query to time out passively, IoTDB also supports 
 KILL QUERY <queryId>
 ```
 
-You can kill the specified query by specifying `queryId`.
+You can kill the specified query by specifying `queryId`. `queryId` is a string, so you need to put quotes around it.
 
 To get the executing `queryId`，you can use the [show queries](#show-queries) command, which will show the list of all executing queries.
+
+##### Example
+```sql
+kill query '20221205_114444_00003_5'
+```
 
 #### Kill all queries
 
