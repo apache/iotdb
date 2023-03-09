@@ -392,6 +392,12 @@ public class IoTDBDescriptor {
                 "avg_series_point_number_threshold",
                 Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
+    conf.setTargetMemoryBinaryChunkSize(
+        Long.parseLong(
+            properties.getProperty(
+                "target_memory_binary_chunk_size",
+                Long.toString(conf.getTargetMemoryBinaryChunkSize()))));
+
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
             properties.getProperty(

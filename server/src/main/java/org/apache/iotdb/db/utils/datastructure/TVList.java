@@ -49,8 +49,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-  protected static final long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  protected static final long targetMemoryBinaryChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetMemoryBinaryChunkSize();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;

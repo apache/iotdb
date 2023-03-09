@@ -99,7 +99,7 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   public boolean reachMaxChunkSizeThreshold() {
-    return memoryBinaryChunkSize >= targetChunkSize;
+    return memoryBinaryChunkSize >= targetMemoryBinaryChunkSize;
   }
 
   @Override

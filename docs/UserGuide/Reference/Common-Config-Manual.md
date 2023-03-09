@@ -754,6 +754,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 100000                                                 |
 |Effective| After restarting system                                |
 
+* target\_memory\_binary\_chunk\_size
+
+|Name| target\_memory\_binary\_chunk\_size                                                                        |
+|:---:|:-----------------------------------------------------------------------------------------------------------|
+|Description| When a Binary type of timeseries's size in a memtable reaches this threshold, flush this memtable to disk. |
+|Type| int64                                                                                                      |
+|Default| 1048576                                                                                                     |
+|Effective| After restarting system                                                                                    |
+
 * flush\_thread\_count
 
 |Name| flush\_thread\_count |

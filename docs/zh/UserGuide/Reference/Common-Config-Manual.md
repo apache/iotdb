@@ -802,6 +802,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 100000                                |
 |改后生效方式| 重启服务生效                                |
 
+* target\_memory\_binary\_chunk\_size
+
+|名字| target\_memory\_binary\_chunk\_size           |
+|:---:|:----------------------------------------------|
+|描述| Memtable 中当一个 Binary 类型的序列内存大小超过这个阈值，触发 flush |
+|类型| int64                                         |
+|默认值| 1048576                                       |
+|改后生效方式| 重启服务生效                                        |
+
 * flush\_thread\_count
 
 |名字| flush\_thread\_count |

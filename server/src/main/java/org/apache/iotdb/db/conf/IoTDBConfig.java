@@ -387,6 +387,9 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
 
+  /** The target memory Binary chunk size in TVList. */
+  private long targetMemoryBinaryChunkSize = 1048576L;
+
   /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
@@ -1964,6 +1967,14 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
+  }
+
+  public long getTargetMemoryBinaryChunkSize() {
+    return targetMemoryBinaryChunkSize;
+  }
+
+  public void setTargetMemoryBinaryChunkSize(long targetMemoryBinaryChunkSize) {
+    this.targetMemoryBinaryChunkSize = targetMemoryBinaryChunkSize;
   }
 
   public long getCrossCompactionFileSelectionTimeBudget() {
