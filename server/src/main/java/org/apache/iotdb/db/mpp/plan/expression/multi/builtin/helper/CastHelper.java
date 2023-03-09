@@ -35,7 +35,7 @@ import static org.apache.iotdb.db.mpp.plan.parser.ASTVisitor.checkFunctionExpres
 
 public class CastHelper implements BuiltInScalarFunctionHelper {
   @Override
-  public void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression)
+  public void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
       throws SemanticException {
     checkFunctionExpressionInputSize(
         functionExpression.getExpressionString(), functionExpression.getExpressions().size(), 1);

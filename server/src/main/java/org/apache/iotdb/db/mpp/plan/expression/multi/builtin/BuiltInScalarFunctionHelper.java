@@ -32,10 +32,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  */
 public interface BuiltInScalarFunctionHelper extends BuiltInFunctionHelper {
   /**
-   * Check if the input TsDataType is correct. For example, function DIFF only supports numeric
-   * input data. Throw {@link SemanticException} if the type is not correct.
+   * Check if the input size is correct. For example, function DIFF only supports one column as
+   * input. Throw {@link SemanticException} if the input size is not correct.
    */
-  void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression)
+  void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
       throws SemanticException;
 
   /**

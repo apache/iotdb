@@ -2407,7 +2407,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression) {
     BuiltInScalarFunctionHelperFactory.createHelper(functionExpression.getFunctionName())
-        .checkBuiltInScalarFunctionInput(functionExpression);
+        .checkBuiltInScalarFunctionInputSize(functionExpression);
   }
 
   public static void checkFunctionExpressionInputSize(
