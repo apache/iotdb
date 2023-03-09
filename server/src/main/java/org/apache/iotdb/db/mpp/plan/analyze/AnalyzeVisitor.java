@@ -248,14 +248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
-        if (queryStatement.isSelectInto()) {
-          analysis.setRespDatasetHeader(
-              DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
-        }
-        if (queryStatement.isLastQuery()) {
-          analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
-        }
-        return finishQuery(analysis);
+        return finishQuery(queryStatement, analysis);
       }
 
       // extract global time filter from query filter and determine if there is a value filter
@@ -287,7 +280,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
         if (deviceSet.isEmpty()) {
-          return finishQuery(analysis);
+          return finishQuery(queryStatement, analysis);
         }
 
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
@@ -307,12 +300,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
             analyzeSelect(analysis, queryStatement, schemaTree);
-        if (outputExpressionMap.values().stream().allMatch(List::isEmpty)) {
-          return finishQuery(analysis);
-        }
 
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
+        if (outputExpressions.isEmpty()) {
+          return finishQuery(queryStatement, analysis);
+        }
 
         analyzeGroupBy(analysis, queryStatement, schemaTree);
         analyzeHaving(analysis, queryStatement, schemaTree);
@@ -357,7 +350,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private Analysis finishQuery(Analysis analysis) {
+  private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
+    if (queryStatement.isSelectInto()) {
+      analysis.setRespDatasetHeader(
+          DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+    }
+    if (queryStatement.isLastQuery()) {
+      analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+    }
     analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
