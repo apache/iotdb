@@ -139,12 +139,12 @@ DataNode 的状态机如下图所示：
   - 少数 ReadOnly DataNode 不影响集群读写
   - ReadOnly DataNode 可以查询元数据和数据
   - ReadOnly DataNode 可以删除元数据和数据
-  - ReadOnly DataNode 可以写入元数据，不能写入数据
-  - 所有 DataNode 处于 ReadOnly 状态时，集群不能写入数据，仍可以可以写入元数据和创建 Database
+  - ReadOnly DataNode 可以创建元数据，不能写入数据
+  - 所有 DataNode 处于 ReadOnly 状态时，集群不能写入数据，仍可以创建 Database 和元数据
 
-**对于一个 DataNode**，不同状态元数据查询、写入、删除的影响如下表所示：
+**对于一个 DataNode**，不同状态元数据查询、创建、删除的影响如下表所示：
 
-| DataNode 状态 | 可读  | 可写  | 可删除 |
+| DataNode 状态 | 可读  | 可创建 | 可删除 |
 |-------------|-----|-----|-----|
 | Running     | 是   | 是   | 是   |
 | Unknown     | 否   | 否   | 否   |
