@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -54,6 +53,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.DataNodeStartCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -141,7 +141,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
-    logger.info("IoTDB-DataNode environment variables: {}",IoTDBConfig.getEnvironmentVariables());
+    logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -212,7 +212,7 @@ public class DataNode implements DataNodeMBean {
     thisNode.setPort(config.getInternalPort());
 
     // Startup checks
-    StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
+    DataNodeStartCheck checks = new DataNodeStartCheck(IoTDBConstant.DN_ROLE);
     checks.withPortCheck(config);
     checks.verify();
     return isFirstStart;

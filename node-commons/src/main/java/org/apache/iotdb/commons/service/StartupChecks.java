@@ -21,17 +21,14 @@ package org.apache.iotdb.commons.service;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-public class StartupChecks {
+public abstract class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
   public static final StartupCheck checkJDK =
@@ -46,19 +43,18 @@ public class StartupChecks {
           logger.info("JDK version is {}.", version);
         }
       };
-  private final List<StartupCheck> preChecks = new ArrayList<>();
-  private final List<StartupCheck> defaultTests = new ArrayList<>();
+  protected final List<StartupCheck> preChecks = new ArrayList<>();
 
-  public StartupChecks(String nodeRole) {
-    defaultTests.add(() -> checkJMXPort(nodeRole));
-    defaultTests.add(checkJDK);
+  protected StartupChecks(String nodeRole) {
+    preChecks.add(() -> checkJMXPort(nodeRole));
+    preChecks.add(checkJDK);
   }
 
   private void checkJMXPort(String nodeRole) {
     Boolean jmxLocal = Boolean.valueOf(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
 
-    if (jmxLocal) {
+    if (Boolean.TRUE.equals(jmxLocal)) {
       logger.info("Start JMX locally.");
       return;
     }
@@ -69,7 +65,7 @@ public class StartupChecks {
               ? IoTDBConstant.DN_ENV_FILE_NAME
               : IoTDBConstant.CN_ENV_FILE_NAME;
       logger.warn(
-          "{} missing from {}.sh(Unix or OS X, if you use Windows," + " check conf/{}.bat)",
+          "{} missing from {}.sh(Unix or OS X, if you use Windows, check conf/{}.bat)",
           IoTDBConstant.IOTDB_JMX_PORT,
           filename,
           filename);
@@ -79,32 +75,6 @@ public class StartupChecks {
     }
   }
 
-  private void checkDataNodePortUnique(IoTDBConfig config) throws StartupException{
-    Set<Integer>portSet = new HashSet<>();
-    int dataNodePort = 6;
-    portSet.add(config.getInternalPort());
-    portSet.add(config.getMqttPort());
-    portSet.add(config.getRpcPort());
-    portSet.add(config.getMppDataExchangePort());
-    portSet.add(config.getDataRegionConsensusPort());
-    portSet.add(config.getSchemaRegionConsensusPort());
-    if(portSet.size()==dataNodePort)
-      throw new StartupException("ports used in datanode have repeat");
-  }
-
-  public StartupChecks withDefaultTest() {
-    preChecks.addAll(defaultTests);
-    return this;
-  }
-
-  public StartupChecks withPortCheck(IoTDBConfig config){
-    preChecks.add(()->checkDataNodePortUnique(config));
-    return this;
-  }
   /** execute every pretest. */
-  public void verify() throws StartupException {
-    for (StartupCheck check : preChecks) {
-      check.execute();
-    }
-  }
+  public abstract void verify() throws StartupException;
 }
