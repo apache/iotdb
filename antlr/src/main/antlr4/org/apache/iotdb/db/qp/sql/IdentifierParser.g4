@@ -49,6 +49,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
