@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -699,8 +699,8 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return isDeviceViewNeedSpecialProcess(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
-      if (((FunctionExpression) expression).isBuiltInFunction()
-          && BuiltinFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+      if (((FunctionExpression) expression).isBuiltInScalarFunction()
+          && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
               ((FunctionExpression) expression).getFunctionName().toLowerCase())) {
         return true;
       }
@@ -733,7 +733,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof FunctionExpression) {
       FunctionExpression functionExpression = (FunctionExpression) expression;
       if (!functionExpression.isMappable(analysis.getExpressionTypes())
-          || BuiltinFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+          || BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
               functionExpression.getFunctionName())) {
         return false;
       }

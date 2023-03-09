@@ -17,11 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.multi;
+package org.apache.iotdb.db.mpp.plan.expression.multi.builtin;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.CastHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.DiffHelper;
+
+public class BuiltInScalarFunctionHelperFactory {
+  public static BuiltInScalarFunctionHelper createHelper(String functionName) {
+    functionName = functionName.toUpperCase();
+    switch (functionName) {
+      case "DIFF":
+        return new DiffHelper();
+      case "CAST":
+        return new CastHelper();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid scalar function [%s].", functionName));
+    }
+  }
 }

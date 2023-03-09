@@ -17,11 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.multi;
+package org.apache.iotdb.itbase.constant;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF
+public enum BuiltinScalarFunctionEnum {
+  DIFF("diff"),
+  CAST("cast"),
+  ;
+
+  private final String functionName;
+
+  BuiltinScalarFunctionEnum(String functionName) {
+    this.functionName = functionName;
+  }
+
+  public String getFunctionName() {
+    return functionName;
+  }
 }

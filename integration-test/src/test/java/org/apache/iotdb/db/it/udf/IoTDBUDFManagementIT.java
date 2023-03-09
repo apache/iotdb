@@ -23,6 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.BuiltinAggregationFunctionEnum;
+import org.apache.iotdb.itbase.constant.BuiltinScalarFunctionEnum;
 import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 
 import org.junit.After;
@@ -49,6 +50,9 @@ public class IoTDBUDFManagementIT {
       BuiltinAggregationFunctionEnum.getNativeFunctionNames().size();
   private static final int BUILTIN_FUNCTIONS_COUNT =
       BuiltinTimeSeriesGeneratingFunctionEnum.values().length;
+
+  private static final int BUILTIN_SCALAR_FUNCTIONS_COUNT =
+      BuiltinScalarFunctionEnum.values().length;
 
   private static final String FUNCTION_TYPE_NATIVE = "native";
   private static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
@@ -85,7 +89,7 @@ public class IoTDBUDFManagementIT {
           }
           ++count;
         }
-        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
         statement.execute("drop function udf");
       }
     } catch (SQLException throwable) {
@@ -105,7 +109,9 @@ public class IoTDBUDFManagementIT {
         while (resultSet.next()) {
           ++count;
         }
-        Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(
+            1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
+            count);
         assertEquals(3, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
 
@@ -118,7 +124,9 @@ public class IoTDBUDFManagementIT {
         while (resultSet.next()) {
           ++count;
         }
-        Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
+        Assert.assertEquals(
+            1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
+            count);
         assertEquals(3, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
       }
