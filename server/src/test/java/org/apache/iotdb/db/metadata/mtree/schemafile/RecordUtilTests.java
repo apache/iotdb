@@ -65,12 +65,12 @@ public class RecordUtilTests {
     buffer.clear();
     ICacheMNode node1 = RecordUtils.buffer2Node("abcd", buffer);
     Assert.assertEquals(
-        ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress(), 1234567L);
+        1234567L, ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress());
     buffer = RecordUtils.node2Buffer(twoNode);
     buffer.clear();
     node1 = RecordUtils.buffer2Node("efgh", buffer);
     Assert.assertEquals(
-        ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress(), 66666L);
+        66666L, ICachedMNodeContainer.getCachedMNodeContainer(node1).getSegmentAddress());
     Assert.assertTrue(node1.getAsDeviceMNode().isUseTemplate());
   }
 
