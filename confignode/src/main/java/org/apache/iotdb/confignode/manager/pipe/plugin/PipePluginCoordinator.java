@@ -49,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +130,8 @@ public class PipePluginCoordinator {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         pipeManager.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final TCreatePipePluginInstanceReq req =
-        new TCreatePipePluginInstanceReq(pipePluginInformation.serialize()).setJarFile(jarFile);
+        new TCreatePipePluginInstanceReq(
+            pipePluginInformation.serialize(), ByteBuffer.wrap(jarFile));
     AsyncClientHandler<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_PIPE_PLUGIN, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
