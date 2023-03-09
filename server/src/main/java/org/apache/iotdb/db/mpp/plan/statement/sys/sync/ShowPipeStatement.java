@@ -25,7 +25,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
 public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
-
+  public ShowPipeStatement() {
+    super();
+    statementType = StatementType.SHOW_PIPES;
+  }
   private String pipeName;
 
   private boolean whereClause;
