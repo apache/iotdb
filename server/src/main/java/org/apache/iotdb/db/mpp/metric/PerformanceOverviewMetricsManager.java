@@ -157,6 +157,12 @@ public class PerformanceOverviewMetricsManager {
           MetricLevel.IMPORTANT,
           Tag.STAGE.toString(),
           PerformanceOverviewMetrics.LOCK);
+  private static final Timer CREATE_MEMTABLE_BLOCK_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.CREATE_MEMTABLE_BLOCK);
   private static final Timer MEMORY_BLOCK_TIMER =
       metricService.getOrCreateTimer(
           PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
@@ -184,6 +190,10 @@ public class PerformanceOverviewMetricsManager {
 
   public static void recordScheduleLockCost(long costTimeInNanos) {
     LOCK_TIMER.updateNanos(costTimeInNanos);
+  }
+
+  public static void recordCreateMemtableBlockCost(long costTimeInNanos) {
+    CREATE_MEMTABLE_BLOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
   public static void recordScheduleMemoryBlockCost(long costTimeInNanos) {

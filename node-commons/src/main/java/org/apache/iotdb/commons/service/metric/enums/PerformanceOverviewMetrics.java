@@ -122,6 +122,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
       Metric.PERFORMANCE_OVERVIEW_ENGINE_DETAIL.toString();
   public static final String LOCK = "lock";
   public static final String MEMORY_BLOCK = "memory_block";
+  public static final String CREATE_MEMTABLE_BLOCK = "create_memtable_block";
   public static final String WAL = "wal";
   public static final String MEMTABLE = "memtable";
   public static final String LAST_CACHE = "last_cache";
@@ -131,6 +132,13 @@ public class PerformanceOverviewMetrics implements IMetricSet {
         LOCK,
         new MetricInfo(
             MetricType.TIMER, PERFORMANCE_OVERVIEW_ENGINE_DETAIL, Tag.STAGE.toString(), LOCK));
+    metricInfoMap.put(
+        CREATE_MEMTABLE_BLOCK,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+            Tag.STAGE.toString(),
+            CREATE_MEMTABLE_BLOCK));
     metricInfoMap.put(
         MEMORY_BLOCK,
         new MetricInfo(

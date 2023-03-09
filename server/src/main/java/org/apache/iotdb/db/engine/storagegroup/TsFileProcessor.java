@@ -227,7 +227,10 @@ public class TsFileProcessor {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
 
     if (workMemTable == null) {
+      long startTime = System.nanoTime();
       createNewWorkingMemTable();
+      PerformanceOverviewMetricsManager.recordCreateMemtableBlockCost(
+          System.nanoTime() - startTime);
     }
 
     long[] memIncrements = null;
@@ -306,7 +309,10 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     if (workMemTable == null) {
+      long startTime = System.nanoTime();
       createNewWorkingMemTable();
+      PerformanceOverviewMetricsManager.recordCreateMemtableBlockCost(
+          System.nanoTime() - startTime);
     }
 
     long[] memIncrements = null;
@@ -1442,7 +1448,8 @@ public class TsFileProcessor {
                 pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
       }
     } finally {
-      queryMetricsManager.recordExecutionCost(GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
+      queryMetricsManager.recordExecutionCost(
+          GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
     }
   }
 
