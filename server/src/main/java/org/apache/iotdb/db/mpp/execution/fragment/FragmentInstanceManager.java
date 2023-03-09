@@ -123,11 +123,7 @@ public class FragmentInstanceManager {
                         instanceId,
                         fragmentInstanceId ->
                             createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getTimeFilter()));
+                                fragmentInstanceId, stateMachine, dataRegion, instance));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -190,7 +186,7 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId, stateMachine, instance));
 
               try {
                 List<PipelineDriverFactory> driverFactories =
