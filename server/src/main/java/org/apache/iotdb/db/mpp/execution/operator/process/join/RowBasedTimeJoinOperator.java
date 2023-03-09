@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +43,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RowBasedTimeJoinOperator.class);
 
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
@@ -124,7 +128,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    tsBlockBuilder.reset();
+    tsBlockBuilder.reset(20000);
     if (!prepareInput()) {
       return null;
     }
@@ -278,6 +282,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       if (canCallNext[i]) {
         if (children.get(i).hasNextWithTimer()) {
           inputTsBlocks[i] = getNextTsBlock(i);
+          LOGGER.info("get inputTsBlock with size: " + inputTsBlocks[i].getPositionCount());
           canCallNext[i] = false;
           if (isEmpty(i)) {
             allReady = false;

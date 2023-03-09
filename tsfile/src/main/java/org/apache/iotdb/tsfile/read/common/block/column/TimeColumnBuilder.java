@@ -36,7 +36,7 @@ public class TimeColumnBuilder implements ColumnBuilder {
 
   private final ColumnBuilderStatus columnBuilderStatus;
   private boolean initialized;
-  private final int initialEntryCount;
+  private int initialEntryCount;
 
   private int positionCount;
 
@@ -109,6 +109,11 @@ public class TimeColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
     return new TimeColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
+  }
+
+  @Override
+  public void updateInitialEntryCount(int initialEntryCount) {
+    this.initialEntryCount = initialEntryCount;
   }
 
   public int getPositionCount() {

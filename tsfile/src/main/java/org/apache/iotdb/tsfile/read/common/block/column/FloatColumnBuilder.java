@@ -39,7 +39,7 @@ public class FloatColumnBuilder implements ColumnBuilder {
 
   private final ColumnBuilderStatus columnBuilderStatus;
   private boolean initialized;
-  private final int initialEntryCount;
+  private int initialEntryCount;
 
   private int positionCount;
   private boolean hasNullValue;
@@ -131,6 +131,11 @@ public class FloatColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
     return new FloatColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
+  }
+
+  @Override
+  public void updateInitialEntryCount(int initialEntryCount) {
+    this.initialEntryCount = initialEntryCount;
   }
 
   private void growCapacity() {

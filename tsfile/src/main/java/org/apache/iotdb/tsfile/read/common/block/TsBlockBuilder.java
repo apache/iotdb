@@ -225,6 +225,25 @@ public class TsBlockBuilder {
     }
   }
 
+  public void reset(int initialEntryCount) {
+    tsBlockBuilderStatus =
+        new TsBlockBuilderStatus(tsBlockBuilderStatus.getMaxTsBlockSizeInBytes());
+
+    declaredPositions = 0;
+
+    timeColumnBuilder =
+        (TimeColumnBuilder)
+            timeColumnBuilder.newColumnBuilderLike(
+                tsBlockBuilderStatus.createColumnBuilderStatus());
+    timeColumnBuilder.updateInitialEntryCount(initialEntryCount);
+    for (int i = 0; i < valueColumnBuilders.length; i++) {
+      valueColumnBuilders[i] =
+          valueColumnBuilders[i].newColumnBuilderLike(
+              tsBlockBuilderStatus.createColumnBuilderStatus());
+      valueColumnBuilders[i].updateInitialEntryCount(initialEntryCount);
+    }
+  }
+
   public TsBlockBuilder newTsBlockBuilderLike() {
     return new TsBlockBuilder(
         tsBlockBuilderStatus.getMaxTsBlockSizeInBytes(),

@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -33,6 +35,8 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calcul
 
 public class BinaryColumnBuilder implements ColumnBuilder {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(BinaryColumnBuilder.class);
+
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(BinaryColumnBuilder.class).instanceSize();
 
@@ -41,7 +45,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       new BinaryColumn(0, 1, new boolean[] {true}, new Binary[1]);
 
   private boolean initialized;
-  private final int initialEntryCount;
+  private int initialEntryCount;
 
   private int positionCount;
   private boolean hasNullValue;
@@ -63,6 +67,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeBinary(Binary value) {
     if (values.length <= positionCount) {
       growCapacity();
+      LOGGER.info("binary size: " + value.getValues().length);
     }
 
     values[positionCount] = value;
@@ -134,6 +139,11 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     return new BinaryColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
   }
 
+  @Override
+  public void updateInitialEntryCount(int initialEntryCount) {
+    this.initialEntryCount = initialEntryCount;
+  }
+
   private void growCapacity() {
     int newSize;
     if (initialized) {
@@ -142,6 +152,8 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       newSize = initialEntryCount;
       initialized = true;
     }
+
+    LOGGER.info("grow capacity from {} to {}", values.length, newSize);
 
     valueIsNull = Arrays.copyOf(valueIsNull, newSize);
     values = Arrays.copyOf(values, newSize);

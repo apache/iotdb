@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -32,6 +34,8 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calcul
 
 public class DoubleColumnBuilder implements ColumnBuilder {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DoubleColumnBuilder.class);
+
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(DoubleColumnBuilder.class).instanceSize();
   public static final DoubleColumn NULL_VALUE_BLOCK =
@@ -39,7 +43,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
 
   private final ColumnBuilderStatus columnBuilderStatus;
   private boolean initialized;
-  private final int initialEntryCount;
+  private int initialEntryCount;
 
   private int positionCount;
   private boolean hasNullValue;
@@ -133,6 +137,11 @@ public class DoubleColumnBuilder implements ColumnBuilder {
     return new DoubleColumnBuilder(columnBuilderStatus, calculateBlockResetSize(positionCount));
   }
 
+  @Override
+  public void updateInitialEntryCount(int initialEntryCount) {
+    this.initialEntryCount = initialEntryCount;
+  }
+
   private void growCapacity() {
     int newSize;
     if (initialized) {
@@ -141,6 +150,8 @@ public class DoubleColumnBuilder implements ColumnBuilder {
       newSize = initialEntryCount;
       initialized = true;
     }
+
+    LOGGER.info("grow capacity from {} to {}", values.length, newSize);
 
     valueIsNull = Arrays.copyOf(valueIsNull, newSize);
     values = Arrays.copyOf(values, newSize);

@@ -102,4 +102,6 @@ public interface ColumnBuilder {
    * column builder.
    */
   ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus);
+
+  void updateInitialEntryCount(int initialEntryCount);
 }
