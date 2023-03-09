@@ -141,7 +141,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
-    logger.info("IoTDB-DataNode environment variables: " + IoTDBConfig.getEnvironmentVariables());
+    logger.info("IoTDB-DataNode environment variables: {}",IoTDBConfig.getEnvironmentVariables());
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -213,8 +213,8 @@ public class DataNode implements DataNodeMBean {
 
     // Startup checks
     StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
+    checks.withPortCheck(config);
     checks.verify();
-
     return isFirstStart;
   }
 

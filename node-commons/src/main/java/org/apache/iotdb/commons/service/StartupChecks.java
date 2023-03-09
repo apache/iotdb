@@ -21,12 +21,15 @@ package org.apache.iotdb.commons.service;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class StartupChecks {
 
@@ -76,12 +79,29 @@ public class StartupChecks {
     }
   }
 
+  private void checkDataNodePortUnique(IoTDBConfig config) throws StartupException{
+    Set<Integer>portSet = new HashSet<>();
+    int dataNodePort = 6;
+    portSet.add(config.getInternalPort());
+    portSet.add(config.getMqttPort());
+    portSet.add(config.getRpcPort());
+    portSet.add(config.getMppDataExchangePort());
+    portSet.add(config.getDataRegionConsensusPort());
+    portSet.add(config.getSchemaRegionConsensusPort());
+    if(portSet.size()==dataNodePort)
+      throw new StartupException("ports used in datanode have repeat");
+  }
+
   public StartupChecks withDefaultTest() {
     preChecks.addAll(defaultTests);
     return this;
   }
 
-  /** execute every pretests. */
+  public StartupChecks withPortCheck(IoTDBConfig config){
+    preChecks.add(()->checkDataNodePortUnique(config));
+    return this;
+  }
+  /** execute every pretest. */
   public void verify() throws StartupException {
     for (StartupCheck check : preChecks) {
       check.execute();
