@@ -97,33 +97,33 @@ import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.WORKING_MEMT
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
 
-  /** logger fot this class */
+  /** logger fot this class. */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
-  /** storgae group name of this tsfile */
+  /** storgae group name of this tsfile. */
   private final String storageGroupName;
 
-  /** IoTDB config */
+  /** IoTDB config. */
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** whether it's enable mem control */
+  /** whether it's enable mem control. */
   private final boolean enableMemControl = config.isEnableMemControl();
 
-  /** database info for mem control */
+  /** database info for mem control. */
   private DataRegionInfo dataRegionInfo;
-  /** tsfile processor info for mem control */
+  /** tsfile processor info for mem control. */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
-  /** sync this object in query() and asyncTryToFlush() */
+  /** sync this object in query() and asyncTryToFlush(). */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
-  /** modification to memtable mapping */
+  /** modification to memtable mapping. */
   private List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
 
-  /** writer for restore tsfile and flushing */
+  /** writer for restore tsfile and flushing. */
   private RestorableTsFileIOWriter writer;
 
-  /** tsfile resource for index this tsfile */
+  /** tsfile resource for index this tsfile. */
   private final TsFileResource tsFileResource;
 
   /** time range index to indicate this processor belongs to which time range */
@@ -141,35 +141,35 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
 
-  /** working memtable */
+  /** working memtable. */
   private IMemTable workMemTable;
 
-  /** last flush time to flush the working memtable */
+  /** last flush time to flush the working memtable. */
   private long lastWorkMemtableFlushTime;
 
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
-  /** wal node */
+  /** wal node. */
   private final IWALNode walNode;
 
-  /** whether it's a sequence file or not */
+  /** whether it's a sequence file or not. */
   private final boolean sequence;
 
-  /** total memtable size for mem control */
+  /** total memtable size for mem control. */
   private long totalMemTableSize;
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
 
-  /** close file listener */
-  private List<CloseFileListener> closeFileListeners = new ArrayList<>();
+  /** close file listener. */
+  private final List<CloseFileListener> closeFileListeners = new ArrayList<>();
 
-  /** flush file listener */
-  private List<FlushListener> flushListeners = new ArrayList<>();
+  /** flush file listener. */
+  private final List<FlushListener> flushListeners = new ArrayList<>();
 
-  private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private final QueryMetricsManager queryMetricsManager = QueryMetricsManager.getInstance();
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -255,7 +255,7 @@ public class TsFileProcessor {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
-      if (enableMemControl && memIncrements != null) {
+      if (enableMemControl) {
         rollbackMemoryInfo(memIncrements);
       }
       throw new WriteProcessException(
@@ -353,7 +353,7 @@ public class TsFileProcessor {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
-      if (enableMemControl && memIncrements != null) {
+      if (enableMemControl) {
         rollbackMemoryInfo(memIncrements);
       }
       throw new WriteProcessException(e);
@@ -1424,8 +1424,8 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName(),
             e);
       } finally {
-        QUERY_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
-        QUERY_METRICS.recordQueryResourceNum(WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
+        queryMetricsManager.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
+        queryMetricsManager.recordQueryResourceNum(WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
 
         flushQueryLock.readLock().unlock();
         if (logger.isDebugEnabled()) {
@@ -1442,7 +1442,7 @@ public class TsFileProcessor {
                 pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
+      queryMetricsManager.recordExecutionCost(GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
     }
   }
 

@@ -934,7 +934,7 @@ public class DataRegion implements IDataRegionForQuery {
         TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
-                    new DataRegionId(Integer.valueOf(dataRegionId)),
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
                     timePartitionId,
                     true,
                     Long.MAX_VALUE,
@@ -1021,7 +1021,7 @@ public class DataRegion implements IDataRegionForQuery {
         TimePartitionManager.getInstance()
             .registerTimePartitionInfo(
                 new TimePartitionInfo(
-                    new DataRegionId(Integer.valueOf(dataRegionId)),
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
                     beforeTimePartition,
                     true,
                     Long.MAX_VALUE,
