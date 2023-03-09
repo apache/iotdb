@@ -190,8 +190,6 @@ public class PrometheusReporter implements Reporter {
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.5"), snapshot.getValue(0.5));
     prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.75"), snapshot.getValue(0.75));
-    prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.99"), snapshot.getValue(0.99));
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.999"), snapshot.getValue(0.999));
