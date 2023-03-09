@@ -137,30 +137,6 @@ public class TsBlockBuilder {
     }
   }
 
-  private TsBlockBuilder(
-      int maxTsBlockBytes,
-      List<TSDataType> types,
-      TimeColumnBuilder templateTimeColumnBuilder,
-      ColumnBuilder[] templateValueColumnBuilders) {
-    this.types = requireNonNull(types, "types is null");
-
-    tsBlockBuilderStatus = new TsBlockBuilderStatus(maxTsBlockBytes);
-    valueColumnBuilders = new ColumnBuilder[types.size()];
-
-    checkArgument(
-        templateValueColumnBuilders.length == types.size(),
-        "Size of templates and types should match");
-    timeColumnBuilder =
-        (TimeColumnBuilder)
-            templateTimeColumnBuilder.newColumnBuilderLike(
-                tsBlockBuilderStatus.createColumnBuilderStatus());
-    for (int i = 0; i < valueColumnBuilders.length; i++) {
-      valueColumnBuilders[i] =
-          templateValueColumnBuilders[i].newColumnBuilderLike(
-              tsBlockBuilderStatus.createColumnBuilderStatus());
-    }
-  }
-
   public void buildValueColumnBuilders(List<TSDataType> types) {
     this.types = requireNonNull(types, "types is null");
     valueColumnBuilders = new ColumnBuilder[types.size()];
@@ -223,33 +199,6 @@ public class TsBlockBuilder {
           valueColumnBuilders[i].newColumnBuilderLike(
               tsBlockBuilderStatus.createColumnBuilderStatus());
     }
-  }
-
-  public void reset(int initialEntryCount) {
-    tsBlockBuilderStatus =
-        new TsBlockBuilderStatus(tsBlockBuilderStatus.getMaxTsBlockSizeInBytes());
-
-    declaredPositions = 0;
-
-    timeColumnBuilder =
-        (TimeColumnBuilder)
-            timeColumnBuilder.newColumnBuilderLike(
-                tsBlockBuilderStatus.createColumnBuilderStatus());
-    timeColumnBuilder.updateInitialEntryCount(initialEntryCount);
-    for (int i = 0; i < valueColumnBuilders.length; i++) {
-      valueColumnBuilders[i] =
-          valueColumnBuilders[i].newColumnBuilderLike(
-              tsBlockBuilderStatus.createColumnBuilderStatus());
-      valueColumnBuilders[i].updateInitialEntryCount(initialEntryCount);
-    }
-  }
-
-  public TsBlockBuilder newTsBlockBuilderLike() {
-    return new TsBlockBuilder(
-        tsBlockBuilderStatus.getMaxTsBlockSizeInBytes(),
-        types,
-        timeColumnBuilder,
-        valueColumnBuilders);
   }
 
   public TimeColumnBuilder getTimeColumnBuilder() {

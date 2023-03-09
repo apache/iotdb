@@ -113,7 +113,7 @@ public class TimeColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus columnBuilderStatus) {
     int count = calculateBlockResetSize(positionCount);
-    LOGGER.info("reset size: {}", count);
+    LOGGER.info("reset size: {}", count, new Exception("print"));
     return new TimeColumnBuilder(columnBuilderStatus, count);
   }
 
