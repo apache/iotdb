@@ -75,7 +75,7 @@ Shell > unzip iotdb-<version>.zip
 +- tools/      <-- system tools
 ```
 
-如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
 
 ```shell
 > mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
@@ -92,7 +92,7 @@ Apache IoTDB 的配置项以环境变量形式添加到容器内。
 #### 简单尝试
 ```shell
 # 获取镜像
-docker pull apache/iotdb:1.0.0-standalone
+docker pull apache/iotdb:1.0.1-standalone
 # 创建 docker bridge 网络
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # 创建 docker 容器
@@ -103,11 +103,17 @@ docker run -d --name iotdb-service \
               --ip 172.18.0.6 \
               -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
-              -e cn_target_config_node_list=iotdb-service:22277 \
+              -e cn_target_config_node_list=iotdb-service:10710 \
+              -e cn_internal_port=10710 \
+              -e cn_consensus_port=10720 \
               -e dn_rpc_address=iotdb-service \
               -e dn_internal_address=iotdb-service \
-              -e dn_target_config_node_list=iotdb-service:22277 \
-              apache/iotdb:1.0.0-standalone              
+              -e dn_target_config_node_list=iotdb-service:10710 \
+              -e dn_mpp_data_exchange_port=10740 \
+              -e dn_schema_region_consensus_port=10750 \
+              -e dn_data_region_consensus_port=10760 \
+              -e dn_rpc_port=6667 \
+              apache/iotdb:1.0.1-standalone              
 # 尝试使用命令行执行SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
@@ -121,20 +127,25 @@ $IOTDB_HOME/sbin/start-cli.sh -h <主机IP/hostname> -p 6667
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.0-standalone
+    image: apache/iotdb:1.0.1-standalone
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
       - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
-      - cn_target_config_node_list=iotdb-service:22277
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
+      - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
-      - dn_internal_address=iotdb-service
-      - dn_target_config_node_list=iotdb-service:22277
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
+      - dn_target_config_node_list=iotdb-service:10710
     volumes:
-      - ./data:/iotdb/data
-      - ./logs:/iotdb/logs
+        - ./data:/iotdb/data
+        - ./logs:/iotdb/logs
     networks:
       iotdb:
         ipv4_address: 172.18.0.6
@@ -152,15 +163,14 @@ networks:
 version: "3"
 services:
   iotdb-confignode:
-    image: apache/iotdb:1.0.0-confignode
+    image: apache/iotdb:1.0.1-confignode
     container_name: iotdb-confignode
-    ports:
-      - "22277:22277"
-      - "22278:22278"
     environment:
       - cn_internal_address=iotdb-2
-      - cn_target_config_node_list=iotdb-1:22277
+      - cn_target_config_node_list=iotdb-1:10710
       - schema_replication_factor=3
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - data_replication_factor=3
@@ -172,21 +182,19 @@ services:
     network_mode: "host"
 
   iotdb-datanode:
-    image: apache/iotdb:1.0.0-datanode
+    image: apache/iotdb:1.0.1-datanode
     container_name: iotdb-datanode
-    ports:
-      - "6667:6667"
-      - "8777:8777"
-      - "9003:9003"
-      - "50010:50010"
-      - "40010:40010"
     environment:
       - dn_rpc_address=iotdb-2
       - dn_internal_address=iotdb-2
-      - dn_target_config_node_list=iotdb-1:22277
+      - dn_target_config_node_list=iotdb-1:10710
       - data_replication_factor=3
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
-        - schema_replication_factor=3
+       - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
     volumes:
