@@ -114,7 +114,7 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public final String getExpressionStringInternal() {
+  public String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");

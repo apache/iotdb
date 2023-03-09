@@ -11,7 +11,7 @@ public class WhenThenExpression extends BinaryExpression {
         super(leftExpression, rightExpression);
     }
 
-    protected WhenThenExpression(ByteBuffer byteBuffer) {
+    public WhenThenExpression(ByteBuffer byteBuffer) {
         super(byteBuffer);
     }
 
@@ -39,5 +39,13 @@ public class WhenThenExpression extends BinaryExpression {
     @Override
     protected String operator() {
         return "When Then";
+    }
+
+    @Override
+    public String getExpressionStringInternal() {
+        return "WHEN " +
+                this.getWhen().toString() +
+                " THEN " +
+                this.getThen().toString();
     }
 }
