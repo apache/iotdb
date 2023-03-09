@@ -118,8 +118,8 @@ public class RegionWriteExecutor {
 
       long startWriteTime = System.nanoTime();
       writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleStorageCost(System.nanoTime() - startWriteTime);
+      PerformanceOverviewMetricsManager.recordScheduleStorageCost(
+          System.nanoTime() - startWriteTime);
 
       // fire Trigger after the insertion
       if (writeResponse.isSuccessful()) {
@@ -134,7 +134,7 @@ public class RegionWriteExecutor {
         triggerCostTime += (System.nanoTime() - startTime);
       }
     }
-    PerformanceOverviewMetricsManager.getInstance().recordScheduleTriggerCost(triggerCostTime);
+    PerformanceOverviewMetricsManager.recordScheduleTriggerCost(triggerCostTime);
     return writeResponse;
   }
 
@@ -226,8 +226,8 @@ public class RegionWriteExecutor {
           }
           return response;
         } finally {
-          PerformanceOverviewMetricsManager.getInstance()
-              .recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
+          PerformanceOverviewMetricsManager.recordScheduleSchemaValidateCost(
+              System.nanoTime() - startTime);
         }
         boolean hasFailedMeasurement = insertNode.hasFailedMeasurements();
         String partialInsertMessage = null;

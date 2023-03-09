@@ -244,8 +244,8 @@ public class TsFileProcessor {
                 insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
                 insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordScheduleMemoryBlockCost(
+          System.nanoTime() - startTime);
     }
 
     long startTime = System.nanoTime();
@@ -264,8 +264,7 @@ public class TsFileProcessor {
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
           e);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleWalCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
     startTime = System.nanoTime();
@@ -284,8 +283,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleMemTableCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
@@ -334,8 +332,8 @@ public class TsFileProcessor {
                   start,
                   end);
         }
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+        PerformanceOverviewMetricsManager.recordScheduleMemoryBlockCost(
+            System.nanoTime() - startTime);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -360,8 +358,7 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleWalCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordScheduleWalCost(System.nanoTime() - startTime);
     }
 
     startTime = System.nanoTime();
@@ -390,8 +387,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleMemTableCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity

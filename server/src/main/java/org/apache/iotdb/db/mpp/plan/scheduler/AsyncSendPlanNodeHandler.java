@@ -49,8 +49,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
   public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
     instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
     if (pendingNumber.decrementAndGet() == 0) {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+      PerformanceOverviewMetricsManager.recordScheduleRemoteCost(System.nanoTime() - sendTime);
       synchronized (pendingNumber) {
         pendingNumber.notifyAll();
       }
@@ -68,8 +67,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
     instanceId2RespMap.put(instanceId, resp);
     synchronized (this) {
       if (pendingNumber.decrementAndGet() == 0) {
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleRemoteCost(System.nanoTime() - sendTime);
+        PerformanceOverviewMetricsManager.recordScheduleRemoteCost(System.nanoTime() - sendTime);
         pendingNumber.notifyAll();
       }
     }

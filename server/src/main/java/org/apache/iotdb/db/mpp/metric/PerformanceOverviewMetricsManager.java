@@ -64,24 +64,24 @@ public class PerformanceOverviewMetricsManager {
           PerformanceOverviewMetrics.SCHEDULER);
 
   /** Record the time cost in authority stage. */
-  public void recordAuthCost(long costTimeInNanos) {
+  public static void recordAuthCost(long costTimeInNanos) {
     AUTH_TIMER.updateNanos(costTimeInNanos);
   }
 
   /** Record the time cost in parse stage. */
-  public void recordParseCost(long costTimeInNanos) {
+  public static void recordParseCost(long costTimeInNanos) {
     PARSER_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordAnalyzeCost(long costTimeInNanos) {
+  public static void recordAnalyzeCost(long costTimeInNanos) {
     ANALYZE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordPlanCost(long costTimeInNanos) {
+  public static void recordPlanCost(long costTimeInNanos) {
     PLAN_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleCost(long costTimeInNanos) {
+  public static void recordScheduleCost(long costTimeInNanos) {
     SCHEDULE_TIMER.updateNanos(costTimeInNanos);
   }
   // endregion
@@ -102,11 +102,11 @@ public class PerformanceOverviewMetricsManager {
           Tag.STAGE.toString(),
           PerformanceOverviewMetrics.REMOTE_SCHEDULE);
 
-  public void recordScheduleLocalCost(long costTimeInNanos) {
+  public static void recordScheduleLocalCost(long costTimeInNanos) {
     LOCAL_SCHEDULE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleRemoteCost(long costTimeInNanos) {
+  public static void recordScheduleRemoteCost(long costTimeInNanos) {
     REMOTE_SCHEDULE_TIMER.updateNanos(costTimeInNanos);
   }
 
@@ -134,15 +134,15 @@ public class PerformanceOverviewMetricsManager {
           Tag.STAGE.toString(),
           PerformanceOverviewMetrics.STORAGE);
 
-  public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
+  public static void recordScheduleSchemaValidateCost(long costTimeInNanos) {
     SCHEMA_VALIDATE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleTriggerCost(long costTimeInNanos) {
+  public static void recordScheduleTriggerCost(long costTimeInNanos) {
     TRIGGER_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleStorageCost(long costTimeInNanos) {
+  public static void recordScheduleStorageCost(long costTimeInNanos) {
     STORAGE_TIMER.updateNanos(costTimeInNanos);
   }
 
@@ -182,37 +182,23 @@ public class PerformanceOverviewMetricsManager {
           Tag.STAGE.toString(),
           PerformanceOverviewMetrics.LAST_CACHE);
 
-  public void recordScheduleLockCost(long costTimeInNanos) {
+  public static void recordScheduleLockCost(long costTimeInNanos) {
     LOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleMemoryBlockCost(long costTimeInNanos) {
+  public static void recordScheduleMemoryBlockCost(long costTimeInNanos) {
     MEMORY_BLOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleWalCost(long costTimeInNanos) {
+  public static void recordScheduleWalCost(long costTimeInNanos) {
     WAL_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleMemTableCost(long costTimeInNanos) {
+  public static void recordScheduleMemTableCost(long costTimeInNanos) {
     MEMTABLE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
+  public static void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
     LAST_CACHE_TIMER.updateNanos(costTimeInNanos);
-  }
-
-  public static PerformanceOverviewMetricsManager getInstance() {
-    return PerformanceOverviewMetricsManager.PerformanceOverviewMetricsManagerHolder.INSTANCE;
-  }
-
-  private static class PerformanceOverviewMetricsManagerHolder {
-
-    private static final PerformanceOverviewMetricsManager INSTANCE =
-        new PerformanceOverviewMetricsManager();
-
-    private PerformanceOverviewMetricsManagerHolder() {
-      // empty constructor
-    }
   }
 }

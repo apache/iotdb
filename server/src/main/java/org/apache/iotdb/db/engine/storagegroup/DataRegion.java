@@ -922,8 +922,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("InsertRow");
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleLockCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -974,8 +973,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("insertTablet");
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleLockCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;
@@ -1068,8 +1066,8 @@ public class DataRegion implements IDataRegionForQuery {
           lastFlushTimeMap.getGlobalFlushedTime(insertTabletNode.getDevicePath().getFullPath());
       startTime = System.nanoTime();
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordScheduleUpdateLastCacheCost(
+          System.nanoTime() - startTime);
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -1174,8 +1172,8 @@ public class DataRegion implements IDataRegionForQuery {
 
     long startTime = System.nanoTime();
     tryToUpdateInsertLastCache(insertRowNode, globalLatestFlushTime);
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleUpdateLastCacheCost(
+        System.nanoTime() - startTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -3097,8 +3095,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleLockCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
         return;

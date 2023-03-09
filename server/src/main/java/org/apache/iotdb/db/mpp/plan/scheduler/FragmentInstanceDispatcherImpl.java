@@ -192,8 +192,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       }
     }
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleLocalCost(System.nanoTime() - localScheduleStartTime);
+    PerformanceOverviewMetricsManager.recordScheduleLocalCost(
+        System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
