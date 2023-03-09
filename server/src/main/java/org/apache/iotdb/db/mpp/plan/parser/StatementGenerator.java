@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -105,6 +106,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -146,6 +148,53 @@ public class StatementGenerator {
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
     queryStatement.setWhereCondition(whereCondition);
+    PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
+    return queryStatement;
+  }
+
+  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
+      throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    QueryStatement queryStatement = new QueryStatement();
+
+    FromComponent fromComponent = new FromComponent();
+    for (String pathStr : fetchTimeseriesReq.getQueryExpressions()) {
+      PartialPath path = new PartialPath(pathStr);
+      fromComponent.addPrefixPath(path);
+    }
+
+    SelectComponent selectComponent = new SelectComponent(zoneId);
+    selectComponent.addResultColumn(
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+
+    // todo queryFilter
+    WhereCondition whereCondition = new WhereCondition();
+    String queryFilter = fetchTimeseriesReq.getQueryFilter();
+    String[] times = queryFilter.split(",");
+    int predictNum = 0;
+    LessThanExpression rightPredicate = null;
+    GreaterEqualExpression leftPredicate = null;
+    if (!Objects.equals(times[0], "-1")) {
+      leftPredicate =
+          new GreaterEqualExpression(
+              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
+      predictNum += 1;
+    }
+    if (!Objects.equals(times[1], "-1")) {
+      rightPredicate =
+          new LessThanExpression(
+              new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
+      predictNum += 2;
+    }
+    whereCondition.setPredicate(
+        predictNum == 3
+            ? new LogicAndExpression(leftPredicate, rightPredicate)
+            : (predictNum == 1 ? leftPredicate : rightPredicate));
+
+    queryStatement.setWhereCondition(whereCondition);
+    queryStatement.setFromComponent(fromComponent);
+    queryStatement.setSelectComponent(selectComponent);
     PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return queryStatement;
   }

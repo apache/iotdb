@@ -65,6 +65,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
@@ -110,6 +111,7 @@ import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
+import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -180,6 +182,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
@@ -197,6 +200,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.stream.Collectors;
@@ -907,10 +911,68 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     throw new TException(new UnsupportedOperationException().getCause());
   }
 
+  private TFetchTimeseriesResp getErrorResp(TSStatus status) {
+    TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
+    resp.setColumnNameIndexMap(new HashMap<>());
+    resp.setColumnTypeList(new ArrayList<>());
+    resp.setColumnNameList(new ArrayList<>());
+    resp.setQueryId(0);
+    resp.setTsDataset(new ArrayList<>());
+    resp.setHasMoreData(false);
+    resp.setStatus(status);
+    return resp;
+  }
+
   @Override
   public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
-    // TODO
-    throw new TException(new UnsupportedOperationException().getCause());
+
+    // todo will use statementId and sessionId in the future.
+    IClientSession session = new InternalClientSession("MLNode");
+    SESSION_MANAGER.registerSession(session);
+    SESSION_MANAGER.supplySession(
+        session, "ml", TimeZone.getDefault().toZoneId().toString(), ClientVersion.V_1_0);
+
+    TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
+    try {
+      QueryStatement s =
+          (QueryStatement) StatementGenerator.createStatement(req, session.getZoneId());
+      long queryId =
+          SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return getErrorResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        DatasetHeader header = queryExecution.getDatasetHeader();
+        resp.setStatus(result.status);
+        resp.setColumnNameList(header.getRespColumns());
+        resp.setColumnTypeList(header.getRespDataTypeList());
+        resp.setColumnNameIndexMap(header.getColumnNameIndexMap());
+        resp.setQueryId(queryId);
+        Pair<List<ByteBuffer>, Boolean> pair =
+            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
+        resp.setTsDataset(pair.left);
+        resp.setHasMoreData(pair.right);
+        return resp;
+      }
+    } catch (Exception e) {
+      return getErrorResp(onQueryException(e, OperationType.EXECUTE_STATEMENT));
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 
   @Override
