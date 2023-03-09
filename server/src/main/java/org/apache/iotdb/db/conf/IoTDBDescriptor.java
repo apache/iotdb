@@ -229,13 +229,29 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
-    conf.setCoreClientNumForEachNode(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_core_client_count_for_each_node_in_client_manager",
-                    String.valueOf(conf.getCoreClientNumForEachNode()))
-                .trim()));
+    String dnCoreClientCount =
+        properties.getProperty("dn_core_client_count_for_each_node_in_client_manager", null);
+    if (dnCoreClientCount == null) {
+      // For compatible
+      dnCoreClientCount = properties.getProperty("dn_core_connection_for_internal_service", null);
+      logger.warn(
+          "The parameter dn_core_connection_for_internal_service is out of date. Please rename it to dn_core_client_count_for_each_node_in_client_manager.");
+    }
+    if (dnCoreClientCount != null) {
+      conf.setCoreClientNumForEachNode(Integer.parseInt(dnCoreClientCount));
+    }
+
+    String dnMaxClientCount =
+        properties.getProperty("dn_max_client_count_for_each_node_in_client_manager", null);
+    if (dnMaxClientCount == null) {
+      // For compatible
+      dnMaxClientCount = properties.getProperty("dn_max_connection_for_internal_service", null);
+      logger.warn(
+          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+    }
+    if (dnMaxClientCount != null) {
+      conf.setMaxClientNumForEachNode(Integer.parseInt(dnMaxClientCount));
+    }
 
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
