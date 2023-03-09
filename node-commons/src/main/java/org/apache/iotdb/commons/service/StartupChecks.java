@@ -31,7 +31,9 @@ import java.util.List;
 public abstract class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
-  public static final StartupCheck checkJDK =
+
+  private final String nodeRole ;
+  private static final StartupCheck checkJDK =
       () -> {
         int version = JVMCommonUtils.getJdkVersion();
         if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
@@ -46,8 +48,7 @@ public abstract class StartupChecks {
   protected final List<StartupCheck> preChecks = new ArrayList<>();
 
   protected StartupChecks(String nodeRole) {
-    preChecks.add(() -> checkJMXPort(nodeRole));
-    preChecks.add(checkJDK);
+    this.nodeRole=nodeRole;
   }
 
   private void checkJMXPort(String nodeRole) {
@@ -75,6 +76,14 @@ public abstract class StartupChecks {
     }
   }
 
+  protected void envCheck(){
+    preChecks.add(() -> checkJMXPort(nodeRole));
+    preChecks.add(checkJDK);
+  }
   /** execute every pretest. */
-  public abstract void verify() throws StartupException;
+  protected void verify() throws StartupException {
+    for (StartupCheck check : preChecks) {
+      check.execute();
+    }
+  }
 }

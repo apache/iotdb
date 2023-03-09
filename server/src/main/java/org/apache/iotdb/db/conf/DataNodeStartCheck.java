@@ -13,19 +13,14 @@ import java.util.Set;
 /** DataNodeStartCheck checks the parameters in iotdb-datanode.properties when start and restart */
 public class DataNodeStartCheck extends StartupChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartCheck.class);
+  private final IoTDBConfig config;
 
-  public DataNodeStartCheck(String nodeRole) {
+  public DataNodeStartCheck(String nodeRole,IoTDBConfig config) {
     super(nodeRole);
+    this.config=config;
   }
 
-  @Override
-  public void verify() throws StartupException {
-    for (StartupCheck check : preChecks) {
-      check.execute();
-    }
-  }
-
-  private void checkDataNodePortUnique(IoTDBConfig config) throws StartupException {
+  private void checkDataNodePortUnique() throws StartupException {
     Set<Integer> portSet = new HashSet<>();
     int dataNodePort = 6;
     portSet.add(config.getInternalPort());
@@ -34,12 +29,20 @@ public class DataNodeStartCheck extends StartupChecks {
     portSet.add(config.getMppDataExchangePort());
     portSet.add(config.getDataRegionConsensusPort());
     portSet.add(config.getSchemaRegionConsensusPort());
-    if (portSet.size() == dataNodePort)
-      throw new StartupException("ports used in datanode have repeat");
+    if (portSet.size() != dataNodePort)
+      throw new StartupException("ports used in datanode have repeat.");
+    else{
+      LOGGER.info("DataNode port check successful.");
+    }
   }
 
-  public DataNodeStartCheck withPortCheck(IoTDBConfig config) {
-    preChecks.add(() -> checkDataNodePortUnique(config));
-    return this;
+  protected void portCheck() {
+    preChecks.add(this::checkDataNodePortUnique);
+  }
+
+  public void startUpCheck() throws StartupException {
+    envCheck();
+    portCheck();
+    verify();
   }
 }

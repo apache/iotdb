@@ -212,9 +212,8 @@ public class DataNode implements DataNodeMBean {
     thisNode.setPort(config.getInternalPort());
 
     // Startup checks
-    DataNodeStartCheck checks = new DataNodeStartCheck(IoTDBConstant.DN_ROLE);
-    checks.withPortCheck(config);
-    checks.verify();
+    DataNodeStartCheck checks = new DataNodeStartCheck(IoTDBConstant.DN_ROLE,config);
+    checks.startUpCheck();
     return isFirstStart;
   }
 
