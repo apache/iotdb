@@ -7,45 +7,42 @@ import java.nio.ByteBuffer;
 
 public class WhenThenExpression extends BinaryExpression {
 
-    protected WhenThenExpression(Expression leftExpression, Expression rightExpression) {
-        super(leftExpression, rightExpression);
-    }
+  protected WhenThenExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
+  }
 
-    public WhenThenExpression(ByteBuffer byteBuffer) {
-        super(byteBuffer);
-    }
+  public WhenThenExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
+  }
 
-    public void setWhen(Expression expression) {
-        leftExpression = expression;
-    }
+  public void setWhen(Expression expression) {
+    leftExpression = expression;
+  }
 
-    public void setThen(Expression expression) {
-        rightExpression = expression;
-    }
+  public void setThen(Expression expression) {
+    rightExpression = expression;
+  }
 
-    public Expression getWhen() {
-        return leftExpression;
-    }
+  public Expression getWhen() {
+    return leftExpression;
+  }
 
-    public Expression getThen() {
-        return rightExpression;
-    }
+  public Expression getThen() {
+    return rightExpression;
+  }
 
-    @Override
-    public ExpressionType getExpressionType() {
-        return ExpressionType.WHEN_THEN;
-    }
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.WHEN_THEN;
+  }
 
-    @Override
-    protected String operator() {
-        return "When Then";
-    }
+  @Override
+  protected String operator() {
+    return "When Then";
+  }
 
-    @Override
-    public String getExpressionStringInternal() {
-        return "WHEN " +
-                this.getWhen().toString() +
-                " THEN " +
-                this.getThen().toString();
-    }
+  @Override
+  public String getExpressionStringInternal() {
+    return "WHEN " + this.getWhen().toString() + " THEN " + this.getThen().toString();
+  }
 }

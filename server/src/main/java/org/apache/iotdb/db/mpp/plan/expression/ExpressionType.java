@@ -59,7 +59,7 @@ public enum ExpressionType {
 
   CASE_WHEN_THEN((short) 21, (short) 1000), // priority not sure
 
-  WHEN_THEN((short)22, (short) 1000), // priority not sure
+  WHEN_THEN((short) 22, (short) 1000), // priority not sure
   ;
 
   private final short expressionType;
