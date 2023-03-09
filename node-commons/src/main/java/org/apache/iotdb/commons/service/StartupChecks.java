@@ -32,7 +32,7 @@ public abstract class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
 
-  private final String nodeRole ;
+  private final String nodeRole;
   private static final StartupCheck checkJDK =
       () -> {
         int version = JVMCommonUtils.getJdkVersion();
@@ -48,7 +48,7 @@ public abstract class StartupChecks {
   protected final List<StartupCheck> preChecks = new ArrayList<>();
 
   protected StartupChecks(String nodeRole) {
-    this.nodeRole=nodeRole;
+    this.nodeRole = nodeRole;
   }
 
   private void checkJMXPort(String nodeRole) {
@@ -76,7 +76,7 @@ public abstract class StartupChecks {
     }
   }
 
-  protected void envCheck(){
+  protected void envCheck() {
     preChecks.add(() -> checkJMXPort(nodeRole));
     preChecks.add(checkJDK);
   }

@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.StartupCheck;
 import org.apache.iotdb.commons.service.StartupChecks;
 
 import org.slf4j.Logger;
@@ -15,9 +14,9 @@ public class DataNodeStartCheck extends StartupChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartCheck.class);
   private final IoTDBConfig config;
 
-  public DataNodeStartCheck(String nodeRole,IoTDBConfig config) {
+  public DataNodeStartCheck(String nodeRole, IoTDBConfig config) {
     super(nodeRole);
-    this.config=config;
+    this.config = config;
   }
 
   private void checkDataNodePortUnique() throws StartupException {
@@ -31,7 +30,7 @@ public class DataNodeStartCheck extends StartupChecks {
     portSet.add(config.getSchemaRegionConsensusPort());
     if (portSet.size() != dataNodePort)
       throw new StartupException("ports used in datanode have repeat.");
-    else{
+    else {
       LOGGER.info("DataNode port check successful.");
     }
   }
