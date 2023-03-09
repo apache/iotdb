@@ -158,4 +158,14 @@ public class RInternalMNode extends RMNode implements IMemMNode {
   public MNodeType getMNodeType(Boolean isConfig) {
     return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }
+
+  @Override
+  public int estimateSize() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IMemMNode getAsMNode() {
+    throw new UnsupportedOperationException();
+  }
 }

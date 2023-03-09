@@ -217,6 +217,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode<IMemM
     return MNodeType.MEASUREMENT;
   }
 
+  @Override
+  public int estimateSize() {
+    throw new UnsupportedOperationException();
+  }
+
   public Map<String, String> getTags() {
     return tags;
   }
