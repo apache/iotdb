@@ -146,7 +146,6 @@ public enum StatementType {
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,
-  SHOW_PIPES,
 
   SHOW_TRIGGERS,
 
@@ -158,4 +157,6 @@ public enum StatementType {
   CREATE_PIPEPLUGIN,
   DROP_PIPEPLUGIN,
   SHOW_PIPEPLUGINS,
+
+  SHOW_PIPES,
 }

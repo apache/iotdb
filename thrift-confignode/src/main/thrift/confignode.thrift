@@ -627,7 +627,7 @@ struct TGetPipeSinkResp {
 
 struct TShowPipeReq {
   1: optional string pipeName
-  2: optional bool sameConnector
+  2: optional bool whereClause
 }
 
 struct TShowPipeResp {

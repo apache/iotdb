@@ -3049,7 +3049,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    showPipeStatement.setSameConnector(ctx.PIPECONNECTOR() != null);
+    showPipeStatement.setWhereClause(ctx.CONNECTOR() != null);
     return showPipeStatement;
   }
 
@@ -3086,7 +3086,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
         ctx.collectorAttributeClause()) {
-      collectorMap.put(singleCtx.collector_key.getText(), singleCtx.collector_value.getText());
+      collectorMap.put(singleCtx.collectorKey.getText(), singleCtx.collectorValue.getText());
     }
     return collectorMap;
   }
@@ -3096,7 +3096,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> processorMap = new HashMap<>();
     for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
         ctx.processorAttributeClause()) {
-      processorMap.put(singleCtx.processor_key.getText(), singleCtx.processor_value.getText());
+      processorMap.put(singleCtx.processorKey.getText(), singleCtx.processorValue.getText());
     }
     return processorMap;
   }
@@ -3106,7 +3106,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> connectorMap = new HashMap<>();
     for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
         ctx.connectorAttributeClause()) {
-      connectorMap.put(singleCtx.connector_key.getText(), singleCtx.connector_value.getText());
+      connectorMap.put(singleCtx.connectorKey.getText(), singleCtx.connectorValue.getText());
     }
     return connectorMap;
   }

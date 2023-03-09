@@ -249,6 +249,8 @@ public class AuthorityChecker {
         return PrivilegeType.START_PIPE.ordinal();
       case STOP_PIPE:
         return PrivilegeType.STOP_PIPE.ordinal();
+      case DROP_PIPE:
+        return PrivilegeType.DROP_PIPE.ordinal();
       case SHOW_PIPES:
         return PrivilegeType.SHOW_PIPES.ordinal();
       default:

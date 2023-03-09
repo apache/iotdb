@@ -442,10 +442,6 @@ PIPE
     : P I P E
     ;
 
-PIPECONNECTOR
-    : P I P E C O N N E C T O R
-    ;
-
 PIPES
     : P I P E S
     ;

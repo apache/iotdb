@@ -848,7 +848,7 @@ createPipe
     ;
 
 showPipe
-    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE PIPECONNECTOR USED BY pipeName=identifier)?)
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
     ;
 
 stopPipe
@@ -1032,7 +1032,7 @@ collectorAttributesClause
     ;
 
 collectorAttributeClause
-    : collector_key=STRING_LITERAL OPERATOR_SEQ collector_value=STRING_LITERAL
+    : collectorKey=STRING_LITERAL OPERATOR_SEQ collectorValue=STRING_LITERAL
     ;
 
 processorAttributesClause
@@ -1040,7 +1040,7 @@ processorAttributesClause
     ;
 
 processorAttributeClause
-    : processor_key=STRING_LITERAL OPERATOR_SEQ processor_value=STRING_LITERAL
+    : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
     ;
 
 connectorAttributesClause
@@ -1048,5 +1048,5 @@ connectorAttributesClause
     ;
 
 connectorAttributeClause
-    : connector_key=STRING_LITERAL OPERATOR_SEQ connector_value=STRING_LITERAL
+    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;

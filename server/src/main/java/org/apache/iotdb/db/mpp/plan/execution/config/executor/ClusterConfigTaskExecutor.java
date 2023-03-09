@@ -1562,6 +1562,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!StringUtils.isEmpty(showPipeStatement.getPipeName())) {
         tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
       }
+      if (showPipeStatement.getWhereClause()) {
+        tShowPipeReq.setWhereClause(true);
+      }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
       List<TShowPipeInfo> tShowPipeInfoList = resp.getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
