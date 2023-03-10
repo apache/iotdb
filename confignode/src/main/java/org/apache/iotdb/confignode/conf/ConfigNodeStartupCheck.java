@@ -45,16 +45,17 @@ public class ConfigNodeStartupCheck extends StartupChecks {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
+  private static final int CONFIGNODE_PORTS = 2;
+
   public ConfigNodeStartupCheck(String nodeRole) {
     super(nodeRole);
   }
 
   private void portCheck() throws StartupException {
     Set<Integer> portSet = new HashSet<>();
-    int configNodePort = 2;
     portSet.add(CONF.getConsensusPort());
     portSet.add(CONF.getInternalPort());
-    if (portSet.size() != configNodePort) {
+    if (portSet.size() != CONFIGNODE_PORTS) {
       throw new StartupException("ports used in configNode have repeat.");
     } else {
       LOGGER.info("configNode port check successful.");

@@ -31,6 +31,7 @@ import java.util.Set;
 public class DataNodeStartCheck extends StartupChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartCheck.class);
   private final IoTDBConfig config;
+  private static final int DATANODE_PORTS = 6;
 
   public DataNodeStartCheck(String nodeRole, IoTDBConfig config) {
     super(nodeRole);
@@ -39,14 +40,13 @@ public class DataNodeStartCheck extends StartupChecks {
 
   private void checkDataNodePortUnique() throws StartupException {
     Set<Integer> portSet = new HashSet<>();
-    int dataNodePort = 6;
     portSet.add(config.getInternalPort());
     portSet.add(config.getMqttPort());
     portSet.add(config.getRpcPort());
     portSet.add(config.getMppDataExchangePort());
     portSet.add(config.getDataRegionConsensusPort());
     portSet.add(config.getSchemaRegionConsensusPort());
-    if (portSet.size() != dataNodePort)
+    if (portSet.size() != DATANODE_PORTS)
       throw new StartupException("ports used in datanode have repeat.");
     else {
       LOGGER.info("DataNode port check successful.");

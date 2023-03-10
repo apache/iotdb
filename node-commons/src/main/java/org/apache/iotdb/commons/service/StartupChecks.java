@@ -55,7 +55,7 @@ public abstract class StartupChecks {
     Boolean jmxLocal = Boolean.valueOf(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
 
-    if (Boolean.TRUE.equals(jmxLocal)) {
+    if (jmxLocal) {
       logger.info("Start JMX locally.");
       return;
     }
