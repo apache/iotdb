@@ -64,6 +64,14 @@ public class CaseWhenThenExpression extends Expression {
     }
   }
 
+  public void appendWhenThenExpression(WhenThenExpression whenThenExpression) {
+    this.whenThenExpressions.add(whenThenExpression);
+  }
+
+  public void setElseExpression(Expression expression) {
+    this.elseExpression = expression;
+  }
+
   public List<WhenThenExpression> getWhenThenExpressions() {
     return whenThenExpressions;
   }
