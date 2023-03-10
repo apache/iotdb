@@ -82,3 +82,67 @@ Output Series:
 +-----------------------------+---------------------------+
 ```
 
+### Representation
+
+#### Usage
+
+This function is used to learn the representation for a time series.
+
+**Name:** Representation
+
+**Input Series:** Only support a single input numeric series. The type is INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameters:** 
+
+- `w`: The size of the sliding window. Its default value is 20.
+- `d`: The dimension of the reprensetation vector. Its default value is 100.
+
+**Output Series:** Output a single series. The type is DOUBLE. The length is `d`. The timestamps starting from 0 only indicate the order.
+
+**Note:** 
+
+- Parameters `w` and `d` should be positive integers.
+
+#### Examples
+
+##### Assigning Window Size and Dimension
+
+Input Series: 
+
+```
++-----------------------------+---------------+
+|                         Time|root.test.d0.s0|
++-----------------------------+---------------+
+|2020-01-01T00:00:01.000+08:00|           -4.0|
+|2020-01-01T00:00:02.000+08:00|           -3.0|
+|2020-01-01T00:00:03.000+08:00|           -2.0|
+|2020-01-01T00:00:04.000+08:00|           -1.0|
+|2020-01-01T00:00:05.000+08:00|            0.0|
+|2020-01-01T00:00:06.000+08:00|            1.0|
+|2020-01-01T00:00:07.000+08:00|            2.0|
+|2020-01-01T00:00:08.000+08:00|            3.0|
+|2020-01-01T00:00:09.000+08:00|            4.0|
++-----------------------------+---------------+
+```
+
+SQL for query: 
+
+```sql
+select representation(s0,"w"="5","d"="5") from root.test.d0
+```
+
+Output Series:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|representation(root.test.d0.s0,|
+|															|							  "w"="5","d"="5")|
++-----------------------------+-------------------------------+
+|1970-01-01T08:00:00.001+08:00|                         0.9429|
+|1970-01-01T08:00:00.002+08:00|                        -0.2571|
+|1970-01-01T08:00:00.003+08:00|                         0.2946|
+|1970-01-01T08:00:00.004+08:00|                        -0.7038|
+|1970-01-01T08:00:00.005+08:00|                         0.4513|
++-----------------------------+-------------------------------+
+```
+
