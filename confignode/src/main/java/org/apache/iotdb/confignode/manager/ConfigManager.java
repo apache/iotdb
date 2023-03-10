@@ -197,43 +197,45 @@ public class ConfigManager implements IManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
-  /** Manage PartitionTable read/write requests through the ConsensusLayer */
+  /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private volatile ConsensusManager consensusManager;
 
-  /** Manage cluster node */
+  /** Manage cluster node. */
   private final NodeManager nodeManager;
 
-  /** Manage cluster schema */
+  /** Manage cluster schema. */
   private final ClusterSchemaManager clusterSchemaManager;
 
-  /** Manage cluster regions and partitions */
+  /** Manage cluster regions and partitions. */
   private final PartitionManager partitionManager;
 
-  /** Manage cluster authorization */
+  /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
   private final LoadManager loadManager;
 
-  /** Manage procedure */
+  /** Manage procedure. */
   private final ProcedureManager procedureManager;
 
-  /** UDF */
+  /** UDF. */
   private final UDFManager udfManager;
 
-  /** Manage Trigger */
+  /** Manage Trigger. */
   private final TriggerManager triggerManager;
-  /** Sync */
+  /** Sync. */
   private final SyncManager syncManager;
 
-  /** CQ */
+  /** CQ. */
   private final CQManager cqManager;
 
-  /** ML Model */
+  /** ML Model. */
   private final ModelManager modelManager;
 
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
+
+  private static final String DATABASE = "\tDatabase=";
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -712,7 +714,7 @@ public class ConfigManager implements IManager {
       String database = databaseEntry.getKey();
       schemaPartitionRespString
           .append(lineSeparator)
-          .append("\tDatabase=")
+          .append(DATABASE)
           .append(database)
           .append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> slotEntry :
@@ -728,11 +730,9 @@ public class ConfigManager implements IManager {
       schemaPartitionRespString.append(lineSeparator).append("\t},");
     }
     schemaPartitionRespString.append(lineSeparator).append("}");
-
     LOGGER.info(
-        "[GetOrCreateSchemaPartition]:"
-            + lineSeparator
-            + "Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+        "[GetOrCreateSchemaPartition]:{} Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+        lineSeparator,
         devicePathString,
         schemaPartitionRespString);
   }
@@ -815,11 +815,7 @@ public class ConfigManager implements IManager {
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> databaseEntry :
         getOrCreateDataPartitionPlan.getPartitionSlotsMap().entrySet()) {
       String database = databaseEntry.getKey();
-      partitionSlotsMapString
-          .append(lineSeparator)
-          .append("\tDatabase=")
-          .append(database)
-          .append(": {");
+      partitionSlotsMapString.append(lineSeparator).append(DATABASE).append(database).append(": {");
       for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> slotEntry :
           databaseEntry.getValue().entrySet()) {
         partitionSlotsMapString
@@ -845,11 +841,7 @@ public class ConfigManager implements IManager {
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
         databaseEntry : dataPartitionTable.entrySet()) {
       String database = databaseEntry.getKey();
-      dataPartitionRespString
-          .append(lineSeparator)
-          .append("\tDatabase=")
-          .append(database)
-          .append(": {");
+      dataPartitionRespString.append(lineSeparator).append(DATABASE).append(database).append(": {");
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
           seriesSlotEntry : databaseEntry.getValue().entrySet()) {
         dataPartitionRespString
@@ -874,9 +866,8 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:"
-            + lineSeparator
-            + "Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        "[GetOrCreateDataPartition]:{} Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);
   }
@@ -1717,7 +1708,9 @@ public class ConfigManager implements IManager {
         : new TShowCQResp(status, Collections.emptyList());
   }
 
-  /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */
+  /**
+   * Get all related schemaRegion which may contains the timeSeries matched by given patternTree.
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
