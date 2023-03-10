@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -90,6 +91,10 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       checkIsAllMeasurement(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
+      for (Expression childExpression : expression.getExpressions()) {
+        checkIsAllMeasurement(childExpression);
+      }
+    } else if (expression instanceof CaseWhenThenExpression) {
       for (Expression childExpression : expression.getExpressions()) {
         checkIsAllMeasurement(childExpression);
       }

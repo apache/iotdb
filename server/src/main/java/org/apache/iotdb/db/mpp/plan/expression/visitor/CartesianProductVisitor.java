@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
@@ -53,5 +54,10 @@ public abstract class CartesianProductVisitor<C>
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(unaryExpression, context);
     return reconstructUnaryExpressions(unaryExpression, childResultsList.get(0));
+  }
+
+  @Override
+  public List<Expression> visitCaseWhenThenExpression(CaseWhenThenExpression caseWhenThenExpression, C context) {
+
   }
 }
