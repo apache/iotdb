@@ -67,6 +67,7 @@ public class SynchronousSequencer implements LogSequencer {
           e.setCurrLogIndex(lastIndex + 1);
           e.setPrevTerm(lastTerm);
           e.setFromThisNode(true);
+          e.createTime = System.nanoTime();
 
           // logDispatcher will serialize log, and set log size, and we will use the size after it
           logManager.append(Collections.singletonList(e));

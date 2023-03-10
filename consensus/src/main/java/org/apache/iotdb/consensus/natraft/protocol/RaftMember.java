@@ -654,7 +654,6 @@ public class RaftMember {
 
     // assign term and index to the new log and append it
     VotingEntry votingEntry = logSequencer.sequence(entry);
-    entry.createTime = System.nanoTime();
     Statistic.LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE.add(entry.createTime - entry.receiveTime);
 
     if (config.isUseFollowerLoadBalance()) {
@@ -761,17 +760,16 @@ public class RaftMember {
     }
     long waitTime = 1;
     AcceptedType acceptedType = votingLogList.computeAcceptedType(log);
-    synchronized (log) {
+    synchronized (log.getEntry()) {
       while (acceptedType == AcceptedType.NOT_ACCEPTED
           && alreadyWait < config.getWriteOperationTimeoutMS()) {
         try {
-          log.wait(waitTime);
+          log.getEntry().wait(waitTime);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
         acceptedType = votingLogList.computeAcceptedType(log);
-        waitTime = waitTime * 2;
 
         alreadyWait = (System.nanoTime() - waitStart) / 1000000;
         if (alreadyWait > nextTimeToPrint) {
