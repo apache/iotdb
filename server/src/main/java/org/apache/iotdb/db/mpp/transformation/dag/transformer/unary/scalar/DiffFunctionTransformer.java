@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary;
+package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;

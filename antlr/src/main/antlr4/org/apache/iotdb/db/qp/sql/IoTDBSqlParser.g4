@@ -960,6 +960,7 @@ expression
     | constant
     | time=(TIME | TIMESTAMP)
     | fullPathInExpression
+    | CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression

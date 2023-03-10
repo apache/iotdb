@@ -423,7 +423,10 @@ public class ProcedureManager {
             .map(TDataNodeConfiguration::getLocation)
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toSet());
-    if (!aliveDataNodes.contains(migrateRegionReq.getFromId())) {
+    if (configManager
+        .getNodeManager()
+        .getNodeStatusByNodeId(migrateRegionReq.getFromId())
+        .equals(NodeStatus.Unknown)) {
       LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because the sourceDataNode {} is Unknown.",
           migrateRegionReq.getFromId());

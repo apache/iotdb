@@ -63,7 +63,6 @@ public enum BuiltinTimeSeriesGeneratingFunctionEnum {
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE"),
   TOP_K("TOP_K"),
   BOTTOM_K("BOTTOM_K"),
-  CAST("CAST"),
   IN_RANGE("IN_RANGE"),
   ON_OFF("ON_OFF"),
   ZERO_DURATION("ZERO_DURATION"),

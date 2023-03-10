@@ -209,6 +209,31 @@ public class GroupByTagNode extends MultiChildProcessNode {
     return tagKeys;
   }
 
+  /**
+   * The CrossSeriesAggregationDescriptor may be null if there exists a key containing no
+   * timeSeries.
+   *
+   * <p>e.g. we have following timeSeries:
+   *
+   * <ul>
+   *   <li>root.sg.d1.s1(k1=v1)
+   *   <li>root.sg.d1.s2(k1=v1)
+   *   <li>root.sg.d2.s1(k1=v2)
+   *   <li>root.sg.d3.s1(k1=v2)
+   * </ul>
+   *
+   * Then the query <code>
+   * SELECT avg(s1), avg(s2) FROM root.sg.** GROUP BY TAGS(k1)
+   * </code>will generate a {@link GroupByTagNode} with the <code>TagValuesToAggregationDescriptors
+   * </code> as below: <code>
+   *   {
+   *     ["v1"]: [["avg(root.sg.d1.s1)"], ["avg(root.sg.d1.s2)"]],
+   *     ["v2"]: [["avg(root.sg.d2.s1)","avg(root.sg.d3.s1)"], null],
+   *   }
+   * </code>
+   *
+   * <p>So we should use it carefully with null values.
+   */
   public Map<List<String>, List<CrossSeriesAggregationDescriptor>>
       getTagValuesToAggregationDescriptors() {
     return tagValuesToAggregationDescriptors;
@@ -230,6 +255,8 @@ public class GroupByTagNode extends MultiChildProcessNode {
         byte isNotNull = ReadWriteIOUtils.readByte(byteBuffer);
         if (isNotNull == 1) {
           aggregationDescriptors.add(CrossSeriesAggregationDescriptor.deserialize(byteBuffer));
+        } else {
+          aggregationDescriptors.add(null);
         }
         numOfAggregationDescriptors -= 1;
       }

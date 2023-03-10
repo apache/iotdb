@@ -109,6 +109,10 @@ CACHE
     : C A C H E
     ;
 
+CAST
+    : C A S T
+    ;
+
 CHILD
     : C H I L D
     ;

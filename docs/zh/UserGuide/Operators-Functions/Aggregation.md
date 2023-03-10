@@ -148,7 +148,7 @@ select count_if(s1=0 & s2=0, 3, 'ignoreNull'='false'), count_if(s1=1 & s2=0, 3, 
 
 查询：
 ```sql
-select time_duration(s1) from root.db.d1.s1
+select time_duration(s1) from root.db.d1
 ```
 
 输出
