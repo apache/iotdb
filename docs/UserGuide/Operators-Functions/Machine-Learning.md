@@ -86,7 +86,7 @@ Output Series:
 
 #### Usage
 
-This function is used to learn the representation for a time series.
+This function is used to represent a time series.
 
 **Name:** Representation
 
@@ -94,14 +94,14 @@ This function is used to learn the representation for a time series.
 
 **Parameters:** 
 
-- `w`: The size of the sliding window. Its default value is 20.
-- `d`: The dimension of the reprensetation vector. Its default value is 100.
+- `tb`: The number of timestamp blocks. Its default value is 10.
+- `vb`: The number of value blocks. Its default value is 10.
 
-**Output Series:** Output a single series. The type is DOUBLE. The length is `d`. The timestamps starting from 0 only indicate the order.
+**Output Series:** Output a single series. The type is INT32. The length is `tb*vb`. The timestamps starting from 0 only indicate the order.
 
 **Note:** 
 
-- Parameters `w` and `d` should be positive integers.
+- Parameters `tb` and `vb` should be positive integers.
 
 #### Examples
 
@@ -128,7 +128,7 @@ Input Series:
 SQL for query: 
 
 ```sql
-select representation(s0,"w"="5","d"="5") from root.test.d0
+select representation(s0,"tb"="3","vb"="2") from root.test.d0
 ```
 
 Output Series:
@@ -136,13 +136,74 @@ Output Series:
 ```
 +-----------------------------+-------------------------------+
 |                         Time|representation(root.test.d0.s0,|
-|															|							  "w"="5","d"="5")|
+|															|							"tb"="3","vb"="2")|
 +-----------------------------+-------------------------------+
-|1970-01-01T08:00:00.001+08:00|                         0.9429|
-|1970-01-01T08:00:00.002+08:00|                        -0.2571|
-|1970-01-01T08:00:00.003+08:00|                         0.2946|
-|1970-01-01T08:00:00.004+08:00|                        -0.7038|
-|1970-01-01T08:00:00.005+08:00|                         0.4513|
+|1970-01-01T08:00:00.001+08:00|                              1|
+|1970-01-01T08:00:00.002+08:00|                              1|
+|1970-01-01T08:00:00.003+08:00|                              0|
+|1970-01-01T08:00:00.004+08:00|                              0|
+|1970-01-01T08:00:00.005+08:00|                              1|
+|1970-01-01T08:00:00.006+08:00|                              1|
 +-----------------------------+-------------------------------+
+```
+
+### RM
+
+#### Usage
+
+This function is used to calculate the matching score of two time series according to the representation.
+
+**Name:** RM
+
+**Input Series:** Only support two input numeric series. The type is INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameters:** 
+
+- `tb`: The number of timestamp blocks. Its default value is 10.
+- `vb`: The number of value blocks. Its default value is 10.
+
+**Output Series:** Output a single series. The type is DOUBLE. There is only one data point in the series, whose timestamp is 0 and value is the matching score.
+
+**Note:** 
+
+- Parameters `tb` and `vb` should be positive integers.
+
+#### Examples
+
+##### Assigning Window Size and Dimension
+
+Input Series: 
+
+```
++-----------------------------+---------------+---------------+
+|                         Time|root.test.d0.s0|root.test.d0.s1
++-----------------------------+---------------+---------------+
+|2020-01-01T00:00:01.000+08:00|           -4.0|           -4.0|
+|2020-01-01T00:00:02.000+08:00|           -3.0|           -3.0|
+|2020-01-01T00:00:03.000+08:00|           -3.0|           -3.0|
+|2020-01-01T00:00:04.000+08:00|           -1.0|           -1.0|
+|2020-01-01T00:00:05.000+08:00|            0.0|            0.0|
+|2020-01-01T00:00:06.000+08:00|            1.0|            1.0|
+|2020-01-01T00:00:07.000+08:00|            2.0|            2.0|
+|2020-01-01T00:00:08.000+08:00|            3.0|            3.0|
+|2020-01-01T00:00:09.000+08:00|            4.0|            4.0|
++-----------------------------+---------------+---------------+
+```
+
+SQL for query: 
+
+```sql
+select rm(s0, s1,"tb"="3","vb"="2") from root.test.d0
+```
+
+Output Series:
+
+```
++-----------------------------+----------------------------------+
+|                         Time|rm(root.test.d0.s0,root.test.d0.s1|
+|															|							   "tb"="3","vb"="2")|
++-----------------------------+----------------------------------+
+|1970-01-01T08:00:00.001+08:00|                              1.00|
++-----------------------------+----------------------------------+
 ```
 
