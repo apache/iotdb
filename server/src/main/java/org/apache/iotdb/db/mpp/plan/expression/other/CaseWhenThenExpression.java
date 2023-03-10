@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import javax.validation.constraints.Null;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,12 +42,11 @@ public class CaseWhenThenExpression extends Expression {
   protected Expression elseExpression;
 
   public CaseWhenThenExpression(
-          List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
+      List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
     this.whenThenExpressions = whenThenExpressions;
     if (elseExpression != null) {
       this.elseExpression = elseExpression;
-    }
-    else {
+    } else {
       this.elseExpression = new NullOperand();
     }
   }
@@ -63,6 +61,14 @@ public class CaseWhenThenExpression extends Expression {
         break;
       }
     }
+  }
+
+  public List<WhenThenExpression> getWhenThenExpressions() {
+    return whenThenExpressions;
+  }
+
+  public Expression getElseExpression() {
+    return elseExpression;
   }
 
   @Override

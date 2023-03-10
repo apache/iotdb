@@ -25,11 +25,13 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -295,6 +297,27 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitNullOperand(NullOperand nullOperand, Void context) {
       return null;
+    }
+
+    @Override
+    public TSDataType visitCaseWhenThenExpression(
+        CaseWhenThenExpression caseWhenThenExpression, Void context) {
+      byte finalOrdinal = 0;
+      for (WhenThenExpression whenThenExpression :
+          caseWhenThenExpression.getWhenThenExpressions()) {
+        finalOrdinal =
+            (byte) Math.max(finalOrdinal, process(whenThenExpression, context).ordinal());
+      }
+      return TSDataType.getTsDataType(finalOrdinal);
+    }
+
+    @Override
+    public TSDataType visitWhenThenExpression(WhenThenExpression whenThenExpression, Void context) {
+      TSDataType whenType = process(whenThenExpression.getWhen(), context);
+      checkInputExpressionDataType(
+          whenThenExpression.getWhen().toString(), whenType, TSDataType.BOOLEAN);
+      TSDataType thenType = process(whenThenExpression.getThen(), context);
+      return setExpressionType(whenThenExpression, thenType);
     }
 
     private TSDataType setExpressionType(Expression expression, TSDataType type) {

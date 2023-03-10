@@ -2354,9 +2354,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private CaseWhenThenExpression parseCaseWhenThenExpression1(
-          IoTDBSqlParser.CaseWhenThenExpression1Context context, boolean canUseFullPath) {
+      IoTDBSqlParser.CaseWhenThenExpression1Context context, boolean canUseFullPath) {
     List<WhenThenExpression> whenThenList = new ArrayList<>();
-    for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext : context.whenThenExpression()) {
+    for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext :
+        context.whenThenExpression()) {
       whenThenList.add(parseWhenThenExpression(whenThenExpressionContext, canUseFullPath));
     }
     Expression elseExpression = null;
@@ -2372,11 +2373,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private WhenThenExpression parseWhenThenExpression(
-          IoTDBSqlParser.WhenThenExpressionContext context, boolean canUseFullPath) {
+      IoTDBSqlParser.WhenThenExpressionContext context, boolean canUseFullPath) {
     return new WhenThenExpression(
-            parseExpression(context.whenExpression, canUseFullPath),
-            parseExpression(context.thenExpression, canUseFullPath)
-    );
+        parseExpression(context.whenExpression, canUseFullPath),
+        parseExpression(context.thenExpression, canUseFullPath));
   }
 
   private Expression parseFunctionExpression(
