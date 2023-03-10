@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
+package org.apache.iotdb.db.mpp.plan.statement.sys.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -29,12 +29,12 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class StartPipeStatement extends Statement implements IConfigStatement {
+public class StopPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
 
-  public StartPipeStatement(StatementType startPipeStatement) {
-    this.statementType = startPipeStatement;
+  public StopPipeStatement(StatementType stopPipeStatement) {
+    this.statementType = stopPipeStatement;
   }
 
   public String getPipeName() {
@@ -57,6 +57,6 @@ public class StartPipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitStartPipe(this, context);
+    return visitor.visitStopPipe(this, context);
   }
 }

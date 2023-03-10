@@ -17,26 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class StopPipeTask implements IConfigTask {
+public class DropPipeTask implements IConfigTask {
 
-  private final StopPipeStatement stopPipeStatement;
+  private final DropPipeStatement dropPipeStatement;
 
-  public StopPipeTask(StopPipeStatement stopPipeStatement) {
-    this.stopPipeStatement = stopPipeStatement;
+  public DropPipeTask(DropPipeStatement dropPipeStatement) {
+    this.dropPipeStatement = dropPipeStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.stopPipe(stopPipeStatement);
+    return configTaskExecutor.dropPipe(dropPipeStatement);
   }
 }
