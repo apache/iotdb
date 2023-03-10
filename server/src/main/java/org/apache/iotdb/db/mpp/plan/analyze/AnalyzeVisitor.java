@@ -1217,7 +1217,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setGroupByParameter(groupByParameter);
     } else if (windowType == WindowType.COUNT_WINDOW) {
       GroupByParameter groupByParameter =
-          new GroupByCountParameter(((GroupByCountComponent) groupByComponent).getCountNumber());
+          new GroupByCountParameter(
+              ((GroupByCountComponent) groupByComponent).getCountNumber(),
+              groupByComponent.isIgnoringNull());
       analysis.setGroupByParameter(groupByParameter);
       analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else {
@@ -1273,7 +1275,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setGroupByParameter(groupByParameter);
     } else if (windowType == WindowType.COUNT_WINDOW) {
       GroupByParameter groupByParameter =
-          new GroupByCountParameter(((GroupByCountComponent) groupByComponent).getCountNumber());
+          new GroupByCountParameter(
+              ((GroupByCountComponent) groupByComponent).getCountNumber(),
+              groupByComponent.isIgnoringNull());
       analyzeExpression(analysis, groupByExpression);
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);

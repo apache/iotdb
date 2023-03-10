@@ -21,12 +21,15 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 public class CountWindowParameter extends WindowParameter {
   private final long countNumber;
   private final int controlColumnIndex;
+  private final boolean ignoreNull;
 
-  public CountWindowParameter(long countNumber, int controlColumnIndex, boolean needOutputEndTime) {
+  public CountWindowParameter(
+      long countNumber, int controlColumnIndex, boolean needOutputEndTime, boolean ignoreNull) {
     super(needOutputEndTime);
     this.windowType = WindowType.COUNT_WINDOW;
     this.countNumber = countNumber;
     this.controlColumnIndex = controlColumnIndex;
+    this.ignoreNull = ignoreNull;
   }
 
   public int getControlColumnIndex() {
@@ -35,5 +38,9 @@ public class CountWindowParameter extends WindowParameter {
 
   public long getCountNumber() {
     return countNumber;
+  }
+
+  public boolean isIgnoreNull() {
+    return ignoreNull;
   }
 }

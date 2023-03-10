@@ -855,3 +855,70 @@ Get the result below:
 |1970-01-02T08:08:01.000+08:00|root.ln.wf02.wt01|1970-01-02T08:08:05.000+08:00|       1650.0|
 +-----------------------------+-----------------+-----------------------------+-------------+
 ```
+## Aggregation By Count
+`GROUP BY COUNT`can aggregate the data points according to the number of points. It can group fixed number of continuous data points together for aggregation query.
+Its syntax is defined as follows:
+```sql
+group by count(controlExpression, size[,ignoreNull=true/false])
+```
+
+* controlExpression
+
+The object to count during processing, it can be any column or an expression of columns.
+
+* size
+
+The number of data points in a group, a number of `size` continuous points will be divided to the same group. 
+
+* ignoreNull=true/false
+
+Whether to ignore the data points with null in `controlExpression`, when ignoreNull is true, data points with the `controlExpression` of null will be skipped during counting.
+
+### Precautions for Use
+1. For a group in resultSet, the time column output the start time of the group by default. __endTime can be used in select clause to output the endTime of groups in resultSet.
+2. Each device is grouped separately when used with `ALIGN BY DEVICE`.
+3. Currently `GROUP BY SESSION` is not supported with `GROUP BY LEVEL`.
+4. When the final number of data points in a group is less than `size`, the result of the group will not be output.
+
+For the data below, some examples will be given.
+```
++-----------------------------+-----------+-----------------------+
+|                         Time|root.sg.soc|root.sg.charging_status|
++-----------------------------+-----------+-----------------------+
+|1970-01-01T08:00:00.001+08:00|       14.0|                      1|                                   
+|1970-01-01T08:00:00.002+08:00|       16.0|                      1|                                 
+|1970-01-01T08:00:00.003+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.004+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.005+08:00|       18.0|                      1|                                   
+|1970-01-01T08:00:00.006+08:00|       24.0|                      1|                                   
+|1970-01-01T08:00:00.007+08:00|       36.0|                      1|                                   
+|1970-01-01T08:00:00.008+08:00|       36.0|                   null|                                   
+|1970-01-01T08:00:00.009+08:00|       45.0|                      1|                                   
+|1970-01-01T08:00:00.010+08:00|       60.0|                      1|
++-----------------------------+-----------+-----------------------+
+```
+The sql is shown below
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5) 
+```
+Get the result below, in the second group from 1970-01-01T08:00:00.006+08:00 to 1970-01-01T08:00:00.010+08:00. There are only four points included which is less than `size`. So it won't be output.
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
++-----------------------------+-----------------------------+--------------------------------------+
+```
+When `ignoreNull=false` is used to take null value into account. There will be two groups with 5 points in the resultSet, which is shown as follows:
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5,ignoreNull=false) 
+```
+Get the results:
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
+|1970-01-01T08:00:00.006+08:00|1970-01-01T08:00:00.010+08:00|                                  24.0|
++-----------------------------+-----------------------------+--------------------------------------+
+```

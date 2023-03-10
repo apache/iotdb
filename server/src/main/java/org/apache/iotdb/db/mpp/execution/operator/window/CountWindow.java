@@ -25,6 +25,7 @@ public class CountWindow implements IWindow {
 
   private final int controlColumnIndex;
   private final boolean needOutputEndTime;
+  private final boolean ignoreNull;
   private final long countNumber;
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
@@ -35,6 +36,7 @@ public class CountWindow implements IWindow {
     this.controlColumnIndex = countWindowParameter.getControlColumnIndex();
     this.needOutputEndTime = countWindowParameter.isNeedOutputEndTime();
     this.countNumber = countWindowParameter.getCountNumber();
+    this.ignoreNull = countWindowParameter.isIgnoreNull();
     resetCurCount();
   }
 
@@ -91,5 +93,9 @@ public class CountWindow implements IWindow {
 
   public void setStartTime(long startTime) {
     this.startTime = startTime;
+  }
+
+  public boolean isIgnoreNull() {
+    return ignoreNull;
   }
 }

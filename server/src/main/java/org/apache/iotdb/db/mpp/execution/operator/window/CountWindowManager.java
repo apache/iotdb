@@ -84,7 +84,7 @@ public class CountWindowManager implements IWindowManager {
     int i = 0, size = inputTsBlock.getPositionCount();
 
     for (; i < size; i++) {
-      if (controlColumn.isNull(i)) continue;
+      if (isIgnoringNull() && controlColumn.isNull(i)) continue;
       // A Count Window has exactly the row number of countNumber
       // if leftCount is zero, the window is finished.
       if (leftCount == 0) break;
@@ -136,6 +136,6 @@ public class CountWindowManager implements IWindowManager {
   // ignoreNull in CountWindow may be ambiguous.
   @Override
   public boolean isIgnoringNull() {
-    return true;
+    return countWindow.isIgnoreNull();
   }
 }

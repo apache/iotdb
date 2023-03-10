@@ -29,29 +29,38 @@ import java.util.Objects;
 public class GroupByCountParameter extends GroupByParameter {
 
   private final long countNumber;
+  private final boolean ignoreNull;
 
-  public GroupByCountParameter(long countNumber) {
+  public GroupByCountParameter(long countNumber, boolean ignoreNull) {
     super(WindowType.COUNT_WINDOW);
     this.countNumber = countNumber;
+    this.ignoreNull = ignoreNull;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(countNumber, byteBuffer);
+    ReadWriteIOUtils.write(ignoreNull, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(countNumber, stream);
+    ReadWriteIOUtils.write(ignoreNull, stream);
   }
 
   public long getCountNumber() {
     return countNumber;
   }
 
+  public boolean isIgnoreNull() {
+    return ignoreNull;
+  }
+
   public static GroupByParameter deserialize(ByteBuffer buffer) {
     long countNumber = ReadWriteIOUtils.readLong(buffer);
-    return new GroupByCountParameter(countNumber);
+    boolean ignoreNull = ReadWriteIOUtils.readBool(buffer);
+    return new GroupByCountParameter(countNumber, ignoreNull);
   }
 
   @Override
@@ -65,11 +74,12 @@ public class GroupByCountParameter extends GroupByParameter {
     if (!super.equals(obj)) {
       return false;
     }
-    return this.countNumber == ((GroupByCountParameter) obj).getCountNumber();
+    return this.countNumber == ((GroupByCountParameter) obj).getCountNumber()
+        || this.ignoreNull == ((GroupByCountParameter) obj).isIgnoreNull();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), countNumber);
+    return Objects.hash(super.hashCode(), countNumber, ignoreNull);
   }
 }

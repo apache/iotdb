@@ -1247,6 +1247,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       GroupByCountComponent groupByCountComponent = new GroupByCountComponent(countNumber);
       groupByCountComponent.setControlColumnExpression(
           parseExpression(countExpressionContext, true));
+      groupByCountComponent.setIgnoringNull(ignoringNull);
       return groupByCountComponent;
     } else {
       throw new SemanticException("Unsupported window type");

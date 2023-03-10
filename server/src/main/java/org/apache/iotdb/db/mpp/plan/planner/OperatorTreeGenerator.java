@@ -1515,7 +1515,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                         .get(groupByCountExpression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex(),
-                    node.isOutputEndTime());
+                    node.isOutputEndTime(),
+                    ((GroupByCountParameter) groupByParameter).isIgnoreNull());
             break;
           default:
             throw new IllegalArgumentException("Unsupported window type");

@@ -54,8 +54,8 @@ public class IoTDBGroupByCountIT {
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
+        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
         "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
@@ -83,8 +83,8 @@ public class IoTDBGroupByCountIT {
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(110000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(120000000, null, null, 0)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
+        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
         "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
@@ -292,6 +292,55 @@ public class IoTDBGroupByCountIT {
     String sql =
         "select sum(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by count(charging_status, 2) having sum(charging_status)<2";
     normalTest(res, sql, false);
+  }
+
+  @Test
+  public void groupByCountNormalTest8() {
+    String[][] res = {
+      {"1", "5", "3.0", "5", "18"},
+      {"6", "10", "4.0", "5", "60"},
+      {"1100000000", "2100000000", "2.0", "5", "70"},
+      {"2200000000", "2600000000", "2.0", "5", "101"},
+    };
+    String sql =
+        "select sum(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by count(charging_status, 5, ignoreNull=false)";
+    String sql2 =
+        "select __endTime,sum(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by count(charging_status, 5, ignoreNull=false)";
+    normalTest(res, sql, false);
+    normalTest(res, sql2, true);
+  }
+
+  @Test
+  public void groupByCountNormalTest9() {
+    String[][] res = {
+      {"1", "2", "14"},
+      {"3", "4", "16"},
+      {"5", "6", "18"},
+      {"7", "8", "36"},
+      {"9", "10", "45"},
+      {"1100000000", "1200000000", "60"},
+      {"1900000000", "2000000000", "55"},
+      {"2100000000", "2200000000", "70"},
+      {"2300000000", "2400000000", "69"},
+      {"2500000000", "2600000000", "100"}
+    };
+    String sql =
+        "select first_value(soc) from root.sg.beijing.car01 group by count(charging_status, 2, ignoreNull=false)";
+    String sql2 =
+        "select __endTime,first_value(soc) from root.sg.beijing.car01 group by count(charging_status, 2, ignoreNull=false)";
+    firstValueTest(res, sql, false);
+    firstValueTest(res, sql2, true);
+  }
+
+  @Test
+  public void groupByCountNormalTest10() {
+    String[][] res = {{"1", "1200000000", "7.0", "12", "0"}};
+    String sql =
+        "select sum(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by count(charging_status, 12, ignoreNull = false)";
+    String sql2 =
+        "select __endTime,sum(charging_status),count(vehicle_status),last_value(soc) from root.sg.beijing.car01 group by count(charging_status, 12, ignoreNull = false)";
+    normalTest(res, sql, false);
+    normalTest(res, sql2, true);
   }
 
   private void normalTestWithAlignByDevice(String[][] res, String sql, boolean hasEndTime) {
