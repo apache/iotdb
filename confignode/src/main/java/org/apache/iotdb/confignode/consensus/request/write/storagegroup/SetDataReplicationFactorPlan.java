@@ -29,7 +29,7 @@ import java.util.Objects;
 
 public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
-  private String Database;
+  private String database;
 
   private int dataReplicationFactor;
 
@@ -39,12 +39,12 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
   public SetDataReplicationFactorPlan(String Database, int dataReplicationFactor) {
     this();
-    this.Database = Database;
+    this.database = Database;
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
   public String getDatabase() {
-    return Database;
+    return database;
   }
 
   public int getDataReplicationFactor() {
@@ -55,13 +55,13 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    BasicStructureSerDeUtil.write(Database, stream);
+    BasicStructureSerDeUtil.write(database, stream);
     stream.writeInt(dataReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    Database = BasicStructureSerDeUtil.readString(buffer);
+    database = BasicStructureSerDeUtil.readString(buffer);
     dataReplicationFactor = buffer.getInt();
   }
 
@@ -70,11 +70,11 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
-    return dataReplicationFactor == that.dataReplicationFactor && Database.equals(that.Database);
+    return dataReplicationFactor == that.dataReplicationFactor && database.equals(that.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(Database, dataReplicationFactor);
+    return Objects.hash(database, dataReplicationFactor);
   }
 }
