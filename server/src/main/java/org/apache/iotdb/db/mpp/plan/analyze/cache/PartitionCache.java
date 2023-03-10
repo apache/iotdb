@@ -701,7 +701,7 @@ public class PartitionCache {
   }
 
   /**
-   * update dataPartitionCache by dataPartition
+   * update dataPartitionCache by dataPartition.
    *
    * @param dataPartitionTable database to seriesPartitionSlot to timePartitionSlot to
    *     ConsensusGroupId map
@@ -754,7 +754,7 @@ public class PartitionCache {
   }
 
   /**
-   * invalid dataPartitionCache by database
+   * invalid dataPartitionCache by database.
    *
    * @param database the databases that need to invalid
    */
@@ -767,7 +767,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid all dataPartitionCache */
+  /** invalid all dataPartitionCache. */
   public void invalidDataPartitionCache() {
     dataPartitionCacheLock.writeLock().lock();
     try {
