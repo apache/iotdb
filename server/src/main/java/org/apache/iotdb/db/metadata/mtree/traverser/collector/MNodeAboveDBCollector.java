@@ -26,11 +26,11 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import java.util.HashSet;
 import java.util.Set;
 
-public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
+public abstract class MNodeAboveDBCollector<T> extends MNodeCollector<T> {
 
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
+  protected Set<PartialPath> involvedDatabaseMNodes = new HashSet<>();
 
-  protected MNodeAboveSGCollector(
+  protected MNodeAboveDBCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
@@ -39,7 +39,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
+      involvedDatabaseMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;
     } else {
       return super.shouldVisitSubtreeOfFullMatchedNode(node);
@@ -49,14 +49,14 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
+      involvedDatabaseMNodes.add(getParentPartialPath().concatNode(node.getName()));
       return false;
     } else {
       return super.shouldVisitSubtreeOfInternalMatchedNode(node);
     }
   }
 
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
-    return involvedStorageGroupMNodes;
+  public Set<PartialPath> getInvolvedDatabaseMNodes() {
+    return involvedDatabaseMNodes;
   }
 }

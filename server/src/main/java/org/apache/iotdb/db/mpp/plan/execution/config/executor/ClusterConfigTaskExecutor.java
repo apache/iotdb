@@ -91,7 +91,7 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
@@ -111,7 +111,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathS
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
@@ -126,8 +126,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -264,17 +264,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showStorageGroup(
-      ShowStorageGroupStatement showStorageGroupStatement) {
+      ShowDatabaseStatement showDatabaseStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     List<String> storageGroupPathPattern =
-        Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
+        Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
       TShowDatabaseResp resp = client.showDatabase(storageGroupPathPattern);
       // build TSBlock
-      showStorageGroupStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
+      showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -283,17 +283,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> countStorageGroup(
-      CountStorageGroupStatement countStorageGroupStatement) {
+      CountDatabaseStatement countDatabaseStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     int storageGroupNum;
     List<String> storageGroupPathPattern =
-        Arrays.asList(countStorageGroupStatement.getPathPattern().getNodes());
+        Arrays.asList(countDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCountDatabaseResp resp = client.countMatchedDatabases(storageGroupPathPattern);
       storageGroupNum = resp.getCount();
       // build TSBlock
-      CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
+      CountDatabaseTask.buildTSBlock(storageGroupNum, future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }

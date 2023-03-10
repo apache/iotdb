@@ -29,7 +29,7 @@ import java.util.Objects;
 
 public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String Database;
 
   private int dataReplicationFactor;
 
@@ -37,14 +37,14 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetDataReplicationFactor);
   }
 
-  public SetDataReplicationFactorPlan(String storageGroup, int dataReplicationFactor) {
+  public SetDataReplicationFactorPlan(String Database, int dataReplicationFactor) {
     this();
-    this.storageGroup = storageGroup;
+    this.Database = Database;
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return Database;
   }
 
   public int getDataReplicationFactor() {
@@ -55,13 +55,13 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    BasicStructureSerDeUtil.write(storageGroup, stream);
+    BasicStructureSerDeUtil.write(Database, stream);
     stream.writeInt(dataReplicationFactor);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    Database = BasicStructureSerDeUtil.readString(buffer);
     dataReplicationFactor = buffer.getInt();
   }
 
@@ -70,12 +70,11 @@ public class SetDataReplicationFactorPlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SetDataReplicationFactorPlan that = (SetDataReplicationFactorPlan) o;
-    return dataReplicationFactor == that.dataReplicationFactor
-        && storageGroup.equals(that.storageGroup);
+    return dataReplicationFactor == that.dataReplicationFactor && Database.equals(that.Database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, dataReplicationFactor);
+    return Objects.hash(Database, dataReplicationFactor);
   }
 }

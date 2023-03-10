@@ -33,10 +33,10 @@ import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSe
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -63,11 +63,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
@@ -255,8 +255,8 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(authorStatement, context);
   }
 
-  public R visitShowStorageGroup(ShowStorageGroupStatement showStorageGroupStatement, C context) {
-    return visitStatement(showStorageGroupStatement, context);
+  public R visitShowStorageGroup(ShowDatabaseStatement showDatabaseStatement, C context) {
+    return visitStatement(showDatabaseStatement, context);
   }
 
   public R visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement, C context) {
@@ -267,9 +267,8 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDevicesStatement, context);
   }
 
-  public R visitCountStorageGroup(
-      CountStorageGroupStatement countStorageGroupStatement, C context) {
-    return visitStatement(countStorageGroupStatement, context);
+  public R visitCountStorageGroup(CountDatabaseStatement countDatabaseStatement, C context) {
+    return visitStatement(countDatabaseStatement, context);
   }
 
   public R visitCountDevices(CountDevicesStatement countStatement, C context) {

@@ -41,7 +41,7 @@ public interface ISchemaFile {
    * @param sgNode node to be updated
    * @return true if success
    */
-  boolean updateStorageGroupNode(IStorageGroupMNode sgNode) throws IOException;
+  boolean updateDatabaseNode(IStorageGroupMNode sgNode) throws IOException;
 
   /**
    * Only database node along with its descendents could be flushed into schema file.

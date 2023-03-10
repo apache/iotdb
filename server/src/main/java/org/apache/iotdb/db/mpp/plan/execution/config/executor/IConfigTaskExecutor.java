@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
@@ -37,8 +37,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -66,11 +66,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> alterDatabase(DatabaseSchemaStatement databaseSchemaStatement);
 
-  SettableFuture<ConfigTaskResult> showStorageGroup(
-      ShowStorageGroupStatement showStorageGroupStatement);
+  SettableFuture<ConfigTaskResult> showStorageGroup(ShowDatabaseStatement showDatabaseStatement);
 
-  SettableFuture<ConfigTaskResult> countStorageGroup(
-      CountStorageGroupStatement countStorageGroupStatement);
+  SettableFuture<ConfigTaskResult> countStorageGroup(CountDatabaseStatement countDatabaseStatement);
 
   SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement);

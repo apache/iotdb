@@ -24,9 +24,9 @@ import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-public class CountStorageGroupStatement extends CountStatement implements IConfigStatement {
+public class CountDatabaseStatement extends CountStatement implements IConfigStatement {
 
-  public CountStorageGroupStatement(PartialPath partialPath) {
+  public CountDatabaseStatement(PartialPath partialPath) {
     super(partialPath);
   }
 
