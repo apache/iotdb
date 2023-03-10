@@ -55,9 +55,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
@@ -192,77 +193,67 @@ public class UnsetTemplateProcedure
 
     Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
-    DataNodeRegionTask<TCountPathsUsingTemplateResp> regionTask =
-        new DataNodeRegionTask<TCountPathsUsingTemplateResp>(env, relatedSchemaRegionGroup, false) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
-                clientHandler =
-                    new AsyncClientHandler<>(
-                        DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
-                        new TCountPathsUsingTemplateReq(
-                            template.getId(), patternTreeBytes, consensusGroupIdList),
-                        dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            Map<Integer, TSStatus> statusMap = new HashMap<>();
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                      statusMap.put(k, v.getStatus());
-                    });
-            return statusMap;
-          }
 
-          @Override
-          protected boolean hasFailure() {
-            return isFailed();
-          }
+    List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
+    DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
+                env,
+                relatedSchemaRegionGroup,
+                false,
+                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+                ((dataNodeLocation, consensusGroupIdList) ->
+                    new TCountPathsUsingTemplateReq(
+                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
 
-          @Override
-          protected void onExecutionFailure(TDataNodeLocation dataNodeLocation) {
-            LOGGER.error(
-                "Failed to execute [check DataNode template activation] of unset template {} from {} on {}",
-                template.getName(),
-                path,
-                dataNodeLocation);
-            setFailure(
-                new ProcedureException(
-                    new MetadataException(
-                        String.format(
-                            "Unset template %s from %s failed when [check DataNode template activation]",
-                            template.getName(), path))));
-          }
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCountPathsUsingTemplateResp response) {
+                respList.add(response);
+                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  return failedRegionList;
+                }
 
-          @Override
-          protected void onAllReplicasetFailure(TConsensusGroupId consensusGroupId) {
-            setFailure(
-                new ProcedureException(
-                    new MetadataException(
-                        String.format(
-                            "Unset template %s from %s failed when [check DataNode template activation] because all replicaset of schemaRegion %s failed.",
-                            template.getName(), path, consensusGroupId.id))));
-          }
-        };
+                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  for (int i = 0; i < subStatus.size(); i++) {
+                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+                return failedRegionList;
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                setFailure(
+                    new ProcedureException(
+                        new MetadataException(
+                            String.format(
+                                "Unset template %s from %s failed when [check DataNode template activation] because all replicaset of schemaRegion %s failed. %s",
+                                template.getName(),
+                                path,
+                                consensusGroupId.id,
+                                dataNodeLocationSet))));
+                interruptTask();
+              }
+            };
     regionTask.execute();
     if (isFailed()) {
       return 0;
     }
 
     long result = 0;
-    Map<Integer, List<TCountPathsUsingTemplateResp>> dataNodeResponseMap =
-        regionTask.getResponseMap();
-    for (List<TCountPathsUsingTemplateResp> respList : dataNodeResponseMap.values()) {
-      for (TCountPathsUsingTemplateResp resp : respList) {
-        result += resp.getCount();
-      }
+    for (TCountPathsUsingTemplateResp resp : respList) {
+      result += resp.getCount();
     }
 
     return result;

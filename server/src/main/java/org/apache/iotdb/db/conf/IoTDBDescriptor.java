@@ -230,6 +230,14 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
+    if (properties.getProperty("dn_core_client_count_for_each_node_in_client_manager", null)
+        != null) {
+      conf.setCoreClientNumForEachNode(
+          Integer.parseInt(
+              properties.getProperty("dn_core_connection_for_internal_service").trim()));
+      logger.warn(
+          "The parameter dn_core_connection_for_internal_service is out of date. Please rename it to dn_core_client_count_for_each_node_in_client_manager.");
+    }
     conf.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
@@ -238,6 +246,16 @@ public class IoTDBDescriptor {
                     String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
+    if (properties.getProperty("dn_max_client_count_for_each_node_in_client_manager", null)
+        != null) {
+      conf.setMaxClientNumForEachNode(
+          Integer.parseInt(
+              properties
+                  .getProperty("dn_max_client_count_for_each_node_in_client_manager")
+                  .trim()));
+      logger.warn(
+          "The parameter dn_max_client_count_for_each_node_in_client_manager is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+    }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
