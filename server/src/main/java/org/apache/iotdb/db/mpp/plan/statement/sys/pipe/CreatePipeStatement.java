@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
+package org.apache.iotdb.db.mpp.plan.statement.sys.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -28,21 +28,49 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-public class DropPipeStatement extends Statement implements IConfigStatement {
+public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private Map<String, String> collectorAttributes;
+  private Map<String, String> processorAttributes;
+  private Map<String, String> connectorAttributes;
 
-  public DropPipeStatement(StatementType dropPipeStatement) {
-    this.statementType = dropPipeStatement;
+  public CreatePipeStatement(StatementType createPipeStatement) {
+    this.statementType = createPipeStatement;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
+  public Map<String, String> getCollectorAttributes() {
+    return collectorAttributes;
+  }
+
+  public Map<String, String> getProcessorAttributes() {
+    return processorAttributes;
+  }
+
+  public Map<String, String> getConnectorAttributes() {
+    return connectorAttributes;
+  }
+
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setCollectorAttributes(Map<String, String> collectorAttributes) {
+    this.collectorAttributes = collectorAttributes;
+  }
+
+  public void setProcessorAttributes(Map<String, String> processorAttributes) {
+    this.processorAttributes = processorAttributes;
+  }
+
+  public void setConnectorAttributes(Map<String, String> connectorAttributes) {
+    this.connectorAttributes = connectorAttributes;
   }
 
   @Override
@@ -57,6 +85,6 @@ public class DropPipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDropPipe(this, context);
+    return visitor.visitCreatePipe(this, context);
   }
 }

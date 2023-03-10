@@ -93,15 +93,15 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 /**
  * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor

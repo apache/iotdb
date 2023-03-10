@@ -109,8 +109,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
@@ -138,15 +138,14 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -174,6 +173,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1478,9 +1478,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
-              .setPipeSinkName(createPipeStatement.getPipeSinkName())
-              .setStartTime(createPipeStatement.getStartTime())
-              .setAttributes(createPipeStatement.getPipeAttributes());
+              .setCollectorAttributes(createPipeStatement.getCollectorAttributes())
+              .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -1563,10 +1563,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!StringUtils.isEmpty(showPipeStatement.getPipeName())) {
         tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
       }
+      if (showPipeStatement.getWhereClause()) {
+        tShowPipeReq.setWhereClause(true);
+      }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList =
-          SyncService.getInstance().showPipeForReceiver(showPipeStatement.getPipeName());
-      tShowPipeInfoList.addAll(resp.getPipeInfoList());
+      List<TShowPipeInfo> tShowPipeInfoList = new ArrayList<>();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);

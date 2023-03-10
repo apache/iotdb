@@ -1583,8 +1583,10 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     TSStatus status = confirmLeader();
+    LOGGER.info("createPipe: {}", req);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.createPipe(req);
+      // TODO: Implement PipeManager
+      return status;
     } else {
       return status;
     }
@@ -1593,8 +1595,10 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus startPipe(String pipeName) {
     TSStatus status = confirmLeader();
+    LOGGER.info("startPipe: {}", pipeName);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.startPipe(pipeName);
+      // TODO: Implement PipeManager
+      return status;
     } else {
       return status;
     }
@@ -1603,8 +1607,10 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus stopPipe(String pipeName) {
     TSStatus status = confirmLeader();
+    LOGGER.info("stopPipe: {}", pipeName);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.stopPipe(pipeName);
+      // TODO: Implement PipeManager
+      return status;
     } else {
       return status;
     }
@@ -1613,8 +1619,10 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus dropPipe(String pipeName) {
     TSStatus status = confirmLeader();
+    LOGGER.info("dropPipe: {}", pipeName);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.dropPipe(pipeName);
+      // TODO: Implement PipeManager
+      return status;
     } else {
       return status;
     }
@@ -1623,9 +1631,11 @@ public class ConfigManager implements IManager {
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) {
     TSStatus status = confirmLeader();
+    LOGGER.info("showPipe: {}", req);
     TShowPipeResp resp = new TShowPipeResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return syncManager.showPipe(req.getPipeName());
+      // TODO: Implement PipeManager
+      return resp.setStatus(status);
     } else {
       return resp.setStatus(status);
     }
