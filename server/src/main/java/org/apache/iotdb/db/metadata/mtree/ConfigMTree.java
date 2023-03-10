@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -112,7 +112,7 @@ public class ConfigMTree {
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before create database, check whether the database already exists
-        throw new StorageGroupAlreadySetException(temp.getFullPath());
+        throw new DatabaseAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
       i++;
@@ -124,9 +124,9 @@ public class ConfigMTree {
       if (cur.hasChild(nodeNames[i])) {
         // node b has child sg
         if (cur.getChild(nodeNames[i]).isStorageGroup()) {
-          throw new StorageGroupAlreadySetException(path.getFullPath());
+          throw new DatabaseAlreadySetException(path.getFullPath());
         } else {
-          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+          throw new DatabaseAlreadySetException(path.getFullPath(), true);
         }
       } else {
         IStorageGroupMNode storageGroupMNode =
@@ -136,7 +136,7 @@ public class ConfigMTree {
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
         if (result != storageGroupMNode) {
-          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+          throw new DatabaseAlreadySetException(path.getFullPath(), true);
         }
       }
     }
@@ -250,21 +250,21 @@ public class ConfigMTree {
     for (int i = 1; i < nodes.length - 1; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
-        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+        throw new DatabaseNotSetException(storageGroupPath.getFullPath());
       }
       if (cur.isStorageGroup()) {
-        throw new StorageGroupAlreadySetException(cur.getFullPath());
+        throw new DatabaseAlreadySetException(cur.getFullPath());
       }
     }
 
     cur = cur.getChild(nodes[nodes.length - 1]);
     if (cur == null) {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      throw new DatabaseNotSetException(storageGroupPath.getFullPath());
     }
     if (cur.isStorageGroup()) {
       return cur.getAsStorageGroupMNode();
     } else {
-      throw new StorageGroupAlreadySetException(storageGroupPath.getFullPath(), true);
+      throw new DatabaseAlreadySetException(storageGroupPath.getFullPath(), true);
     }
   }
 
@@ -288,7 +288,7 @@ public class ConfigMTree {
         return cur.getAsStorageGroupMNode();
       }
     }
-    throw new StorageGroupNotSetException(path.getFullPath());
+    throw new DatabaseNotSetException(path.getFullPath());
   }
 
   /**
@@ -321,7 +321,7 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public void checkStorageGroupAlreadySet(PartialPath path) throws StorageGroupAlreadySetException {
+  public void checkStorageGroupAlreadySet(PartialPath path) throws DatabaseAlreadySetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
@@ -333,17 +333,17 @@ public class ConfigMTree {
       }
       cur = cur.getChild(nodeNames[i]);
       if (cur.isStorageGroup()) {
-        throw new StorageGroupAlreadySetException(cur.getFullPath());
+        throw new DatabaseAlreadySetException(cur.getFullPath());
       }
     }
-    throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+    throw new DatabaseAlreadySetException(path.getFullPath(), true);
   }
 
   // endregion
 
   // region MTree Node Management
 
-  public IMNode getNodeWithAutoCreate(PartialPath path) throws StorageGroupNotSetException {
+  public IMNode getNodeWithAutoCreate(PartialPath path) throws DatabaseNotSetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     IMNode child;
@@ -354,7 +354,7 @@ public class ConfigMTree {
         if (hasStorageGroup) {
           child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
         } else {
-          throw new StorageGroupNotSetException(path.getFullPath());
+          throw new DatabaseNotSetException(path.getFullPath());
         }
       } else if (child.isStorageGroup()) {
         hasStorageGroup = true;
@@ -636,19 +636,23 @@ public class ConfigMTree {
 
   public void deserialize(InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
-    if (type != STORAGE_GROUP_MNODE_TYPE) {
-      logger.error("Wrong node type. Cannot deserialize MTreeAboveSG from given buffer");
-      return;
-    }
 
-    StorageGroupMNode storageGroupMNode = deserializeStorageGroupMNode(inputStream);
+    String name = null;
+    int childNum = 0;
+    Stack<Pair<InternalMNode, Boolean>> stack = new Stack<>();
+    StorageGroupMNode storageGroupMNode;
     InternalMNode internalMNode;
 
-    Stack<InternalMNode> stack = new Stack<>();
-    stack.push(storageGroupMNode);
-
-    String name = storageGroupMNode.getName();
-    int childNum = 0;
+    if (type == STORAGE_GROUP_MNODE_TYPE) {
+      storageGroupMNode = deserializeStorageGroupMNode(inputStream);
+      name = storageGroupMNode.getName();
+      stack.push(new Pair<>(storageGroupMNode, true));
+    } else {
+      internalMNode = deserializeInternalMNode(inputStream);
+      childNum = ReadWriteIOUtils.readInt(inputStream);
+      name = internalMNode.getName();
+      stack.push(new Pair<>(internalMNode, false));
+    }
 
     while (!PATH_ROOT.equals(name)) {
       type = ReadWriteIOUtils.readByte(inputStream);
@@ -656,17 +660,22 @@ public class ConfigMTree {
         case INTERNAL_MNODE_TYPE:
           internalMNode = deserializeInternalMNode(inputStream);
           childNum = ReadWriteIOUtils.readInt(inputStream);
+          boolean hasDB = false;
           while (childNum > 0) {
-            internalMNode.addChild(stack.pop());
+            hasDB = stack.peek().right;
+            internalMNode.addChild(stack.pop().left);
             childNum--;
           }
-          stack.push(internalMNode);
+          stack.push(new Pair<>(internalMNode, hasDB));
           name = internalMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
           storageGroupMNode = deserializeStorageGroupMNode(inputStream);
           childNum = 0;
-          stack.push(storageGroupMNode);
+          while (!stack.isEmpty() && !stack.peek().right) {
+            storageGroupMNode.addChild(stack.pop().left);
+          }
+          stack.push(new Pair<>(storageGroupMNode, true));
           name = storageGroupMNode.getName();
           break;
         default:
@@ -674,7 +683,7 @@ public class ConfigMTree {
           return;
       }
     }
-    this.root = stack.peek();
+    this.root = stack.peek().left;
   }
 
   private InternalMNode deserializeInternalMNode(InputStream inputStream) throws IOException {

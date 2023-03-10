@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -107,6 +108,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
@@ -114,6 +116,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropPipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -128,6 +131,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowContinuousQueriesStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -204,6 +208,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Parse AST to Statement. */
@@ -222,7 +228,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
   private static final String IGNORENULL = "IgnoreNull";
-
   private ZoneId zoneId;
 
   public void setZoneId(ZoneId zoneId) {
@@ -714,13 +719,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
-    if (ctx.uriClasue() == null) {
+    if (ctx.uriClause() == null) {
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
           false);
     } else {
-      String uriString = parseAndValidateURI(ctx.uriClasue());
+      String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateFunctionStatement(
           parseIdentifier(ctx.udfName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -729,7 +734,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private String parseAndValidateURI(IoTDBSqlParser.UriClasueContext ctx) {
+  private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     try {
       URI uri = new URI(uriString);
@@ -769,7 +774,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             parseAttributeValue(triggerAttributeContext.value));
       }
     }
-    if (ctx.uriClasue() == null) {
+    if (ctx.uriClause() == null) {
       return new CreateTriggerStatement(
           parseIdentifier(ctx.triggerName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -782,7 +787,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parsePrefixPath(ctx.prefixPath()),
           attributes);
     } else {
-      String uriString = parseAndValidateURI(ctx.uriClasue());
+      String uriString = parseAndValidateURI(ctx.uriClause());
       return new CreateTriggerStatement(
           parseIdentifier(ctx.triggerName.getText()),
           parseStringLiteral(ctx.className.getText()),
@@ -807,6 +812,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
     return new ShowTriggersStatement();
+  }
+
+  // Create PipePlugin =====================================================================
+  @Override
+  public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
+    return new CreatePipePluginStatement(
+        parseIdentifier(ctx.pluginName.getText()),
+        parseStringLiteral(ctx.className.getText()),
+        parseAndValidateURI(ctx.uriClause()));
+  }
+
+  // Drop PipePlugin =====================================================================
+  @Override
+  public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
+    return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
+  }
+
+  // Show PipePlugins =====================================================================
+  @Override
+  public Statement visitShowPipePlugins(IoTDBSqlParser.ShowPipePluginsContext ctx) {
+    return new ShowPipePluginsStatement();
   }
 
   // Show Child Paths =====================================================================
@@ -2308,6 +2334,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseInExpression(context, canUseFullPath);
     }
 
+    if (context.castInput != null) {
+      return parseCastFunction(context, canUseFullPath);
+    }
+
     if (context.functionName() != null) {
       return parseFunctionExpression(context, canUseFullPath);
     }
@@ -2326,6 +2356,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     throw new UnsupportedOperationException();
+  }
+
+  private Expression parseCastFunction(
+      IoTDBSqlParser.ExpressionContext castClause, boolean canUseFullPath) {
+    FunctionExpression functionExpression = new FunctionExpression(CAST_FUNCTION);
+    functionExpression.addExpression(parseExpression(castClause.castInput, canUseFullPath));
+    functionExpression.addAttribute(CAST_TYPE, parseAttributeValue(castClause.attributeValue()));
+    return functionExpression;
   }
 
   private Expression parseFunctionExpression(
@@ -2373,8 +2411,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // type check of input expressions is put in ExpressionTypeAnalyzer
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       checkAggregationFunctionInput(functionExpression);
-    } else if (functionExpression.isBuiltInFunction()) {
-      checkBuiltInFunctionInput(functionExpression);
+    } else if (functionExpression.isBuiltInScalarFunction()) {
+      checkBuiltInScalarFunctionInput(functionExpression);
     }
     return functionExpression;
   }
@@ -2392,6 +2430,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.EXTREME:
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.TIME_DURATION:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -2409,22 +2448,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void checkBuiltInFunctionInput(FunctionExpression functionExpression) {
-    final String functionName = functionExpression.getFunctionName().toLowerCase();
-    switch (functionName) {
-      case SqlConstant.DIFF:
-        checkFunctionExpressionInputSize(
-            functionExpression.getExpressionString(),
-            functionExpression.getExpressions().size(),
-            1);
-        return;
-      default:
-        throw new IllegalArgumentException(
-            "Invalid BuiltInFunction: " + functionExpression.getFunctionName());
-    }
+  private void checkBuiltInScalarFunctionInput(FunctionExpression functionExpression) {
+    BuiltInScalarFunctionHelperFactory.createHelper(functionExpression.getFunctionName())
+        .checkBuiltInScalarFunctionInputSize(functionExpression);
   }
 
-  private void checkFunctionExpressionInputSize(
+  public static void checkFunctionExpressionInputSize(
       String expressionString, int actual, int... expected) {
     for (int expect : expected) {
       if (expect == actual) {
@@ -2833,7 +2862,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return new CreateSchemaTemplateStatement(
-        name, measurementsList, dataTypesList, encodingsList, compressorsList);
+        name,
+        measurementsList,
+        dataTypesList,
+        encodingsList,
+        compressorsList,
+        ctx.ALIGNED() != null);
   }
 
   void parseAttributeClause(

@@ -1612,7 +1612,7 @@ public class IoTDBDescriptor {
     double memtableProportionForWrite =
         ((double) (proportionForMemTable)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    Double.parseDouble(properties.getProperty("flush_time_memory_proportion", "0.05"));
+
     double timePartitionInfoForWrite =
         ((double) (proportionForTimePartitionInfo)
             / (double) (proportionForMemTable + proportionForTimePartitionInfo));

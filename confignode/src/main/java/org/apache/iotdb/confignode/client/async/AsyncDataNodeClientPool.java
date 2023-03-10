@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -115,6 +116,7 @@ public class AsyncDataNodeClientPool {
         clientHandler.getCountDownLatch().await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+        Thread.currentThread().interrupt();
       }
 
       // Check if there is a DataNode that fails to execute the request, and retry if there exists
@@ -353,7 +355,7 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Always call this interface when a DataNode is restarted or removed
+   * Always call this interface when a DataNode is restarted or removed.
    *
    * @param endPoint The specific DataNode
    */
