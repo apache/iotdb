@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.sys.sync;
 
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
@@ -54,8 +55,6 @@ public class ShowPipeStatement extends ShowStatement implements IConfigStatement
   public QueryType getQueryType() {
     return QueryType.READ;
   }
-
-  public ShowPipeStatement() {}
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

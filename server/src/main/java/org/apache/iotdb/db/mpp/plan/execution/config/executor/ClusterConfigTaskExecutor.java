@@ -173,6 +173,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1566,7 +1567,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tShowPipeReq.setWhereClause(true);
       }
       TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList = new TShowPipeInfo();
+      List<TShowPipeInfo> tShowPipeInfoList = new ArrayList<>();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);
