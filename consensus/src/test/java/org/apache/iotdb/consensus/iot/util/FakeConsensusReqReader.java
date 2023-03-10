@@ -53,6 +53,7 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   }
 
   private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
+
     private long nextSearchIndex;
 
     public FakeConsensusReqIterator(long startIndex) {
@@ -70,7 +71,8 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
         for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
           if (indexedConsensusRequest.getSearchIndex() == nextSearchIndex) {
             nextSearchIndex++;
-            return indexedConsensusRequest;
+            return new IndexedConsensusRequest(
+                indexedConsensusRequest.getSearchIndex(), indexedConsensusRequest.getRequests());
           }
         }
         return null;

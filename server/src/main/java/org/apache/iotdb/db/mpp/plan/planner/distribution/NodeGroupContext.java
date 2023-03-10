@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class NodeGroupContext {
   protected final MPPQueryContext queryContext;
@@ -49,20 +48,19 @@ public class NodeGroupContext {
   private TRegionReplicaSet getMostlyUsedDataRegion(PlanNode root) {
     Map<TRegionReplicaSet, Long> regionCount = new HashMap<>();
     countRegionOfSourceNodes(root, regionCount);
-    return Collections.max(
-            regionCount.entrySet().stream()
-                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
-                .collect(Collectors.toList()),
-            Map.Entry.comparingByValue())
-        .getKey();
+    if (regionCount.isEmpty()) {
+      return DataPartition.NOT_ASSIGNED;
+    }
+    return Collections.max(regionCount.entrySet(), Map.Entry.comparingByValue()).getKey();
   }
 
   private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {
     root.getChildren().forEach(child -> countRegionOfSourceNodes(child, result));
     if (root instanceof SourceNode) {
-      result.compute(
-          ((SourceNode) root).getRegionReplicaSet(),
-          (region, count) -> (count == null) ? 1 : count + 1);
+      TRegionReplicaSet regionReplicaSet = ((SourceNode) root).getRegionReplicaSet();
+      if (regionReplicaSet != DataPartition.NOT_ASSIGNED) {
+        result.compute(regionReplicaSet, (region, count) -> (count == null) ? 1 : count + 1);
+      }
     }
   }
 

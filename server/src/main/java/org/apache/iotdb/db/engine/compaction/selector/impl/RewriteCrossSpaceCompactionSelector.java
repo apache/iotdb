@@ -53,7 +53,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected long timePartition;
   protected TsFileManager tsFileManager;
 
-  private boolean hasPrintedLog = false;
+  private static boolean hasPrintedLog = false;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -109,21 +109,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    */
   private CrossCompactionTaskResource selectOneTaskResources(
       CrossSpaceCompactionCandidate candidate) throws MergeException {
-    long startTime = System.currentTimeMillis();
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
       CrossCompactionTaskResource taskResource = executeTaskResourceSelection(candidate);
-      LOGGER.info(
-          "selected one cross compaction task resource. is valid: {}, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "time consumption {}ms",
-          taskResource.isValid(),
-          taskResource.getSeqFiles().size(),
-          taskResource.getUnseqFiles().size(),
-          taskResource.getTotalMemoryCost(),
-          System.currentTimeMillis() - startTime);
+
       return taskResource;
     } catch (IOException e) {
       throw new MergeException(e);
@@ -238,6 +230,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
 
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
+    long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     // we record the variable `candidate` here is used for selecting more than one
     // CrossCompactionTaskResources in this method
@@ -245,20 +238,31 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
-      if (!taskResources.isValid() && !hasPrintedLog) {
-        LOGGER.info(
-            "{} [Compaction] Cannot select any files, because source files may be occupied by other compaction threads.",
-            logicalStorageGroupName + "-" + dataRegionId);
-        hasPrintedLog = true;
+      if (!taskResources.isValid()) {
+        if (!hasPrintedLog) {
+          LOGGER.info(
+              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
+              logicalStorageGroupName + "-" + dataRegionId,
+              sequenceFileList.size(),
+              unsequenceFileList.size(),
+              candidate.getSeqFiles().size(),
+              candidate.getUnseqFiles().size());
+          hasPrintedLog = true;
+        }
         return Collections.emptyList();
       }
-      hasPrintedLog = false;
-
       LOGGER.info(
-          "{} [Compaction] submit a task with {} sequence file and {} unseq files",
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {}, time consumption {}ms.",
           logicalStorageGroupName + "-" + dataRegionId,
+          sequenceFileList.size(),
+          unsequenceFileList.size(),
+          candidate.getSeqFiles().size(),
+          candidate.getUnseqFiles().size(),
           taskResources.getSeqFiles().size(),
-          taskResources.getUnseqFiles().size());
+          taskResources.getUnseqFiles().size(),
+          taskResources.getTotalMemoryCost(),
+          System.currentTimeMillis() - startTime);
+      hasPrintedLog = false;
       return Collections.singletonList(taskResources);
 
     } catch (MergeException e) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateMNodeGenerator;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -49,7 +50,7 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
     if (templateMap != null && parent.isUseTemplate()) {
       Template template = getActivatedSchemaTemplate(parent, templateMap);
       if (template != null) {
-        templateChildrenIterator = template.getDirectNodes().iterator();
+        templateChildrenIterator = TemplateMNodeGenerator.getChildren(template);
       }
     }
   }

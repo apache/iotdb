@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -47,9 +47,9 @@ public class ExceptionHandler {
     if (e instanceof QueryProcessException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(((QueryProcessException) e).getErrorCode());
-    } else if (e instanceof StorageGroupNotSetException) {
+    } else if (e instanceof DatabaseNotSetException) {
       responseResult.setMessage(e.getMessage());
-      responseResult.setCode(((StorageGroupNotSetException) e).getErrorCode());
+      responseResult.setCode(((DatabaseNotSetException) e).getErrorCode());
     } else if (e instanceof StorageEngineException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(((StorageEngineException) e).getErrorCode());

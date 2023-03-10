@@ -435,6 +435,25 @@ struct TGetDataNodeLocationsResp {
   2: required list<common.TDataNodeLocation> dataNodeLocationList
 }
 
+// Pipe Plugin
+struct TCreatePipePluginReq {
+  1: required string pluginName
+  2: required string className
+  4: required string jarName
+  5: required binary jarFile
+  6: required string jarMD5
+}
+
+struct TDropPipePluginReq {
+  1: required string pluginName
+}
+
+// Get PipePlugin table from config node
+struct TGetPipePluginTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allPipePluginInformation
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -1054,6 +1073,31 @@ service IConfigNodeRPCService {
      * Return the trigger jar list of the trigger name list
      */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
+
+  // ======================================================
+  // Pipe Plugin
+  // ======================================================
+
+  /**
+   * Create a pipe plugin on the specified DataNode
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was created successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus createPipePlugin(TCreatePipePluginReq req)
+
+  /**
+   * Remove a pipe plugin on the DataNodes
+   *
+   * @return SUCCESS_STATUS if the pipe plugin was removed successfully
+   *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+   */
+  common.TSStatus dropPipePlugin(TDropPipePluginReq req)
+
+  /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTable();
 
   // ======================================================
   // Maintenance Tools

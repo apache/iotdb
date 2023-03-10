@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AvgAccumulator implements Accumulator {
 
-  private TSDataType seriesDataType;
+  private final TSDataType seriesDataType;
   private long countValue;
   private double sumValue;
   private boolean initResult = false;
@@ -41,16 +41,20 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
-  public int addInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
+  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     switch (seriesDataType) {
       case INT32:
-        return addIntInput(column, curWindow, ignoringNull);
+        addIntInput(column, bitMap, lastIndex);
+        return;
       case INT64:
-        return addLongInput(column, curWindow, ignoringNull);
+        addLongInput(column, bitMap, lastIndex);
+        return;
       case FLOAT:
-        return addFloatInput(column, curWindow, ignoringNull);
+        addFloatInput(column, bitMap, lastIndex);
+        return;
       case DOUBLE:
-        return addDoubleInput(column, curWindow, ignoringNull);
+        addDoubleInput(column, bitMap, lastIndex);
+        return;
       case TEXT:
       case BOOLEAN:
       default:
@@ -146,87 +150,55 @@ public class AvgAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private int addIntInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
+      if (!column[1].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[2].getInt(i);
+        sumValue += column[1].getInt(i);
       }
     }
-    return curPositionCount;
   }
 
-  private int addLongInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
+      if (!column[1].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[2].getLong(i);
+        sumValue += column[1].getLong(i);
       }
     }
-    return curPositionCount;
   }
 
-  private int addFloatInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
+      if (!column[1].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[2].getFloat(i);
+        sumValue += column[1].getFloat(i);
       }
     }
-    return curPositionCount;
   }
 
-  private int addDoubleInput(Column[] column, IWindow curWindow, boolean ignoringNull) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (ignoringNull && column[0].isNull(i)) {
+  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
+      if (!column[1].isNull(i)) {
         initResult = true;
         countValue++;
-        sumValue += column[2].getDouble(i);
+        sumValue += column[1].getDouble(i);
       }
     }
-    return curPositionCount;
   }
 }

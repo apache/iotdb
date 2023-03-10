@@ -153,7 +153,10 @@ class Tablet(object):
             elif self.__data_types[i] == TSDataType.TEXT:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
-                        value_bytes = bytes(self.__values[j][i], "utf-8")
+                        if isinstance(self.__values[j][i], str):
+                            value_bytes = bytes(self.__values[j][i], "utf-8")
+                        else:
+                            value_bytes = self.__values[j][i]
                         format_str_list.append("i")
                         format_str_list.append(str(len(value_bytes)))
                         format_str_list.append("s")

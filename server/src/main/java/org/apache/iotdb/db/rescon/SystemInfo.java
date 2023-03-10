@@ -74,9 +74,9 @@ public class SystemInfo {
   public synchronized boolean reportStorageGroupStatus(
       DataRegionInfo dataRegionInfo, TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
+    long currentDataRegionMemCost = dataRegionInfo.getMemCost();
     long delta =
-        dataRegionInfo.getMemCost()
-            - reportedStorageGroupMemCostMap.getOrDefault(dataRegionInfo, 0L);
+        currentDataRegionMemCost - reportedStorageGroupMemCostMap.getOrDefault(dataRegionInfo, 0L);
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -84,8 +84,8 @@ public class SystemInfo {
           delta,
           totalStorageGroupMemCost);
     }
-    reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
-    dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
+    reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
+    dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
     if (totalStorageGroupMemCost < FLUSH_THERSHOLD) {
       return true;
     } else if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
@@ -127,15 +127,15 @@ public class SystemInfo {
    * @param dataRegionInfo database
    */
   public synchronized void resetStorageGroupStatus(DataRegionInfo dataRegionInfo) {
+    long currentDataRegionMemCost = dataRegionInfo.getMemCost();
     long delta = 0;
-
     if (reportedStorageGroupMemCostMap.containsKey(dataRegionInfo)) {
-      delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - dataRegionInfo.getMemCost();
+      delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - currentDataRegionMemCost;
       this.totalStorageGroupMemCost -= delta;
-      dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
+      dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
       // report after reset sg status, because slow write may not reach the report threshold
       dataRegionInfo.setNeedToReportToSystem(true);
-      reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
+      reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     }
 
     if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
