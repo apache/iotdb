@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.plugin;
+package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.plugin.PipePluginInformation;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
-import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -44,7 +44,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,11 +55,7 @@ import java.util.Map;
 
 public class PipePluginCoordinator {
 
-  private final PipeManager pipeManager;
-
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginCoordinator.class);
-
-  private final PipePluginInfo pipePluginInfo;
 
   private final long planSizeLimit =
       ConfigNodeDescriptor.getInstance()
@@ -68,108 +63,113 @@ public class PipePluginCoordinator {
               .getConfigNodeRatisConsensusLogAppenderBufferSize()
           - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
 
-  public PipePluginCoordinator(PipeManager pipeManager, PipePluginInfo pipePluginInfo) {
-    this.pipeManager = pipeManager;
+  private final ConfigManager configManager;
+  private final PipePluginInfo pipePluginInfo;
+
+  public PipePluginCoordinator(ConfigManager configManager, PipePluginInfo pipePluginInfo) {
+    this.configManager = configManager;
     this.pipePluginInfo = pipePluginInfo;
   }
 
   public TSStatus createPipePlugin(TCreatePipePluginReq req) {
-    pipePluginInfo.acquirePipePluginTableLock();
+    pipePluginInfo.acquirePipePluginInfoLock();
     try {
-      final String pluginName = req.getPluginName().toUpperCase(),
-          jarMD5 = req.getJarMD5(),
-          jarName = req.getJarName();
-      final byte[] jarFile = req.getJarFile();
-      pipePluginInfo.validate(pluginName, jarName, jarMD5);
-
-      final PipePluginInformation pipePluginInformation =
-          new PipePluginInformation(pluginName, req.getClassName(), jarName, jarMD5);
-      final boolean needToSaveJar = pipePluginInfo.needToSaveJar(jarName);
-
-      LOGGER.info(
-          "Start to create PipePlugin [{}] on Data Nodes, needToSaveJar[{}]",
-          pluginName,
-          needToSaveJar);
-
-      final TSStatus dataNodesStatus =
-          RpcUtils.squashResponseStatusList(
-              createPipePluginOnDataNodes(pipePluginInformation, needToSaveJar ? jarFile : null));
-      if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return dataNodesStatus;
-      }
-
-      CreatePipePluginPlan createPluginPlan =
-          new CreatePipePluginPlan(
-              pipePluginInformation, needToSaveJar ? new Binary(jarFile) : null);
-      if (needToSaveJar && createPluginPlan.getSerializedSize() > planSizeLimit) {
-        return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    "Fail to create PipePlugin[%s], the size of Jar is too large, you should increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
-                    pluginName));
-      }
-
-      LOGGER.info("Start to add PipePlugin [{}] to PipePluginTable", pluginName);
-
-      return pipeManager
-          .getConfigManager()
-          .getConsensusManager()
-          .write(createPluginPlan)
-          .getStatus();
+      return doCreatePipePlugin(req);
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     } finally {
-      pipePluginInfo.releasePipePluginTableLock();
+      pipePluginInfo.releasePipePluginInfoLock();
     }
   }
 
-  private List<TSStatus> createPipePluginOnDataNodes(
-      PipePluginInformation pipePluginInformation, byte[] jarFile) throws IOException {
+  private TSStatus doCreatePipePlugin(TCreatePipePluginReq req) throws IOException {
+    final String pluginName = req.getPluginName().toUpperCase();
+    final String jarName = req.getJarName();
+    final String jarMD5 = req.getJarMD5();
+
+    pipePluginInfo.validateBeforeCreatingPipePlugin(pluginName, jarName, jarMD5);
+    final boolean needToSaveJar =
+        pipePluginInfo.isJarNeededToBeSavedWhenCreatingPipePlugin(jarName);
+    LOGGER.info(
+        "Start to create PipePlugin [{}] on Data Nodes, needToSaveJar[{}]",
+        pluginName,
+        needToSaveJar);
+
+    final byte[] jarFile = req.getJarFile();
+    final PipePluginMeta pipePluginMeta =
+        new PipePluginMeta(pluginName, req.getClassName(), jarName, jarMD5);
+
+    // data nodes
+    final TSStatus dataNodesStatus =
+        RpcUtils.squashResponseStatusList(
+            createPipePluginOnDataNodes(pipePluginMeta, needToSaveJar ? jarFile : null));
+    if (dataNodesStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return dataNodesStatus;
+    }
+
+    // config nodes
+    final CreatePipePluginPlan createPluginPlan =
+        new CreatePipePluginPlan(pipePluginMeta, needToSaveJar ? new Binary(jarFile) : null);
+    if (needToSaveJar && createPluginPlan.getSerializedSize() > planSizeLimit) {
+      return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Fail to create PipePlugin[%s], the size of Jar is too large, you should increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                  pluginName));
+    }
+    LOGGER.info("Start to add PipePlugin [{}] to PipePluginTable", pluginName);
+    return configManager.getConsensusManager().write(createPluginPlan).getStatus();
+  }
+
+  private List<TSStatus> createPipePluginOnDataNodes(PipePluginMeta pipePluginMeta, byte[] jarFile)
+      throws IOException {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        pipeManager.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreatePipePluginInstanceReq req =
-        new TCreatePipePluginInstanceReq(
-            pipePluginInformation.serialize(), ByteBuffer.wrap(jarFile));
-    AsyncClientHandler<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
+        new TCreatePipePluginInstanceReq(pipePluginMeta.serialize(), ByteBuffer.wrap(jarFile));
+
+    final AsyncClientHandler<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_PIPE_PLUGIN, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
   public TSStatus dropPipePlugin(String pluginName) {
-    pluginName = pluginName.toUpperCase();
-    pipePluginInfo.acquirePipePluginTableLock();
+    pipePluginInfo.acquirePipePluginInfoLock();
     try {
-      pipePluginInfo.validate(pluginName);
-
-      TSStatus result = RpcUtils.squashResponseStatusList(dropPipePluginOnDataNodes(pluginName));
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return result;
-      }
-
-      return pipeManager
-          .getConfigManager()
-          .getConsensusManager()
-          .write(new DropPipePluginPlan(pluginName))
-          .getStatus();
+      return doDropPipePlugin(pluginName);
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     } finally {
-      pipePluginInfo.releasePipePluginTableLock();
+      pipePluginInfo.releasePipePluginInfoLock();
     }
+  }
+
+  private TSStatus doDropPipePlugin(String pluginName) {
+    pluginName = pluginName.toUpperCase();
+    pipePluginInfo.validateBeforeDroppingPipePlugin(pluginName);
+
+    TSStatus result = RpcUtils.squashResponseStatusList(dropPipePluginOnDataNodes(pluginName));
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return result;
+    }
+
+    return configManager
+        .getConsensusManager()
+        .write(new DropPipePluginPlan(pluginName))
+        .getStatus();
   }
 
   private List<TSStatus> dropPipePluginOnDataNodes(String pluginName) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        pipeManager.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TDropPipePluginInstanceReq req = new TDropPipePluginInstanceReq(pluginName, false);
 
-    AsyncClientHandler<TDropPipePluginInstanceReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TDropPipePluginInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.DROP_PIPE_PLUGIN, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
@@ -178,11 +178,7 @@ public class PipePluginCoordinator {
   public TGetPipePluginTableResp getPipePluginTable() {
     try {
       return ((PipePluginTableResp)
-              pipeManager
-                  .getConfigManager()
-                  .getConsensusManager()
-                  .read(new GetPipePluginTablePlan())
-                  .getDataset())
+              configManager.getConsensusManager().read(new GetPipePluginTablePlan()).getDataset())
           .convertToThriftResponse();
     } catch (IOException e) {
       LOGGER.error("Fail to get PipePluginTable", e);
@@ -196,8 +192,7 @@ public class PipePluginCoordinator {
   public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
     try {
       return ((JarResp)
-              pipeManager
-                  .getConfigManager()
+              configManager
                   .getConsensusManager()
                   .read(new GetPipePluginJarPlan(req.getJarNameList()))
                   .getDataset())
