@@ -99,6 +99,10 @@ public class FragmentInstanceExecution {
         context.getFailureInfoList());
   }
 
+  public long getStartTime() {
+    return context.getStartTime();
+  }
+
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
   }

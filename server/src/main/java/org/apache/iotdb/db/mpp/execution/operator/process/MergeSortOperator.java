@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -83,6 +84,10 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public TsBlock next() {
+    // start stopwatch
+    long startTime = System.nanoTime();
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
     // 1. fill consumed up TsBlock
     if (!prepareInput()) {
       return null;
@@ -129,6 +134,10 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       } else {
         mergeSortKey.rowIndex++;
         mergeSortHeap.push(mergeSortKey);
+      }
+      // break if time is out or tsBlockBuilder is full
+      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
+        break;
       }
     }
     return tsBlockBuilder.build();
