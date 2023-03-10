@@ -83,7 +83,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean isReadOnly() {
-    return CommonDescriptor.getInstance().getConfig().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly()
+        && !CommonDescriptor.getInstance().getConfig().isStopping();
   }
 
   @Override
