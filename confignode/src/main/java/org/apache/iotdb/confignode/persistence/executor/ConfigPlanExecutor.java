@@ -278,7 +278,7 @@ public class ConfigPlanExecutor {
       case ShowTrail:
         return modelInfo.showTrail((ShowTrailPlan) req);
       case GetPipePluginTable:
-        return pipeInfo.getPipePluginInfo().getPipePluginTable();
+        return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       default:
@@ -414,9 +414,7 @@ public class ConfigPlanExecutor {
       case DropModel:
         return modelInfo.dropModel((DropModelPlan) physicalPlan);
       case CreatePipePlugin:
-        return pipeInfo
-            .getPipePluginInfo()
-            .addPipePluginInTable((CreatePipePluginPlan) physicalPlan);
+        return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:
         return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
       default:
@@ -479,8 +477,7 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
+    snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {

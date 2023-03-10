@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -30,9 +32,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -66,8 +65,8 @@ public class ShowPipePluginsTask implements IConfigTask {
     for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(Binary.valueOf(pipePluginMeta.getPluginName()));
-      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getPluginType()));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getJarName()));
       builder.declarePosition();
     }
 

@@ -211,7 +211,7 @@ struct TFireTriggerResp {
 }
 
 struct TCreatePipePluginInstanceReq {
-  1: required binary pipePluginInformation
+  1: required binary pipePluginMeta
   2: required binary jarFile
 }
 

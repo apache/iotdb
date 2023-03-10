@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.PipePluginInformation;
+import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -30,22 +30,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class CreatePipePluginPlan extends ConfigPhysicalPlan {
-  private PipePluginInformation pipePluginInformation;
+  private PipePluginMeta pipePluginMeta;
 
   private Binary jarFile;
 
-  public CreatePipePluginPlan() {
+  public CreatePipePluginPlan(PipePluginMeta pipePluginMeta, Binary jarFile) {
     super(ConfigPhysicalPlanType.CreatePipePlugin);
-  }
-
-  public CreatePipePluginPlan(PipePluginInformation pipePluginInformation, Binary jarFile) {
-    super(ConfigPhysicalPlanType.CreatePipePlugin);
-    this.pipePluginInformation = pipePluginInformation;
+    this.pipePluginMeta = pipePluginMeta;
     this.jarFile = jarFile;
   }
 
-  public PipePluginInformation getPipePluginInformation() {
-    return pipePluginInformation;
+  public PipePluginMeta getPipePluginMeta() {
+    return pipePluginMeta;
   }
 
   public Binary getJarFile() {
@@ -56,7 +52,7 @@ public class CreatePipePluginPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    pipePluginInformation.serialize(stream);
+    pipePluginMeta.serialize(stream);
     if (jarFile == null) {
       ReadWriteIOUtils.write(true, stream);
     } else {
@@ -67,7 +63,7 @@ public class CreatePipePluginPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipePluginInformation = PipePluginInformation.deserialize(buffer);
+    pipePluginMeta = PipePluginMeta.deserialize(buffer);
     if (ReadWriteIOUtils.readBool(buffer)) {
       return;
     }
