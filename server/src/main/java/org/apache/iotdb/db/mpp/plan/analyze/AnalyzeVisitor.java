@@ -1313,11 +1313,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       return;
     }
-    if(!(keepExpression instanceof ConstantOperand)){
+    if (!(keepExpression instanceof ConstantOperand)) {
       throw new SemanticException(
-              String.format(
-                      "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
-                      keepExpression.getExpressionString()));
+          String.format(
+              "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+              keepExpression.getExpressionString()));
     }
   }
 
