@@ -243,53 +243,54 @@ It costs 0.340s
 展示所有 Region 的分布：
 ```
 IoTDB> show regions
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.013|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         3| 127.0.0.1|   6669|  Leader|2023-03-07T17:32:18.398|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:20.011|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:20.395|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:19.450|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.637|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 12
 It costs 0.165s
 ```
+其中，SeriesSlotNum 指的是 region 内 seriesSlot 的个数。同样地，TimeSlotNum 也指 region 内 timeSlot 的个数。
 
 展示 SchemaRegion 或 DataRegion 的分布：
 ```
 IoTDB> show data regions
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.013|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:20.011|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:20.395|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 6
 It costs 0.011s
 
 IoTDB> show schema regions
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         3| 127.0.0.1|   6669|  Leader|2023-03-07T17:32:18.398|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:19.450|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.637|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -297,64 +298,64 @@ It costs 0.012s
 展示指定数据库 <sg1,sg2,...> 对应的 Region 分布：
 ```
 IoTDB> show regions of database root.sg1
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+-- -----+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+-- -----+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.013|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         3| 127.0.0.1|   6669|  Leader|2023-03-07T17:32:18.398|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 6
 It costs 0.007s
 
 IoTDB> show regions of database root.sg1, root.sg2
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.013|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         3| 127.0.0.1|   6669|  Leader|2023-03-07T17:32:18.398|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:20.011|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:20.395|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:19.450|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.637|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 12
 It costs 0.009s
 
 IoTDB> show data regions of database root.sg1, root.sg2
-+--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|      Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       0|DataRegion|Running|root.sg1|          1|        1|         3| 127.0.0.1|   6669|Follower|
-|       2|DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-|       2|DataRegion|Running|root.sg2|          1|        1|         3| 127.0.0.1|   6669|Follower|
-+--------+----------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+----------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|      Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+----------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       0|DataRegion|Running|root.sg1|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.013|
+|       2|DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:20.011|
+|       2|DataRegion|Running|root.sg2|            1|          1|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:20.395|
++--------+----------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 6
 It costs 0.007s
 
 IoTDB> show schema regions of database root.sg1, root.sg2
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         3| 127.0.0.1|   6669|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         3| 127.0.0.1|   6669|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         3| 127.0.0.1|   6669|  Leader|2023-03-07T17:32:18.398|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:19.450|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         3| 127.0.0.1|   6669|Follower|2023-03-07T17:32:19.637|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 6
 It costs 0.009s
 ```
@@ -362,30 +363,30 @@ It costs 0.009s
 展示指定节点 <id1,id2,...> 对应的 Region 分布：
 ```
 IoTDB> show regions on nodeid 1
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 4
 It costs 0.165s
 
 IoTDB> show regions on nodeid 1, 2
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
-|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:18.245|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:19.011|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:19.232|
+|       3|SchemaRegion|Running|root.sg2|            1|          0|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:19.450|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 8
 It costs 0.165s
 ```
@@ -393,24 +394,24 @@ It costs 0.165s
 展示指定数据库 <sg1,sg2,...> 在指定节点 <id1,id2,...> 对应的 Region 分布：
 ```
 IoTDB> show regions of database root.sg1 on nodeid 1
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       1|SchemaRegion|Running|root.sg1|            1|          0|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.111|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 2
 It costs 0.165s
 
 IoTDB> show data regions of database root.sg1, root.sg2 on nodeid 1, 2 
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
-|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
-|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
-|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
-+--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|RegionId|        Type| Status|Database|SeriesSlotNum|TimeSlotNum|DataNodeId|RpcAddress|RpcPort|    Role|             CreateTime|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
+|       0|  DataRegion|Running|root.sg1|            1|          1|         1| 127.0.0.1|   6667|Follower|2023-03-07T17:32:18.520|
+|       0|  DataRegion|Running|root.sg1|            1|          1|         2| 127.0.0.1|   6668|  Leader|2023-03-07T17:32:18.749|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         1| 127.0.0.1|   6667|  Leader|2023-03-07T17:32:19.834|
+|       2|  DataRegion|Running|root.sg2|            1|          1|         2| 127.0.0.1|   6668|Follower|2023-03-07T17:32:19.011|
++--------+------------+-------+--------+-------------+-----------+----------+----------+-------+--------+-----------------------+
 Total line number = 4
 It costs 0.165s
 ```
@@ -435,8 +436,10 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 
 集群使用分区来管理元数据和数据，分区定义如下：
 
-- **元数据分区**：序列槽
-- **数据分区**：<序列槽，时间分区槽>
+- **元数据分区**：SeriesSlot
+- **数据分区**：<SeriesSlot，SeriesTimeSlot>
+
+在文档[Cluster-Concept](./Cluster-Concept.md)中可以查看详细信息。
 
 可以使用以下 SQL 来查询分区对应信息：
 
@@ -445,9 +448,15 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 展示一个数据分区（或一个序列槽下的所有数据分区）所在的 DataRegion:
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
   
-其中，”SERIESSLOTID=s0”可以被替换为”DEVICEID=xxx.xx.xx“. 这样的话，sql会自动计算对应该设备id的序列槽。
+有如下几点说明：
 
-同样的，"TIMESLOTID=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳对应的时间槽，也就是时间段包含该时间戳的时间槽。
+1. s0、t0均只能为数字。 
+   
+2. TimeSlotId 是 SeriesTimeSlotId 的简称。
+
+2. ”SERIESSLOTID=s0”可以被替换为”DEVICEID=xxx.xx.xx“。 这样的话，sql会自动计算对应该设备id的序列槽。
+
+3. 同样的，"TIMESLOTID=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳对应的时间槽，也就是时间段包含该时间戳的时间槽。
 
 
 示例:
