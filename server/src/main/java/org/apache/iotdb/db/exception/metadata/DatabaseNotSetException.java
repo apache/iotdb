@@ -22,22 +22,22 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StorageGroupNotSetException extends MetadataException {
+public class DatabaseNotSetException extends MetadataException {
 
   private static final long serialVersionUID = 3739300272099030533L;
 
-  public StorageGroupNotSetException(String path) {
+  public DatabaseNotSetException(String path) {
     super(String.format("Database is not set for current seriesPath: [%s]", path));
     this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
   }
 
-  public StorageGroupNotSetException(String path, boolean isUserException) {
+  public DatabaseNotSetException(String path, boolean isUserException) {
     super(String.format("Database is not set for current seriesPath: [%s]", path));
     this.isUserException = isUserException;
     this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
   }
 
-  public StorageGroupNotSetException(String path, String reason) {
+  public DatabaseNotSetException(String path, String reason) {
     super(
         String.format(
             "Database is not set for current seriesPath: [%s], because %s", path, reason));

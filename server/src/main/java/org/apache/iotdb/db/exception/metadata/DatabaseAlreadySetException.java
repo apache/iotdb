@@ -22,7 +22,7 @@ package org.apache.iotdb.db.exception.metadata;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StorageGroupAlreadySetException extends MetadataException {
+public class DatabaseAlreadySetException extends MetadataException {
 
   private static final long serialVersionUID = 9110669164701929779L;
 
@@ -30,13 +30,13 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   private final String storageGroupPath;
 
-  public StorageGroupAlreadySetException(String path) {
+  public DatabaseAlreadySetException(String path) {
     super(getMessage(path, false), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     storageGroupPath = path;
     hasChild = false;
   }
 
-  public StorageGroupAlreadySetException(String path, boolean hasChild) {
+  public DatabaseAlreadySetException(String path, boolean hasChild) {
     super(getMessage(path, hasChild), TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
     this.hasChild = hasChild;
     storageGroupPath = path;
