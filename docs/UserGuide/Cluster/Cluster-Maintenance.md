@@ -136,8 +136,19 @@ The DataNode statuses are defined as follows:
   - The cluster is still readable and writable if some DataNodes are Removing
 - **ReadOnly**: The remaining disk space of DataNode is lower than disk_warning_threshold(default is 5%), the DataNode is readable but un-writable and cannot synchronize data.
   - The cluster is still readable and writable if some DataNodes are ReadOnly
-  - Schema, data and Database can be deleted in ReadOnly status
-  - Schema and data cannot be written to the cluster when all DataNodes are ReadOnly, but new Databases can still be created
+  - The schema and data in a ReadOnly DataNode is readable
+  - The schema and data in a ReadOnly DataNode is deletable
+  - A ReadOnly DataNode is creatable for schema, but un-writable for data
+  - Data cannot be written to the cluster when all DataNodes are ReadOnly, but new Databases and schema is still creatable
+
+**For a DataNode**, the following table describes the impact of schema read, write, and deletion in different status:
+
+| DataNode status | readable | creatable | deletable |
+|-----------------|----------|-----------|-----------|
+| Running         | yes      | yes       | yes       |
+| Unknown         | no       | no        | no        |
+| Removing        | no       | no        | no        |
+| ReadOnly        | yes      | yes       | yes       |
 
 **For a DataNode**, the following table describes the impact of data read, write, and deletion in different status:
 

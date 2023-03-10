@@ -132,13 +132,24 @@ DataNode 的状态机如下图所示：
 
 - **Running**: DataNode 正常运行，可读可写
 - **Unknown**: DataNode 未正常上报心跳，ConfigNode 认为该 DataNode 不可读写
-  - 少数 DataNode Unknown 不影响集群读写
+  - 少数 Unknown DataNode 不影响集群读写
 - **Removing**: DataNode 正在移出集群，不可读写
-  - 少数 DataNode Removing 不影响集群读写 
+  - 少数 Removing DataNode 不影响集群读写 
 - **ReadOnly**: DataNode 磁盘剩余空间低于 disk_warning_threshold（默认 5%），DataNode 可读但不能写入，不能同步数据
-  - 少数 DataNode ReadOnly 不影响集群读写
-  - ReadOnly 状态下可以删除元数据和数据，可以删除 Database
-  - 所有 DataNode 处于 ReadOnly 状态时，集群不可写入元数据和数据，仍可以创建 Database
+  - 少数 ReadOnly DataNode 不影响集群读写
+  - ReadOnly DataNode 可以查询元数据和数据
+  - ReadOnly DataNode 可以删除元数据和数据
+  - ReadOnly DataNode 可以创建元数据，不能写入数据
+  - 所有 DataNode 处于 ReadOnly 状态时，集群不能写入数据，仍可以创建 Database 和元数据
+
+**对于一个 DataNode**，不同状态元数据查询、创建、删除的影响如下表所示：
+
+| DataNode 状态 | 可读  | 可创建 | 可删除 |
+|-------------|-----|-----|-----|
+| Running     | 是   | 是   | 是   |
+| Unknown     | 否   | 否   | 否   |
+| Removing    | 否   | 否   | 否   |
+| ReadOnly    | 是   | 是   | 是   |
 
 **对于一个 DataNode**，不同状态数据查询、写入、删除的影响如下表所示：
 
