@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 
 public class WhenThenExpression extends BinaryExpression {
 
-  protected WhenThenExpression(Expression leftExpression, Expression rightExpression) {
+  public WhenThenExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
   }
 

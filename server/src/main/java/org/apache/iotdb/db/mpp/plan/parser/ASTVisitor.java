@@ -53,10 +53,12 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
@@ -2331,7 +2333,50 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseConstantOperand(context.constant(0));
     }
 
+    if (context.caseWhenThenExpression() != null) {
+      return parseCaseWhenThenExpression(context.caseWhenThenExpression(), canUseFullPath); // TODO
+    }
+
     throw new UnsupportedOperationException();
+  }
+
+  private CaseWhenThenExpression parseCaseWhenThenExpression(
+      IoTDBSqlParser.CaseWhenThenExpressionContext context, boolean canUseFullPath) {
+    if (context.caseWhenThenExpression1() != null) {
+      return parseCaseWhenThenExpression1(context.caseWhenThenExpression1(), canUseFullPath);
+    }
+
+    if (context.caseWhenThenExpression2() != null) {
+      return parseCaseWhenThenExpression2(context.caseWhenThenExpression2(), canUseFullPath);
+    }
+
+    throw new UnsupportedOperationException();
+  }
+
+  private CaseWhenThenExpression parseCaseWhenThenExpression1(
+          IoTDBSqlParser.CaseWhenThenExpression1Context context, boolean canUseFullPath) {
+    List<WhenThenExpression> whenThenList = new ArrayList<>();
+    for (IoTDBSqlParser.WhenThenExpressionContext whenThenExpressionContext : context.whenThenExpression()) {
+      whenThenList.add(parseWhenThenExpression(whenThenExpressionContext, canUseFullPath));
+    }
+    Expression elseExpression = null;
+    if (context.elseExpression != null) {
+      elseExpression = parseExpression(context.elseExpression, canUseFullPath);
+    }
+    return new CaseWhenThenExpression(whenThenList, elseExpression);
+  }
+
+  private CaseWhenThenExpression parseCaseWhenThenExpression2(
+      IoTDBSqlParser.CaseWhenThenExpression2Context context, boolean canUseFullPath) {
+    return null;
+  }
+
+  private WhenThenExpression parseWhenThenExpression(
+          IoTDBSqlParser.WhenThenExpressionContext context, boolean canUseFullPath) {
+    return new WhenThenExpression(
+            parseExpression(context.whenExpression, canUseFullPath),
+            parseExpression(context.thenExpression, canUseFullPath)
+    );
   }
 
   private Expression parseFunctionExpression(

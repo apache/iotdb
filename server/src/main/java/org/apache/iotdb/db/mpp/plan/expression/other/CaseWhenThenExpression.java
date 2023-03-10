@@ -23,11 +23,13 @@ import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import javax.validation.constraints.Null;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,10 +42,15 @@ public class CaseWhenThenExpression extends Expression {
   protected List<WhenThenExpression> whenThenExpressions = new ArrayList<>();
   protected Expression elseExpression;
 
-  protected CaseWhenThenExpression(
-      List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
+  public CaseWhenThenExpression(
+          List<WhenThenExpression> whenThenExpressions, Expression elseExpression) {
     this.whenThenExpressions = whenThenExpressions;
-    this.elseExpression = elseExpression;
+    if (elseExpression != null) {
+      this.elseExpression = elseExpression;
+    }
+    else {
+      this.elseExpression = new NullOperand();
+    }
   }
 
   public CaseWhenThenExpression(ByteBuffer byteBuffer) {
