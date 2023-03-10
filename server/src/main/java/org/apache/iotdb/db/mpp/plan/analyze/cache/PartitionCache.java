@@ -96,6 +96,7 @@ public class PartitionCache {
 
   /** The lock of cache. */
   private final ReentrantReadWriteLock databaseCacheLock = new ReentrantReadWriteLock();
+
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
@@ -241,14 +242,12 @@ public class PartitionCache {
           // if failed, then try to fetch all databases from config node
           try (ConfigNodeClient client =
               configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-            TDatabaseSchemaResp storageGroupSchemaResp =
-                client.getMatchedDatabaseSchemas(ROOT_PATH);
-            TSStatus tsStatus = storageGroupSchemaResp.getStatus();
+            TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
+            TSStatus tsStatus = databaseSchemaResp.getStatus();
             if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              Set<String> storageGroupNames =
-                  storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
+              Set<String> databaseNames = databaseSchemaResp.getDatabaseSchemaMap().keySet();
               databaseCache.clear();
-              databaseCache.addAll(storageGroupNames);
+              databaseCache.addAll(databaseNames);
             } else {
               logger.error("Failed to fetch databases from config node");
               throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -286,9 +285,9 @@ public class PartitionCache {
               // try to create databases one by one until done or one database fail
               Set<String> successFullyCreatedDatabase = new HashSet<>();
               for (String databaseName : databaseNamesNeedCreated) {
-                TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
-                storageGroupSchema.setName(databaseName);
-                TSStatus tsStatus = client.setDatabase(storageGroupSchema);
+                TDatabaseSchema databaseSchema = new TDatabaseSchema();
+                databaseSchema.setName(databaseName);
+                TSStatus tsStatus = client.setDatabase(databaseSchema);
                 if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
                   successFullyCreatedDatabase.add(databaseName);
                 } else {
@@ -377,7 +376,7 @@ public class PartitionCache {
       regionReplicaSetLock.readLock().unlock();
     }
     if (result == null) {
-      // if miss then try to get regionReplicaSet from config node
+      // if cache miss then try to get regionReplicaSet from config node
       try {
         regionReplicaSetLock.writeLock().lock();
         // verify that there are not hit in cache
@@ -465,14 +464,11 @@ public class PartitionCache {
         String databaseName = entry.getKey();
         Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
             schemaPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
-        SchemaPartitionTable schemaPartitionTable =
-            schemaPartitionCache.getIfPresent(databaseName);
+        SchemaPartitionTable schemaPartitionTable = schemaPartitionCache.getIfPresent(databaseName);
         if (null == schemaPartitionTable) {
           // if database miss, then return cache miss.
           logger.debug(
-              "[{} Cache] miss when search database {}",
-              SCHEMA_PARTITION_CACHE_NAME,
-                  databaseName);
+              "[{} Cache] miss when search database {}", SCHEMA_PARTITION_CACHE_NAME, databaseName);
           CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -515,11 +511,11 @@ public class PartitionCache {
     try {
       for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
           schemaPartitionTable.entrySet()) {
-        String storageGroupName = entry1.getKey();
-        SchemaPartitionTable result = schemaPartitionCache.getIfPresent(storageGroupName);
+        String databaseName = entry1.getKey();
+        SchemaPartitionTable result = schemaPartitionCache.getIfPresent(databaseName);
         if (null == result) {
           result = new SchemaPartitionTable();
-          schemaPartitionCache.put(storageGroupName, result);
+          schemaPartitionCache.put(databaseName, result);
         }
         Map<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionSlotTConsensusGroupIdMap =
             result.getSchemaPartitionMap();
@@ -531,20 +527,20 @@ public class PartitionCache {
   }
 
   /**
-   * invalid schemaPartitionCache by database
+   * invalid schemaPartitionCache by database.
    *
-   * @param storageGroupName the databases that need to invalid
+   * @param databaseName the databases that need to invalid
    */
-  public void invalidSchemaPartitionCache(String storageGroupName) {
+  public void invalidSchemaPartitionCache(String databaseName) {
     schemaPartitionCacheLock.writeLock().lock();
     try {
-      schemaPartitionCache.invalidate(storageGroupName);
+      schemaPartitionCache.invalidate(databaseName);
     } finally {
       schemaPartitionCacheLock.writeLock().unlock();
     }
   }
 
-  /** invalid all schemaPartitionCache */
+  /** invalid all schemaPartitionCache. */
   public void invalidSchemaPartitionCache() {
     schemaPartitionCacheLock.writeLock().lock();
     try {
@@ -558,16 +554,16 @@ public class PartitionCache {
   // region data partition cache
 
   /**
-   * get dataPartition by query param map
+   * get dataPartition by query param map.
    *
-   * @param storageGroupToQueryParamsMap database to dataPartitionQueryParam map
-   * @return DataPartition of storageGroupToQueryParamsMap
+   * @param databaseToQueryParamsMap database to dataPartitionQueryParam map
+   * @return DataPartition of databaseToQueryParamsMap
    */
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> storageGroupToQueryParamsMap) {
+      Map<String, List<DataPartitionQueryParam>> databaseToQueryParamsMap) {
     dataPartitionCacheLock.readLock().lock();
     try {
-      if (storageGroupToQueryParamsMap.size() == 0) {
+      if (databaseToQueryParamsMap.size() == 0) {
         CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -575,10 +571,10 @@ public class PartitionCache {
           dataPartitionMap = new HashMap<>();
       // check cache for each database
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
-          storageGroupToQueryParamsMap.entrySet()) {
+          databaseToQueryParamsMap.entrySet()) {
         if (null == entry.getValue()
             || entry.getValue().isEmpty()
-            || !getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
+            || !getDatabaseDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -593,33 +589,33 @@ public class PartitionCache {
   }
 
   /**
-   * get dataPartition from database
+   * get dataPartition from database.
    *
    * @param dataPartitionMap result
-   * @param storageGroupName database that need to get
+   * @param databaseName database that need to get
    * @param dataPartitionQueryParams specific query params of data partition
    * @return whether hit
    */
-  private boolean getStorageGroupDataPartition(
+  private boolean getDatabaseDataPartition(
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap,
-      String storageGroupName,
+      String databaseName,
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(storageGroupName);
+    DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
     if (null == dataPartitionTable) {
       logger.debug(
-          "[{} Cache] miss when search database {}", DATA_PARTITION_CACHE_NAME, storageGroupName);
+          "[{} Cache] miss when search database {}", DATA_PARTITION_CACHE_NAME, databaseName);
       return false;
     }
-    Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap =
+    Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
         dataPartitionTable.getDataPartitionMap();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         seriesSlotToTimePartitionMap =
-            dataPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
+            dataPartitionMap.computeIfAbsent(databaseName, k -> new HashMap<>());
     // check cache for each device
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       if (!getDeviceDataPartition(
-          seriesSlotToTimePartitionMap, dataPartitionQueryParam, cachedStorageGroupPartitionMap)) {
+          seriesSlotToTimePartitionMap, dataPartitionQueryParam, cachedDatabasePartitionMap)) {
         return false;
       }
     }
@@ -627,18 +623,18 @@ public class PartitionCache {
   }
 
   /**
-   * get dataPartition from device
+   * get dataPartition from device.
    *
    * @param seriesSlotToTimePartitionMap result
    * @param dataPartitionQueryParam specific query param of data partition
-   * @param cachedStorageGroupPartitionMap all cached data partition map of related database
+   * @param cachedDatabasePartitionMap all cached data partition map of related database
    * @return whether hit
    */
   private boolean getDeviceDataPartition(
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           seriesSlotToTimePartitionMap,
       DataPartitionQueryParam dataPartitionQueryParam,
-      Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap) {
+      Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap) {
     TSeriesPartitionSlot seriesPartitionSlot;
     if (null != dataPartitionQueryParam.getDevicePath()) {
       seriesPartitionSlot =
@@ -647,7 +643,7 @@ public class PartitionCache {
       return false;
     }
     SeriesPartitionTable cachedSeriesPartitionTable =
-        cachedStorageGroupPartitionMap.get(seriesPartitionSlot);
+        cachedDatabasePartitionMap.get(seriesPartitionSlot);
     if (null == cachedSeriesPartitionTable) {
       logger.debug(
           "[{} Cache] miss when search device {}",
@@ -675,7 +671,7 @@ public class PartitionCache {
   }
 
   /**
-   * get dataPartition from time slot
+   * get dataPartition from time slot.
    *
    * @param timePartitionSlotListMap result
    * @param timePartitionSlot the specific time partition slot of data partition
@@ -718,9 +714,9 @@ public class PartitionCache {
       for (Map.Entry<
               String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           entry1 : dataPartitionTable.entrySet()) {
-        String storageGroupName = entry1.getKey();
-        if (null != storageGroupName) {
-          DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroupName);
+        String databaseName = entry1.getKey();
+        if (null != databaseName) {
+          DataPartitionTable result = dataPartitionCache.getIfPresent(databaseName);
           boolean needToUpdateCache = (null == result);
           if (needToUpdateCache) {
             result = new DataPartitionTable();
@@ -748,7 +744,7 @@ public class PartitionCache {
             }
           }
           if (needToUpdateCache) {
-            dataPartitionCache.put(storageGroupName, result);
+            dataPartitionCache.put(databaseName, result);
           }
         }
       }
@@ -758,14 +754,14 @@ public class PartitionCache {
   }
 
   /**
-   * invalid dataPartitionCache by storageGroup
+   * invalid dataPartitionCache by database
    *
-   * @param storageGroup the databases that need to invalid
+   * @param database the databases that need to invalid
    */
-  public void invalidDataPartitionCache(String storageGroup) {
+  public void invalidDataPartitionCache(String database) {
     dataPartitionCacheLock.writeLock().lock();
     try {
-      dataPartitionCache.invalidate(storageGroup);
+      dataPartitionCache.invalidate(database);
     } finally {
       dataPartitionCacheLock.writeLock().unlock();
     }
