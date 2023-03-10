@@ -68,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByCountParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByConditionComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByCountComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
@@ -1213,6 +1215,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new GroupBySessionParameter(
               ((GroupBySessionComponent) groupByComponent).getTimeInterval());
       analysis.setGroupByParameter(groupByParameter);
+    } else if (windowType == WindowType.COUNT_WINDOW) {
+      GroupByParameter groupByParameter =
+          new GroupByCountParameter(((GroupByCountComponent) groupByComponent).getCountNumber());
+      analysis.setGroupByParameter(groupByParameter);
+      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
     } else {
       throw new SemanticException("Unsupported window type");
     }
@@ -1264,6 +1271,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       long interval = ((GroupBySessionComponent) groupByComponent).getTimeInterval();
       GroupByParameter groupByParameter = new GroupBySessionParameter(interval);
       analysis.setGroupByParameter(groupByParameter);
+    } else if (windowType == WindowType.COUNT_WINDOW) {
+      GroupByParameter groupByParameter =
+          new GroupByCountParameter(((GroupByCountComponent) groupByComponent).getCountNumber());
+      analyzeExpression(analysis, groupByExpression);
+      analysis.setGroupByExpression(groupByExpression);
+      analysis.setGroupByParameter(groupByParameter);
     } else {
       throw new SemanticException("Unsupported window type");
     }
@@ -1287,8 +1300,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // check keep Expression
-    if (keepExpression instanceof ConstantOperand) {
-    } else if (keepExpression instanceof CompareBinaryExpression) {
+    if (keepExpression instanceof CompareBinaryExpression) {
       Expression leftExpression = ((CompareBinaryExpression) keepExpression).getLeftExpression();
       Expression rightExpression = ((CompareBinaryExpression) keepExpression).getRightExpression();
       if (!(leftExpression instanceof TimeSeriesOperand
@@ -1299,11 +1311,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
                 keepExpression.getExpressionString()));
       }
-    } else {
+      return;
+    }
+    if(!(keepExpression instanceof ConstantOperand)){
       throw new SemanticException(
-          String.format(
-              "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
-              keepExpression.getExpressionString()));
+              String.format(
+                      "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+                      keepExpression.getExpressionString()));
     }
   }
 
