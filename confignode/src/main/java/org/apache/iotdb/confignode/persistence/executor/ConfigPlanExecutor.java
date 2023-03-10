@@ -477,7 +477,8 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList.parallelStream()
+    snapshotProcessorList
+        .parallelStream()
         .forEach(
             x -> {
               try {
