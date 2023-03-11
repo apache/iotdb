@@ -117,8 +117,7 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
-            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
+            outputs = model(batch_x)
             outputs = outputs[:, -self.trial_configs["pred_len"]:]
             batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
             loss = criterion(outputs, batch_y)
@@ -132,7 +131,6 @@ class ForecastingTrainingTrial(BasicTrial):
 
         train_loss = np.average(train_loss)
         print('Epoch: {0} cost time: {1} | Train Loss: {2:.7f}'.format(epoch + 1, time.time() - epoch_time, train_loss))
-
         return train_loss
 
     def validate(self, model, criterion, dataloader, epoch):
@@ -147,7 +145,7 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
-            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            outputs = model(batch_x)
 
             outputs = outputs[:, -self.trial_configs["pred_len"]:]
             batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
@@ -159,7 +157,6 @@ class ForecastingTrainingTrial(BasicTrial):
         return val_loss
 
     def start(self):
-        print('train start')
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.trial_configs["learning_rate"])
         criterion = torch.nn.MSELoss()
 

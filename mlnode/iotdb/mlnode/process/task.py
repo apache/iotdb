@@ -36,10 +36,11 @@ class TrainingTrialObjective:
     Optuna will try to minimize the objective.
     """
 
-    def __init__(self, trial_configs, model_configs, data_configs):
+    def __init__(self, trial_configs, model_configs, data_configs, task_trial_map):
         self.trial_configs = trial_configs
         self.model_configs = model_configs
         self.data_configs = data_configs
+        self.task_trial_map = task_trial_map
 
     def __call__(self, trial: optuna.Trial):
         # TODO: decide which parameters to tune
@@ -50,6 +51,8 @@ class TrainingTrialObjective:
         model, model_cfg = create_forecast_model(**self.model_configs)
         dataset, dataset_cfg = create_forecasting_dataset(**self.data_configs)
 
+        pid = os.getpid()
+        self.task_trial_map[self.trial_configs['model_id']][trial._trial_id] = pid
         trial = ForecastingTrainingTrial(self.trial_configs, model, self.model_configs, dataset)
         loss = trial.start()
         return loss
@@ -75,24 +78,29 @@ class ForecastingTrainingTask(BasicTask):
         super(ForecastingTrainingTask, self).__init__(task_configs, model_configs, data_configs, task_trial_map)
 
     def __call__(self):
-        tuning = self.task_configs["tuning"]
-        if tuning:
-            study = optuna.create_study(direction='minimize')
-            study.optimize(TrainingTrialObjective(
-                self.task_configs,
-                self.model_configs,
-                self.data_configs
-            ), n_trials=20)
-        else:
-            print('call the task')
-            model, model_cfg = create_forecast_model(**self.model_configs)
-            print('model created')
-            datasource = DataSource(**self.data_configs)
-            print('datasource created')
-            dataset, dataset_cfg = create_forecasting_dataset(
-                data_source=datasource,
-                **self.data_configs)
-            print('data created')
-            self.task_configs['trial_id'] = 0
-            trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
-            loss = trial.start()
+        try:
+            tuning = self.task_configs["tuning"]
+            if tuning:
+                study = optuna.create_study(direction='minimize')
+                study.optimize(TrainingTrialObjective(
+                    self.task_configs,
+                    self.model_configs,
+                    self.data_configs
+                ), n_trials=20)
+            else:
+                print('call the task')
+                model, model_cfg = create_forecast_model(**self.model_configs)
+                print('model created')
+                datasource = DataSource(**self.data_configs)
+                print('datasource created')
+                dataset, dataset_cfg = create_forecasting_dataset(
+                    data_source=datasource,
+                    **self.data_configs)
+                print('data created')
+                self.task_configs['trial_id'] = 0 # TODO: set a default trial id
+                trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
+                pid = os.getpid()
+                self.task_trial_map[self.task_configs['model_id']][0] = pid
+                loss = trial.start()
+        except Exception as e:
+            print(e)

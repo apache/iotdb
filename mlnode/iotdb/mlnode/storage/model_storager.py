@@ -30,7 +30,7 @@ from iotdb.mlnode.constant import (MLNODE_MODEL_STORAGE_DIR,
 class ModelStorager(object):
     def __init__(self, root_path='ml_models', cache_size=30):
         current_path = os.getcwd()
-        self.root_path = os.path.join(current_path, 'iotdb', 'mlnode', root_path)
+        self.root_path = os.path.join(current_path, root_path)
         if not os.path.exists(self.root_path):
             os.mkdir(self.root_path)
         self._loaded_model_cache = lrucache(cache_size)
