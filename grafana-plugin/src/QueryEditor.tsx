@@ -89,6 +89,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     shouldAdd: true,
   };
 
+
   onSelectValueChange = (exp: string[]) => {
     const { onChange, query } = this.props;
     this.setState({ expression: exp });
@@ -133,11 +134,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query, groupBy: g });
   };
 
-  onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query } = this.props;
-    onChange({ ...query });
-  };
-
+  
   onSelectTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
     onChange({ ...query });
@@ -175,6 +172,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     }
   };
 
+ 
   componentDidMount() {
     if (this.props.query.sqlType) {
       this.setState({ isDropDownList: this.props.query.isDropDownList, sqlType: this.props.query.sqlType });
@@ -194,7 +192,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    var { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, sqlType, groupBy } =
+    let { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, sqlType, groupBy } =
       query;
     return (
       <>
@@ -202,7 +200,7 @@ export class QueryEditor extends PureComponent<Props, State> {
           <>
             <div className="gf-form">
               <Segment
-                onChange={({ value: value = '' }) => {
+                onChange={({ value: value = selectType[0] }) => {
                   const { onChange, query } = this.props;
                   if (value === selectType[0]) {
                     this.props.query.sqlType = selectType[0];
