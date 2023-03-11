@@ -411,6 +411,37 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | schema_region | name="schema_region_mem_usage", region="SchemaRegion[{regionId}]"  | AutoGauge | 每个 SchemaRegion 分别的内存使用量 |
 | schema_region | name="schema_region_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 分别的时间序列数 |
 
+#### 4.2.17 写入指标统计
+
+| Metric                    | Tags                                                                  | Type      | Description                              |
+|---------------------------|:----------------------------------------------------------------------|-----------|------------------------------------------|
+| wal_node_num              | name="wal_nodes_num"                                                  | AutoGauge | WALNode数量                                |
+| wal_cost                  | stage="make_checkpoint"  type="<checkpoint_type>"                     | Timer     | 创建各种类型的Checkpoint耗时                      |
+| wal_cost                  | type="serialize_one_wal_info_entry"                                   | Timer     | 对每个WALInfoEntry serialize耗时              |
+| wal_cost                  | stage="sync_wal_buffer" type="<force_flag>"                           | Timer     | WAL flush SyncBuffer耗时                   |
+| wal_buffer                | name="used_ratio"                                                     | Histogram | WALBuffer利用率                             |
+| wal_buffer                | name="entries_count"                                                  | Histogram | WALBuffer条目数量                            |
+| wal_cost                  | stage="serialize_wal_entry" type="serialize_wal_entry_total"          | Timer     | WALBuffer serialize任务耗时                  |
+| wal_node_info             | name="effective_info_ratio" type="<wal_node_id>"                      | Histogram | WALNode有效信息占比                            |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_snapshot" type="<wal_node_id>"  | Histogram | WAL触发oldest MemTable snapshot时MemTable大小 |
+| wal_node_info             | name="oldest_mem_table_ram_when_cause_flush" type="<wal_node_id>"     | Histogram | WAL触发oldest MemTable flush时MemTable大小    |
+| flush_sub_task_cost       | type="sort_task"                                                      | Timer     | 排序阶段中的每个series排序耗时                       |
+| flush_sub_task_cost       | type="encoding_task"                                                  | Timer     | 编码阶段中处理每个encodingTask耗时                  |
+| flush_sub_task_cost       | type="io_task"                                                        | Timer     | IO阶段中处理每个ioTask耗时                        |
+| flush_cost                | stage="write_plan_indices"                                            | Timer     | writePlanIndices耗时                       |
+| flush_cost                | stage="sort"                                                          | Timer     | 排序阶段总耗时                                  |
+| flush_cost                | stage="encoding"                                                      | Timer     | 编码阶段总耗时                                  |
+| flush_cost                | stage="io"                                                            | Timer     | IO阶段总耗时                                  |
+| pending_flush_task        | type="pending_task_num"                                               | AutoGauge | 阻塞的Task数                                 |
+| pending_flush_task        | type="pending_sub_task_num"                                           | AutoGauge | 阻塞的SubTask数                              |
+| flushing_mem_table_status | name="mem_table_size" region="DataRegion[<data_region_id>]"           | Histogram | Flush时MemTable大小                         |
+| flushing_mem_table_status | name="total_point_num" region="DataRegion[<data_region_id>]"          | Histogram | Flush时MemTable中point数量                   |
+| flushing_mem_table_status | name="series_num" region="DataRegion[<data_region_id>]"               | Histogram | Flush时MemTable中series数量                  |
+| flushing_mem_table_status | name="avg_series_points_num" region="DataRegion[<data_region_id>]"    | Histogram | Flush时该memTable内平均每个Memchunk中的point数量    |
+| flushing_mem_table_status | name="tsfile_compression_ratio" region="DataRegion[<data_region_id>]" | Histogram | Flush MemTable时对应的TsFile的压缩率             |
+| flushing_mem_table_status | name="flush_tsfile_size" region="DataRegion[<data_region_id>]"        | Histogram | Flush的MemTable对应的TsFile大小                |
+| data_region_mem_cost      | name="data_region_mem_cost"                                           | AutoGauge | DataRegion内存占用                           |
+
 ### 4.3. Normal 级别监控指标
 
 #### 4.3.1. 集群
