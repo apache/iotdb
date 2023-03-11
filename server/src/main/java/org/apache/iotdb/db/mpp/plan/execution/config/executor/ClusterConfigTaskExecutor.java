@@ -818,8 +818,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // convert PipePluginTable and buildTsBlock
-      ShowPipePluginsTask.buildTsBlock(
-          getPipePluginTableResp.getAllPipePluginInformation(), future);
+      ShowPipePluginsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginMeta(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
