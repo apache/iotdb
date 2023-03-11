@@ -21,6 +21,14 @@
 
 # Apache IoTDB 0.13.4
 
+## New Feature
+
+* [IOTDB-4675] Support load mlog.bin
+* [IOTDB-4767] Support get all connection info in session api
+* [IOTDB-4967] Fix slidingTimeWindow stops when encounter an empty window
+* [IOTDB-5133] Export schema tool
+* [IOTDB-5173] Add the statistics of flush point
+
 ## Improvements
 
 * [IOTDB-4230] Modify the start script for flexible startup: add iotdb.in.sh, add pid file
@@ -31,6 +39,7 @@
 * [IOTDB-5127] Separate ISession as a module
 * [IOTDB-5128] Perfect the usage of `-p pid`, `-v version` feature for start-server.sh
 * [IOTDB-5232] Add Schema Memory Usage metric monitor
+* [IOTDB-5346] Fix log error in MemtableFlushTask when recovering
 
 
 ## Bug Fix
