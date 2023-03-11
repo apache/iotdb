@@ -16,35 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ISyncClient;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 
-public class MockSyncClient implements ISyncClient {
+import com.google.common.util.concurrent.ListenableFuture;
 
-  private final List<PipeData> pipeDataList;
+public class StopPipeTask implements IConfigTask {
 
-  public MockSyncClient() {
-    this.pipeDataList = new ArrayList<>();
-  }
+  private final StopPipeStatement stopPipeStatement;
 
-  public List<PipeData> getPipeDataList() {
-    return pipeDataList;
-  }
-
-  @Override
-  public void handshake() {}
-
-  @Override
-  public boolean send(PipeData pipeData) {
-    pipeDataList.add(pipeData);
-    return true;
+  public StopPipeTask(StopPipeStatement stopPipeStatement) {
+    this.stopPipeStatement = stopPipeStatement;
   }
 
   @Override
-  public void close() {}
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.stopPipe(stopPipeStatement);
+  }
 }

@@ -37,6 +37,6 @@ public class ShowDatabaseTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showStorageGroup(showDatabaseStatement);
+    return configTaskExecutor.showDatabase(showDatabaseStatement);
   }
 }

@@ -2191,7 +2191,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (PartialPath sgPath : sgSet) {
       DatabaseSchemaStatement statement =
           new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setStorageGroupPath(sgPath);
+      statement.setDatabasePath(sgPath);
       executeSetStorageGroupStatement(statement);
     }
   }

@@ -46,7 +46,7 @@ public class CountDatabaseTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.countStorageGroup(countDatabaseStatement);
+    return configTaskExecutor.countDatabase(countDatabaseStatement);
   }
 
   public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {

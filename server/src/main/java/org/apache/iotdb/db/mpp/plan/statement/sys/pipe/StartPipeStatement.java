@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
+package org.apache.iotdb.db.mpp.plan.statement.sys.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -29,34 +29,20 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class SetTTLStatement extends Statement implements IConfigStatement {
-  protected PartialPath databasePath;
-  protected long ttl;
+public class StartPipeStatement extends Statement implements IConfigStatement {
 
-  public SetTTLStatement() {
-    super();
-    statementType = StatementType.TTL;
+  private String pipeName;
+
+  public StartPipeStatement(StatementType startPipeStatement) {
+    this.statementType = startPipeStatement;
   }
 
-  public PartialPath getDatabasePath() {
-    return databasePath;
+  public String getPipeName() {
+    return pipeName;
   }
 
-  public long getTTL() {
-    return ttl;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetTTL(this, context);
-  }
-
-  public void setDatabasePath(PartialPath databasePath) {
-    this.databasePath = databasePath;
-  }
-
-  public void setTTL(long ttl) {
-    this.ttl = ttl;
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
   }
 
   @Override
@@ -66,6 +52,11 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return databasePath != null ? Collections.singletonList(databasePath) : Collections.emptyList();
+    return Collections.emptyList();
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitStartPipe(this, context);
   }
 }

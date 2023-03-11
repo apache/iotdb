@@ -585,13 +585,13 @@ struct TRecordPipeMessageReq{
 }
 
 struct TShowPipeInfo {
-  1: required i64 createTime
-  2: required string pipeName
-  3: required string role
-  4: required string remote
-  5: required string status
-  6: required string attributes
-  7: required string message
+  1: required string id
+  2: required i64 creationTime
+  3: required string state
+  4: required string pipeCollector
+  5: required string pipeProcessor
+  6: required string pipeConnector
+  7: required string exceptionMessage
 }
 
 struct TGetAllPipeInfoResp{
@@ -601,9 +601,9 @@ struct TGetAllPipeInfoResp{
 
 struct TCreatePipeReq {
     1: required string pipeName
-    2: required string pipeSinkName
-    3: required i64 startTime
-    4: optional map<string, string> attributes
+    2: optional map<string, string> collectorAttributes
+    3: optional map<string, string> processorAttributes
+    4: required map<string, string> connectorAttributes
 }
 
 struct TPipeSinkInfo {
@@ -627,6 +627,7 @@ struct TGetPipeSinkResp {
 
 struct TShowPipeReq {
   1: optional string pipeName
+  2: optional bool whereClause
 }
 
 struct TShowPipeResp {

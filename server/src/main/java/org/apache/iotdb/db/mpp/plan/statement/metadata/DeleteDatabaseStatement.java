@@ -33,13 +33,13 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeleteStorageGroupStatement extends Statement implements IConfigStatement {
+public class DeleteDatabaseStatement extends Statement implements IConfigStatement {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteStorageGroupStatement.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDatabaseStatement.class);
 
   private List<String> prefixPathList;
 
-  public DeleteStorageGroupStatement() {
+  public DeleteDatabaseStatement() {
     super();
     statementType = StatementType.DELETE_STORAGE_GROUP;
   }

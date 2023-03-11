@@ -52,7 +52,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -446,7 +446,7 @@ public class StatementGenerator {
     // construct create database statement
     DatabaseSchemaStatement statement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    statement.setStorageGroupPath(parseStorageGroupRawString(storageGroup));
+    statement.setDatabasePath(parseStorageGroupRawString(storageGroup));
     PerformanceOverviewMetricsManager.getInstance().recordParseCost(System.nanoTime() - startTime);
     return statement;
   }
@@ -530,10 +530,10 @@ public class StatementGenerator {
     return statement;
   }
 
-  public static DeleteStorageGroupStatement createStatement(List<String> storageGroups)
+  public static DeleteDatabaseStatement createStatement(List<String> storageGroups)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    DeleteStorageGroupStatement statement = new DeleteStorageGroupStatement();
+    DeleteDatabaseStatement statement = new DeleteDatabaseStatement();
     for (String path : storageGroups) {
       parseStorageGroupRawString(path);
     }

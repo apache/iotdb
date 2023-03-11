@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config.sys.sync;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -27,7 +27,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,15 +63,15 @@ public class ShowPipeTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(tPipeInfo.getId()));
       builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreateTime())));
-      builder.getColumnBuilder(1).writeBinary(new Binary(tPipeInfo.getPipeName()));
-      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getRole()));
-      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getRemote()));
-      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getStatus()));
-      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getAttributes()));
-      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getMessage()));
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime())));
+      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getState()));
+      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeCollector()));
+      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getPipeProcessor()));
+      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getPipeConnector()));
+      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getExceptionMessage()));
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
