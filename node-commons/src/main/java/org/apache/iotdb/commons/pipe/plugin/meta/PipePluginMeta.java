@@ -89,4 +89,42 @@ public class PipePluginMeta {
     return deserialize(
         ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipePluginMeta that = (PipePluginMeta) obj;
+    return pluginName.equals(that.pluginName)
+        && className.equals(that.className)
+        && jarName.equals(that.jarName)
+        && jarMD5.equals(that.jarMD5);
+  }
+
+  @Override
+  public int hashCode() {
+    return pluginName.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return "PipePluginMeta{"
+        + "pluginName='"
+        + pluginName
+        + '\''
+        + ", className='"
+        + className
+        + '\''
+        + ", jarName='"
+        + jarName
+        + '\''
+        + ", jarMD5='"
+        + jarMD5
+        + '\''
+        + '}';
+  }
 }
