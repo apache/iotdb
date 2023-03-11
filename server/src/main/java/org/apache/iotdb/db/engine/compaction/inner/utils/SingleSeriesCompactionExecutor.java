@@ -166,15 +166,18 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void processLargeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
-    if (pointCountInChunkWriter != 0L) {
+    if (cachedChunk != null && canMergeChunk(cachedChunk, chunk)) {
+      // if there is a cached chunk, merge it with current chunk, then flush it
+      mergeWithCachedChunk(chunk, chunkMetadata);
+      flushCachedChunkIfLargeEnough();
+    } else if (cachedChunk != null || pointCountInChunkWriter != 0L) {
+      if (cachedChunk != null) {
+        writeCachedChunkIntoChunkWriter();
+      }
       // if there are points remaining in ChunkWriter
       // deserialize current chunk and write to ChunkWriter, then flush the ChunkWriter
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
-    } else if (cachedChunk != null) {
-      // if there is a cached chunk, merge it with current chunk, then flush it
-      mergeWithCachedChunk(chunk, chunkMetadata);
-      flushCachedChunkIfLargeEnough();
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
@@ -182,17 +185,27 @@ public class SingleSeriesCompactionExecutor {
     }
   }
 
+  private boolean canMergeChunk(Chunk chunk1, Chunk chunk2) {
+    ChunkHeader header1 = chunk1.getHeader();
+    ChunkHeader header2 = chunk2.getHeader();
+    return (header1.getCompressionType() == header2.getCompressionType())
+        && (header1.getEncodingType() == header2.getEncodingType());
+  }
+
   private void processMiddleChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     // the chunk is not too large either too small
-    if (pointCountInChunkWriter != 0L) {
+    if (cachedChunk != null && canMergeChunk(cachedChunk, chunk)) {
+      // if there is a cached chunk, merge it with current chunk
+      mergeWithCachedChunk(chunk, chunkMetadata);
+      flushCachedChunkIfLargeEnough();
+    } else if (cachedChunk != null || pointCountInChunkWriter != 0L) {
+      if (cachedChunk != null) {
+        writeCachedChunkIntoChunkWriter();
+      }
       // if there are points remaining in ChunkWriter
       // deserialize current chunk and write to ChunkWriter
       writeChunkIntoChunkWriter(chunk);
       flushChunkWriterIfLargeEnough();
-    } else if (cachedChunk != null) {
-      // if there is a cached chunk, merge it with current chunk
-      mergeWithCachedChunk(chunk, chunkMetadata);
-      flushCachedChunkIfLargeEnough();
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // cached current chunk
