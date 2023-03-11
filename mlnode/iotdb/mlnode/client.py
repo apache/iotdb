@@ -19,7 +19,7 @@
 
 import time
 from iotdb.mlnode.log import logger
-from thrift.protocol import TCompactProtocol
+from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq, TForecastReq
@@ -49,7 +49,7 @@ class MLNodeClient(object):
         self.__client = IMLNodeRPCService.Client(protocol)
 
     def create_training_task(self,
-                             modelId: int = -1,
+                             modelId: str = 'test',
                              isAuto: bool = False,
                              modelConfigs: dict = {},
                              queryExpressions: list = [],
@@ -77,7 +77,7 @@ class DataNodeClient(object):
         self.__host = host
         self.__port = port
 
-        transport = TTransport.TBufferedTransport(
+        transport = TTransport.TFramedTransport(
             TSocket.TSocket(self.__host, self.__port)
         )
         if not transport.isOpen():
@@ -86,8 +86,26 @@ class DataNodeClient(object):
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
 
-        protocol = TCompactProtocol.TCompactProtocol(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IDataNodeRPCService.Client(protocol)
+
+    def fetch_timeseries(self,
+                         sessionId=0,
+                         statementId=0,
+                         queryExpressions: list = [],
+                         queryFilter: str = '',
+                         fetchSize=20480,
+                         timeout=1000):
+        req = TFetchTimeseriesReq(
+            sessionId=sessionId,
+            statementId=statementId,
+            queryExpressions=queryExpressions,
+            queryFilter=queryFilter,
+            fetchSize=fetchSize,
+            timeout=timeout
+        )
+        res = self.__client.fetchTimeseries(req)
+        return res
 
     def record_model_metrics(self, modelID, trialID, metrics, values):
         t = time.time()
@@ -116,21 +134,9 @@ class ConfigNodeClient(object):
         return self.__client.updateModelInfo(req)
 
 
+dataClient = DataNodeClient(host='127.0.0.1', port=10730)
 config_test = {
-    'model_id': 0,
-    'source_type': 'file',
-    'filename': 'dataset/exchange_rate/exchange_rate.csv',
-    # 'ip': '127.0.0.1',
-    # 'port': '6667',
-    # 'username': 'root',
-    # 'password': 'root',
-    # 'sql': {
-    #     'train': 'SELECT * FROM root.eg.etth1 WHERE Time<=2017-08-01',
-    #     'val': 'SELECT * FROM root.eg.etth1 WHERE Time>2017-08-01 and Time<2018-01-01',
-    #     'test': 'SELECT * FROM root.eg.etth1 WHERE Time>=2018-01-01',
-    # },
-    'query_expressions': [],
-    'query_filter': '',
+    'source_type': 'thrift',
     'dataset_type': 'window',
     'time_embed': 'h',
     'input_len': 96,
@@ -148,15 +154,26 @@ config_test = {
     'batch_size': 32,
     'num_workers': 0,
     'epochs': 10,
-    'metric_name': ['MSE', 'MAE'],
+    'metric_name': ['MSE', 'MAE']
 }
 
 if __name__ == "__main__":
-    # test rpc service
+    pass
+    # test datanode rpc service
+    # client = DataNodeClient(host='127.0.0.1', port=10730)
+    # print(dataClient.fetch_timeseries(
+    #     queryExpressions=['root.eg.etth1.s0', 'root.eg.etth1.s1'],
+    #     queryFilter='-1,1501516800000'
+    # ))
+
+    # test mlnode rpc service
     client = MLNodeClient(host="127.0.0.1", port=10810)
 
     print(client.create_training_task(
-        modelId=1,
+        modelId='test',
+        isAuto=False,
         modelConfigs=config_test,
+        queryExpressions=['root.eg.etth1.**'], # 7 variables
+        queryFilter='-1,1501516800000',
     ))
-    # client.delete_model(model_path='')
+    # print(client.delete_model(model_path='mid_debug/tid_1.pt'))

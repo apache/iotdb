@@ -22,15 +22,10 @@ import torch
 import time
 import numpy as np
 import pandas as pd
-
-from iotdb.mlnode.debug import debug_data_config, debug_model_config
 from iotdb.mlnode.datats.utils.timefeatures import data_transform, timestamp_transform
 from iotdb.mlnode.storage.model_storager import modelStorager
 from torch.utils.data import DataLoader
-from iotdb.mlnode.datats.offline.data_source import DataSource
-from iotdb.mlnode.datats import data_factory
-from iotdb.mlnode.algorithm import model_factory
-from iotdb.mlnode.debug import *
+
 
 def parse_trial_config(**kwargs):
     return {
@@ -117,7 +112,7 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
-            outputs = model(batch_x)
+            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
             outputs = outputs[:, -self.trial_configs["pred_len"]:]
             batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
             loss = criterion(outputs, batch_y)
@@ -145,7 +140,7 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.trial_configs["pred_len"]:, :]).float()
-            outputs = model(batch_x)
+            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
             outputs = outputs[:, -self.trial_configs["pred_len"]:]
             batch_y = batch_y[:, -self.trial_configs["pred_len"]:]
@@ -153,6 +148,7 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss.append(loss.item())
 
         val_loss = np.average(val_loss)
+        # TODO: record_metrics based on trial_configs['metric_name']
         print('Epoch: {0} Vali Loss: {1:.7f}'.format(epoch + 1, val_loss))
         return val_loss
 
@@ -166,7 +162,8 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelStorager.save_model(self.model, self.model_configs, self.model_id, 1)
+                # TODO: generate trial id
+                modelStorager.save_model(self.model, self.model_configs, model_id=self.model_id, trial_id=self.trial_id)
         return best_loss
 
 
@@ -233,12 +230,3 @@ class ForecastingInferenceTrial(BasicTrial):
         output = self.inference(self.model, data, data_stamp, out_timestamp)
         print("inference finished.")
         return output, out_timestamp_raw
-
-
-if __name__ == '__main__':
-    configs = {
-        "model_id": 1,
-        "trial_id": 1
-    }
-    trial = ForecastingTrainingTrial(configs, debug_model_config(), debug_data_config())
-    trial.start()

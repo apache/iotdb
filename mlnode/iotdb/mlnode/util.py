@@ -63,25 +63,25 @@ def parse_training_request(req: TCreateTrainingTaskReq):  # TODO: extend for oth
     Returns:
         data_conf: configurations related to data
         model_conf: configurations related to model
-        trial_conf: configurations related to training
+        task_conf: configurations related to ml task
     """
     config = req.modelConfigs
-    config.update(model_id=req.modelId)
+    config.update(model_id=str(req.modelId))
+    config.update(tuning=str(req.isAuto))
     config.update(query_expressions=str(req.queryExpressions))
-    config.update(queue_filter=req.queryFilter)
-    # config = {k: eval(v) for k, v in config.items()}
+    config.update(query_filter=str(req.queryFilter))
 
     yaml_path = os.path.join(MLNODE_REQUEST_TEMPLATE, 'createTrainingTask.yml')
     with open(yaml_path, 'r') as f:  # TODO: add exception check
         default_confs = yaml.safe_load_all(f)
-        data_conf, model_conf, trial_conf = tuple(default_confs)
+        data_conf, model_conf, task_conf = tuple(default_confs)
 
     for k, v in config.items():
         if k in data_conf.keys():
             data_conf[k] = v if type(data_conf[k]) is str else eval(v)
         if k in model_conf.keys():
             model_conf[k] = v if type(model_conf[k]) is str else eval(v)
-        if k in trial_conf.keys():
-            trial_conf[k] = v if type(trial_conf[k]) is str else eval(v)
+        if k in task_conf.keys():
+            task_conf[k] = v if type(task_conf[k]) is str else eval(v)
 
-    return data_conf, model_conf, trial_conf
+    return data_conf, model_conf, task_conf
