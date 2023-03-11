@@ -122,7 +122,7 @@ public class AuthorityChecker {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordAuthCost(System.nanoTime() - startTime);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

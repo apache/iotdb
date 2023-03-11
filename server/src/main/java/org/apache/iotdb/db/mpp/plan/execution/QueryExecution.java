@@ -211,7 +211,7 @@ public class QueryExecution implements IQueryExecution {
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
-    PerformanceOverviewMetricsManager.getInstance().recordPlanCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordPlanCost(System.nanoTime() - startTime);
     schedule();
   }
 
@@ -281,8 +281,7 @@ public class QueryExecution implements IQueryExecution {
     try {
       result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance()
-          .recordAnalyzeCost(System.nanoTime() - startTime);
+      PerformanceOverviewMetricsManager.recordAnalyzeCost(System.nanoTime() - startTime);
     }
     return result;
   }
@@ -310,8 +309,7 @@ public class QueryExecution implements IQueryExecution {
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
     this.scheduler.start();
-    PerformanceOverviewMetricsManager.getInstance()
-        .recordScheduleCost(System.nanoTime() - startTime);
+    PerformanceOverviewMetricsManager.recordScheduleCost(System.nanoTime() - startTime);
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
