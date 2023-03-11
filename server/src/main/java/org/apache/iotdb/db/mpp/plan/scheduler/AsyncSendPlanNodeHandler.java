@@ -65,9 +65,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
     resp.setStatus(
         RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg));
     instanceId2RespMap.put(instanceId, resp);
-    synchronized (this) {
-      if (pendingNumber.decrementAndGet() == 0) {
-        PerformanceOverviewMetricsManager.recordScheduleRemoteCost(System.nanoTime() - sendTime);
+    if (pendingNumber.decrementAndGet() == 0) {
+      PerformanceOverviewMetricsManager.recordScheduleRemoteCost(System.nanoTime() - sendTime);
+      synchronized (pendingNumber) {
         pendingNumber.notifyAll();
       }
     }
