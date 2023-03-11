@@ -58,8 +58,8 @@ class Manager(object):
                 self.task_trial_map
             ), args=()
         )
-        self.training_pool.close()
-        self.training_pool.join()
+        # self.training_pool.close()
+        # self.training_pool.join()
 
     # def create_inference_task_pool(self, configs):
     #     """
