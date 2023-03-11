@@ -271,16 +271,19 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.2.2. RatisConsensus
 
-| Metric                | Tags                        | Type  | Description                                     |
-| --------------------- | --------------------------- | ----- | ----------------------------------------------- |
-| ratis_consensus_write | stage="checkWriteCondition" | Timer | The time cost in checking write condition stage |
-| ratis_consensus_write | stage="totalConsensusWrite" | Timer | The total write time cost                       |
-| ratis_consensus_write | stage="writeLocally"        | Timer | The time cost of writing locally stage          |
-| ratis_consensus_write | stage="writeRemotely"       | Timer | The time cost of writing remotely stage         |
-| ratis_consensus_write | stage="writeStateMachine"   | Timer | The  time cost of writing state machine stage   |
-| ratis_consensus_read  | stage="checkReadCondition"  | Timer | The time cost of checking read condition stage  |
-| ratis_consensus_read  | stage="submitReadRequest"   | Timer | The time cost of submitting read request stage  |
-| ratis_consensus_read  | stage="totalConsensusRead"  | Timer | The total read time cost                        |
+| Metric                | Tags                          | Type  | Description                                                  |
+| --------------------- | ----------------------------- | ----- | ------------------------------------------------------------ |
+| ratis_consensus_write | stage="writeLocally"          | Timer | The time cost of writing locally stage                       |
+| ratis_consensus_write | stage="writeRemotely"         | Timer | The time cost of writing remotely stage                      |
+| ratis_consensus_write | stage="writeStateMachine"     | Timer | The  time cost of writing state machine stage                |
+| ratis_log_worker      | Append Log                    | Timer | Total time taken to append a raft log entry                  |
+| ratis_server          | Send Append Entries           | Timer | Time taken for followers to append log entries               |
+| ratis_log_worker      | queueingDelay                 | Timer | Time taken for a Raft log operation to get into the queue after being requested, waiting queue to be non-full |
+| ratis_log_worker      | enqueuedTime                  | Timer | Time spent by a Raft log operation in the queue              |
+| ratis_log_worker      | writelogExecutionTime         | Timer | Time taken for a Raft log write operation to complete execution |
+| ratis_log_worker      | flushTime                     | Timer | Time taken to flush log                                      |
+| ratis_log_worker      | closedSegmentsSizeInBytes     | Gauge | Size of closed raft log segments in bytes                    |
+| ratis_server          | numPendingRequestMegaByteSize | Gauge | Total size of pending client requests in queue               |
 
 #### 4.2.3. IoTConsensus
 
