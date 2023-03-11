@@ -17,16 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.common;
+package org.apache.iotdb.subscription.api.strategy.disorder;
 
-import java.util.List;
-import java.util.concurrent.Executor;
+import org.apache.iotdb.subscription.api.strategy.SubscriptionStrategy;
 
-public interface SubscriptionListener {
+public abstract class DisorderHandlingStrategy implements SubscriptionStrategy {
 
-  void receiveMessages(List<ConsumerDataSet> consumerDataSets);
+  protected final long watermark;
 
-  Executor getExecutor();
+  protected DisorderHandlingStrategy(long watermark) {
+    this.watermark = watermark;
+  }
 
-  void stop();
+  public long getWatermark() {
+    return watermark;
+  }
 }

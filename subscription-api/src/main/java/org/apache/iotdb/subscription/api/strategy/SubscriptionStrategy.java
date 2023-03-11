@@ -21,6 +21,7 @@ package org.apache.iotdb.subscription.api.strategy;
 
 import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
 
+/** Subscription strategy interface. */
 public interface SubscriptionStrategy {
 
   /** @throws SubscriptionStrategyNotValidException if invalid strategy is set */

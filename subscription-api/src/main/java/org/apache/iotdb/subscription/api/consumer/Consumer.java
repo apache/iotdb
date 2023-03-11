@@ -25,47 +25,32 @@ import java.util.List;
 
 public interface Consumer extends AutoCloseable {
 
-  /**
-   * open Subscription
-   *
-   * @throws SubscriptionException
-   */
+  /** Open the subscription. */
   void openSubscription() throws SubscriptionException;
 
-  /**
-   * close Subscription
-   *
-   * @throws SubscriptionException
-   */
+  /** Close the subscription. */
   void closeSubscription() throws SubscriptionException;
 
   /**
-   * show consumerGroup
+   * Check if the subscription is closed.
    *
-   * @return consumer group name
-   * @throws SubscriptionException
+   * @return true if the subscription is closed, false otherwise
+   */
+  boolean isClosed();
+
+  /**
+   * Get the consumer group of the subscription.
+   *
+   * @return the consumer group
+   * @throws SubscriptionException if the consumer group cannot be retrieved
    */
   String consumerGroup() throws SubscriptionException;
 
   /**
-   * list of all topics
+   * Get the topics of the subscription.
    *
-   * @return all topics
-   * @throws SubscriptionException
+   * @return the topics
+   * @throws SubscriptionException if the topics cannot be retrieved
    */
   List<String> subscription() throws SubscriptionException;
-
-  /**
-   * Consumer isCloseable
-   *
-   * @return isCloseable
-   */
-  boolean isCloseable();
-
-  /**
-   * clear all message
-   *
-   * @throws SubscriptionException
-   */
-  void clear() throws SubscriptionException;
 }

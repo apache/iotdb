@@ -17,21 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.consumer;
+package org.apache.iotdb.subscription.api;
 
-import org.apache.iotdb.subscription.api.common.ConsumerDataSet;
+import org.apache.iotdb.subscription.api.consumer.pull.PullConsumer;
+import org.apache.iotdb.subscription.api.consumer.push.PushConsumer;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
-import java.time.Duration;
-import java.util.List;
+public interface SubscriptionFactory {
 
-public interface PullConsumer extends Consumer {
   /**
-   * get next message for subscribe, like: consumer.poll(Duration.ofMillis(100))
+   * Create a push consumer.
    *
-   * @param timeout
-   * @return next message
-   * @throws SubscriptionException
+   * @param subscriptionConfiguration subscription configuration
+   * @return push consumer
+   * @throws SubscriptionException if the subscription configuration is not valid
    */
-  List<ConsumerDataSet> poll(Duration timeout) throws SubscriptionException;
+  PushConsumer createPushConsumer(SubscriptionConfiguration subscriptionConfiguration)
+      throws SubscriptionException;
+
+  /**
+   * Create a pull consumer.
+   *
+   * @param subscriptionConfiguration subscription configuration
+   * @return pull consumer
+   * @throws SubscriptionException if the subscription configuration is not valid
+   */
+  PullConsumer createPullConsumer(SubscriptionConfiguration subscriptionConfiguration)
+      throws SubscriptionException;
 }

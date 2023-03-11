@@ -17,23 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.common;
+package org.apache.iotdb.subscription.api.strategy.disorder;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
-import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
 
-import java.util.List;
+public class IntolerableStrategy extends DisorderHandlingStrategy {
 
-public class ConsumerDataSet extends DataSetWithTimeGenerator {
-  public ConsumerDataSet(
-      List<Path> paths,
-      List<Boolean> cached,
-      List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator,
-      List<FileSeriesReaderByTimestamp> readers) {
-    super(paths, cached, dataTypes, timeGenerator, readers);
+  protected IntolerableStrategy() {
+    super(0);
   }
+
+  @Override
+  public void check() throws SubscriptionStrategyNotValidException {}
 }

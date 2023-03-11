@@ -17,8 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.strategy.disorderHandling;
+package org.apache.iotdb.subscription.api.dataset;
 
-import org.apache.iotdb.subscription.api.strategy.SubscriptionStrategy;
-
-public interface DisorderHandlingStrategy extends SubscriptionStrategy {}
+public interface SubscriptionDataSet {}

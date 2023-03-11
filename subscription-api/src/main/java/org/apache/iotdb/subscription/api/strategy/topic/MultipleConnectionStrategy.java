@@ -17,35 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.strategy.topicsStrategy;
+package org.apache.iotdb.subscription.api.strategy.topic;
 
 import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.apache.commons.lang3.StringUtils;
 
-public class SingleTopicStrategy implements TopicsStrategy {
-  private final String topic;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-  public SingleTopicStrategy(String topic) {
-    this.topic = topic;
+public class MultipleConnectionStrategy implements TopicsStrategy {
+
+  private final List<String> topics;
+
+  public MultipleConnectionStrategy(List<String> topics) {
+    this.topics = topics;
   }
 
-  public String getTopic() {
-    return topic;
+  public MultipleConnectionStrategy(String... topics) {
+    this.topics = new ArrayList<>();
+    this.topics.addAll(Arrays.asList(topics));
+  }
+
+  public List<String> getTopics() {
+    return topics;
   }
 
   @Override
   public void check() throws SubscriptionStrategyNotValidException {
-    if (StringUtils.isAllBlank(topic)) {
-      throw new SubscriptionStrategyNotValidException("topic is not set!");
+    if (topics == null || topics.isEmpty()) {
+      throw new SubscriptionStrategyNotValidException("topics are not set!");
     }
-    try {
-      PathNodesGenerator.checkPath(topic);
-    } catch (ParseCancellationException ex) {
-      throw new SubscriptionStrategyNotValidException(
-          String.format("%s is not a legal path, topic is set to error value", topic), ex);
-    }
+    topics.forEach(
+        topic -> {
+          try {
+            PathNodesGenerator.checkPath(topic);
+          } catch (ParseCancellationException e) {
+            throw new SubscriptionStrategyNotValidException(
+                String.format("%s is not a legal path pattern!", topic), e);
+          }
+        });
   }
 }

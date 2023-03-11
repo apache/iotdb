@@ -17,35 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.strategy.topicsStrategy;
+package org.apache.iotdb.subscription.api.strategy.topic;
 
 import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.List;
+public class SingleTopicStrategy implements TopicsStrategy {
 
-public class MutipileConnectionStrategy implements TopicsStrategy {
-  private final List<String> topics;
+  private final String topic;
 
-  public MutipileConnectionStrategy(List<String> topics) {
-    this.topics = topics;
+  public SingleTopicStrategy(String topic) {
+    this.topic = topic;
+  }
+
+  public String getTopic() {
+    return topic;
   }
 
   @Override
   public void check() throws SubscriptionStrategyNotValidException {
-    if (topics == null || topics.isEmpty()) {
-      throw new SubscriptionStrategyNotValidException("topics is not set!");
+    if (StringUtils.isAllBlank(topic)) {
+      throw new SubscriptionStrategyNotValidException("topic is not set!");
     }
-    topics.forEach(
-        topic -> {
-          try {
-            PathNodesGenerator.checkPath(topic);
-          } catch (ParseCancellationException ex) {
-            throw new SubscriptionStrategyNotValidException(
-                String.format("%s is not a legal path, topic is set to error value", topic), ex);
-          }
-        });
+    try {
+      PathNodesGenerator.checkPath(topic);
+    } catch (ParseCancellationException e) {
+      throw new SubscriptionStrategyNotValidException(
+          String.format("%s is not a legal path pattern", topic), e);
+    }
   }
 }

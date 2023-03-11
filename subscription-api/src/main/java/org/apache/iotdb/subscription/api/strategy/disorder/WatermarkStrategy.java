@@ -17,11 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.common;
+package org.apache.iotdb.subscription.api.strategy.disorder;
 
-import org.apache.iotdb.subscription.api.exception.SubscriptionException;
+import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
 
-public interface ReceiveErrorListener {
+public class WatermarkStrategy extends DisorderHandlingStrategy {
 
-  void failed(SubscriptionException failure);
+  public WatermarkStrategy(long watermark) {
+    super(watermark);
+  }
+
+  @Override
+  public void check() throws SubscriptionStrategyNotValidException {
+    if (watermark < 0) {
+      throw new SubscriptionStrategyNotValidException("watermark should be a non-negative number!");
+    }
+  }
 }

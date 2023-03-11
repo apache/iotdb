@@ -17,17 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.strategy.disorderHandling;
+package org.apache.iotdb.subscription.api.strategy.topic;
 
-import org.apache.iotdb.subscription.api.exception.SubscriptionStrategyNotValidException;
+import org.apache.iotdb.subscription.api.strategy.SubscriptionStrategy;
 
-public class IntolerableStrategy implements DisorderHandlingStrategy {
-  private final int watermark = 0;
-
-  public int getWatermark() {
-    return watermark;
-  }
-
-  @Override
-  public void check() throws SubscriptionStrategyNotValidException {}
-}
+public interface TopicsStrategy extends SubscriptionStrategy {}

@@ -17,31 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.factory;
+package org.apache.iotdb.subscription.api.consumer.push;
 
-import org.apache.iotdb.subscription.api.config.SubscriptionConfiguration;
-import org.apache.iotdb.subscription.api.consumer.PullConsumer;
-import org.apache.iotdb.subscription.api.consumer.PushConsumer;
+import org.apache.iotdb.subscription.api.dataset.SubscriptionDataSet;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
-public interface SubscriptionFactory {
-  /**
-   * create new PushConsumer with SubscriptionConfiguration
-   *
-   * @param subscriptionConfiguration
-   * @return
-   * @throws SubscriptionException
-   */
-  PushConsumer createPushConsumer(SubscriptionConfiguration subscriptionConfiguration)
-      throws SubscriptionException;
+import java.util.List;
+
+@FunctionalInterface
+public interface DataArrivalListener {
 
   /**
-   * create new PullConsumer with SubscriptionConfiguration
+   * Called when data arrives in the subscription.
    *
-   * @param subscriptionConfiguration
-   * @return
-   * @throws SubscriptionException
+   * @param subscriptionDataSets the data
+   * @throws SubscriptionException if the data cannot be handled
    */
-  PullConsumer createPullConsumer(SubscriptionConfiguration subscriptionConfiguration)
-      throws SubscriptionException;
+  void onDataArrival(List<SubscriptionDataSet> subscriptionDataSets) throws SubscriptionException;
 }

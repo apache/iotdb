@@ -17,40 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.api.consumer;
+package org.apache.iotdb.subscription.api.consumer.push;
 
-import org.apache.iotdb.subscription.api.common.ReceiveErrorListener;
-import org.apache.iotdb.subscription.api.common.SubscriptionListener;
 import org.apache.iotdb.subscription.api.exception.SubscriptionException;
 
-public interface PushConsumer extends Consumer {
+@FunctionalInterface
+public interface ExceptionListener {
 
   /**
-   * set subscribe listener
+   * Called when an exception occurs in the subscription.
    *
-   * @param listener
-   * @return this
-   * @throws SubscriptionException
+   * @param subscriptionException the exception
+   * @throws SubscriptionException if the exception cannot be handled
    */
-  PushConsumer subscribe(SubscriptionListener listener) throws SubscriptionException;
-
-  /** resume current PushConsumer */
-  void resumeConsume();
-
-  /** pause current PushConsumer */
-  void pauseConsume();
-
-  /**
-   * show pushConsumer status
-   *
-   * @return
-   */
-  boolean isConsumePaused();
-
-  /**
-   * inject error listener
-   *
-   * @param listener
-   */
-  void errorListener(ReceiveErrorListener listener);
+  void onException(SubscriptionException subscriptionException) throws SubscriptionException;
 }
