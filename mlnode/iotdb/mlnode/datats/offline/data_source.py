@@ -18,7 +18,8 @@
 
 
 import pandas as pd
-
+from iotdb.mlnode import serde
+from iotdb.mlnode.client import dataClient
 
 class DataSource(object):
     """
@@ -34,26 +35,28 @@ class DataSource(object):
         get_timestamp: returns self.timestamp, the aligned timestamp value
     """
 
-    def __init__(self, source_type='file', filename=None, session=None, sql=None, **kwargs):
+    def __init__(self, source_type='file', filename=None, session=None, sql=None, query_expressions=None, query_filter=None, **kwargs):
         self.source_type = source_type
         self.data = None
         self.timestamp = None
+
+        # TODO: add exception
         if self.source_type == 'file':
-            self._read_file_data__(filename)
+            self._read_file_data(filename)
         elif self.source_type == 'sql':
-            self._read_sql_data__(session, sql)
+            self._read_sql_data(session, sql)
         elif self.source_type == 'thrift':
-            raise NotImplementedError('Unknown data source type (%s)' % type)
+            self._read_thrift_data(query_expressions, query_filter)
         else:
             raise NotImplementedError('Unknown data source type (%s)' % type)
 
-    def _read_file_data__(self, filename):
+    def _read_file_data(self, filename):
         raw_data = pd.read_csv(filename)
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
         self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values)
 
-    def _read_sql_data__(self, session, sql):
+    def _read_sql_data(self, session, sql):
         result = session.execute_query_statement(sql)
         assert result, "Failed to fetch data from database (%s)" % sql
         raw_data = result.todf()
@@ -62,8 +65,20 @@ class DataSource(object):
         self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True).tz_convert(
             'Asia/Shanghai')  # for iotdb
 
-    def _read_thrift_data__(self):  # TODO
-        pass
+    def _read_thrift_data(self, query_expressions, query_filter):  # TODO: fetch until all
+        res = dataClient.fetch_timeseries(
+            queryExpressions=query_expressions,
+            queryFilter=query_filter,
+        )
+        raw_data = serde.convert_to_df(res.columnNameList,
+                                   res.columnTypeList,
+                                   res.columnNameIndexMap,
+                                   res.tsDataset)
+        cols_data = raw_data.columns[1:]
+        self.data = raw_data[cols_data].values
+        #TODO: check the timestamp
+        self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True).tz_convert(
+            'Asia/Shanghai')  # for iotdb
 
     def get_data(self):
         return self.data

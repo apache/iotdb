@@ -87,6 +87,15 @@ class ModelStorager(object):
             shutil.rmtree(folder_path)
         return not os.path.exists(folder_path)
 
+    def delete_by_path(self, model_path): # TODO: for test only
+        """
+        Return: True if successfully deleted
+        """
+        file_path = os.path.join(self.root_path, model_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return not os.path.exists(file_path)
+
     def send_model(self):  # TODO: inference on db in future
         pass
 

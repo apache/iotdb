@@ -27,11 +27,12 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 from iotdb.mlnode.manager import Manager
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import parse_training_request
-from iotdb.mlnode.debug import *
+from iotdb.mlnode.storage.model_storager import modelStorager
 
 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
+    FAIL_STATUS = 400
 
     def get_status_code(self) -> int:
         return self.value
@@ -47,17 +48,18 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         self.taskManager = Manager(10)
 
-    def deleteModel(self, req: TDeleteModelReq):  # TODO
-        return get_status(TSStatusCode.SUCCESS_STATUS, "")
+    def deleteModel(self, req: TDeleteModelReq):
+        model_path = req.modelPath
+        if modelStorager.delete_by_path(model_path):
+            return get_status(TSStatusCode.SUCCESS_STATUS, "Successfully delete")
+        else:
+            return get_status(TSStatusCode.FAIL_STATUS, "Fail to delete")
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        # TODO: parse_request
-        data_conf, model_conf, trial_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
-        print(data_conf, model_conf, trial_conf)
-        # config = debug_model_config(), debug_data_config(), debug_trial_config()
-        # self.taskManager.submit_single_training_task(config) # TODO, check param and decide the response
-
-        return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")  # TODO: other status
+        data_conf, model_conf, task_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
+        # print(data_conf, model_conf, task_conf)
+        self.taskManager.submit_training_task(data_conf, model_conf, task_conf) # TODO, check param and decide the response
+        return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")
 
     # def forecast(self, req: TForecastReq):
     #     status = get_status(TSStatusCode.SUCCESS_STATUS, "")

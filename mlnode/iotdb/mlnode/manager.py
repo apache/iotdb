@@ -18,17 +18,11 @@
 
 
 import sys
-import os
-import time
 import signal
-import optuna
 import psutil
 import multiprocessing as mp
 from subprocess import call
-
-
 from iotdb.mlnode.process.task import ForecastingTrainingTask
-from debug import *
 
 # def _create_inference_task(configs, task_map, task_id):
 #     trial = ForecastingInferenceTrial(configs, debug_inference_data())
@@ -47,7 +41,7 @@ class Manager(object):
         # signal.signal(signal.SIGCHLD, signal.SIG_IGN)  # leave to the os to clean up zombie processes
         self.training_pool = mp.Pool(pool_num)
 
-    def submit_training_task(self, task_configs, model_configs, data_configs):
+    def submit_training_task(self, data_configs, model_configs, task_configs):
         model_id = task_configs['model_id']
         self.task_trial_map[model_id] = self.resource_manager.dict()
         self.training_pool.apply_async(
@@ -95,8 +89,3 @@ class Manager(object):
 
 
 # TaskManager = Manager(10)
-
-if __name__ == '__main__':
-    manager = Manager(10)
-    manager.submit_training_task(debug_trial_config(), debug_model_config(), debug_data_config())
-

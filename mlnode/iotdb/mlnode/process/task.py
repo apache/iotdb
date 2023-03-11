@@ -83,7 +83,7 @@ class ForecastingTrainingTask(BasicTask):
             if tuning:
                 study = optuna.create_study(direction='minimize')
                 study.optimize(TrainingTrialObjective(
-                    self.task_configs,
+                    self.task_configs, #TODO: How to generate diff trial_id by optuna
                     self.model_configs,
                     self.data_configs
                 ), n_trials=20)
@@ -98,10 +98,11 @@ class ForecastingTrainingTask(BasicTask):
                     data_source=datasource,
                     **self.data_configs)
                 print('data created')
+                assert dataset.get_variable_num() == model_cfg['input_vars']
                 self.task_configs['trial_id'] = 0 # TODO: set a default trial id
                 trial = ForecastingTrainingTrial(self.task_configs, model, self.model_configs, dataset)
                 pid = os.getpid()
                 self.task_trial_map[self.task_configs['model_id']][0] = pid
                 loss = trial.start()
         except Exception as e:
-            print(e)
+            print(e)  # can not see exception output
