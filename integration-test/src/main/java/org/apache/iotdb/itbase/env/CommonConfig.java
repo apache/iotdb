@@ -110,4 +110,6 @@ public interface CommonConfig {
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
+
+  CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 }

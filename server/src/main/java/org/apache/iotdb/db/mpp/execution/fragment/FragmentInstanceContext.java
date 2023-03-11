@@ -55,7 +55,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   private IDataRegionForQuery dataRegion;
   private Filter timeFilter;
-  List<PartialPath> sourcePaths;
+  private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
   /** closed tsfile used in this fragment instance */
@@ -354,7 +354,7 @@ public class FragmentInstanceContext extends QueryContext {
    * All file paths used by this fragment instance must be cleared and thus the usage reference must
    * be decreased.
    */
-  protected void releaseResource() {
+  protected synchronized void releaseResource() {
     for (TsFileResource tsFile : closedFilePaths) {
       FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
     }
@@ -363,5 +363,9 @@ public class FragmentInstanceContext extends QueryContext {
       FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
     }
     unClosedFilePaths = null;
+    dataRegion = null;
+    timeFilter = null;
+    sourcePaths = null;
+    sharedQueryDataSource = null;
   }
 }

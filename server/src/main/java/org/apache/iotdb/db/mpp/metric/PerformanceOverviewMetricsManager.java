@@ -21,157 +21,194 @@ package org.apache.iotdb.db.mpp.metric;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import java.util.concurrent.TimeUnit;
-
 public class PerformanceOverviewMetricsManager {
-  private final MetricService metricService = MetricService.getInstance();
+  private static final MetricService metricService = MetricService.getInstance();
+
+  // region overview
+  private static final String PERFORMANCE_OVERVIEW_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_DETAIL.toString();
+  private static final Timer AUTH_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.AUTHORITY);
+  private static final Timer PARSER_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.PARSER);
+  private static final Timer ANALYZE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.ANALYZER);
+  private static final Timer PLAN_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.PLANNER);
+  private static final Timer SCHEDULE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.SCHEDULER);
 
   /** Record the time cost in authority stage. */
-  public void recordAuthCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.AUTHORITY);
+  public static void recordAuthCost(long costTimeInNanos) {
+    AUTH_TIMER.updateNanos(costTimeInNanos);
   }
 
   /** Record the time cost in parse stage. */
-  public void recordParseCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.PARSER);
+  public static void recordParseCost(long costTimeInNanos) {
+    PARSER_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordAnalyzeCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.ANALYZER);
+  public static void recordAnalyzeCost(long costTimeInNanos) {
+    ANALYZE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordPlanCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.PLANNER);
+  public static void recordPlanCost(long costTimeInNanos) {
+    PLAN_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.SCHEDULER);
+  public static void recordScheduleCost(long costTimeInNanos) {
+    SCHEDULE_TIMER.updateNanos(costTimeInNanos);
+  }
+  // endregion
+
+  // region schedule
+  private static final String PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString();
+  private static final Timer LOCAL_SCHEDULE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.LOCAL_SCHEDULE);
+  private static final Timer REMOTE_SCHEDULE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.REMOTE_SCHEDULE);
+
+  public static void recordScheduleLocalCost(long costTimeInNanos) {
+    LOCAL_SCHEDULE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.SCHEMA_VALIDATE);
+  public static void recordScheduleRemoteCost(long costTimeInNanos) {
+    REMOTE_SCHEDULE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleTriggerCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.TRIGGER);
+  // endregion
+
+  // region local schedule
+  private static final String PERFORMANCE_OVERVIEW_LOCAL_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_LOCAL_DETAIL.toString();
+  private static final Timer SCHEMA_VALIDATE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.SCHEMA_VALIDATE);
+  private static final Timer TRIGGER_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.TRIGGER);
+  private static final Timer STORAGE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_LOCAL_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.STORAGE);
+
+  public static void recordScheduleSchemaValidateCost(long costTimeInNanos) {
+    SCHEMA_VALIDATE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleConsensusCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.CONSENSUS);
+  public static void recordScheduleTriggerCost(long costTimeInNanos) {
+    TRIGGER_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleLockCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.LOCK);
+  public static void recordScheduleStorageCost(long costTimeInNanos) {
+    STORAGE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleMemoryBlockCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.MEMORY_BLOCK);
+  // endregion
+
+  // region engine
+  private static final String PERFORMANCE_OVERVIEW_ENGINE_DETAIL =
+      Metric.PERFORMANCE_OVERVIEW_ENGINE_DETAIL.toString();
+  private static final Timer LOCK_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.LOCK);
+  private static final Timer CREATE_MEMTABLE_BLOCK_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.CREATE_MEMTABLE_BLOCK);
+  private static final Timer MEMORY_BLOCK_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.MEMORY_BLOCK);
+  private static final Timer WAL_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.WAL);
+  private static final Timer MEMTABLE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.MEMTABLE);
+  private static final Timer LAST_CACHE_TIMER =
+      metricService.getOrCreateTimer(
+          PERFORMANCE_OVERVIEW_ENGINE_DETAIL,
+          MetricLevel.IMPORTANT,
+          Tag.STAGE.toString(),
+          PerformanceOverviewMetrics.LAST_CACHE);
+
+  public static void recordScheduleLockCost(long costTimeInNanos) {
+    LOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleWalCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.WAL);
+  public static void recordCreateMemtableBlockCost(long costTimeInNanos) {
+    CREATE_MEMTABLE_BLOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleMemTableCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.MEMTABLE);
+  public static void recordScheduleMemoryBlockCost(long costTimeInNanos) {
+    MEMORY_BLOCK_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        PerformanceOverviewMetrics.LAST_CACHE);
+  public static void recordScheduleWalCost(long costTimeInNanos) {
+    WAL_TIMER.updateNanos(costTimeInNanos);
   }
 
-  public static PerformanceOverviewMetricsManager getInstance() {
-    return PerformanceOverviewMetricsManager.PerformanceOverviewMetricsManagerHolder.INSTANCE;
+  public static void recordScheduleMemTableCost(long costTimeInNanos) {
+    MEMTABLE_TIMER.updateNanos(costTimeInNanos);
   }
 
-  private static class PerformanceOverviewMetricsManagerHolder {
-
-    private static final PerformanceOverviewMetricsManager INSTANCE =
-        new PerformanceOverviewMetricsManager();
-
-    private PerformanceOverviewMetricsManagerHolder() {
-      // empty constructor
-    }
+  public static void recordScheduleUpdateLastCacheCost(long costTimeInNanos) {
+    LAST_CACHE_TIMER.updateNanos(costTimeInNanos);
   }
 }

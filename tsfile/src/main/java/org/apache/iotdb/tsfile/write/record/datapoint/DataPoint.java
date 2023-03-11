@@ -45,7 +45,7 @@ public abstract class DataPoint {
    * @param type value type of this DataPoint
    * @param measurementId measurementId of this DataPoint
    */
-  public DataPoint(TSDataType type, String measurementId) {
+  protected DataPoint(TSDataType type, String measurementId) {
     this.type = type;
     this.measurementId = measurementId;
   }

@@ -109,6 +109,10 @@ CACHE
     : C A C H E
     ;
 
+CAST
+    : C A S T
+    ;
+
 CHILD
     : C H I L D
     ;
@@ -121,8 +125,8 @@ CLUSTER
     : C L U S T E R
     ;
 
-VARIABLES
-    : V A R I A B L E S
+COLLECTOR
+    : C O L L E C T O R
     ;
 
 CONCAT
@@ -141,16 +145,20 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONNECTOR
+    : C O N N E C T O R
+    ;
+
 CONTINUOUS
     : C O N T I N U O U S
     ;
 
-COUNT
-    : C O U N T
-    ;
-
 CONTAIN
     : C O N T A I N
+    ;
+
+COUNT
+    : C O U N T
     ;
 
 CQ
@@ -454,6 +462,14 @@ PIPESINKTYPE
     : P I P E S I N K T Y P E
     ;
 
+PIPEPLUGIN
+    : P I P E P L U G I N
+    ;
+
+PIPEPLUGINS
+    : P I P E P L U G I N S
+    ;
+
 POLICY
     : P O L I C Y
     ;
@@ -472,6 +488,10 @@ PRIVILEGES
 
 PROCESSLIST
     : P R O C E S S L I S T
+    ;
+
+PROCESSOR
+    : P R O C E S S O R
     ;
 
 PROPERTY
@@ -710,6 +730,10 @@ URI
     : U R I
     ;
 
+USED
+    : U S E D
+    ;
+
 USER
     : U S E R
     ;
@@ -720,6 +744,10 @@ USING
 
 VALUES
     : V A L U E S
+    ;
+
+VARIABLES
+    : V A R I A B L E S
     ;
 
 VARIATION

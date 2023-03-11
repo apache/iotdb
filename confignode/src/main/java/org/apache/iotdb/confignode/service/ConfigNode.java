@@ -82,9 +82,9 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public static void main(String[] args) {
     LOGGER.info(
-        ConfigNodeConstant.GLOBAL_NAME
-            + " environment variables: "
-            + ConfigNodeConfig.getEnvironmentVariables());
+        "{} environment variables: {}",
+        ConfigNodeConstant.GLOBAL_NAME,
+        ConfigNodeConfig.getEnvironmentVariables());
     new ConfigNodeCommandLine().doMain(args);
   }
 
@@ -184,6 +184,7 @@ public class ConfigNode implements ConfigNodeMBean {
           TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
         } catch (InterruptedException e) {
           LOGGER.warn("Waiting leader's scheduling is interrupted.");
+          Thread.currentThread().interrupt();
         }
       }
 
@@ -205,7 +206,7 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
-  private void setUpInternalServices() throws StartupException, IOException {
+  private void setUpInternalServices() throws StartupException {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
@@ -233,7 +234,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  /** Register Non-seed ConfigNode when first startup */
+  /** Register Non-seed ConfigNode when first startup. */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
@@ -284,6 +285,7 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new StartupException("Register ConfigNode failed!");
       }
     }
@@ -293,7 +295,7 @@ public class ConfigNode implements ConfigNodeMBean {
     stop();
   }
 
-  private void sendRestartConfigNodeRequest() throws IOException, StartupException {
+  private void sendRestartConfigNodeRequest() throws StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
             CONF.getClusterName(),
@@ -329,7 +331,8 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
-        throw new StartupException("Register ConfigNode failed!");
+        Thread.currentThread().interrupt();
+        throw new StartupException("Register ConfigNode failed! ");
       }
     }
   }
@@ -343,7 +346,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  /** Deactivating ConfigNode internal services */
+  /** Deactivating ConfigNode internal services. */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();

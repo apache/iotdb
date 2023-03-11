@@ -37,12 +37,12 @@ statement
 
 ddlStatement
     : createStorageGroup | createTimeseries | createSchemaTemplate | createTimeseriesOfSchemaTemplate
-    | createFunction | createTrigger | createContinuousQuery
+    | createFunction | createTrigger | createPipePlugin | createContinuousQuery
     | alterTimeseries | alterStorageGroup | deleteStorageGroup | deleteTimeseries | deletePartition | deleteTimeseriesOfSchemaTemplate
-    | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
+    | dropFunction | dropTrigger | dropPipePlugin | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
+    | showFunctions | showTriggers | showPipePlugins | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -119,10 +119,10 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClasue?
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL uriClause?
     ;
 
-uriClasue
+uriClause
     : USING URI uri
     ;
 
@@ -136,7 +136,7 @@ createTrigger
         triggerEventClause
         ON prefixPath
         AS className=STRING_LITERAL
-        uriClasue?
+        uriClause?
         triggerAttributeClause?
     ;
 
@@ -154,6 +154,11 @@ triggerAttributeClause
 
 triggerAttribute
     : key=attributeKey operator_eq value=attributeValue
+    ;
+
+// Create Pipe Plugin
+createPipePlugin
+    : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
 // Create Continuous Query
@@ -223,6 +228,11 @@ deleteTimeseriesOfSchemaTemplate
 // Drop Function
 dropFunction
     : DROP FUNCTION udfName=identifier
+    ;
+
+// Drop Pipe Plugin
+dropPipePlugin
+    : DROP PIPEPLUGIN pluginName=identifier
     ;
 
 // Drop Trigger
@@ -327,6 +337,11 @@ showFunctions
 // Show Triggers
 showTriggers
     : SHOW TRIGGERS
+    ;
+
+// Show Pipe Plugins
+showPipePlugins
+    : SHOW PIPEPLUGINS
     ;
 
 // Show Continuous Queries
@@ -829,11 +844,11 @@ dropPipeSink
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=identifier TO pipeSinkName=identifier (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    : CREATE PIPE pipeName=identifier collectorAttributesClause? processorAttributesClause? connectorAttributesClause
     ;
 
 showPipe
-    : SHOW ((PIPE (pipeName=identifier)?) | PIPES)
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
     ;
 
 stopPipe
@@ -945,6 +960,7 @@ expression
     | constant
     | time=(TIME | TIMESTAMP)
     | fullPathInExpression
+    | CAST LR_BRACKET castInput=expression AS attributeValue RR_BRACKET
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
@@ -1010,4 +1026,28 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    ;
+
+collectorAttributesClause
+    : WITH COLLECTOR LR_BRACKET (collectorAttributeClause COMMA)* collectorAttributeClause? RR_BRACKET
+    ;
+
+collectorAttributeClause
+    : collectorKey=STRING_LITERAL OPERATOR_SEQ collectorValue=STRING_LITERAL
+    ;
+
+processorAttributesClause
+    : WITH PROCESSOR LR_BRACKET (processorAttributeClause COMMA)* processorAttributeClause? RR_BRACKET
+    ;
+
+processorAttributeClause
+    : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
+    ;
+
+connectorAttributesClause
+    : WITH CONNECTOR LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+    ;
+
+connectorAttributeClause
+    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;
