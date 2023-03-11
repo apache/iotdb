@@ -19,7 +19,7 @@
 
 import time
 from iotdb.mlnode.log import logger
-from thrift.protocol import TCompactProtocol
+from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq, TForecastReq
@@ -77,7 +77,7 @@ class DataNodeClient(object):
         self.__host = host
         self.__port = port
 
-        transport = TTransport.TBufferedTransport(
+        transport = TTransport.TFramedTransport(
             TSocket.TSocket(self.__host, self.__port)
         )
         if not transport.isOpen():
@@ -86,7 +86,7 @@ class DataNodeClient(object):
             except TTransport.TTransportException as e:
                 logger.exception("TTransportException!", exc_info=e)
 
-        protocol = TCompactProtocol.TCompactProtocol(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IDataNodeRPCService.Client(protocol)
 
     def record_model_metrics(self, modelID, trialID, metrics, values):

@@ -46,7 +46,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">3.7"
 thrift = "^0.13.0"
 dynaconf = "^3.1.11"
 jupyter = "^1.0.0"

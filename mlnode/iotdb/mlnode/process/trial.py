@@ -169,7 +169,8 @@ class ForecastingTrainingTrial(BasicTrial):
             val_loss = self.validate(self.model, criterion, self.dataloader, epoch)
             if val_loss < best_loss:
                 best_loss = val_loss
-                modelStorager.save_model(self.model, self.model_configs, self.model_id, 1)
+                # TODO: generate trial id
+                modelStorager.save_model(self.model, self.model_configs, model_id=self.model_id, trial_id=1)
         return best_loss
 
 

@@ -84,6 +84,7 @@ class ForecastingTrainingTask(BasicTask):
                 self.data_configs
             ), n_trials=20)
         else:
+            #TODO: use logger, with more meaningful informations
             print('call the task')
             model, model_cfg = create_forecast_model(**self.model_configs)
             print('model created')

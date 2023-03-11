@@ -67,6 +67,9 @@ def parse_training_request(req: TCreateTrainingTaskReq):  # TODO: extend for oth
     """
     config = req.modelConfigs
     config.update(model_id=req.modelId)
+    config.update(tuning=req.isAuto)
+
+    #TODO: check sql
     config.update(query_expressions=str(req.queryExpressions))
     config.update(queue_filter=req.queryFilter)
     # config = {k: eval(v) for k, v in config.items()}

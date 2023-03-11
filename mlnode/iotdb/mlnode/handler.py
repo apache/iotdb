@@ -55,7 +55,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         data_conf, model_conf, trial_conf = parse_training_request(req)  # data_conf, model_conf, trial_conf
         print(data_conf, model_conf, trial_conf)
         # config = debug_model_config(), debug_data_config(), debug_trial_config()
-        # self.taskManager.submit_single_training_task(config)
+        # self.taskManager.submit_single_training_task(config) # TODO, check param and decide the response
 
         return get_status(TSStatusCode.SUCCESS_STATUS, "create training task successfully")  # TODO: other status
 
