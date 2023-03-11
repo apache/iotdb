@@ -102,6 +102,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTas
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
@@ -817,7 +818,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // convert PipePluginTable and buildTsBlock
-      ShowFunctionsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginInformation(), future);
+      ShowPipePluginsTask.buildTsBlock(getPipePluginTableResp.getAllPipePluginMeta(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }

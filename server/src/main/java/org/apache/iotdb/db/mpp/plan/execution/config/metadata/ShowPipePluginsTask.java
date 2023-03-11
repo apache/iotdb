@@ -66,8 +66,8 @@ public class ShowPipePluginsTask implements IConfigTask {
     for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(Binary.valueOf(pipePluginMeta.getPluginName()));
-      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getPluginType()));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getJarName()));
       builder.declarePosition();
     }
 
