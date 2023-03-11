@@ -22,6 +22,10 @@ package org.apache.iotdb.consensus.simple;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -36,6 +40,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -50,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -121,7 +127,16 @@ class SimpleConsensus implements IConsensus {
       status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
       status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
+      long startWriteTime = System.nanoTime();
       status = impl.write(request);
+      MetricService.getInstance()
+          .timer(
+              System.nanoTime() - startWriteTime,
+              TimeUnit.NANOSECONDS,
+              Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.STAGE.toString(),
+              PerformanceOverviewMetrics.ENGINE);
     }
     return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
