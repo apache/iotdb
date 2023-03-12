@@ -51,11 +51,11 @@ public class LinuxNetMetricManager implements INetMetricManager {
 
   private static final int IFACE_NAME_INDEX = 0;
   // initialized after reading status file
-  private static int RECEIVED_BYTES_INDEX = 0;
-  private static int TRANSMITTED_BYTES_INDEX = 0;
-  private static int RECEIVED_PACKETS_INDEX = 0;
-  private static int TRANSMITTED_PACKETS_INDEX = 0;
-  private Set<String> iFaceSet;
+  private int receivedBytesIndex = 0;
+  private int transmittedBytesIndex = 0;
+  private int receivedPacketsIndex = 0;
+  private int transmittedPacketsIndex = 0;
+  private Set<String> ifaceSet;
 
   private final Map<String, Long> receivedBytesMapForIface;
   private final Map<String, Long> transmittedBytesMapForIface;
@@ -65,10 +65,10 @@ public class LinuxNetMetricManager implements INetMetricManager {
   public LinuxNetMetricManager() {
     collectIfaces();
     // leave one entry to avoid hashmap resizing
-    receivedBytesMapForIface = new HashMap<>(iFaceSet.size() + 1, 1);
-    transmittedBytesMapForIface = new HashMap<>(iFaceSet.size() + 1, 1);
-    receivedPacketsMapForIface = new HashMap<>(iFaceSet.size() + 1, 1);
-    transmittedPacketsMapForIface = new HashMap<>(iFaceSet.size() + 1, 1);
+    receivedBytesMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
+    transmittedBytesMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
+    receivedPacketsMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
+    transmittedPacketsMapForIface = new HashMap<>(ifaceSet.size() + 1, 1);
     collectNetStatusIndex();
   }
 
@@ -77,7 +77,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
   @Override
   public Set<String> getIfaceSet() {
     checkUpdate();
-    return iFaceSet;
+    return ifaceSet;
   }
 
   @Override
@@ -111,14 +111,14 @@ public class LinuxNetMetricManager implements INetMetricManager {
   }
 
   private void collectIfaces() {
-    File iFaceIdFolder = new File(IFACE_ID_PATH);
-    if (!iFaceIdFolder.exists()) {
-      iFaceSet = Collections.emptySet();
+    File ifaceIdFolder = new File(IFACE_ID_PATH);
+    if (!ifaceIdFolder.exists()) {
+      ifaceSet = Collections.emptySet();
       log.warn("Cannot find {}", IFACE_ID_PATH);
       return;
     }
-    iFaceSet =
-        new ArrayList<>(Arrays.asList(Objects.requireNonNull(iFaceIdFolder.listFiles())))
+    ifaceSet =
+        new ArrayList<>(Arrays.asList(Objects.requireNonNull(ifaceIdFolder.listFiles())))
             .stream().map(File::getName).collect(Collectors.toSet());
   }
 
@@ -138,16 +138,16 @@ public class LinuxNetMetricManager implements INetMetricManager {
       String[] transmitStatusHeader = seperatedHeaderLine[2].split("\\s+");
       for (int i = 0, length = receiveStatusHeader.length; i < length; ++i) {
         if (receiveStatusHeader[i].equals(BYTES)) {
-          RECEIVED_BYTES_INDEX = i + 1;
+          receivedBytesIndex = i + 1;
         } else if (receiveStatusHeader[i].equals(PACKETS)) {
-          RECEIVED_PACKETS_INDEX = i + 1;
+          receivedPacketsIndex = i + 1;
         }
       }
       for (int i = 0, length = transmitStatusHeader.length; i < length; ++i) {
         if (transmitStatusHeader[i].equals(BYTES)) {
-          TRANSMITTED_BYTES_INDEX = i + length + 1;
+          transmittedBytesIndex = i + length + 1;
         } else if (transmitStatusHeader[i].equals(PACKETS)) {
-          TRANSMITTED_PACKETS_INDEX = i + length + 1;
+          transmittedPacketsIndex = i + length + 1;
         }
       }
     } catch (IOException e) {
@@ -181,14 +181,13 @@ public class LinuxNetMetricManager implements INetMetricManager {
         // we need to remove the last letter
         iface = iface.substring(0, iface.length() - 1);
 
-        long receivedBytes = Long.parseLong(statusInfoAsList.get(RECEIVED_BYTES_INDEX));
-        long transmittedBytes = Long.parseLong(statusInfoAsList.get(TRANSMITTED_BYTES_INDEX));
-        long receivedPackets = Long.parseLong(statusInfoAsList.get(RECEIVED_PACKETS_INDEX));
-        long transmittedPackets = Long.parseLong(statusInfoAsList.get(TRANSMITTED_PACKETS_INDEX));
-
+        long receivedBytes = Long.parseLong(statusInfoAsList.get(receivedBytesIndex));
         receivedBytesMapForIface.put(iface, receivedBytes);
+        long transmittedBytes = Long.parseLong(statusInfoAsList.get(transmittedBytesIndex));
         transmittedBytesMapForIface.put(iface, transmittedBytes);
+        long receivedPackets = Long.parseLong(statusInfoAsList.get(receivedPacketsIndex));
         receivedPacketsMapForIface.put(iface, receivedPackets);
+        long transmittedPackets = Long.parseLong(statusInfoAsList.get(transmittedPacketsIndex));
         transmittedPacketsMapForIface.put(iface, transmittedPackets);
       }
     } catch (IOException e) {

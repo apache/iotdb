@@ -29,8 +29,6 @@ import java.util.Set;
 public class NetMetrics implements IMetricSet {
   private final INetMetricManager netMetricManager = INetMetricManager.getNetMetricManager();
 
-  private final String processName;
-
   private static final String RECEIVED_BYTES = "received_bytes";
   private static final String RECEIVED_PACKETS = "received_packets";
   private static final String TRANSMITTED_BYTES = "transmitted_bytes";
@@ -41,64 +39,62 @@ public class NetMetrics implements IMetricSet {
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
 
-  public NetMetrics(String processName) {
-    this.processName = processName;
-  }
+  public NetMetrics() {}
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     // metrics for net
-    Set<String> iFaceSet = netMetricManager.getIfaceSet();
-    for (String iFace : iFaceSet) {
+    Set<String> ifaceSet = netMetricManager.getIfaceSet();
+    for (String iface : ifaceSet) {
       metricService.createAutoGauge(
           RECEIVED_BYTES,
           MetricLevel.IMPORTANT,
           netMetricManager,
-          x -> x.getReceivedByte().get(iFace),
+          x -> x.getReceivedByte().get(iface),
           TYPE,
           RECEIVE,
           IFACE_NAME,
-          iFace);
+          iface);
       metricService.createAutoGauge(
           TRANSMITTED_BYTES,
           MetricLevel.IMPORTANT,
           netMetricManager,
-          x -> x.getTransmittedBytes().get(iFace),
+          x -> x.getTransmittedBytes().get(iface),
           TYPE,
           TRANSMIT,
           IFACE_NAME,
-          iFace);
+          iface);
       metricService.createAutoGauge(
           RECEIVED_PACKETS,
           MetricLevel.IMPORTANT,
           netMetricManager,
-          x -> x.getReceivedPackets().get(iFace),
+          x -> x.getReceivedPackets().get(iface),
           TYPE,
           RECEIVE,
           IFACE_NAME,
-          iFace);
+          iface);
       metricService.createAutoGauge(
           TRANSMITTED_PACKETS,
           MetricLevel.IMPORTANT,
           netMetricManager,
-          x -> x.getTransmittedPackets().get(iFace),
+          x -> x.getTransmittedPackets().get(iface),
           TYPE,
           TRANSMIT,
           IFACE_NAME,
-          iFace);
+          iface);
     }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Set<String> iFaceSet = netMetricManager.getIfaceSet();
-    for (String iFace : iFaceSet) {
-      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_BYTES, TYPE, RECEIVE, IFACE_NAME, iFace);
-      metricService.remove(MetricType.AUTO_GAUGE, TRANSMIT, TYPE, TRANSMIT, IFACE_NAME, iFace);
+    Set<String> ifaceSet = netMetricManager.getIfaceSet();
+    for (String iface : ifaceSet) {
+      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_BYTES, TYPE, RECEIVE, IFACE_NAME, iface);
+      metricService.remove(MetricType.AUTO_GAUGE, TRANSMIT, TYPE, TRANSMIT, IFACE_NAME, iface);
       metricService.remove(
-          MetricType.AUTO_GAUGE, RECEIVED_PACKETS, TYPE, RECEIVE, IFACE_NAME, iFace);
+          MetricType.AUTO_GAUGE, RECEIVED_PACKETS, TYPE, RECEIVE, IFACE_NAME, iface);
       metricService.remove(
-          MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, IFACE_NAME, iFace);
+          MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, IFACE_NAME, iface);
     }
   }
 }
