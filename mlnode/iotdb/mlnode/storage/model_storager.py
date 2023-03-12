@@ -32,7 +32,7 @@ class ModelStorager(object):
         current_path = os.getcwd()
         self.root_path = os.path.join(current_path, root_path)
         if not os.path.exists(self.root_path):
-            os.mkdirs(self.root_path)
+            os.mkdir(self.root_path)
         self._loaded_model_cache = lrucache(cache_size)
 
     def save_model(self, model, model_config, model_id, trial_id):

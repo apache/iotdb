@@ -10,3 +10,4 @@ thrift/
 poetry.lock
 ml_models/
 dataset/
+ModelData/
