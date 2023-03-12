@@ -124,6 +124,17 @@ public class LastQueryUtil {
     return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 
+  /**
+   * Time of last cache should be greater than or equal to the startTime of the data partition of
+   * the LastQueryNode
+   *
+   * @param startTime the startTime of the data partition of the LastQueryNode
+   * @return true if satisfy
+   */
+  public static boolean satisfyTimePartition(long startTime, TimeValuePair timeValuePair) {
+    return timeValuePair.getTimestamp() >= startTime;
+  }
+
   public static List<Aggregator> createAggregators(TSDataType dataType) {
     // max_time, last_value
     List<Aggregator> aggregators = new ArrayList<>(2);
