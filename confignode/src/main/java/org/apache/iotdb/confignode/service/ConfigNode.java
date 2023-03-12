@@ -45,6 +45,7 @@ import org.apache.iotdb.db.service.metrics.SystemMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -218,6 +219,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
+    MetricService.getInstance().addMetricSet(new NetMetrics());
 
     LOGGER.info("Successfully setup internal services.");
   }
