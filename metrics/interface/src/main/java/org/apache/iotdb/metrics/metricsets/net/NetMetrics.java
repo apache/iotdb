@@ -37,7 +37,7 @@ public class NetMetrics implements IMetricSet {
   private static final String TRANSMITTED_PACKETS = "transmitted_packets";
 
   private static final String TYPE = "type";
-  private static final String NAME = "name";
+  private static final String IFACE_NAME = "iface_name";
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
 
@@ -57,7 +57,7 @@ public class NetMetrics implements IMetricSet {
           x -> x.getReceivedByte().get(iFace),
           TYPE,
           RECEIVE,
-          NAME,
+          IFACE_NAME,
           iFace);
       metricService.createAutoGauge(
           TRANSMITTED_BYTES,
@@ -66,7 +66,7 @@ public class NetMetrics implements IMetricSet {
           x -> x.getTransmittedBytes().get(iFace),
           TYPE,
           TRANSMIT,
-          NAME,
+          IFACE_NAME,
           iFace);
       metricService.createAutoGauge(
           RECEIVED_PACKETS,
@@ -75,7 +75,7 @@ public class NetMetrics implements IMetricSet {
           x -> x.getReceivedPackets().get(iFace),
           TYPE,
           RECEIVE,
-          NAME,
+          IFACE_NAME,
           iFace);
       metricService.createAutoGauge(
           TRANSMITTED_PACKETS,
@@ -84,7 +84,7 @@ public class NetMetrics implements IMetricSet {
           x -> x.getTransmittedPackets().get(iFace),
           TYPE,
           TRANSMIT,
-          NAME,
+          IFACE_NAME,
           iFace);
     }
   }
@@ -93,10 +93,12 @@ public class NetMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     Set<String> iFaceSet = netMetricManager.getIfaceSet();
     for (String iFace : iFaceSet) {
-      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_BYTES, TYPE, RECEIVE, NAME, iFace);
-      metricService.remove(MetricType.AUTO_GAUGE, TRANSMIT, TYPE, TRANSMIT, NAME, iFace);
-      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_PACKETS, TYPE, RECEIVE, NAME, iFace);
-      metricService.remove(MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, NAME, iFace);
+      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_BYTES, TYPE, RECEIVE, IFACE_NAME, iFace);
+      metricService.remove(MetricType.AUTO_GAUGE, TRANSMIT, TYPE, TRANSMIT, IFACE_NAME, iFace);
+      metricService.remove(
+          MetricType.AUTO_GAUGE, RECEIVED_PACKETS, TYPE, RECEIVE, IFACE_NAME, iFace);
+      metricService.remove(
+          MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, IFACE_NAME, iFace);
     }
   }
 }
