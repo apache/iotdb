@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
@@ -43,6 +44,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
+    MetricService.getInstance().addMetricSet(new NetMetrics());
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());
