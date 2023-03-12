@@ -39,8 +39,6 @@ public class NetMetrics implements IMetricSet {
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
 
-  public NetMetrics() {}
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
     // metrics for net
