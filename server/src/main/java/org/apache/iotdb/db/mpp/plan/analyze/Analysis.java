@@ -221,12 +221,6 @@ public class Analysis {
     return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
-  public List<TRegionReplicaSet> getPartitionInfoSortedByTTimePartitionSlotDesc(
-      PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSetSortedByTTimePartitionSlotDesc(
-        seriesPath.getDevice(), null);
-  }
-
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
     return dataPartition.getDataRegionReplicaSet(deviceName, null);
   }

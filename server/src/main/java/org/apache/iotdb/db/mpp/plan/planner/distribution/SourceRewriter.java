@@ -596,24 +596,16 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   private PlanNode processRawMultiChildNode(
       MultiChildProcessNode node, DistributionPlanContext context) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
-    Map<TRegionReplicaSet, List<SourceNode>> sourceGroup = new HashMap<>();
-    // if node is LastQueryNode, we need to sort DataRegion by TimePartition due to process logic of
-    // Last Query
-    boolean needToSortRegionByTimePartition = (node instanceof LastQueryNode);
-    // Step 1: Get all source nodes and group them by TRegionReplicaSet.
-    // For the node which is not source, add it as the child of current TimeJoinNode
+    // Step 1: Get all source nodes. For the node which is not source, add it as the child of
+    // current TimeJoinNode
+    List<SourceNode> sources = new ArrayList<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
         // If the child is SeriesScanNode, we need to check whether this node should be seperated
         // into several splits.
         SeriesSourceNode handle = (SeriesSourceNode) child;
-
         List<TRegionReplicaSet> dataDistribution =
-            needToSortRegionByTimePartition
-                ? analysis.getPartitionInfoSortedByTTimePartitionSlotDesc(
-                    handle.getPartitionPath(), handle.getPartitionTimeFilter())
-                : analysis.getPartitionInfo(
-                    handle.getPartitionPath(), handle.getPartitionTimeFilter());
+            analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
         if (dataDistribution.size() > 1) {
           // We mark this variable to `true` if there is some series which is distributed in multi
           // DataRegions
@@ -625,16 +617,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           SeriesSourceNode split = (SeriesSourceNode) handle.clone();
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
-          sourceGroup.computeIfAbsent(dataRegion, region -> new ArrayList<>()).add(split);
+          sources.add(split);
         }
       }
     }
+    // Step 2: For the source nodes, group them by the DataRegion.
+    Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
+        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
 
     if (sourceGroup.size() > 1) {
       context.setQueryMultiRegion(true);
     }
 
-    // Step 2: For the source nodes which belong to same data region, add a TimeJoinNode for them
+    // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
     // and make the
     // new TimeJoinNode as the child of current TimeJoinNode
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
