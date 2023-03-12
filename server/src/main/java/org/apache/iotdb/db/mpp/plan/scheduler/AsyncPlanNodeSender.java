@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -34,8 +35,8 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
@@ -44,8 +45,8 @@ public class AsyncPlanNodeSender {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
-  private final CountDownLatch countDownLatch;
   private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+  private final AtomicLong pendingNumber;
 
   public AsyncPlanNodeSender(
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -53,15 +54,16 @@ public class AsyncPlanNodeSender {
       List<FragmentInstance> instances) {
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.instances = instances;
-    this.countDownLatch = new CountDownLatch(instances.size());
     this.instanceId2RespMap = new ConcurrentHashMap<>();
+    this.pendingNumber = new AtomicLong(instances.size());
   }
 
   public void sendAll() {
+    long startSendTime = System.nanoTime();
     for (int i = 0; i < instances.size(); ++i) {
       FragmentInstance instance = instances.get(i);
       AsyncSendPlanNodeHandler handler =
-          new AsyncSendPlanNodeHandler(i, countDownLatch, instanceId2RespMap);
+          new AsyncSendPlanNodeHandler(i, pendingNumber, instanceId2RespMap, startSendTime);
       try {
         TSendPlanNodeReq sendPlanNodeReq =
             new TSendPlanNodeReq(
@@ -78,7 +80,11 @@ public class AsyncPlanNodeSender {
   }
 
   public void waitUntilCompleted() throws InterruptedException {
-    countDownLatch.await();
+    synchronized (pendingNumber) {
+      while (pendingNumber.get() != 0) {
+        pendingNumber.wait();
+      }
+    }
   }
 
   public Future<FragInstanceDispatchResult> getResult() {
