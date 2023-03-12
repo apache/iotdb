@@ -428,6 +428,9 @@ public interface IManager {
   /** Show pipe plugins */
   TGetPipePluginTableResp getPipePluginTable();
 
+  /** Get pipe plugin jar */
+  TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
+
   /** Merge on all DataNodes */
   TSStatus merge();
 

@@ -126,6 +126,7 @@
         <module>isession</module>
         <module>mlnode</module>
         <module>pipe-api</module>
+        <module>subscription-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
