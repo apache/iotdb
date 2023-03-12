@@ -91,6 +91,25 @@ public class DataPartition extends Partition {
         .collect(Collectors.toList());
   }
 
+  public List<TRegionReplicaSet> getDataRegionReplicaSetSortedByTTimePartitionSlotDesc(
+      String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    if (!dataPartitionMap.containsKey(storageGroup)
+        || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
+      return Collections.singletonList(NOT_ASSIGNED);
+    }
+    // Sort by startTime of TTimePartitionSlot in reverse order.
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+        .sorted(
+            (entry1, entry2) ->
+                (int) (entry2.getKey().getStartTime() - entry1.getKey().getStartTime()))
+        .map(Map.Entry::getValue)
+        .flatMap(Collection::stream)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
   public List<TRegionReplicaSet> getDataRegionReplicaSetForWriting(
       String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
     // A list of data region replica sets will store data in a same time partition.
