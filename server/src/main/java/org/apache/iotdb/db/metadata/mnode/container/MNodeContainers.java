@@ -106,5 +106,10 @@ public class MNodeContainers {
     public boolean equals(Object o) {
       return o == this;
     }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
   }
 }
