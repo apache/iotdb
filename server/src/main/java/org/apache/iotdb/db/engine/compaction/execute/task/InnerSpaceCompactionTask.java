@@ -104,24 +104,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected void doCompaction() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
+    long startTime = System.currentTimeMillis();
+    // get resource of target file
+    String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
+    LOGGER.info(
+        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
+        storageGroupName,
+        dataRegionId,
+        sequence ? "Sequence" : "Unsequence",
+        selectedTsFileResourceList.size(),
+        selectedFileSize / 1024 / 1024);
+
     try {
-      if (!tsFileManager.isAllowCompaction()) {
-        return;
-      }
-      long startTime = System.currentTimeMillis();
-      // get resource of target file
-      String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
-      LOGGER.info(
-          "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
-          storageGroupName,
-          dataRegionId,
-          sequence ? "Sequence" : "Unsequence",
-          selectedTsFileResourceList.size(),
-          selectedFileSize / 1024 / 1024);
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
               selectedTsFileResourceList, sequence);
-
       logFile =
           new File(
               dataDirectory
